@@ -50,7 +50,7 @@ MAIN_FILES = \
 	$(SRCDIR)main/fog.c \
 	$(SRCDIR)main/formatquery.c \
 	$(SRCDIR)main/formats.c \
-	$(SRCDIR)main/format_pack.c \
+	$(BUILDDIR)main/format_pack.c \
 	$(SRCDIR)main/format_unpack.c \
 	$(SRCDIR)main/format_utils.c \
 	$(SRCDIR)main/framebuffer.c \
