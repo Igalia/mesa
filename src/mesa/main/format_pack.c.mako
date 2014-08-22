@@ -117,9 +117,10 @@ pack_ubyte_${f.short_name()}(const GLubyte src[4], void *dst)
       ${format_datatype(f)} d = 0;
       %for (i, c) in enumerate(f.channels):
          %if c.type == 'x':
-            <% continue %>
+            d |= PACK(MAX_INT(${c.size}), ${c.shift}, ${c.size});
+         %else:
+            d |= PACK(${c.name}, ${c.shift}, ${c.size});
          %endif
-         d |= PACK(${c.name}, ${c.shift}, ${c.size});
       %endfor
       (*(${format_datatype(f)} *)dst) = d;
    %else:
@@ -204,9 +205,10 @@ pack_float_${f.short_name()}(const GLfloat src[4], void *dst)
       ${format_datatype(f)} d = 0;
       %for (i, c) in enumerate(f.channels):
          %if c.type == 'x':
-            <% continue %>
+            d |= PACK(MAX_INT(${c.size}), ${c.shift}, ${c.size});
+         %else:
+            d |= PACK(${c.name}, ${c.shift}, ${c.size});
          %endif
-         d |= PACK(${c.name}, ${c.shift}, ${c.size});
       %endfor
       (*(${format_datatype(f)} *)dst) = d;
    %else:
