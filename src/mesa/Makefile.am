@@ -67,6 +67,7 @@ BUILT_SOURCES = \
         main/format_info.c \
 	$(BUILDDIR)main/git_sha1.h \
 	$(BUILDDIR)main/format_pack.c \
+	$(BUILDDIR)main/format_unpack.c \
 	$(BUILDDIR)program/program_parse.tab.c \
 	$(BUILDDIR)program/lex.yy.c
 CLEANFILES = \
@@ -92,6 +93,14 @@ main/format_info.c: main/formats.csv                                    \
 
 $(BUILDDIR)main/format_pack.c: main/format_pack.c.mako main/formats.csv \
                                main/run_mako.py main/format_parser.py
+	$(AM_V_GEN)set -e;						\
+	$(PYTHON2) $(PYTHON_FLAGS) $(srcdir)/main/run_mako.py           \
+                   $< $(srcdir)/main/formats.csv > $@.tmp;              \
+	cat $@.tmp | $(INDENT) $(INDENT_FLAGS) > $@;                    \
+        rm $@.tmp;
+
+$(BUILDDIR)main/format_unpack.c: main/format_unpack.c.mako main/formats.csv \
+                                 main/run_mako.py main/format_parser.py
 	$(AM_V_GEN)set -e;						\
 	$(PYTHON2) $(PYTHON_FLAGS) $(srcdir)/main/run_mako.py           \
                    $< $(srcdir)/main/formats.csv > $@.tmp;              \
