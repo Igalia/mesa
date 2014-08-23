@@ -1487,6 +1487,8 @@ _mesa_format_matches_format_and_type(mesa_format mesa_format,
          !swapBytes;
 
    case MESA_FORMAT_A1R5G5B5_UNORM:
+      return format == GL_BGRA && type == GL_UNSIGNED_SHORT_5_5_5_1 &&
+         !swapBytes;
       return GL_FALSE;
 
    case MESA_FORMAT_L4A4_UNORM:
