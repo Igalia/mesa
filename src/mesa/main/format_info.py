@@ -98,6 +98,32 @@ def get_gl_data_type(fmat):
    else:
       assert False
 
+def get_array_format_datatype(chan):
+   if chan.type == parser.FLOAT:
+      if chan.size == 16:
+         return 'MESA_ARRAY_FORMAT_TYPE_HALF'
+      elif chan.size == 32:
+         return 'MESA_ARRAY_FORMAT_TYPE_FLOAT'
+      else:
+         assert False
+   elif chan.type in (parser.SIGNED, parser.UNSIGNED):
+      datatype = 'MESA_ARRAY_FORMAT_TYPE_'
+      if chan.type == parser.UNSIGNED:
+         datatype += 'U'
+
+      if chan.size == 8:
+         datatype += 'BYTE'
+      elif chan.size == 16:
+         datatype += 'SHORT'
+      elif chan.size == 32:
+         datatype += 'INT'
+      else:
+         print chan.size
+         assert False
+      return datatype
+   else:
+      assert False
+
 def get_mesa_layout(fmat):
    if fmat.layout == 'array':
       return 'MESA_FORMAT_LAYOUT_ARRAY'
@@ -192,6 +218,21 @@ for fmat in formats:
                                        int(fmat.block_size() / 8))
 
    print '      {{ {0} }},'.format(', '.join(map(str, fmat.swizzle)))
+   if fmat.is_array() and fmat.colorspace in ('rgb', 'srgb'):
+      chan = fmat.array_element()
+      print '      {{{{ {0} }}}},'.format(', '.join([
+         get_array_format_datatype(chan),
+         str(int(chan.norm)),
+         str(len(fmat.channels)),
+         str(fmat.swizzle[0]),
+         str(fmat.swizzle[1]),
+         str(fmat.swizzle[2]),
+         str(fmat.swizzle[3]),
+         str(int(0)),
+         str(int(1))
+      ]))
+   else:
+      print '      {{ MESA_ARRAY_FORMAT_TYPE_UBYTE, 0, 0, 0, 0, 0, 0, 0, 0 }},'
    print '   },'
 
 print '};'
