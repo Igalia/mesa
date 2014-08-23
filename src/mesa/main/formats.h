@@ -81,6 +81,55 @@ enum {
    MESA_FORMAT_SWIZZLE_NONE = 6,
 };
 
+enum  mesa_array_format_datatype {
+   MESA_ARRAY_FORMAT_TYPE_UBYTE = 0x0,
+   MESA_ARRAY_FORMAT_TYPE_USHORT = 0x1,
+   MESA_ARRAY_FORMAT_TYPE_UINT = 0x2,
+   MESA_ARRAY_FORMAT_TYPE_BYTE = 0x4,
+   MESA_ARRAY_FORMAT_TYPE_SHORT = 0x5,
+   MESA_ARRAY_FORMAT_TYPE_INT = 0x6,
+   MESA_ARRAY_FORMAT_TYPE_HALF = 0xd,
+   MESA_ARRAY_FORMAT_TYPE_FLOAT = 0xe,
+
+   MESA_ARRAY_FORMAT_TYPE_IS_SIGNED = 0x4,
+   MESA_ARRAY_FORMAT_TYPE_IS_FLOAT = 0x8,
+};
+
+typedef union {
+   struct {
+      enum mesa_array_format_datatype type:4;
+      bool normalized:1;
+      unsigned num_channels:3;
+      unsigned swizzle_x:3;
+      unsigned swizzle_y:3;
+      unsigned swizzle_z:3;
+      unsigned swizzle_w:3;
+      unsigned pad:11;
+      unsigned array_format_bit:1; /* Must always be 1 */
+   };
+   uint32_t as_uint;
+} mesa_array_format;
+
+static const mesa_array_format _mesa_array_format_none = {{
+   MESA_ARRAY_FORMAT_TYPE_UBYTE,
+   0, 0, 0, 0, 0, 0, 0, 0
+}};
+
+static inline unsigned
+_mesa_ilog2(unsigned x)
+{
+   uint8_t i;
+   for (i = 1; i < 32; ++i)
+      if (x <= (1u << i))
+         return i;
+   return 32;
+}
+
+#define MESA_ARRAY_FORMAT_TYPE(SIZE, SIGNED, IS_FLOAT, NORM) (     \
+   ((_mesa_ilog2(SIZE)) & MESA_ARRAY_FORMAT_TYPE_SIZE_MASK) |      \
+   (((SIGNED)    << 2 ) & MESA_ARRAY_FORMAT_TYPE_IS_SIGNED) |      \
+   (((IS_FLOAT)  << 3 ) & MESA_ARRAY_FORMAT_TYPE_IS_FLOAT)
+
 /**
  * Mesa texture/renderbuffer image formats.
  */
@@ -468,6 +517,12 @@ _mesa_get_format_block_size(mesa_format format, GLuint *bw, GLuint *bh);
 
 extern void
 _mesa_get_format_swizzle(mesa_format format, uint8_t swizzle_out[4]);
+
+extern uint32_t
+_mesa_format_to_array_format(mesa_format format);
+
+extern mesa_format
+_mesa_format_from_array_format(uint32_t array_format);
 
 extern GLboolean
 _mesa_is_format_compressed(mesa_format format);
