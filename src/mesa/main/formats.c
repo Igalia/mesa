@@ -71,6 +71,7 @@ struct gl_format_info
    GLubyte BytesPerBlock;
 
    uint8_t Swizzle[4];
+   mesa_array_format ArrayFormat;
 };
 
 #include "format_info.c"
@@ -269,6 +270,60 @@ _mesa_get_format_swizzle(mesa_format format, uint8_t swizzle_out[4])
    memcpy(swizzle_out, info->Swizzle, sizeof(info->Swizzle));
 }
 
+static mesa_array_format
+array_format_flip_channels(mesa_array_format format)
+{
+   if (format.num_channels == 1)
+      return format;
+
+   if (format.num_channels == 2) {
+      int tmp = format.swizzle_x;
+      format.swizzle_x = format.swizzle_y;
+      format.swizzle_y = tmp;
+      return format;
+   }
+
+   if (format.num_channels == 4) {
+      int tmp = format.swizzle_x;
+      format.swizzle_x = format.swizzle_w;
+      format.swizzle_w = tmp;
+      tmp = format.swizzle_y;
+      format.swizzle_y = format.swizzle_z;
+      format.swizzle_z = tmp;
+      return format;
+   }
+
+   assert(!"Invalid array format");
+}
+
+uint32_t
+_mesa_format_to_array_format(mesa_format format)
+{
+   const struct gl_format_info *info = _mesa_get_format_info(format);
+   if (_mesa_little_endian())
+      return info->ArrayFormat.as_uint;
+   else
+      return array_format_flip_channels(info->ArrayFormat).as_uint;
+}
+
+mesa_format
+_mesa_format_from_array_format(uint32_t array_format)
+{
+   mesa_array_format af;
+   unsigned f;
+
+   af.as_uint = array_format;
+   af.pad = 0;
+   if (!_mesa_little_endian())
+      af = array_format_flip_channels(af);
+
+   assert(af.array_format_bit);
+   for (f = 1; f < MESA_FORMAT_COUNT; ++f)
+      if (_mesa_get_format_info(f)->ArrayFormat.as_uint == af.as_uint)
+         return f;
+
+   return MESA_FORMAT_NONE;
+}
 
 /** Is the given format a compressed format? */
 GLboolean
@@ -277,7 +332,6 @@ _mesa_is_format_compressed(mesa_format format)
    const struct gl_format_info *info = _mesa_get_format_info(format);
    return info->BlockWidth > 1 || info->BlockHeight > 1;
 }
-
 
 /**
  * Determine if the given format represents a packed depth/stencil buffer.
