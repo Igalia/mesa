@@ -81,7 +81,7 @@ enum {
    MESA_FORMAT_SWIZZLE_NONE = 6,
 };
 
-enum  mesa_array_format_datatype {
+enum mesa_array_format_datatype {
    MESA_ARRAY_FORMAT_TYPE_UBYTE = 0x0,
    MESA_ARRAY_FORMAT_TYPE_USHORT = 0x1,
    MESA_ARRAY_FORMAT_TYPE_UINT = 0x2,
@@ -90,10 +90,11 @@ enum  mesa_array_format_datatype {
    MESA_ARRAY_FORMAT_TYPE_INT = 0x6,
    MESA_ARRAY_FORMAT_TYPE_HALF = 0xd,
    MESA_ARRAY_FORMAT_TYPE_FLOAT = 0xe,
-
-   MESA_ARRAY_FORMAT_TYPE_IS_SIGNED = 0x4,
-   MESA_ARRAY_FORMAT_TYPE_IS_FLOAT = 0x8,
 };
+
+#define MESA_ARRAY_FORMAT_TYPE_IS_SIGNED 0x4
+#define MESA_ARRAY_FORMAT_TYPE_IS_FLOAT 0x8
+#define MESA_ARRAY_FORMAT_BIT 0x80000000
 
 typedef union {
    struct {
@@ -129,6 +130,12 @@ _mesa_ilog2(unsigned x)
    ((_mesa_ilog2(SIZE)) & MESA_ARRAY_FORMAT_TYPE_SIZE_MASK) |      \
    (((SIGNED)    << 2 ) & MESA_ARRAY_FORMAT_TYPE_IS_SIGNED) |      \
    (((IS_FLOAT)  << 3 ) & MESA_ARRAY_FORMAT_TYPE_IS_FLOAT)
+
+static inline int
+_mesa_array_format_datatype_size(enum mesa_array_format_datatype type)
+{
+   return 1 << (type & 0x3);
+}
 
 /**
  * Mesa texture/renderbuffer image formats.
