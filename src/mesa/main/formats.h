@@ -537,8 +537,15 @@ _mesa_get_format_base_format(uint32_t format);
 extern void
 _mesa_get_format_block_size(mesa_format format, GLuint *bw, GLuint *bh);
 
+extern mesa_array_format
+_mesa_array_format_flip_channels(mesa_array_format format);
+
 extern void
 _mesa_get_format_swizzle(mesa_format format, uint8_t swizzle_out[4]);
+
+extern void
+_mesa_array_format_set_swizzle(mesa_array_format *array_format,
+                               int x, int y, int z, int w);
 
 extern uint32_t
 _mesa_format_to_array_format(mesa_format format);
