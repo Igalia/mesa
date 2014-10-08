@@ -220,9 +220,10 @@ for fmat in formats:
    print '      {{ {0} }},'.format(', '.join(map(str, fmat.swizzle)))
    if fmat.is_array() and fmat.colorspace in ('rgb', 'srgb'):
       chan = fmat.array_element()
+      norm = chan.norm or chan.type == parser.FLOAT
       print '      {{{{ {0} }}}},'.format(', '.join([
          get_array_format_datatype(chan),
-         str(int(chan.norm)),
+         str(int(norm)),
          str(len(fmat.channels)),
          str(fmat.swizzle[0]),
          str(fmat.swizzle[1]),
