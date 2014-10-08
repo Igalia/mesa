@@ -546,6 +546,9 @@ _mesa_format_to_array_format(mesa_format format);
 extern mesa_format
 _mesa_format_from_array_format(uint32_t array_format);
 
+extern uint32_t
+_mesa_format_from_format_and_type(GLenum format, GLenum type, bool swap_bytes);
+
 extern GLboolean
 _mesa_is_format_compressed(mesa_format format);
 
