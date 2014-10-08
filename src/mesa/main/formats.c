@@ -325,6 +325,297 @@ _mesa_format_from_array_format(uint32_t array_format)
    return MESA_FORMAT_NONE;
 }
 
+static void
+_mesa_array_format_set_swizzle(mesa_array_format *array_format,
+                               int x, int y, int z, int w)
+{
+   array_format->swizzle_x = x;
+   array_format->swizzle_y = y;
+   array_format->swizzle_z = z;
+   array_format->swizzle_w = w;
+}
+
+static bool
+_mesa_array_format_set_swizzle_from_format(mesa_array_format *array_format,
+                                           GLenum format)
+{
+   switch (format) {
+   case GL_RGBA:
+   case GL_RGBA_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 0, 1, 2, 3);
+      return true;
+   case GL_BGRA:
+   case GL_BGRA_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 2, 1, 0, 3);
+      return true;
+   case GL_ABGR_EXT:
+      _mesa_array_format_set_swizzle(array_format, 3, 2, 1, 0);
+      return true;
+   case GL_RGB:
+   case GL_RGB_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 0, 1, 2, 5);
+      return true;
+   case GL_BGR:
+   case GL_BGR_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 2, 1, 0, 5);
+      return true;
+   case GL_LUMINANCE_ALPHA:
+   case GL_LUMINANCE_ALPHA_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 0, 0, 0, 1);
+      return true;
+   case GL_RG:
+   case GL_RG_INTEGER:
+      _mesa_array_format_set_swizzle(array_format, 0, 1, 4, 5);
+      return true;
+   case GL_RED:
+   case GL_RED_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 0, 4, 4, 5);
+      return true;
+   case GL_GREEN:
+   case GL_GREEN_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 4, 0, 4, 5);
+      return true;
+   case GL_BLUE:
+   case GL_BLUE_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 4, 4, 0, 5);
+      return true;
+   case GL_ALPHA:
+   case GL_ALPHA_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 4, 4, 4, 0);
+      return true;
+   case GL_LUMINANCE:
+   case GL_LUMINANCE_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 0, 0, 0, 5);
+      return true;
+   case GL_INTENSITY:
+      _mesa_array_format_set_swizzle(array_format, 0, 0, 0, 0);
+      return true;
+   default:
+      return false;
+   }
+}
+
+/**
+* Take an OpenGL format (GL_RGB, GL_RGBA, etc), OpenGL data type (GL_INT,
+* GL_FOAT, etc) and return a matching mesa_array_format or a mesa_format
+* otherwise (for non-array formats).
+*
+* This function will typically be used to compute a mesa format from a GL type
+* so we can then call _mesa_format_convert. This function does
+* not consider byte swapping, so it returns types assuming that no byte
+* swapping is involved. If byte swapping is involved then clients are supposed
+* to handle that on their side before calling _mesa_format_convert.
+*
+* This function returns an uint32_t that can pack a mesa_format or a
+* mesa_array_format. Clients must check the mesa array format bit
+* (MESA_ARRAY_FORMAT_BIT) on the return value to know if the returned
+* format is a mesa_array_format or a mesa_format.
+*/
+uint32_t
+_mesa_format_from_format_and_type(GLenum format, GLenum type)
+{
+   mesa_array_format array_format;
+
+   bool is_array_format = true;
+
+   /* Map the OpenGL data type to an array format data type */
+   switch (type) {
+   case GL_UNSIGNED_BYTE:
+      array_format.type = MESA_ARRAY_FORMAT_TYPE_UBYTE;
+      break;
+   case GL_BYTE:
+      array_format.type = MESA_ARRAY_FORMAT_TYPE_BYTE;
+      break;
+   case GL_UNSIGNED_SHORT:
+      array_format.type = MESA_ARRAY_FORMAT_TYPE_USHORT;
+      break;
+   case GL_SHORT:
+      array_format.type = MESA_ARRAY_FORMAT_TYPE_SHORT;
+      break;
+   case GL_UNSIGNED_INT:
+      array_format.type = MESA_ARRAY_FORMAT_TYPE_UINT;
+      break;
+   case GL_INT:
+      array_format.type = MESA_ARRAY_FORMAT_TYPE_INT;
+      break;
+   case GL_HALF_FLOAT:
+      array_format.type = MESA_ARRAY_FORMAT_TYPE_HALF;
+      break;
+   case GL_FLOAT:
+      array_format.type = MESA_ARRAY_FORMAT_TYPE_FLOAT;
+      break;
+   case GL_UNSIGNED_INT_8_8_8_8:
+   case GL_UNSIGNED_INT_8_8_8_8_REV:
+      array_format.type = MESA_ARRAY_FORMAT_TYPE_UBYTE;
+      break;
+   default:
+      is_array_format = false;
+      break;
+   }
+
+   /* Next we extract array swizzle information from the OpenGL format */
+   if (is_array_format) {
+      is_array_format =
+         _mesa_array_format_set_swizzle_from_format(&array_format, format);
+   }
+
+   /* Check if we need to flip the swizzle for GL_UNSIGNED_INT_8_8_8_8* types */
+   bool flip_swizzle = false;
+   if (is_array_format) {
+      switch (type) {
+      case GL_UNSIGNED_INT_8_8_8_8:
+         /* FIXME: for some reason, conversions from
+          * GL_BGRA + GL_UNSIGNED_INT_8_8_8_8 do not work via array formats
+          * (via mesa_swizzle_and_convert). For these to work we have
+          * to tweak the swizzle here and set it to 1230 instead of 2103 (and
+          * set flip_swizzle to false), but doing that does not look right
+          * since it would not be a proper representation of the GL type.
+          * While we don't figure out what is happening here we simply
+          * return the corresponding mesa_format.
+          */
+         if (format != GL_BGRA)
+            flip_swizzle = true;
+         else
+            is_array_format = false;
+         break;
+      case GL_UNSIGNED_INT_8_8_8_8_REV:
+         /* No swizzle flip required */
+         break;
+      default:
+          break;
+      }
+   }
+
+   /* If this is an array format type after checking data type and format,
+    * fill in the remaining data
+    */
+   if (is_array_format) {
+      array_format.normalized = !_mesa_is_enum_format_integer(format);
+      array_format.num_channels = _mesa_components_in_format(format);
+      array_format.pad = 0;
+      array_format.array_format_bit = 1;
+      /* We want to flip the swizzle if we have set flip_swizzle or we are not
+       * little endian, but not both, since that would require a double flip,
+       * which is a no-op).
+       */
+      if ((!_mesa_little_endian() && !flip_swizzle) ||
+          (_mesa_little_endian() && flip_swizzle)) {
+         array_format = array_format_flip_channels(array_format);
+      }
+      return array_format.as_uint;
+   }
+
+   /* Otherwise this is not an array format, so return the mesa_format
+    * matching the OpenGL format and data type
+    */
+   switch (type) {
+   case GL_UNSIGNED_SHORT_5_6_5:
+     if (format == GL_RGB)
+         return MESA_FORMAT_B5G6R5_UNORM;
+      else if (format == GL_BGR)
+         return MESA_FORMAT_R5G6B5_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_5_6_5_REV:
+      if (format == GL_RGB)
+         return MESA_FORMAT_R5G6B5_UNORM;
+      else if (format == GL_BGR)
+         return MESA_FORMAT_B5G6R5_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_4_4_4_4:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_A4B4G4R4_UNORM;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_A4R4G4B4_UNORM;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_R4G4B4A4_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_4_4_4_4_REV:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_R4G4B4A4_UNORM;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_B4G4R4A4_UNORM;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_A4B4G4R4_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_5_5_5_1:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_A1B5G5R5_UNORM;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_A1R5G5B5_UNORM;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_R1G5B5A5_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_1_5_5_5_REV:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_R5G5B5A1_UNORM;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_B5G5R5A1_UNORM;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_A5B5G5R1_UNORM;
+      break;
+   case GL_UNSIGNED_BYTE_3_3_2:
+      if (format == GL_RGB)
+         return MESA_FORMAT_B2G3R3_UNORM;
+      break;
+   case GL_UNSIGNED_BYTE_2_3_3_REV:
+      if (format == GL_RGB)
+         return MESA_FORMAT_R3G3B2_UNORM;
+      break;
+   case GL_UNSIGNED_INT_5_9_9_9_REV:
+      if (format == GL_RGB)
+         return MESA_FORMAT_R9G9B9E5_FLOAT;
+      break;
+   case GL_UNSIGNED_INT_10_10_10_2:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_A2B10G10R10_UNORM;
+      else if (format == GL_RGBA_INTEGER)
+         return MESA_FORMAT_A2B10G10R10_UINT;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_A2R10G10B10_UNORM;
+      else if (format == GL_BGRA_INTEGER)
+         return MESA_FORMAT_A2R10G10B10_UINT;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_R2G10B10A10_UNORM;
+      break;
+   case GL_UNSIGNED_INT_2_10_10_10_REV:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_R10G10B10A2_UNORM;
+      else if (format == GL_RGBA_INTEGER)
+         return MESA_FORMAT_R10G10B10A2_UINT;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_B10G10R10A2_UNORM;
+      else if (format == GL_BGRA_INTEGER)
+         return MESA_FORMAT_B10G10R10A2_UINT;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_A10B10G10R2_UNORM;
+      break;
+   case GL_UNSIGNED_INT_8_8_8_8:
+      /* Formats other than BGRA are handled as array formats */
+      if (format == GL_BGRA)
+         return MESA_FORMAT_A8R8G8B8_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_8_8_MESA:
+      if (format == GL_YCBCR_MESA)
+         return MESA_FORMAT_YCBCR;
+      break;
+   case GL_UNSIGNED_SHORT_8_8_REV_MESA:
+      if (format == GL_YCBCR_MESA)
+         return MESA_FORMAT_YCBCR_REV;
+      break;
+   case GL_UNSIGNED_INT_10F_11F_11F_REV:
+      if (format == GL_RGB)
+         return MESA_FORMAT_R11G11B10_FLOAT;
+   default:
+      break;
+   }
+
+   /* If we got here it means that we could not find a Mesa format that
+    * matches the GL format/type provided. We may need to add a new Mesa
+    * format in that case.
+    */
+   assert(!"Unsupported format");
+}
+
 /** Is the given format a compressed format? */
 GLboolean
 _mesa_is_format_compressed(mesa_format format)
