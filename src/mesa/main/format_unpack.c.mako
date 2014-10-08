@@ -67,7 +67,7 @@ for f in formats:
 /* float unpacking functions */
 
 %for f in rgb_formats:
-   %if f.name in ('MESA_FORMAT_R9G9B9E5_FLOAT', 'MESA_FORMAT_R11G11B10_FLOAT'):
+   %if f.name in ('MESA_FORMAT_R9G9B9E5_FLOAT', 'MESA_FORMAT_R11G11B10_FLOAT', 'MESA_FORMAT_A2R10G10B10_UNORM'):
       <% continue %>
    %elif f.is_compressed():
       <% continue %>
@@ -127,6 +127,21 @@ unpack_float_${f.short_name()}(const void *void_src, GLfloat dst[4])
    %endfor
 }
 %endfor
+
+static inline void
+unpack_float_a2r10g10b10_unorm(const void *void_src, GLfloat dst[4])
+{
+    uint32_t *src = (uint32_t *) void_src;
+    uint8_t a = UNPACK(*src, 0, 2);
+    uint16_t r = UNPACK(*src, 2, 10);
+    uint16_t g = UNPACK(*src, 12, 10);
+    uint16_t b = UNPACK(*src, 22, 10);
+
+    dst[0] = _mesa_unorm_to_float(r, 10);
+    dst[1] = _mesa_unorm_to_float(g, 10);
+    dst[2] = _mesa_unorm_to_float(b, 10);
+    dst[3] = _mesa_unorm_to_float(a, 2);
+}
 
 static void
 unpack_float_r9g9b9e5_float(const void *src, GLfloat dst[4])
@@ -195,7 +210,9 @@ unpack_float_ycbcr_rev(const void *src, GLfloat dst[][4], GLuint n)
 /* ubyte packing functions */
 
 %for f in rgb_formats:
-   %if not f.is_normalized():
+   %if f.name in ('MESA_FORMAT_A2R10G10B10_UNORM'):
+      <% continue %>
+   %elif not f.is_normalized():
       <% continue %>
    %endif
 
@@ -254,6 +271,20 @@ unpack_ubyte_${f.short_name()}(const void *void_src, GLubyte dst[4])
 }
 %endfor
 
+static inline void
+unpack_ubyte_a2r10g10b10_unorm(const void *void_src, GLubyte dst[4])
+{
+    uint32_t *src = (uint32_t *) void_src;
+    uint8_t a = UNPACK(*src, 0, 2);
+    uint16_t r = UNPACK(*src, 2, 10);
+    uint16_t g = UNPACK(*src, 12, 10);
+    uint16_t b = UNPACK(*src, 22, 10);
+
+    dst[0] = _mesa_unorm_to_unorm(r, 10, 8);
+    dst[1] = _mesa_unorm_to_unorm(g, 10, 8);
+    dst[2] = _mesa_unorm_to_unorm(b, 10, 8);
+    dst[3] = _mesa_unorm_to_unorm(a, 2, 8);
+}
 
 /* integer packing functions */
 

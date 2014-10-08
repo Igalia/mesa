@@ -68,7 +68,7 @@ for f in formats:
 /* ubyte packing functions */
 
 %for f in rgb_formats:
-   %if f.name in ('MESA_FORMAT_R9G9B9E5_FLOAT', 'MESA_FORMAT_R11G11B10_FLOAT'):
+   %if f.name in ('MESA_FORMAT_R9G9B9E5_FLOAT', 'MESA_FORMAT_R11G11B10_FLOAT', 'MESA_FORMAT_A2R10G10B10_UNORM'):
       <% continue %>
    %elif f.is_compressed():
       <% continue %>
@@ -138,6 +138,22 @@ pack_ubyte_${f.short_name()}(const GLubyte src[4], void *dst)
 %endfor
 
 static inline void
+pack_ubyte_a2r10g10b10_unorm(const GLubyte src[4], void *dst)
+{
+    uint8_t  a = _mesa_unorm_to_unorm(src[3], 8, 2);
+    uint16_t r = _mesa_unorm_to_unorm(src[0], 8, 10);
+    uint16_t g = _mesa_unorm_to_unorm(src[1], 8, 10);
+    uint16_t b = _mesa_unorm_to_unorm(src[2], 8, 10);
+
+    uint32_t d = 0;
+    d |= PACK(a, 0, 2);
+    d |= PACK(r, 2, 10);
+    d |= PACK(g, 12, 10);
+    d |= PACK(b, 22, 10);
+    (*(uint32_t *) dst) = d;
+}
+
+static inline void
 pack_ubyte_r9g9b9e5_float(const GLubyte src[4], void *dst)
 {
    GLuint *d = (GLuint *) dst;
@@ -162,7 +178,7 @@ pack_ubyte_r11g11b10_float(const GLubyte src[4], void *dst)
 /* uint packing functions */
 
 %for f in rgb_formats:
-   %if f.name in ('MESA_FORMAT_R9G9B9E5_FLOAT', 'MESA_FORMAT_R11G11B10_FLOAT'):
+   %if f.name in ('MESA_FORMAT_R9G9B9E5_FLOAT', 'MESA_FORMAT_R11G11B10_FLOAT', 'MESA_FORMAT_A2R10G10B10_UNORM'):
       <% continue %>
    %elif f.is_compressed():
       <% continue %>
@@ -230,6 +246,22 @@ pack_uint_${f.short_name()}(const GLuint src[4], void *dst)
    %endif
 }
 %endfor
+
+static inline void
+pack_uint_a2r10g10b10_unorm(const GLuint src[4], void *dst)
+{
+    uint8_t  a = _mesa_unorm_to_unorm(src[3], 8, 2);
+    uint16_t r = _mesa_unorm_to_unorm(src[0], 8, 10);
+    uint16_t g = _mesa_unorm_to_unorm(src[1], 8, 10);
+    uint16_t b = _mesa_unorm_to_unorm(src[2], 8, 10);
+
+    uint32_t d = 0;
+    d |= PACK(a, 0, 2);
+    d |= PACK(r, 2, 10);
+    d |= PACK(g, 12, 10);
+    d |= PACK(b, 22, 10);
+    (*(uint32_t *) dst) = d;
+}
 
 static inline void
 pack_uint_r9g9b9e5_float(const GLuint src[4], void *dst)
@@ -350,7 +382,7 @@ pack_int_r11g11b10_float(const GLint src[4], void *dst)
 /* float packing functions */
 
 %for f in rgb_formats:
-   %if f.name in ('MESA_FORMAT_R9G9B9E5_FLOAT', 'MESA_FORMAT_R11G11B10_FLOAT'):
+   %if f.name in ('MESA_FORMAT_R9G9B9E5_FLOAT', 'MESA_FORMAT_R11G11B10_FLOAT', 'MESA_FORMAT_A2R10G10B10_UNORM'):
       <% continue %>
    %elif f.is_compressed():
       <% continue %>
@@ -411,6 +443,22 @@ pack_float_${f.short_name()}(const GLfloat src[4], void *dst)
    %endif
 }
 %endfor
+
+static inline void
+pack_float_a2r10g10b10_unorm(const GLfloat src[4], void *dst)
+{
+    uint8_t  a = _mesa_float_to_unorm(src[3], 2);
+    uint16_t r = _mesa_float_to_unorm(src[0], 10);
+    uint16_t g = _mesa_float_to_unorm(src[1], 10);
+    uint16_t b = _mesa_float_to_unorm(src[2], 10);
+
+    uint32_t d = 0;
+    d |= PACK(a, 0, 2);
+    d |= PACK(r, 2, 10);
+    d |= PACK(g, 12, 10);
+    d |= PACK(b, 22, 10);
+    (*(uint32_t *) dst) = d;
+}
 
 static inline void
 pack_float_r9g9b9e5_float(const GLfloat src[4], void *dst)
