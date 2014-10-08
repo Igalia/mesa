@@ -325,6 +325,231 @@ _mesa_format_from_array_format(uint32_t array_format)
    return MESA_FORMAT_NONE;
 }
 
+static void
+_mesa_array_format_set_swizzle(mesa_array_format *array_format,
+                               int x, int y, int z, int w)
+{
+   array_format->swizzle_x = x;
+   array_format->swizzle_y = y;
+   array_format->swizzle_z = z;
+   array_format->swizzle_w = w;
+}
+
+static bool
+_mesa_array_format_set_swizzle_from_format(mesa_array_format *array_format,
+                                           GLenum format)
+{
+   switch (format) {
+   case GL_RGBA:
+   case GL_RGBA_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 0, 1, 2, 3);
+      return true;
+   case GL_BGRA:
+   case GL_BGRA_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 2, 1, 0, 3);
+      return true;
+   case GL_ABGR_EXT:
+      _mesa_array_format_set_swizzle(array_format, 3, 2, 1, 0);
+      return true;
+   case GL_RGB:
+   case GL_RGB_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 0, 1, 2, 5);
+      return true;
+   case GL_BGR:
+   case GL_BGR_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 2, 1, 0, 5);
+      return true;
+   case GL_LUMINANCE_ALPHA:
+   case GL_LUMINANCE_ALPHA_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 0, 0, 0, 1);
+      return true;
+   case GL_RG:
+   case GL_RG_INTEGER:
+      _mesa_array_format_set_swizzle(array_format, 0, 1, 4, 5);
+      return true;
+   case GL_COLOR_INDEX:
+   case GL_STENCIL_INDEX:
+   case GL_DEPTH_COMPONENT:
+      return false;
+   case GL_RED:
+   case GL_RED_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 0, 4, 4, 5);
+      return true;
+   case GL_GREEN:
+   case GL_GREEN_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 4, 0, 4, 5);
+      return true;
+   case GL_BLUE:
+   case GL_BLUE_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 4, 4, 0, 5);
+      return true;
+   case GL_ALPHA:
+   case GL_ALPHA_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 4, 4, 4, 0);
+      return true;
+   case GL_LUMINANCE:
+   case GL_LUMINANCE_INTEGER_EXT:
+      _mesa_array_format_set_swizzle(array_format, 0, 0, 0, 5);
+      return true;
+   case GL_INTENSITY:
+      _mesa_array_format_set_swizzle(array_format, 0, 0, 0, 0);
+      return true;
+   default:
+      return false;
+   }
+}
+
+/**
+* Take an OpenGL format (GL_RGB, GL_RGBA, etc), OpenGL data type (GL_INT,
+* GL_FOAT, etc) and a flag indicating if data channels are swapped and return
+* a matching mesa_array_format or a mesa_format otherwise (for non-array
+* formats).
+*
+* This function returns an uint32_t. Clients must check MESA_ARRAY_FORMAT_BIT
+* on the return result to know if the returned format is a mesa_array_format
+* or a mesa_format.
+*/
+uint32_t
+_mesa_format_from_format_and_type(GLenum format, GLenum type, bool swap_bytes)
+{
+   mesa_array_format array_format;
+
+   bool is_array_format;
+   bool do_swap_bytes = false;
+
+   /* If swap_bytes is true this may or may not be an array format. Also,
+    * GL_UNSIGNED_INT_8_8_8_8* types may need specific handling.
+    *
+    * This logic was extracted from texstore_swizzle, which converts between
+    * array formats.
+    */
+   switch (type) {
+    case GL_UNSIGNED_BYTE:
+    case GL_BYTE:
+    case GL_UNSIGNED_SHORT:
+    case GL_SHORT:
+    case GL_UNSIGNED_INT:
+    case GL_INT:
+    case GL_HALF_FLOAT:
+    case GL_FLOAT:
+       is_array_format = !swap_bytes;
+       break;
+    case GL_UNSIGNED_INT_8_8_8_8:
+       do_swap_bytes = _mesa_little_endian() ? !swap_bytes : swap_bytes;
+       is_array_format = !do_swap_bytes;
+       break;
+    case GL_UNSIGNED_INT_8_8_8_8_REV:
+       do_swap_bytes = _mesa_little_endian() ? swap_bytes : !swap_bytes;
+       is_array_format = !do_swap_bytes;
+       break;
+    default:
+       is_array_format = false;
+        break;
+   }
+
+   /* Map the OpenGL data type to an array format data type */
+   if (is_array_format) {
+      switch (type) {
+      case GL_UNSIGNED_BYTE:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_UBYTE;
+         break;
+      case GL_BYTE:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_BYTE;
+         break;
+      case GL_UNSIGNED_SHORT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_USHORT;
+         break;
+      case GL_SHORT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_SHORT;
+         break;
+      case GL_UNSIGNED_INT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_UINT;
+         break;
+      case GL_INT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_INT;
+         break;
+      case GL_HALF_FLOAT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_HALF;
+         break;
+      case GL_FLOAT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_FLOAT;
+         break;
+      case GL_UNSIGNED_INT_8_8_8_8:
+      case GL_UNSIGNED_INT_8_8_8_8_REV:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_UBYTE;
+         break;
+      default:
+         is_array_format = false;
+         break;
+      }
+   }
+
+   /* Map the OpenGL data type to an array format data type */
+   if (is_array_format) {
+      switch (type) {
+      case GL_UNSIGNED_BYTE:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_UBYTE;
+         break;
+      case GL_BYTE:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_BYTE;
+         break;
+      case GL_UNSIGNED_SHORT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_USHORT;
+         break;
+      case GL_SHORT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_SHORT;
+         break;
+      case GL_UNSIGNED_INT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_UINT;
+         break;
+      case GL_INT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_INT;
+         break;
+      case GL_HALF_FLOAT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_HALF;
+         break;
+      case GL_FLOAT:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_FLOAT;
+         break;
+      case GL_UNSIGNED_INT_8_8_8_8:
+      case GL_UNSIGNED_INT_8_8_8_8_REV:
+         array_format.type = MESA_ARRAY_FORMAT_TYPE_UBYTE;
+         break;
+      default:
+         is_array_format = false;
+         break;
+      }
+   }
+
+   /* Next we extract array swizzle information from the OpenGL format */
+   if (is_array_format) {
+      is_array_format =
+         _mesa_array_format_set_swizzle_from_format(&array_format, format);
+   }
+
+   /* If this is an array format type after checking data type and format,
+    * fill in the remaining data
+    */
+   if (is_array_format) {
+      array_format.normalized = !_mesa_is_enum_format_integer(format);
+      array_format.num_channels = _mesa_components_in_format(format);
+      array_format.pad = 0;
+      array_format.array_format_bit = 1;
+      if (!_mesa_little_endian())
+         array_format = array_format_flip_channels(array_format);
+      return array_format.as_uint;
+   }
+
+   /* Otherwise this is not an array format, so return the mesa_format
+    * matching the OpenGL format and data type
+    */
+   for (int f = 1; f < MESA_FORMAT_COUNT; f++)
+      if (_mesa_format_matches_format_and_type(f, format, type, swap_bytes))
+         return f;
+
+   assert(!"Unsupported format");
+}
+
 /** Is the given format a compressed format? */
 GLboolean
 _mesa_is_format_compressed(mesa_format format)
