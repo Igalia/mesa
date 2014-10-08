@@ -258,7 +258,6 @@ unpack_ubyte_${f.short_name()}(const void *void_src, GLubyte dst[4])
 }
 %endfor
 
-
 /* integer packing functions */
 
 %for f in rgb_formats:
