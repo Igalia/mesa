@@ -333,8 +333,8 @@ _mesa_get_format_swizzle(mesa_format format, uint8_t swizzle_out[4])
    memcpy(swizzle_out, info->Swizzle, sizeof(info->Swizzle));
 }
 
-static mesa_array_format
-array_format_flip_channels(mesa_array_format format)
+mesa_array_format
+_mesa_array_format_flip_channels(mesa_array_format format)
 {
    if (format.num_channels == 1)
       return format;
@@ -366,7 +366,7 @@ _mesa_format_to_array_format(mesa_format format)
    if (_mesa_little_endian())
       return info->ArrayFormat.as_uint;
    else
-      return array_format_flip_channels(info->ArrayFormat).as_uint;
+      return _mesa_array_format_flip_channels(info->ArrayFormat).as_uint;
 }
 
 mesa_format
@@ -378,7 +378,7 @@ _mesa_format_from_array_format(uint32_t array_format)
    af.as_uint = array_format;
    af.pad = 0;
    if (!_mesa_little_endian())
-      af = array_format_flip_channels(af);
+      af = _mesa_array_format_flip_channels(af);
 
    assert(af.array_format_bit);
    for (f = 1; f < MESA_FORMAT_COUNT; ++f)
@@ -386,6 +386,16 @@ _mesa_format_from_array_format(uint32_t array_format)
          return f;
 
    return MESA_FORMAT_NONE;
+}
+
+void
+_mesa_array_format_set_swizzle(mesa_array_format *array_format,
+                               int x, int y, int z, int w)
+{
+   array_format->swizzle_x = x;
+   array_format->swizzle_y = y;
+   array_format->swizzle_z = z;
+   array_format->swizzle_w = w;
 }
 
 /** Is the given format a compressed format? */
