@@ -215,6 +215,99 @@ pack_uint_${f.short_name()}(const GLuint src[4], void *dst)
 }
 %endfor
 
+/* int packing functions */
+
+%for f in rgb_formats:
+   %if f.name in ('MESA_FORMAT_R9G9B9E5_FLOAT', 'MESA_FORMAT_R11G11B10_FLOAT'):
+      <% continue %>
+   %elif f.is_compressed():
+      <% continue %>
+   %endif
+
+static inline void
+pack_int_${f.short_name()}(const GLint src[4], void *dst)
+{
+   %for (i, c) in enumerate(f.channels):
+      <% i = f.swizzle.inverse()[i] %>
+      %if c.type == 'x':
+         <% continue %>
+      %endif
+
+      ${channel_datatype(c)} ${c.name} =
+      %if not f.is_normalized():
+         %if c.type == parser.FLOAT and c.size == 32:
+            INT_TO_FLOAT(src[${i}]);
+         %elif c.type == parser.FLOAT and c.size == 16:
+            _mesa_float_to_half(INT_TO_FLOAT(src[${i}]));
+         %else:
+            (${channel_datatype(c)}) src[${i}];
+         %endif
+      %elif c.type == parser.UNSIGNED:
+         %if f.colorspace == 'srgb' and c.name in 'rgb':
+            util_format_linear_to_srgb_8unorm(src[${i}]);
+         %else:
+            CLAMP(src[${i}], 0, MAX_UINT(${c.size}));
+         %endif
+      %elif c.type == parser.SIGNED:
+         CLAMP(src[${i}], 0,  MAX_UINT(${c.size}));
+      %elif c.type == parser.FLOAT:
+         %if c.size == 32:
+            _mesa_snorm_to_float(src[${i}], 8);
+         %elif c.size == 16:
+            _mesa_snorm_to_half(src[${i}], 8);
+         %else:
+            <% assert False %>
+         %endif
+      %else:
+         <% assert False %>
+      %endif
+   %endfor
+
+   %if f.layout == parser.ARRAY:
+      ${format_datatype(f)} *d = (${format_datatype(f)} *)dst;
+      %for (i, c) in enumerate(f.channels):
+         %if c.type == 'x':
+            <% continue %>
+         %endif
+         d[${i}] = ${c.name};
+      %endfor
+   %elif f.layout == parser.PACKED:
+      ${format_datatype(f)} d = 0;
+      %for (i, c) in enumerate(f.channels):
+         %if c.type == 'x':
+            <% continue %>
+         %endif
+         d |= PACK(${c.name}, ${c.shift}, ${c.size});
+      %endfor
+      (*(${format_datatype(f)} *)dst) = d;
+   %else:
+      <% assert False %>
+   %endif
+}
+%endfor
+
+static inline void
+pack_int_r9g9b9e5_float(const GLint src[4], void *dst)
+{
+   GLuint *d = (GLuint *) dst;
+   GLfloat rgb[3];
+   rgb[0] = _mesa_snorm_to_float(src[RCOMP], 8);
+   rgb[1] = _mesa_snorm_to_float(src[GCOMP], 8);
+   rgb[2] = _mesa_snorm_to_float(src[BCOMP], 8);
+   *d = float3_to_rgb9e5(rgb);
+}
+
+static inline void
+pack_int_r11g11b10_float(const GLint src[4], void *dst)
+{
+   GLuint *d = (GLuint *) dst;
+   GLfloat rgb[3];
+   rgb[0] = _mesa_snorm_to_float(src[RCOMP], 8);
+   rgb[1] = _mesa_snorm_to_float(src[GCOMP], 8);
+   rgb[2] = _mesa_snorm_to_float(src[BCOMP], 8);
+   *d = float3_to_r11g11b10f(rgb);
+}
+
 /* float packing functions */
 
 %for f in rgb_formats:
@@ -384,6 +477,34 @@ _mesa_pack_uint_rgba_row(mesa_format format, GLuint n,
    case ${f.name}:
       for (i = 0; i < n; ++i) {
          pack_uint_${f.short_name()}(src[i], d);
+         d += ${f.block_size() / 8};
+      }
+      break;
+%endfor
+   default:
+      assert(!"Invalid format");
+   }
+}
+
+/**
+ * Pack a row of GLint rgba[4] values to the destination.
+ */
+void
+_mesa_pack_int_rgba_row(mesa_format format, GLuint n,
+                          const GLint src[][4], void *dst)
+{
+   GLuint i;
+   GLubyte *d = dst;
+
+   switch (format) {
+%for f in rgb_formats:
+   %if f.is_compressed():
+      <% continue %>
+   %endif
+
+   case ${f.name}:
+      for (i = 0; i < n; ++i) {
+         pack_int_${f.short_name()}(src[i], d);
          d += ${f.block_size() / 8};
       }
       break;
