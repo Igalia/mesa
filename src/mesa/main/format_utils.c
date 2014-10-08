@@ -29,7 +29,7 @@
 
 mesa_array_format RGBA8888_FLOAT = {{
    MESA_ARRAY_FORMAT_TYPE_FLOAT,
-   0,
+   1,
    4,
    0, 1, 2, 3,
    0, 1
