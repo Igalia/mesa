@@ -289,7 +289,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
          integer = true;
          break;
       }
-      bits = _mesa_get_format_max_bits(src_format);
+      bits = _mesa_get_format_max_bits(dst_format);
    }
 
    if (integer) {
