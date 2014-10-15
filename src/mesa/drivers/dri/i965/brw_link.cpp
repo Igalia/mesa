@@ -111,6 +111,7 @@ process_glsl_ir(gl_shader_stage stage,
                       EXP_TO_EXP2 |
                       LOG_TO_LOG2 |
                       LDEXP_TO_ARITH |
+                      DFREXP_DLDEXP_TO_ARITH |
                       CARRY_TO_ARITH |
                       BORROW_TO_ARITH);
 
