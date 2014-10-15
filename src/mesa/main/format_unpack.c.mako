@@ -258,9 +258,10 @@ unpack_ubyte_${f.short_name()}(const void *void_src, GLubyte dst[4])
 /* integer packing functions */
 
 %for f in rgb_formats:
-   %if not f.is_int():
+
+   %if f.name in ('MESA_FORMAT_R9G9B9E5_FLOAT', 'MESA_FORMAT_R11G11B10_FLOAT'):
       <% continue %>
-   %elif f.is_normalized():
+   %elif f.is_compressed():
       <% continue %>
    %endif
 
@@ -287,7 +288,29 @@ unpack_int_${f.short_name()}(const void *void_src, GLuint dst[4])
    %for i in range(4):
       <% s = f.swizzle[i] %>
       %if 0 <= s and s <= parser.Swizzle.SWIZZLE_W:
-         dst[${i}] = ${f.channels[s].name};
+         <% c = f.channels[s] %>
+         %if not f.is_normalized():
+            dst[${i}] = ${c.name};
+         %elif c.type == parser.UNSIGNED:
+            %if f.colorspace == 'srgb' and c.name in 'rgb':
+               <% assert c.size == 8 %>
+               dst[${i}] = util_format_srgb_to_linear_8unorm(${c.name});
+            %else:
+               dst[${i}] = _mesa_unorm_to_unorm(${c.name}, ${c.size}, 8);
+            %endif
+         %elif c.type == parser.SIGNED:
+            dst[${i}] = _mesa_snorm_to_unorm(${c.name}, ${c.size}, 8);
+         %elif c.type == parser.FLOAT:
+            %if c.size == 32:
+               dst[${i}] = _mesa_float_to_unorm(${c.name}, 8);
+            %elif c.size == 16:
+               dst[${i}] = _mesa_half_to_unorm(${c.name}, 8);
+            %else:
+               <% assert False %>
+            %endif
+         %else:
+            <% assert False %>
+         %endif
       %elif s == parser.Swizzle.SWIZZLE_ZERO:
          dst[${i}] = 0;
       %elif s == parser.Swizzle.SWIZZLE_ONE:
@@ -299,6 +322,28 @@ unpack_int_${f.short_name()}(const void *void_src, GLuint dst[4])
 }
 %endfor
 
+
+static void
+unpack_int_r9g9b9e5_float(const void *src, GLuint dst[4])
+{
+   GLfloat tmp[3];
+   rgb9e5_to_float3(*(const GLuint *)src, &tmp[0]);
+   dst[0] = _mesa_float_to_unorm(tmp[0], 8);
+   dst[1] = _mesa_float_to_unorm(tmp[1], 8);
+   dst[2] = _mesa_float_to_unorm(tmp[2], 8);
+   dst[3] = 1;
+}
+
+static void
+unpack_int_r11g11b10_float(const void *src, GLuint dst[4])
+{
+   GLfloat tmp[3];
+   r11g11b10f_to_float3(*(const GLuint *)src, &tmp[0]);
+   dst[0] = _mesa_float_to_unorm(tmp[0], 8);
+   dst[1] = _mesa_float_to_unorm(tmp[1], 8);
+   dst[2] = _mesa_float_to_unorm(tmp[2], 8);
+   dst[3] = 1;
+}
 
 void
 _mesa_unpack_rgba_row(mesa_format format, GLuint n,
@@ -381,9 +426,7 @@ _mesa_unpack_uint_rgba_row(mesa_format format, GLuint n,
 
    switch (format) {
 %for f in rgb_formats:
-   %if not f.is_int():
-      <% continue %>
-   %elif f.is_normalized():
+   %if f.is_compressed():
       <% continue %>
    %endif
 
