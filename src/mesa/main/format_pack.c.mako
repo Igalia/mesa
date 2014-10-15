@@ -84,7 +84,9 @@ pack_ubyte_${f.short_name()}(const GLubyte src[4], void *dst)
       %endif
 
       ${channel_datatype(c)} ${c.name} =
-      %if c.type == parser.UNSIGNED:
+      %if not f.is_normalized():
+         (${channel_datatype(c)}) src[${i}];
+      %elif c.type == parser.UNSIGNED:
          %if f.colorspace == 'srgb' and c.name in 'rgb':
             util_format_linear_to_srgb_8unorm(src[${i}]);
          %else:
@@ -170,7 +172,9 @@ pack_uint_${f.short_name()}(const GLuint src[4], void *dst)
       %endif
 
       ${channel_datatype(c)} ${c.name} =
-      %if c.type == parser.UNSIGNED:
+      %if not f.is_normalized():
+         (${channel_datatype(c)}) src[${i}];
+      %elif c.type == parser.UNSIGNED:
          %if f.colorspace == 'srgb' and c.name in 'rgb':
             util_format_linear_to_srgb_8unorm(src[${i}]);
          %else:
