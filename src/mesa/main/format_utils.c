@@ -103,7 +103,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
    mesa_array_format src_array_format, dst_array_format;
    uint8_t src2dst[4], src2rgba[4], rgba2dst[4], dst2rgba[4];
    GLenum src_gl_type, dst_gl_type, common_gl_type;
-   bool normalized, integer, is_signed;
+   bool normalized, dst_integer, src_integer, is_signed;
    uint8_t (*tmp_ubyte)[4];
    float (*tmp_float)[4];
    uint32_t (*tmp_uint)[4];
@@ -234,12 +234,13 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
    /* At this point, we're fresh out of fast-paths and we need to convert
     * to float, uint32, or, if we're lucky, uint8.
     */
-   integer = false;
+   dst_integer = false;
+   src_integer = false;
 
    if (src_array_format.array_format_bit) {
       if (!(src_array_format.type & MESA_ARRAY_FORMAT_TYPE_IS_FLOAT) &&
           !src_array_format.normalized)
-         integer = true;
+         src_integer = true;
       bits = 8 * _mesa_array_format_datatype_size(src_array_format.type);
    } else {
       switch (_mesa_get_format_datatype(src_format)) {
@@ -254,11 +255,11 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
          break;
       case GL_UNSIGNED_INT:
          is_signed = false;
-         integer = true;
+         src_integer = true;
          break;
       case GL_INT:
          is_signed = true;
-         integer = true;
+         src_integer = true;
          break;
       }
       bits = _mesa_get_format_max_bits(src_format);
@@ -267,7 +268,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
    if (dst_array_format.array_format_bit) {
       if (!(dst_array_format.type & MESA_ARRAY_FORMAT_TYPE_IS_FLOAT) &&
           !dst_array_format.normalized)
-         integer = true;
+         dst_integer = true;
       is_signed = dst_array_format.as_uint & MESA_ARRAY_FORMAT_TYPE_IS_SIGNED;
       bits = 8 * _mesa_array_format_datatype_size(dst_array_format.type);
    } else {
@@ -283,17 +284,19 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
          break;
       case GL_UNSIGNED_INT:
          is_signed = false;
-         integer = true;
+         dst_integer = true;
          break;
       case GL_INT:
          is_signed = true;
-         integer = true;
+         dst_integer = true;
          break;
       }
       bits = _mesa_get_format_max_bits(dst_format);
    }
 
-   if (integer) {
+   assert((src_integer && dst_integer) || (!src_integer && !dst_integer));
+
+   if (src_integer && dst_integer) {
       tmp_uint = malloc(width * height * sizeof(*tmp_uint));
       common_gl_type = is_signed ? GL_INT : GL_UNSIGNED_INT;
 
