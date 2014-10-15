@@ -1712,6 +1712,88 @@ texstore_rgba_integer(TEXSTORE_PARAMS)
 static GLboolean
 texstore_rgba(TEXSTORE_PARAMS)
 {
+bool use_master_convert = true;
+if (use_master_convert) {
+   /* We have to handle MESA_FORMAT_YCBCR manually because it is a special case
+    * and _mesa_format_convert does not support it. In this case the we only
+    * allow conversions between YCBCR formats and it is mostly a memcpy.
+    */
+   if (dstFormat == MESA_FORMAT_YCBCR || dstFormat == MESA_FORMAT_YCBCR_REV) {
+      return _mesa_texstore_ycbcr(ctx, dims, baseInternalFormat,
+                                  dstFormat, dstRowStride, dstSlices,
+                                  srcWidth, srcHeight, srcDepth,
+                                  srcFormat, srcType, srcAddr,
+                                  srcPacking);
+   }
+
+   /* We have to deal with GL_COLOR_INDEX manually because
+    * _mesa_format_convert does not handle this format. So what we do here is
+    * convert it to RGBA ubyte first and then convert from that to dst as usual.
+    */
+   GLubyte *tempImage = NULL;
+   if (srcFormat == GL_COLOR_INDEX) {
+      tempImage  = _mesa_make_temp_ubyte_image(ctx, dims,
+                                               baseInternalFormat,
+                                               GL_RGBA,
+                                               srcWidth, srcHeight, srcDepth,
+                                               srcFormat, srcType, srcAddr,
+                                               srcPacking);
+      if (!tempImage)
+         return GL_FALSE;
+
+      /* Now we only have to adjust our src info for a conversion from
+       * the RGBA ubyte and then we continue as usual.
+       */
+      srcAddr = tempImage;
+      srcFormat = GL_RGBA;
+      srcType = GL_UNSIGNED_BYTE;
+   }
+
+   int srcRowStride =
+      _mesa_image_row_stride(srcPacking, srcWidth, srcFormat, srcType);
+
+   /* We have to handle byte-swapping scenarios before calling
+    * _mesa_format_convert
+    */
+   void *swappedImage = NULL;
+   if (srcPacking->SwapBytes) {
+      GLint swapSize = _mesa_sizeof_packed_type(srcType);
+      if (swapSize == 2 || swapSize == 4) {
+         int components = _mesa_components_in_format(srcFormat);
+         int elementCount = srcWidth * srcHeight * components;
+         swappedImage = malloc(elementCount * swapSize);
+         if (!swappedImage)
+            return GL_FALSE;
+         if (swapSize == 2)
+            _mesa_swap2_copy(swappedImage, (GLushort *) srcAddr, elementCount);
+         else
+            _mesa_swap4_copy(swappedImage, (GLuint *) srcAddr, elementCount);
+         srcAddr = swappedImage;
+      }
+   }
+
+   GLubyte *src = (GLubyte *)
+      _mesa_image_address(dims, srcPacking, srcAddr, srcWidth, srcHeight,
+                          srcFormat, srcType, 0, 0, 0);
+
+   uint32_t srcMesaFormat =
+      _mesa_format_from_format_and_type(srcFormat, srcType);
+   dstFormat = _mesa_get_srgb_format_linear(dstFormat);
+
+   for (int img = 0; img < srcDepth; img++) {
+      _mesa_format_convert(dstSlices[img], dstFormat, dstRowStride,
+                           src, srcMesaFormat, srcRowStride,
+                           srcWidth, srcHeight, baseInternalFormat);
+      src += srcHeight * srcRowStride;
+   }
+
+   if (tempImage)
+      free(tempImage);
+   if (swappedImage)
+      free(swappedImage);
+
+   return GL_TRUE;
+} else {
    static StoreTexImageFunc table[MESA_FORMAT_COUNT];
    static GLboolean initialized = GL_FALSE;
 
@@ -1765,6 +1847,7 @@ texstore_rgba(TEXSTORE_PARAMS)
                                 srcFormat, srcType, srcAddr,
                                 srcPacking);
    }
+}
 }
 
 GLboolean
