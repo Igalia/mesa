@@ -1712,6 +1712,26 @@ texstore_rgba_integer(TEXSTORE_PARAMS)
 static GLboolean
 texstore_rgba(TEXSTORE_PARAMS)
 {
+bool use_master_convert = true;
+if (use_master_convert) {
+   GLubyte *src = (GLubyte *) srcAddr;
+
+   int srcRowStride =
+      _mesa_image_row_stride(srcPacking, srcWidth, srcFormat, srcType);
+
+   uint32_t srcMesaFormat =
+      _mesa_format_from_format_and_type(srcFormat, srcType);
+   dstFormat = _mesa_get_srgb_format_linear(dstFormat);
+
+   for (int img = 0; img < srcDepth; img++) {
+      _mesa_format_convert(dstSlices[img], dstFormat, dstRowStride,
+                           src, srcMesaFormat, srcRowStride,
+                           srcWidth, srcHeight, baseInternalFormat);
+      src += srcHeight * srcRowStride;
+   }
+
+   return GL_TRUE;
+} else {
    static StoreTexImageFunc table[MESA_FORMAT_COUNT];
    static GLboolean initialized = GL_FALSE;
 
@@ -1765,6 +1785,7 @@ texstore_rgba(TEXSTORE_PARAMS)
                                 srcFormat, srcType, srcAddr,
                                 srcPacking);
    }
+}
 }
 
 GLboolean
