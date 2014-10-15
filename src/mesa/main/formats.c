@@ -963,10 +963,12 @@ _mesa_format_to_type_and_comps(mesa_format format,
       *comps = 4;
       return;
    case MESA_FORMAT_A2B10G10R10_UNORM:
+   case MESA_FORMAT_A2B10G10R10_UINT:
       *datatype = GL_UNSIGNED_INT_10_10_10_2;
       *comps = 4;
       return;
    case MESA_FORMAT_A2R10G10B10_UNORM:
+   case MESA_FORMAT_A2R10G10B10_UINT:
       *datatype = GL_UNSIGNED_INT_10_10_10_2;
       *comps = 4;
       return;
@@ -1668,8 +1670,14 @@ _mesa_format_matches_format_and_type(mesa_format mesa_format,
    case MESA_FORMAT_A2B10G10R10_UNORM:
       return format == GL_RGBA && type == GL_UNSIGNED_INT_10_10_10_2;
 
+   case MESA_FORMAT_A2B10G10R10_UINT:
+      return format == GL_RGBA_INTEGER_EXT && type == GL_UNSIGNED_INT_10_10_10_2;
+
    case MESA_FORMAT_A2R10G10B10_UNORM:
       return format == GL_BGRA && type == GL_UNSIGNED_INT_10_10_10_2;
+
+   case MESA_FORMAT_A2R10G10B10_UINT:
+      return format == GL_BGRA_INTEGER_EXT && type == GL_UNSIGNED_INT_10_10_10_2;
 
    case MESA_FORMAT_R2G10B10A10_UNORM:
       return format == GL_ABGR_EXT && type == GL_UNSIGNED_INT_10_10_10_2;
