@@ -566,9 +566,42 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
                src += src_stride;
             }
          } else {
+            /* For some conversions, doing src->rgba->dst is not enough and we
+             * need to consider the base internal format. In these cases a
+             * swizzle operation is required to match the semantics of the base
+             * internal format requested: src->rgba->swizzle->rgba->dst.
+             *
+             * We can detect these cases by checking if the swizzle transform
+             * for base->rgba->base is 0123. If it is not, then we need
+             * to do the swizzle operation (need_convert = true).
+             */
+            GLubyte rgba2base[4], base2rgba[4], map[4];
+            bool need_convert = false;
+            mesa_format dst_mesa_format;
+            if (dst_format & MESA_ARRAY_FORMAT_BIT)
+               dst_mesa_format = _mesa_format_from_array_format(dst_format);
+            else
+               dst_mesa_format = dst_format;
+            if (dst_internal_format !=
+                _mesa_get_format_base_format(dst_mesa_format)) {
+               _mesa_compute_component_mapping(GL_RGBA, dst_internal_format,
+                                               base2rgba);
+               _mesa_compute_component_mapping(dst_internal_format, GL_RGBA,
+                                               rgba2base);
+               for (i = 0; i < 4; ++i) {
+                  map[i] = base2rgba[rgba2base[i]];
+                  if (map[i] != i)
+                     need_convert = true;
+               }
+            }
+
             for (row = 0; row < height; ++row) {
                _mesa_unpack_rgba_row(src_format, width,
                                      src, tmp_float + row * width);
+               if (need_convert)
+                  _mesa_swizzle_and_convert(tmp_float + row * width, GL_FLOAT, 4,
+                                            tmp_float + row * width, GL_FLOAT, 4,
+                                            map, false, width);
                src += src_stride;
             }
          }
