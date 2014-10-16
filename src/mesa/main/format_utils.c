@@ -265,6 +265,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
       if (!(dst_array_format.type & MESA_ARRAY_FORMAT_TYPE_IS_FLOAT) &&
           !dst_array_format.normalized)
          integer = true;
+      is_signed = dst_array_format.as_uint & MESA_ARRAY_FORMAT_TYPE_IS_SIGNED;
       bits = 8 * _mesa_array_format_datatype_size(dst_array_format.type);
    } else {
       switch (_mesa_get_format_datatype(dst_format)) {
