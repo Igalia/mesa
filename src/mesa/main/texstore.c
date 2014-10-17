@@ -1717,6 +1717,26 @@ if (use_master_convert) {
    int srcRowStride =
       _mesa_image_row_stride(srcPacking, srcWidth, srcFormat, srcType);
 
+   /* We have to handle byte-swapping scenarios before calling
+    * _mesa_format_convert
+    */
+   void *swappedImage = NULL;
+   if (srcPacking->SwapBytes) {
+      GLint swapSize = _mesa_sizeof_packed_type(srcType);
+      if (swapSize == 2 || swapSize == 4) {
+         int components = _mesa_components_in_format(srcFormat);
+         int elementCount = srcWidth * srcHeight * components;
+         swappedImage = malloc(elementCount * swapSize);
+         if (!swappedImage)
+            return GL_FALSE;
+         if (swapSize == 2)
+            _mesa_swap2_copy(swappedImage, (GLushort *) srcAddr, elementCount);
+         else
+            _mesa_swap4_copy(swappedImage, (GLuint *) srcAddr, elementCount);
+         srcAddr = swappedImage;
+      }
+   }
+
    GLubyte *src = (GLubyte *)
       _mesa_image_address(dims, srcPacking, srcAddr, srcWidth, srcHeight,
                           srcFormat, srcType, 0, 0, 0);
@@ -1731,6 +1751,9 @@ if (use_master_convert) {
                            srcWidth, srcHeight, baseInternalFormat);
       src += srcHeight * srcRowStride;
    }
+
+   if (swappedImage)
+      free(swappedImage);
 
    return GL_TRUE;
 } else {
