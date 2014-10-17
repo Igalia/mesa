@@ -1719,6 +1719,19 @@ if (use_master_convert) {
    int srcRowStride =
       _mesa_image_row_stride(srcPacking, srcWidth, srcFormat, srcType);
 
+   /* We have to handle byte-swapping scenarios before calling
+    * _mesa_format_convert
+    */
+   void *swappedImage = NULL;
+   if (srcPacking->SwapBytes) {
+      bool error;
+      if (_mesa_swap_bytes(&swappedImage, srcAddr, srcFormat, srcType,
+                           srcRowStride, srcHeight, &error))
+         src = swappedImage;
+      else if (error)
+         return GL_FALSE;
+   }
+
    uint32_t srcMesaFormat =
       _mesa_format_from_format_and_type(srcFormat, srcType);
    dstFormat = _mesa_get_srgb_format_linear(dstFormat);
@@ -1729,6 +1742,9 @@ if (use_master_convert) {
                            srcWidth, srcHeight, baseInternalFormat);
       src += srcHeight * srcRowStride;
    }
+
+   if (swappedImage)
+      free(swappedImage);
 
    return GL_TRUE;
 } else {
