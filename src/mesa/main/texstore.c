@@ -1717,6 +1717,19 @@ if (use_master_convert) {
    int srcRowStride =
       _mesa_image_row_stride(srcPacking, srcWidth, srcFormat, srcType);
 
+   /* We have to handle byte-swapping scenarios before calling
+    * _mesa_format_convert
+    */
+   void *swappedImage = NULL;
+   if (srcPacking->SwapBytes) {
+      bool error;
+      if (_mesa_swap_bytes(&swappedImage, srcAddr, srcFormat, srcType,
+                           srcRowStride, srcHeight, &error))
+         srcAddr = swappedImage;
+      else if (error)
+         return GL_FALSE;
+   }
+
    GLubyte *src = (GLubyte *)
       _mesa_image_address(dims, srcPacking, srcAddr, srcWidth, srcHeight,
                           srcFormat, srcType, 0, 0, 0);
@@ -1731,6 +1744,9 @@ if (use_master_convert) {
                            srcWidth, srcHeight, baseInternalFormat);
       src += srcHeight * srcRowStride;
    }
+
+   if (swappedImage)
+      free(swappedImage);
 
    return GL_TRUE;
 } else {
