@@ -1714,6 +1714,29 @@ texstore_rgba(TEXSTORE_PARAMS)
 {
 bool use_master_convert = true;
 if (use_master_convert) {
+   /* We have to deal with GL_COLOR_INDEX manually because
+    * _mesa_format_convert does not handle this format. So what we do here is
+    * convert it to RGBA ubyte first and then convert from that to dst as usual.
+    */
+   GLubyte *tempImage = NULL;
+   if (srcFormat == GL_COLOR_INDEX) {
+      tempImage  = _mesa_make_temp_ubyte_image(ctx, dims,
+                                               baseInternalFormat,
+                                               GL_RGBA,
+                                               srcWidth, srcHeight, srcDepth,
+                                               srcFormat, srcType, srcAddr,
+                                               srcPacking);
+      if (!tempImage)
+         return GL_FALSE;
+
+      /* Now we only have to adjust our src info for a conversion from
+       * the RGBA ubyte and then we continue as usual.
+       */
+      srcAddr = tempImage;
+      srcFormat = GL_RGBA;
+      srcType = GL_UNSIGNED_BYTE;
+   }
+
    int srcRowStride =
       _mesa_image_row_stride(srcPacking, srcWidth, srcFormat, srcType);
 
@@ -1752,6 +1775,8 @@ if (use_master_convert) {
       src += srcHeight * srcRowStride;
    }
 
+   if (tempImage)
+      free(tempImage);
    if (swappedImage)
       free(swappedImage);
 
