@@ -156,7 +156,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
    }
 
    /* Handle the cases where we can directly pack */
-   if (!(dst_format & MESA_ARRAY_FORMAT_BIT)) {
+   if (!(src_format & MESA_ARRAY_FORMAT_BIT)) {
       if (src_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
          for (row = 0; row < height; ++row) {
             _mesa_pack_float_rgba_row(src_format, width,
