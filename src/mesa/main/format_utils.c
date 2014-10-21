@@ -26,6 +26,7 @@
 #include "glformats.h"
 #include "format_pack.h"
 #include "format_unpack.h"
+#include "enums.h"
 
 mesa_array_format RGBA8888_FLOAT = {{
    MESA_ARRAY_FORMAT_TYPE_FLOAT,
@@ -101,10 +102,208 @@ gl_type_for_array_format_datatype(enum mesa_array_format_datatype type)
    }
 }
 
+enum {
+   ZERO = 4,
+   ONE = 5
+};
+
+enum {
+   IDX_LUMINANCE = 0,
+   IDX_ALPHA,
+   IDX_INTENSITY,
+   IDX_LUMINANCE_ALPHA,
+   IDX_RGB,
+   IDX_RGBA,
+   IDX_RED,
+   IDX_GREEN,
+   IDX_BLUE,
+   IDX_BGR,
+   IDX_BGRA,
+   IDX_ABGR,
+   IDX_RG,
+   MAX_IDX
+};
+
+#define MAP1(x)       MAP4(x, ZERO, ZERO, ZERO)
+#define MAP2(x,y)     MAP4(x, y, ZERO, ZERO)
+#define MAP3(x,y,z)   MAP4(x, y, z, ZERO)
+#define MAP4(x,y,z,w) { x, y, z, w, ZERO, ONE }
+
+static const struct {
+   GLubyte format_idx;
+   GLubyte to_rgba[6];
+   GLubyte from_rgba[6];
+} mappings[MAX_IDX] =
+{
+   {
+      IDX_LUMINANCE,
+      MAP4(0,0,0,ONE),
+      MAP1(0)
+   },
+
+   {
+      IDX_ALPHA,
+      MAP4(ZERO, ZERO, ZERO, 0),
+      MAP1(3)
+   },
+
+   {
+      IDX_INTENSITY,
+      MAP4(0, 0, 0, 0),
+      MAP1(0),
+   },
+
+   {
+      IDX_LUMINANCE_ALPHA,
+      MAP4(0,0,0,1),
+      MAP2(0,3)
+   },
+
+   {
+      IDX_RGB,
+      MAP4(0,1,2,ONE),
+      MAP3(0,1,2)
+   },
+
+   {
+      IDX_RGBA,
+      MAP4(0,1,2,3),
+      MAP4(0,1,2,3),
+   },
+
+   {
+      IDX_RED,
+      MAP4(0, ZERO, ZERO, ONE),
+      MAP1(0),
+   },
+
+   {
+      IDX_GREEN,
+      MAP4(ZERO, 0, ZERO, ONE),
+      MAP1(1),
+   },
+
+   {
+      IDX_BLUE,
+      MAP4(ZERO, ZERO, 0, ONE),
+      MAP1(2),
+   },
+
+   {
+      IDX_BGR,
+      MAP4(2,1,0,ONE),
+      MAP3(2,1,0)
+   },
+
+   {
+      IDX_BGRA,
+      MAP4(2,1,0,3),
+      MAP4(2,1,0,3)
+   },
+
+   {
+      IDX_ABGR,
+      MAP4(3,2,1,0),
+      MAP4(3,2,1,0)
+   },
+
+   {
+      IDX_RG,
+      MAP4(0, 1, ZERO, ONE),
+      MAP2(0, 1)
+   },
+};
+
+/**
+ * Convert a GL image format enum to an IDX_* value (see above).
+ */
+static int
+get_map_idx(GLenum value)
+{
+   switch (value) {
+   case GL_LUMINANCE:
+   case GL_LUMINANCE_INTEGER_EXT:
+      return IDX_LUMINANCE;
+   case GL_ALPHA:
+   case GL_ALPHA_INTEGER:
+      return IDX_ALPHA;
+   case GL_INTENSITY:
+      return IDX_INTENSITY;
+   case GL_LUMINANCE_ALPHA:
+   case GL_LUMINANCE_ALPHA_INTEGER_EXT:
+      return IDX_LUMINANCE_ALPHA;
+   case GL_RGB:
+   case GL_RGB_INTEGER:
+      return IDX_RGB;
+   case GL_RGBA:
+   case GL_RGBA_INTEGER:
+      return IDX_RGBA;
+   case GL_RED:
+   case GL_RED_INTEGER:
+      return IDX_RED;
+   case GL_GREEN:
+      return IDX_GREEN;
+   case GL_BLUE:
+      return IDX_BLUE;
+   case GL_BGR:
+   case GL_BGR_INTEGER:
+      return IDX_BGR;
+   case GL_BGRA:
+   case GL_BGRA_INTEGER:
+      return IDX_BGRA;
+   case GL_ABGR_EXT:
+      return IDX_ABGR;
+   case GL_RG:
+   case GL_RG_INTEGER:
+      return IDX_RG;
+   default:
+      _mesa_problem(NULL, "Unexpected inFormat %s",
+                    _mesa_lookup_enum_by_nr(value));
+      return 0;
+   }
+}
+
+/**
+ * When promoting texture formats (see below) we need to compute the
+ * mapping of dest components back to source components.
+ * This function does that.
+ * \param inFormat  the incoming format of the texture
+ * \param outFormat  the final texture format
+ * \return map[6]  a full 6-component map
+ */
+static void
+compute_component_mapping(GLenum inFormat, GLenum outFormat,
+			  GLubyte *map)
+{
+   const int inFmt = get_map_idx(inFormat);
+   const int outFmt = get_map_idx(outFormat);
+   const GLubyte *in2rgba = mappings[inFmt].to_rgba;
+   const GLubyte *rgba2out = mappings[outFmt].from_rgba;
+   int i;
+
+   for (i = 0; i < 4; i++)
+      map[i] = in2rgba[rgba2out[i]];
+
+   map[ZERO] = ZERO;
+   map[ONE] = ONE;
+
+#if 0
+   printf("from %x/%s to %x/%s map %d %d %d %d %d %d\n",
+	  inFormat, _mesa_lookup_enum_by_nr(inFormat),
+	  outFormat, _mesa_lookup_enum_by_nr(outFormat),
+	  map[0],
+	  map[1],
+	  map[2],
+	  map[3],
+	  map[4],
+	  map[5]);
+#endif
+}
+
 void
 _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
                      void *void_src, uint32_t src_format, size_t src_stride,
-                     size_t width, size_t height)
+                     size_t width, size_t height, GLenum dst_base_format)
 {
    uint8_t *dst = (uint8_t *)void_dst;
    uint8_t *src = (uint8_t *)void_src;
@@ -221,6 +420,35 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
    if (src_array_format.as_uint && dst_array_format.as_uint) {
       assert(src_array_format.normalized == dst_array_format.normalized);
 
+      /* If the base format of our dst is not the same as the provided base
+       * format it means that we are converting to a different format
+       * than the one originally requested by the client. This can happen when
+       * the internal base format requested is not supported by the driver.
+       * In this case we need to consider the requested internal base format to
+       * compute the correct swizzle operation from src to dst. We will do this
+       * by computing the swizzle transform src->rgba->base->rgba->dst instead
+       * of src->rgba->dst.
+       */
+      mesa_format dst_mesa_format;
+      if (dst_format & MESA_ARRAY_FORMAT_BIT)
+         dst_mesa_format = _mesa_format_from_array_format(dst_format);
+      else
+         dst_mesa_format = dst_format;
+      if (dst_base_format != _mesa_get_format_base_format(dst_mesa_format)) {
+         /* Compute src2rgba as src->rgba->base->rgba */
+         GLubyte rgba2base[4], base2rgba[4];
+         compute_component_mapping(GL_RGBA, dst_base_format, rgba2base);
+         compute_component_mapping(dst_base_format, GL_RGBA, base2rgba);
+
+         for (i = 0; i < 4; i++) {
+            if (base2rgba[i] > MESA_FORMAT_SWIZZLE_W)
+               src2rgba[i] = base2rgba[i];
+            else
+               src2rgba[i] = src2rgba[rgba2base[base2rgba[i]]];
+         }
+      }
+
+      /* Compute src2dst from src2rgba */
       for (i = 0; i < 4; i++) {
          if (rgba2dst[i] > MESA_FORMAT_SWIZZLE_W) {
             src2dst[i] = rgba2dst[i];
