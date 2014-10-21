@@ -543,10 +543,122 @@ _mesa_format_from_format_and_type(GLenum format, GLenum type, bool swap_bytes)
    /* Otherwise this is not an array format, so return the mesa_format
     * matching the OpenGL format and data type
     */
-   for (int f = 1; f < MESA_FORMAT_COUNT; f++)
-      if (_mesa_format_matches_format_and_type(f, format, type, swap_bytes))
-         return f;
+   switch (type) {
+   case GL_UNSIGNED_SHORT_5_6_5:
+     if (format == GL_RGB)
+         return MESA_FORMAT_B5G6R5_UNORM;
+      else if (format == GL_BGR)
+         return MESA_FORMAT_R5G6B5_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_5_6_5_REV:
+      if (format == GL_RGB)
+         return MESA_FORMAT_R5G6B5_UNORM;
+      else if (format == GL_BGR)
+         return MESA_FORMAT_B5G6R5_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_4_4_4_4:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_A4B4G4R4_UNORM;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_A4R4G4B4_UNORM;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_R4G4B4A4_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_4_4_4_4_REV:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_R4G4B4A4_UNORM;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_B4G4R4A4_UNORM;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_A4B4G4R4_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_5_5_5_1:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_A1B5G5R5_UNORM;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_A1R5G5B5_UNORM;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_R1G5B5A5_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_1_5_5_5_REV:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_R5G5B5A1_UNORM;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_B5G5R5A1_UNORM;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_A5B5G5R1_UNORM;
+      break;
+   case GL_UNSIGNED_BYTE_3_3_2:
+      if (format == GL_RGB)
+         return MESA_FORMAT_B2G3R3_UNORM;
+      break;
+   case GL_UNSIGNED_BYTE_2_3_3_REV:
+      if (format == GL_RGB)
+         return MESA_FORMAT_R3G3B2_UNORM;
+      break;
+   case GL_UNSIGNED_INT_5_9_9_9_REV:
+      if (format == GL_RGB)
+         return MESA_FORMAT_R9G9B9E5_FLOAT;
+      break;
+   case GL_UNSIGNED_INT_10_10_10_2:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_A2B10G10R10_UNORM;
+      else if (format == GL_RGBA_INTEGER)
+         return MESA_FORMAT_A2B10G10R10_UINT;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_A2R10G10B10_UNORM;
+      else if (format == GL_BGRA_INTEGER)
+         return MESA_FORMAT_A2R10G10B10_UINT;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_R2G10B10A10_UNORM;
+      break;
+   case GL_UNSIGNED_INT_2_10_10_10_REV:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_R10G10B10A2_UNORM;
+      else if (format == GL_RGBA_INTEGER)
+         return MESA_FORMAT_R10G10B10A2_UINT;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_B10G10R10A2_UNORM;
+      else if (format == GL_BGRA_INTEGER)
+         return MESA_FORMAT_B10G10R10A2_UINT;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_A10B10G10R2_UNORM;
+      break;
+   case GL_UNSIGNED_INT_8_8_8_8:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_A8B8G8R8_UNORM;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_A8R8G8B8_UNORM;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_R8G8B8A8_UNORM;
+      break;
+   case GL_UNSIGNED_INT_8_8_8_8_REV:
+      if (format == GL_RGBA)
+         return MESA_FORMAT_A8B8G8R8_UNORM;
+      else if (format == GL_BGRA)
+         return MESA_FORMAT_A8R8G8B8_UNORM;
+      else if (format == GL_ABGR_EXT)
+         return MESA_FORMAT_R8G8B8A8_UNORM;
+      break;
+   case GL_UNSIGNED_SHORT_8_8_MESA:
+      if (format == GL_YCBCR_MESA)
+         return MESA_FORMAT_YCBCR;
+      break;
+   case GL_UNSIGNED_SHORT_8_8_REV_MESA:
+      if (format == GL_YCBCR_MESA)
+         return MESA_FORMAT_YCBCR_REV;
+      break;
+   case GL_UNSIGNED_INT_10F_11F_11F_REV:
+      if (format == GL_RGB)
+         return MESA_FORMAT_R11G11B10_FLOAT;
+   default:
+      break;
+   }
 
+   /* If we got here it means that we could not find a Mesa format that
+    * matches the GL format/type provided. We may need to add a new Mesa
+    * format in that case.
+    */
    assert(!"Unsupported format");
 }
 
