@@ -211,8 +211,8 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
       assert(src_array_format.normalized == dst_array_format.normalized);
 
       for (i = 0; i < 4; i++) {
-         if (dst2rgba[i] > MESA_FORMAT_SWIZZLE_W) {
-            src2dst[i] = dst2rgba[i];
+         if (rgba2dst[i] > MESA_FORMAT_SWIZZLE_W) {
+            src2dst[i] = rgba2dst[i];
          } else {
             src2dst[i] = src2rgba[rgba2dst[i]];
          }
