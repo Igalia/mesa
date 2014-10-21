@@ -165,7 +165,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
             dst += dst_stride;
          }
          return;
-      } else if (dst_array_format.as_uint == RGBA8888_UBYTE.as_uint) {
+      } else if (src_array_format.as_uint == RGBA8888_UBYTE.as_uint) {
          assert(!_mesa_is_format_integer_color(src_format));
          for (row = 0; row < height; ++row) {
             _mesa_pack_ubyte_rgba_row(src_format, width,
