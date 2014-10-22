@@ -152,4 +152,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
                      void *void_src, uint32_t src_format, size_t src_stride,
                      size_t width, size_t height, GLenum dst_base_format);
 
+bool
+_mesa_swap_bytes(void **dst, const void *src, GLenum format, GLenum type,
+                 int stride, int height, bool *error);
 #endif
