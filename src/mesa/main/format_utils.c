@@ -1580,3 +1580,89 @@ _mesa_swizzle_and_convert(void *void_dst, GLenum dst_type, int num_dst_channels,
       assert(!"Invalid channel type");
    }
 }
+
+/**
+ * Generates a byte-swapped copy of image data. Useful to handle byte-swapping
+ * before calling _mesa_format_convert.
+ *
+ * This function will return false if byte-swapping is not necessary for the
+ * given format or if it failed to allocate memory for the byte-swapped image
+ * (in which case it will also set error to true). In either case no memory
+ * is allocated for the byte-swapped image. Otherwise it will return true and
+ * the caller should free the byte-swapped image data when no longer necessary.
+ *
+ * \param[out] dst     The pointer where the byte-swapped image data will be
+ *                     generated. The function will take care of allocating
+ *                     the memory required for it.
+ * \param[in]  src     The image data we want to byte-swap.
+ * \param[in]  format  The GL format of the image data.
+ * \param[in]  type    The GL type of the image data.
+ * \param[in]  stride  The row stride in bytes of the image data.
+ * \param[in]  height  The number of rows in the image data.
+ * \param[out] error   True if we could not allocate memory for the
+ *                     byte-swapped image or false otherwise.
+ */
+bool
+_mesa_swap_bytes(void **dst, const void *src, GLenum format, GLenum type,
+                 int stride, int height, bool *error)
+{
+   *error = false;
+
+   int bytes;
+   switch (type) {
+   case GL_BYTE:
+   case GL_UNSIGNED_BYTE:
+   case GL_SHORT:
+   case GL_UNSIGNED_SHORT:
+   case GL_INT:
+   case GL_UNSIGNED_INT:
+   case GL_FLOAT:
+   case GL_HALF_FLOAT:
+      bytes = _mesa_sizeof_type(type);
+      break;
+   default:
+      bytes = _mesa_bytes_per_pixel(format, type);
+      break;
+   }
+
+   if (bytes != 2 && bytes != 4)
+      return false;
+
+   *dst = (GLubyte *) malloc(stride * height);
+   if (*dst == NULL) {
+      *error = true;
+      return false;
+   }
+
+   if (bytes == 2) {
+      assert(stride % 2 == 0);
+      GLushort *dst_ptr = (GLushort *) *dst;
+      for (int i = 0; i < height; i++) {
+         GLushort *us = (GLushort *) src;
+         for (int j = 0; j < stride / 2; j++) {
+            dst_ptr[j] = (us[j] << 8) | (us[j] >> 8);
+         }
+         src += stride;
+         dst_ptr += stride / 2;
+      }
+   }
+
+   if (bytes == 4) {
+      assert(stride % 4 == 0);
+      GLuint *dst_ptr = (GLuint *) *dst;
+      for (int i = 0; i < height; i++) {
+         GLuint *ui = (GLuint *) src;
+         for (int j = 0; j < stride / 4; j++) {
+            dst_ptr[j] =  (ui[j] >> 24) |
+                         ((ui[j] >>  8) & 0xff00) |
+                         ((ui[j] <<  8) & 0xff0000) |
+                         ((ui[j] << 24) & 0xff000000);
+
+         }
+         src += stride;
+         dst_ptr += stride / 4;
+      }
+   }
+
+   return true;
+}
