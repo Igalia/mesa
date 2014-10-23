@@ -159,16 +159,16 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
    if (!(dst_format & MESA_ARRAY_FORMAT_BIT)) {
       if (src_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
          for (row = 0; row < height; ++row) {
-            _mesa_pack_float_rgba_row(src_format, width,
+            _mesa_pack_float_rgba_row(dst_format, width,
                                       (const float (*)[4])src, dst);
             src += src_stride;
             dst += dst_stride;
          }
          return;
       } else if (src_array_format.as_uint == RGBA8888_UBYTE.as_uint &&
-                 !_mesa_is_format_integer_color(src_format)) {
+                 !_mesa_is_format_integer_color(dst_format)) {
          for (row = 0; row < height; ++row) {
-            _mesa_pack_ubyte_rgba_row(src_format, width,
+            _mesa_pack_ubyte_rgba_row(dst_format, width,
                                       (const uint8_t (*)[4])src, dst);
             src += src_stride;
             dst += dst_stride;
@@ -177,7 +177,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
       } else if (src_array_format.as_uint == RGBA8888_UINT.as_uint &&
                  _mesa_is_format_integer_color(dst_format)) {
          for (row = 0; row < height; ++row) {
-            _mesa_pack_uint_rgba_row(src_format, width,
+            _mesa_pack_uint_rgba_row(dst_format, width,
                                      (const uint32_t (*)[4])src, dst);
             src += src_stride;
             dst += dst_stride;
