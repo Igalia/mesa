@@ -85,7 +85,13 @@ pack_ubyte_${f.short_name()}(const GLubyte src[4], void *dst)
 
       ${channel_datatype(c)} ${c.name} =
       %if not f.is_normalized():
-         (${channel_datatype(c)}) src[${i}];
+         %if c.type == parser.FLOAT and c.size == 32:
+            UBYTE_TO_FLOAT(src[${i}]);
+         %elif c.type == parser.FLOAT and c.size == 16:
+            _mesa_float_to_half(UBYTE_TO_FLOAT(src[${i}]));
+         %else:
+            (${channel_datatype(c)}) src[${i}];
+         %endif
       %elif c.type == parser.UNSIGNED:
          %if f.colorspace == 'srgb' and c.name in 'rgb':
             util_format_linear_to_srgb_8unorm(src[${i}]);
@@ -189,7 +195,13 @@ pack_uint_${f.short_name()}(const GLuint src[4], void *dst)
 
       ${channel_datatype(c)} ${c.name} =
       %if not f.is_normalized():
-         (${channel_datatype(c)}) src[${i}];
+         %if c.type == parser.FLOAT and c.size == 32:
+            UINT_TO_FLOAT(src[${i}]);
+         %elif c.type == parser.FLOAT and c.size == 16:
+            _mesa_float_to_half(UINT_TO_FLOAT(src[${i}]));
+         %else:
+            (${channel_datatype(c)}) src[${i}];
+         %endif
       %elif c.type == parser.UNSIGNED:
          %if f.colorspace == 'srgb' and c.name in 'rgb':
             util_format_linear_to_srgb_8unorm(src[${i}]);
