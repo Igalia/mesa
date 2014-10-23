@@ -39,6 +39,8 @@
 #include "state.h"
 #include "glformats.h"
 #include "fbobject.h"
+#include "format_utils.h"
+#include "pixeltransfer.h"
 
 
 /**
@@ -563,6 +565,231 @@ read_rgba_pixels( struct gl_context *ctx,
 
    transferOps = get_readpixels_transfer_ops(ctx, rb->Format, format, type,
                                              GL_FALSE);
+bool use_master = true;
+if (use_master) {
+   /* Describe the dst format */
+   GLboolean dst_is_integer = _mesa_is_enum_format_integer(format);
+   int dst_stride = _mesa_image_row_stride(packing, width, format, type);
+   uint32_t dst_format = _mesa_format_from_format_and_type(format, type);
+   mesa_format dst_mesa_format;
+   if (dst_format & MESA_ARRAY_FORMAT_BIT)
+      dst_mesa_format = _mesa_format_from_array_format(dst_format);
+   else
+      dst_mesa_format = dst_format;
+   GLenum dst_base_format = _mesa_get_format_base_format(dst_mesa_format);
+   GLubyte *dst = (GLubyte *)
+      _mesa_image_address2d(packing, pixels, width, height,
+                            format, type, 0, 0);
+
+   /* Map the source render buffer */
+   GLubyte *map;
+   int rb_stride;
+   ctx->Driver.MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
+                               &map, &rb_stride);
+   if (!map) {
+      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
+      return;
+   }
+   const mesa_format rb_format = _mesa_get_srgb_format_linear(rb->Format);
+   GLenum rb_base_format = _mesa_get_format_base_format(rb_format);
+
+   /* Since _mesa_format_convert does not handle transferOps we need to handle
+    * them before we call the function. This requires to convert to RGBA float
+    * first so we can call _mesa_apply_rgba_transfer_ops. If the dst format is
+    * integer we can ignore transferOps.
+    *
+    * Depending on the base formats involved in the conversion we might need to
+    * rebase some values and for that we need to converto to RGBA first too.
+    */
+   assert(!transferOps || (transferOps && !dst_is_integer));
+   GLenum rebase_format = GL_NONE;
+   if (rb->_BaseFormat == GL_LUMINANCE ||
+       rb->_BaseFormat == GL_INTENSITY ||
+       rb->_BaseFormat == GL_LUMINANCE_ALPHA) {
+      /* If luminance (or intensity) is read back as RGB(A), the returned value
+       * should be (L,0,0,1), not (L,L,L,1), so we need to rebase.
+       */
+      rebase_format = rb->_BaseFormat;
+   } else if (dst_base_format == GL_LUMINANCE ||
+              dst_base_format == GL_LUMINANCE_ALPHA) {
+      /* If dst is luminance we will convert to RGBA first so we can then
+       * compute luminance values as L=R+G+B. We will need a rebase or not
+       * depending on the base format of the render buffer.
+       */
+      rebase_format = rb->_BaseFormat;
+   } else if (rb->_BaseFormat != rb_base_format) {
+      /* If the internal format and the real format differ we can't rely
+       * on the convert functions setting the correct constant values
+       * (e.g. reading back GL_RGB8 which is actually RGBA won't set alpha=1),
+       * so we will have to rebase in certain cases.
+       */
+      switch (rb->_BaseFormat) {
+      case GL_RED:
+         if ((rb_base_format == GL_RGBA ||
+              rb_base_format == GL_RGB ||
+              rb_base_format == GL_RG) &&
+             (dst_base_format == GL_RGBA ||
+              dst_base_format == GL_RGB ||
+              dst_base_format == GL_RG ||
+              dst_base_format == GL_GREEN)) {
+            rebase_format = rb->_BaseFormat;
+            break;
+         }
+         /* fall through */
+      case GL_RG:
+         if ((rb_base_format == GL_RGBA ||
+              rb_base_format == GL_RGB) &&
+             (dst_base_format == GL_RGBA ||
+              dst_base_format == GL_RGB ||
+              dst_base_format == GL_BLUE)) {
+            rebase_format = rb->_BaseFormat;
+            break;
+         }
+         /* fall through */
+      case GL_RGB:
+         if (rb_base_format == GL_RGBA &&
+             (dst_base_format == GL_RGBA ||
+              dst_base_format == GL_ALPHA)) {
+             rebase_format = rb->_BaseFormat;
+         }
+         break;
+      case GL_ALPHA:
+         if (dst_base_format != GL_ALPHA) {
+            rebase_format = rb->_BaseFormat;
+         }
+         break;
+      }
+   }
+
+   bool needs_rgba = transferOps || rebase_format;
+   void *rgba = NULL;
+
+   void *src;
+   int src_stride;
+   uint32_t src_format;
+   if (needs_rgba) {
+      uint32_t rgba_format;
+      int rgba_stride;
+      /* Convert to RGBA float or int/uint depending on the type of the dst. */
+      if (dst_is_integer) {
+         GLboolean src_is_uint = _mesa_is_format_unsigned(rb_format);
+         if (src_is_uint) {
+            rgba_format = RGBA8888_UINT.as_uint;
+            rgba_stride = width * 4 * sizeof(GLuint);
+         } else {
+            rgba_format = RGBA8888_INT.as_uint;
+            rgba_stride = width * 4 * sizeof(GLint);
+         }
+      } else {
+         rgba_format = RGBA8888_FLOAT.as_uint;
+         rgba_stride = width * 4 * sizeof(GLfloat);
+      }
+
+      /* If we are lucky and the dst format matches the RGBA format we need to
+       * convert to, then we can convert directly into the dst buffer and avoid
+       * the final conversion/copy from the rgba buffer to the dst buffer.
+       */
+      bool need_convert;
+      if (dst_format == rgba_format) {
+         need_convert = false;
+         rgba = dst;
+      } else {
+         need_convert = true;
+         rgba = malloc(height * rgba_stride);
+         if (!rgba) {
+            _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
+            goto done_unmap;
+         }
+      }
+
+      /* Convert to RGBA now */
+      _mesa_format_convert(rgba, rgba_format, rgba_stride,
+                           map, rb_format, rb_stride,
+                           width, height, GL_RGBA);
+
+      /* Rebase and handle transfer ops as necessary */
+      if (dst_is_integer) {
+         if (rebase_format)
+            _mesa_rebase_rgba_uint(width * height, (GLuint (*)[4]) rgba, rebase_format);
+      } else {
+         if (rebase_format)
+            _mesa_rebase_rgba_float(width * height, (GLfloat (*)[4]) rgba, rebase_format);
+         if (transferOps)
+            _mesa_apply_rgba_transfer_ops(ctx, transferOps, width * height, rgba);
+      }
+
+      /* If we were lucky and our RGBA conversion matches the dst format, then
+       * we are done.
+       */
+      if (!need_convert)
+         goto done_swap;
+
+      /* Otherwise, we need to convert from RGBA to dst next */
+      src = rgba;
+      src_format = rgba_format;
+      src_stride = rgba_stride;
+   } else {
+      /* No RGBA conversion needed, convert directly to dst */
+      src = map;
+      src_format = rb_format;
+      src_stride = rb_stride;
+   }
+
+   /* Do the conversion.
+    *
+    * If the dst format is Luminance, we need to do the conversion by computing
+    * L=R+G+B values.
+    */
+   if (format != GL_LUMINANCE && format != GL_LUMINANCE_ALPHA) {
+      _mesa_format_convert(dst, dst_format, dst_stride,
+                           src, src_format, src_stride,
+                           width, height,
+                           dst_base_format);
+   } else if (!dst_is_integer) {
+      /* Compute float Luminance values from RGBA float */
+      int luminance_stride = width * sizeof(GL_FLOAT);
+      if (format == GL_LUMINANCE_ALPHA)
+         luminance_stride *= 2;
+      int luminance_bytes = height * luminance_stride;
+      void *luminance = malloc(luminance_bytes);
+      if (!luminance) {
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
+         free(rgba);
+         goto done_unmap;
+      }
+      _mesa_pack_luminance_from_rgba_float(width * height, src,
+                                           luminance, format, transferOps);
+
+      /* Convert from Luminance float to dst (this will hadle type conversion
+       * from float to the type of dst if necessary)
+       */
+      uint32_t luminance_format =
+         _mesa_format_from_format_and_type(format, GL_FLOAT);
+      _mesa_format_convert(dst, dst_format, dst_stride,
+                           luminance, luminance_format, luminance_stride,
+                           width, height, dst_base_format);
+   } else {
+      _mesa_pack_luminance_from_rgba_integer(width * height, src, dst, format);
+   }
+
+   if (rgba)
+      free(rgba);
+
+done_swap:
+   /* Handle byte swapping if required */
+   if (packing->SwapBytes) {
+      int components = _mesa_components_in_format(format);
+      GLint swapSize = _mesa_sizeof_packed_type(type);
+      if (swapSize == 2)
+         _mesa_swap2((GLushort *) dst, width * height * components);
+      else if (swapSize == 4)
+         _mesa_swap4((GLuint *) dst, width * height * components);
+   }
+
+done_unmap:
+   ctx->Driver.UnmapRenderbuffer(ctx, rb);
+   return;
+}
 
    /* Try the optimized paths first. */
    if (!transferOps &&
