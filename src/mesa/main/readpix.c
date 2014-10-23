@@ -565,7 +565,7 @@ read_rgba_pixels( struct gl_context *ctx,
    transferOps = get_readpixels_transfer_ops(ctx, rb->Format, format, type,
                                              GL_FALSE);
 /* --- */
-bool use_master = true;
+bool use_master = false;
 if (use_master) {
    const mesa_format rb_format = _mesa_get_srgb_format_linear(rb->Format);
 
