@@ -323,65 +323,86 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
       dst_array_format.as_uint = dst_format;
    }
 
-   /* Handle the cases where we can directly unpack */
-   if (!(src_format & MESA_ARRAY_FORMAT_BIT)) {
-      if (dst_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
-         for (row = 0; row < height; ++row) {
-            _mesa_unpack_rgba_row(src_format, width,
-                                  src, (float (*)[4])dst);
-            src += src_stride;
-            dst += dst_stride;
+   /* First we see if we can implement the conversion with a direct pack
+    * or unpack.
+    *
+    * In this case we want to be careful with luminance and intensity formats
+    * when the driver does not support them, that is, when the dst base format
+    * is a luminance/intensity format, but the the dst format is not. In these
+    * cases, directly packing/unpacking to the destionation format may
+    * not match the exact semantics required by the luminance/intensity formats.
+    * We want these scenarios handled by _mesa_swizzle_and_convert instead,
+    * which can compute the required swizzle transform considering the base
+    * internal format and the destination format.
+    *
+    * FIXME: maybe other formats have the same problem and we would be better
+    * off simply neglecting direct pack/unpack paths any time that the dst
+    * format and the dat base format are different.
+    */
+   if ((_mesa_get_format_base_format(dst_format) == dst_base_format) ||
+       (dst_base_format != GL_LUMINANCE &&
+         dst_base_format != GL_LUMINANCE_ALPHA &&
+         dst_base_format != GL_INTENSITY)) {
+      /* Handle the cases where we can directly unpack */
+      if (!(src_format & MESA_ARRAY_FORMAT_BIT)) {
+         if (dst_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
+            for (row = 0; row < height; ++row) {
+               _mesa_unpack_rgba_row(src_format, width,
+                                     src, (float (*)[4])dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
+         } else if (dst_array_format.as_uint == RGBA8888_UBYTE.as_uint &&
+                    !_mesa_is_format_integer_color(src_format)) {
+            for (row = 0; row < height; ++row) {
+               _mesa_unpack_ubyte_rgba_row(src_format, width,
+                                           src, (uint8_t (*)[4])dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
+         } else if (dst_array_format.as_uint == RGBA8888_UINT.as_uint &&
+                    _mesa_is_format_integer_color(src_format)) {
+            for (row = 0; row < height; ++row) {
+               _mesa_unpack_uint_rgba_row(src_format, width,
+                                          src, (uint32_t (*)[4])dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
          }
-         return;
-      } else if (dst_array_format.as_uint == RGBA8888_UBYTE.as_uint &&
-                 !_mesa_is_format_integer_color(src_format)) {
-         for (row = 0; row < height; ++row) {
-            _mesa_unpack_ubyte_rgba_row(src_format, width,
-                                        src, (uint8_t (*)[4])dst);
-            src += src_stride;
-            dst += dst_stride;
-         }
-         return;
-      } else if (dst_array_format.as_uint == RGBA8888_UINT.as_uint &&
-                 _mesa_is_format_integer_color(src_format)) {
-         for (row = 0; row < height; ++row) {
-            _mesa_unpack_uint_rgba_row(src_format, width,
-                                       src, (uint32_t (*)[4])dst);
-            src += src_stride;
-            dst += dst_stride;
-         }
-         return;
       }
-   }
 
-   /* Handle the cases where we can directly pack */
-   if (!(dst_format & MESA_ARRAY_FORMAT_BIT)) {
-      if (src_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
-         for (row = 0; row < height; ++row) {
-            _mesa_pack_float_rgba_row(dst_format, width,
-                                      (const float (*)[4])src, dst);
-            src += src_stride;
-            dst += dst_stride;
+      /* Handle the cases where we can directly pack. */
+      if (!(dst_format & MESA_ARRAY_FORMAT_BIT)) {
+         if (src_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
+            for (row = 0; row < height; ++row) {
+               _mesa_pack_float_rgba_row(dst_format, width,
+                                         (const float (*)[4])src, dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
+         } else if (src_array_format.as_uint == RGBA8888_UBYTE.as_uint &&
+                    !_mesa_is_format_integer_color(dst_format)) {
+            for (row = 0; row < height; ++row) {
+               _mesa_pack_ubyte_rgba_row(dst_format, width,
+                                         (const uint8_t (*)[4])src, dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
+         } else if (src_array_format.as_uint == RGBA8888_UINT.as_uint &&
+                    _mesa_is_format_integer_color(dst_format)) {
+            for (row = 0; row < height; ++row) {
+               _mesa_pack_uint_rgba_row(dst_format, width,
+                                        (const uint32_t (*)[4])src, dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
          }
-         return;
-      } else if (src_array_format.as_uint == RGBA8888_UBYTE.as_uint &&
-                 !_mesa_is_format_integer_color(dst_format)) {
-         for (row = 0; row < height; ++row) {
-            _mesa_pack_ubyte_rgba_row(dst_format, width,
-                                      (const uint8_t (*)[4])src, dst);
-            src += src_stride;
-            dst += dst_stride;
-         }
-         return;
-      } else if (src_array_format.as_uint == RGBA8888_UINT.as_uint &&
-                 _mesa_is_format_integer_color(dst_format)) {
-         for (row = 0; row < height; ++row) {
-            _mesa_pack_uint_rgba_row(dst_format, width,
-                                     (const uint32_t (*)[4])src, dst);
-            src += src_stride;
-            dst += dst_stride;
-         }
-         return;
       }
    }
 
