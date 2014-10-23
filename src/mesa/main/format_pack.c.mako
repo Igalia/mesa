@@ -270,7 +270,15 @@ pack_int_${f.short_name()}(const GLint src[4], void *dst)
       %endif
 
       ${channel_datatype(c)} ${c.name} =
-      %if c.type == parser.UNSIGNED:
+      %if not f.is_normalized():
+         %if c.type == parser.FLOAT and c.size == 32:
+            INT_TO_FLOAT(src[${i}]);
+         %elif c.type == parser.FLOAT and c.size == 16:
+            _mesa_float_to_half(INT_TO_FLOAT(src[${i}]));
+         %else:
+            (${channel_datatype(c)}) src[${i}];
+         %endif
+      %elif c.type == parser.UNSIGNED:
          %if f.colorspace == 'srgb' and c.name in 'rgb':
             util_format_linear_to_srgb_8unorm(src[${i}]);
          %else:
@@ -280,9 +288,9 @@ pack_int_${f.short_name()}(const GLint src[4], void *dst)
          CLAMP(src[${i}], 0,  MAX_UINT(${c.size}));
       %elif c.type == parser.FLOAT:
          %if c.size == 32:
-            _mesa_unorm_to_float(src[${i}], 8);
+            _mesa_snorm_to_float(src[${i}], 8);
          %elif c.size == 16:
-            _mesa_unorm_to_half(src[${i}], 8);
+            _mesa_snorm_to_half(src[${i}], 8);
          %else:
             <% assert False %>
          %endif
