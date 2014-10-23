@@ -76,6 +76,13 @@ _mesa_unpack_color_span_float(struct gl_context *ctx,
                               GLbitfield transferOps);
 
 extern void
+_mesa_unpack_color_span_uint(struct gl_context *ctx,
+                             GLuint n, GLenum dstFormat, GLuint *dest,
+                             GLenum srcFormat, GLenum srcType,
+                             const GLvoid *source,
+                             const struct gl_pixelstore_attrib *srcPacking);
+
+extern void
 _mesa_unpack_index_span(struct gl_context *ctx, GLuint n,
                         GLenum dstType, GLvoid *dest,
                         GLenum srcType, const GLvoid *source,
