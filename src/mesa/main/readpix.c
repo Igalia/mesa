@@ -39,6 +39,7 @@
 #include "state.h"
 #include "glformats.h"
 #include "fbobject.h"
+#include "format_utils.h"
 
 
 /**
@@ -563,6 +564,57 @@ read_rgba_pixels( struct gl_context *ctx,
 
    transferOps = get_readpixels_transfer_ops(ctx, rb->Format, format, type,
                                              GL_FALSE);
+/* --- */
+bool use_master = true;
+if (use_master) {
+   const mesa_format rb_format = _mesa_get_srgb_format_linear(rb->Format);
+
+/*
+   GLboolean dst_is_integer = _mesa_is_enum_format_integer(format);
+   GLboolean dst_is_uint = _mesa_is_format_unsigned(rb_format);
+*/
+   uint32_t dst_format = _mesa_format_from_format_and_type(format, type);
+   int dst_stride = _mesa_image_row_stride(packing, width, format, type);
+   GLubyte *dst = (GLubyte *) _mesa_image_address2d(packing, pixels, width, height,
+                                           format, type, 0, 0);
+
+   GLubyte *map;
+   int rb_stride;
+   ctx->Driver.MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
+                               &map, &rb_stride);
+   if (!map) {
+      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
+      return;
+   }
+
+   _mesa_format_convert(dst, dst_format, dst_stride,
+                        map, rb_format, rb_stride,
+                        width, height, format);
+/*
+      if (dst_is_integer) {
+          _mesa_unpack_uint_rgba_row(rbFormat, width, map, (GLuint (*)[4]) rgba);
+          _mesa_rebase_rgba_uint(width, (GLuint (*)[4]) rgba,
+                                 rb->_BaseFormat);
+         if (dst_is_uint) {
+            _mesa_pack_rgba_span_from_uints(ctx, width, (GLuint (*)[4]) rgba, format,
+                                            type, dst);
+         } else {
+            _mesa_pack_rgba_span_from_ints(ctx, width, (GLint (*)[4]) rgba, format,
+                                           type, dst);
+         }
+      } else {
+         _mesa_unpack_rgba_row(rbFormat, width, map, (GLfloat (*)[4]) rgba);
+         _mesa_rebase_rgba_float(width, (GLfloat (*)[4]) rgba,
+                                 rb->_BaseFormat);
+         _mesa_pack_rgba_span_float(ctx, width, (GLfloat (*)[4]) rgba, format,
+                                    type, dst, packing, transferOps);
+      }
+*/
+
+   ctx->Driver.UnmapRenderbuffer(ctx, rb);
+   return;
+}
+/* --- */
 
    /* Try the optimized paths first. */
    if (!transferOps &&
