@@ -3123,63 +3123,36 @@ _mesa_unpack_color_span_float( struct gl_context *ctx,
       get_component_indexes(dstFormat,
                             &rDst, &gDst, &bDst, &aDst, &lDst, &iDst);
 
+      /* sanity check for luminance and intensity components */
+      assert (lDst < 0 || (iDst == 0 && dstComponents == 1));
+      assert (iDst < 0 || lDst == 0);
+
       /* Now pack results in the requested dstFormat */
-      if (rDst >= 0) {
-         GLfloat *dst = dest;
-         GLuint i;
-         for (i = 0; i < n; i++) {
+      GLfloat *dst = dest;
+      GLuint i;
+      for (i = 0; i < n; i++) {
+         if (rDst >= 0) {
             dst[rDst] = rgba[i][RCOMP];
-            dst += dstComponents;
          }
-      }
 
-      if (gDst >= 0) {
-         GLfloat *dst = dest;
-         GLuint i;
-         for (i = 0; i < n; i++) {
+         if (gDst >= 0) {
             dst[gDst] = rgba[i][GCOMP];
-            dst += dstComponents;
          }
-      }
 
-      if (bDst >= 0) {
-         GLfloat *dst = dest;
-         GLuint i;
-         for (i = 0; i < n; i++) {
+         if (bDst >= 0) {
             dst[bDst] = rgba[i][BCOMP];
-            dst += dstComponents;
          }
-      }
 
-      if (aDst >= 0) {
-         GLfloat *dst = dest;
-         GLuint i;
-         for (i = 0; i < n; i++) {
+         if (aDst >= 0) {
             dst[aDst] = rgba[i][ACOMP];
-            dst += dstComponents;
          }
-      }
 
-      if (iDst >= 0) {
-         GLfloat *dst = dest;
-         GLuint i;
-         assert(iDst == 0);
-         assert(dstComponents == 1);
-         for (i = 0; i < n; i++) {
-            /* Intensity comes from red channel */
-            dst[i] = rgba[i][RCOMP];
-         }
-      }
-
-      if (lDst >= 0) {
-         GLfloat *dst = dest;
-         GLuint i;
-         assert(lDst == 0);
-         for (i = 0; i < n; i++) {
-            /* Luminance comes from red channel */
+         /* Intensity and luminance come from red channel */
+         if (iDst >= 0 || lDst >= 0) {
             dst[0] = rgba[i][RCOMP];
-            dst += dstComponents;
          }
+
+         dst += dstComponents;
       }
 
       free(rgba);
