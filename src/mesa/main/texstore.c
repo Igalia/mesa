@@ -1714,6 +1714,18 @@ texstore_rgba(TEXSTORE_PARAMS)
 {
 bool use_master_convert = true;
 if (use_master_convert) {
+   /* We have to handle MESA_FORMAT_YCBCR manually because it is a special case
+    * and _mesa_format_convert does not support it. In this case the we only
+    * allow conversions between YCBCR formats and it is mostly a memcpy.
+    */
+   if (dstFormat == MESA_FORMAT_YCBCR || dstFormat == MESA_FORMAT_YCBCR_REV) {
+      return _mesa_texstore_ycbcr(ctx, dims, baseInternalFormat,
+                                  dstFormat, dstRowStride, dstSlices,
+                                  srcWidth, srcHeight, srcDepth,
+                                  srcFormat, srcType, srcAddr,
+                                  srcPacking);
+   }
+
    /* We have to deal with GL_COLOR_INDEX manually because
     * _mesa_format_convert does not handle this format. So what we do here is
     * convert it to RGBA ubyte first and then convert from that to dst as usual.
