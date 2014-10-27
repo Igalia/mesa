@@ -45,7 +45,8 @@
 #include "texgetimage.h"
 #include "teximage.h"
 #include "texstore.h"
-
+#include "format_utils.h"
+#include "pixeltransfer.h"
 
 
 /**
@@ -380,20 +381,10 @@ get_tex_rgba_uncompressed(struct gl_context *ctx, GLuint dimensions,
    GLenum rebaseFormat = GL_NONE;
    GLuint height = texImage->Height;
    GLuint depth = texImage->Depth;
-   GLuint img, row;
-   GLfloat (*rgba)[4];
-   GLuint (*rgba_uint)[4];
-   GLboolean tex_is_integer = _mesa_is_format_integer_color(texImage->TexFormat);
-   GLboolean tex_is_uint = _mesa_is_format_unsigned(texImage->TexFormat);
+   GLuint img;
    GLenum texBaseFormat = _mesa_get_format_base_format(texImage->TexFormat);
 
-   /* Allocate buffer for one row of texels */
-   rgba = malloc(4 * width * sizeof(GLfloat));
-   rgba_uint = (GLuint (*)[4]) rgba;
-   if (!rgba) {
-      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glGetTexImage()");
-      return;
-   }
+   assert (depth <= 1 || dimensions > 2);
 
    if (texImage->TexObject->Target == GL_TEXTURE_1D_ARRAY) {
       depth = height;
@@ -413,9 +404,7 @@ get_tex_rgba_uncompressed(struct gl_context *ctx, GLuint dimensions,
              texImage->_BaseFormat == GL_RGB ||
              texImage->_BaseFormat == GL_RG) &&
             (destBaseFormat == GL_LUMINANCE ||
-             destBaseFormat == GL_LUMINANCE_ALPHA ||
-             destBaseFormat == GL_LUMINANCE_INTEGER_EXT ||
-             destBaseFormat == GL_LUMINANCE_ALPHA_INTEGER_EXT)) {
+             destBaseFormat == GL_LUMINANCE_ALPHA)) {
       /* If we're reading back an RGB(A) texture as luminance then we need
        * to return L=tex(R).  Note, that's different from glReadPixels which
        * returns L=R+G+B.
@@ -467,6 +456,22 @@ get_tex_rgba_uncompressed(struct gl_context *ctx, GLuint dimensions,
       }
    }
 
+   /* Describe the dst format */
+   GLboolean dst_is_integer = _mesa_is_enum_format_integer(format);
+   uint32_t dst_format = _mesa_format_from_format_and_type(format, type);
+   int dst_stride = _mesa_image_row_stride(&ctx->Pack, width, format, type);
+
+   /* Since _mesa_format_convert does not handle transferOps we need to handle
+    * them before we call the function. This requires to convert to RGBA float
+    * first so we can call _mesa_apply_rgba_transfer_ops. If the dst format is
+    * integer we can ignore transferOps.
+    *
+    * Some source formats (Luminance) will also require to be rebased to obtain
+    * the expected results and this also requires to convert to RGBA first.
+    */
+   assert(!transferOps || (transferOps && !dst_is_integer));
+   bool needs_rgba = (transferOps || rebaseFormat != GL_NONE);
+
    for (img = 0; img < depth; img++) {
       GLubyte *srcMap;
       GLint rowstride;
@@ -475,46 +480,105 @@ get_tex_rgba_uncompressed(struct gl_context *ctx, GLuint dimensions,
       ctx->Driver.MapTextureImage(ctx, texImage, img,
                                   0, 0, width, height, GL_MAP_READ_BIT,
                                   &srcMap, &rowstride);
-      if (srcMap) {
-         for (row = 0; row < height; row++) {
-            const GLubyte *src = srcMap + row * rowstride;
-            void *dest = _mesa_image_address(dimensions, &ctx->Pack, pixels,
-                                             width, height, format, type,
-                                             img, row, 0);
-
-	    if (tex_is_integer) {
-	       _mesa_unpack_uint_rgba_row(texFormat, width, src, rgba_uint);
-               if (rebaseFormat)
-                  _mesa_rebase_rgba_uint(width, rgba_uint, rebaseFormat);
-               if (tex_is_uint) {
-                  _mesa_pack_rgba_span_from_uints(ctx, width,
-                                                  (GLuint (*)[4]) rgba_uint,
-                                                  format, type, dest);
-               } else {
-                  _mesa_pack_rgba_span_from_ints(ctx, width,
-                                                 (GLint (*)[4]) rgba_uint,
-                                                 format, type, dest);
-               }
-	    } else {
-	       _mesa_unpack_rgba_row(texFormat, width, src, rgba);
-               if (rebaseFormat)
-                  _mesa_rebase_rgba_float(width, rgba, rebaseFormat);
-	       _mesa_pack_rgba_span_float(ctx, width, (GLfloat (*)[4]) rgba,
-					  format, type, dest,
-					  &ctx->Pack, transferOps);
-	    }
-	 }
-
-         /* Unmap the src texture buffer */
-         ctx->Driver.UnmapTextureImage(ctx, texImage, img);
-      }
-      else {
+      if (!srcMap) {
          _mesa_error(ctx, GL_OUT_OF_MEMORY, "glGetTexImage");
-         break;
+         return;
       }
-   }
 
-   free(rgba);
+      GLubyte *img_src = srcMap;
+      void *dest = _mesa_image_address(dimensions, &ctx->Pack, pixels,
+                                       width, height, format, type,
+                                       img, 0, 0);
+
+      void *rgba = NULL;
+      void *src;
+      int src_stride;
+      uint32_t src_format;
+      if (needs_rgba) {
+         uint32_t rgba_format;
+         int rgba_stride;
+
+         /* Convert to RGBA float or (u)int depending on the type of the dst */
+         if (dst_is_integer) {
+            /* To avoid losing information because of clamping when converting
+             * from source to RGBA, check if source's format is signed or not.
+             */
+            GLboolean src_is_uint = _mesa_is_format_unsigned(texImage->TexFormat);
+
+            if (src_is_uint) {
+               rgba_format = RGBA8888_UINT.as_uint;
+               rgba_stride = width * 4 * sizeof(GLuint);
+            } else {
+               rgba_format = RGBA8888_INT.as_uint;
+               rgba_stride = width * 4 * sizeof(GLint);
+            }
+         } else {
+            rgba_format = RGBA8888_FLOAT.as_uint;
+            rgba_stride = width * 4 * sizeof(GLfloat);
+         }
+
+         /* If we are lucky and the dst format matches the RGBA format we need to
+          * convert to, then we can convert directly into the dst buffer and avoid
+          * the final conversion/copy from the rgba buffer to the dst buffer.
+          */
+         bool need_convert;
+         if (format == rgba_format) {
+            need_convert = false;
+            rgba = dest;
+         } else {
+            need_convert = true;
+            rgba = malloc(height * rgba_stride);
+            if (!rgba) {
+               _mesa_error(ctx, GL_OUT_OF_MEMORY, "glGetTexImage()");
+               ctx->Driver.UnmapTextureImage(ctx, texImage, img);
+               return;
+            }
+         }
+
+         /* Convert to RGBA now */
+         _mesa_format_convert(rgba, rgba_format, rgba_stride,
+                              img_src, texFormat, rowstride,
+                              width, height, GL_RGBA);
+
+         /* Rebase and handle transfer ops as necessary */
+         if (dst_is_integer) {
+            _mesa_rebase_rgba_uint(width * height, (GLuint (*)[4]) rgba, rebaseFormat);
+         } else {
+            _mesa_rebase_rgba_float(width * height, (GLfloat (*)[4]) rgba, rebaseFormat);
+            if (transferOps)
+               _mesa_apply_rgba_transfer_ops(ctx, transferOps, width * height, rgba);
+         }
+
+         /* If we were lucky and our RGBA conversion matches the dst format, then
+          * we are done.
+          */
+         if (!need_convert)
+            goto done;
+
+         /* Otherwise, we need to convert from RGBA to dst next */
+         src = rgba;
+         src_format = rgba_format;
+         src_stride = rgba_stride;
+      } else {
+         /* No RGBA conversion needed, convert directly to dst */
+         src = img_src;
+         src_format = texFormat;
+         src_stride = rowstride;
+      }
+
+      /* Do the conversion to destination format */
+      _mesa_format_convert(dest, dst_format, dst_stride,
+                           src, src_format, src_stride,
+                           width, height,
+                           _mesa_get_format_base_format(dst_format));
+
+      if (rgba)
+         free(rgba);
+
+   done:
+      /* Unmap the src texture buffer */
+      ctx->Driver.UnmapTextureImage(ctx, texImage, img);
+   }
 }
 
 
