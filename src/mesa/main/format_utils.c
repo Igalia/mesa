@@ -24,6 +24,7 @@
 
 #include "format_utils.h"
 #include "glformats.h"
+#include "macros.h"
 
 static const uint8_t map_identity[7] = { 0, 1, 2, 3, 4, 5, 6 };
 static const uint8_t map_3210[7] = { 3, 2, 1, 0, 4, 5, 6 };
@@ -593,28 +594,28 @@ convert_ubyte(void *void_dst, int num_dst_channels,
       if (normalized) {
          SWIZZLE_CONVERT(uint8_t, uint16_t, unorm_to_unorm(src, 16, 8));
       } else {
-         SWIZZLE_CONVERT(uint8_t, uint16_t, src);
+         SWIZZLE_CONVERT(uint8_t, uint16_t, MIN2(src, 0xff));
       }
       break;
    case GL_SHORT:
       if (normalized) {
          SWIZZLE_CONVERT(uint8_t, int16_t, snorm_to_unorm(src, 16, 8));
       } else {
-         SWIZZLE_CONVERT(uint8_t, int16_t, (src < 0) ? 0 : src);
+         SWIZZLE_CONVERT(uint8_t, int16_t, CLAMP(src, 0, 0xff));
       }
       break;
    case GL_UNSIGNED_INT:
       if (normalized) {
          SWIZZLE_CONVERT(uint8_t, uint32_t, unorm_to_unorm(src, 32, 8));
       } else {
-         SWIZZLE_CONVERT(uint8_t, uint32_t, src);
+         SWIZZLE_CONVERT(uint8_t, uint32_t, MIN2(src, 0xff));
       }
       break;
    case GL_INT:
       if (normalized) {
          SWIZZLE_CONVERT(uint8_t, int32_t, snorm_to_unorm(src, 32, 8));
       } else {
-         SWIZZLE_CONVERT(uint8_t, int32_t, (src < 0) ? 0 : src);
+         SWIZZLE_CONVERT(uint8_t, int32_t, CLAMP(src, 0, 0xff));
       }
       break;
    default:
@@ -649,7 +650,7 @@ convert_byte(void *void_dst, int num_dst_channels,
       if (normalized) {
          SWIZZLE_CONVERT(int8_t, uint8_t, unorm_to_snorm(src, 8, 8));
       } else {
-         SWIZZLE_CONVERT(int8_t, uint8_t, src);
+         SWIZZLE_CONVERT(int8_t, uint8_t, MIN2(src, 0x7f));
       }
       break;
    case GL_BYTE:
@@ -659,28 +660,28 @@ convert_byte(void *void_dst, int num_dst_channels,
       if (normalized) {
          SWIZZLE_CONVERT(int8_t, uint16_t, unorm_to_snorm(src, 16, 8));
       } else {
-         SWIZZLE_CONVERT(int8_t, uint16_t, src);
+         SWIZZLE_CONVERT(int8_t, uint16_t, MIN2(src, 0x7f));
       }
       break;
    case GL_SHORT:
       if (normalized) {
          SWIZZLE_CONVERT(int8_t, int16_t, snorm_to_snorm(src, 16, 8));
       } else {
-         SWIZZLE_CONVERT(int8_t, int16_t, src);
+         SWIZZLE_CONVERT(int8_t, int16_t, CLAMP(src, -0x80, 0x7f));
       }
       break;
    case GL_UNSIGNED_INT:
       if (normalized) {
          SWIZZLE_CONVERT(int8_t, uint32_t, unorm_to_snorm(src, 32, 8));
       } else {
-         SWIZZLE_CONVERT(int8_t, uint32_t, src);
+         SWIZZLE_CONVERT(int8_t, uint32_t, MIN2(src, 0x7f));
       }
       break;
    case GL_INT:
       if (normalized) {
          SWIZZLE_CONVERT(int8_t, int32_t, snorm_to_snorm(src, 32, 8));
       } else {
-         SWIZZLE_CONVERT(int8_t, int32_t, src);
+         SWIZZLE_CONVERT(int8_t, int32_t, CLAMP(src, -0x80, 0x7f));
       }
       break;
    default:
@@ -739,14 +740,14 @@ convert_ushort(void *void_dst, int num_dst_channels,
       if (normalized) {
          SWIZZLE_CONVERT(uint16_t, uint32_t, unorm_to_unorm(src, 32, 16));
       } else {
-         SWIZZLE_CONVERT(uint16_t, uint32_t, src);
+         SWIZZLE_CONVERT(uint16_t, uint32_t, MIN2(src, 0xffff));
       }
       break;
    case GL_INT:
       if (normalized) {
          SWIZZLE_CONVERT(uint16_t, int32_t, snorm_to_unorm(src, 32, 16));
       } else {
-         SWIZZLE_CONVERT(uint16_t, int32_t, (src < 0) ? 0 : src);
+         SWIZZLE_CONVERT(uint16_t, int32_t,  CLAMP(src, 0, 0xffff));
       }
       break;
    default:
@@ -795,7 +796,7 @@ convert_short(void *void_dst, int num_dst_channels,
       if (normalized) {
          SWIZZLE_CONVERT(int16_t, uint16_t, unorm_to_snorm(src, 16, 16));
       } else {
-         SWIZZLE_CONVERT(int16_t, uint16_t, src);
+         SWIZZLE_CONVERT(int16_t, uint16_t, (src < 0) ? 0 : src);
       }
       break;
    case GL_SHORT:
@@ -805,14 +806,14 @@ convert_short(void *void_dst, int num_dst_channels,
       if (normalized) {
          SWIZZLE_CONVERT(int16_t, uint32_t, unorm_to_snorm(src, 32, 16));
       } else {
-         SWIZZLE_CONVERT(int16_t, uint32_t, src);
+         SWIZZLE_CONVERT(int16_t, uint32_t, MIN2(src, 0x7fff));
       }
       break;
    case GL_INT:
       if (normalized) {
          SWIZZLE_CONVERT(int16_t, int32_t, snorm_to_snorm(src, 32, 16));
       } else {
-         SWIZZLE_CONVERT(int16_t, int32_t, src);
+         SWIZZLE_CONVERT(int16_t, int32_t, CLAMP(src, -0x8000, 0x7fff));
       }
       break;
    default:
@@ -891,7 +892,7 @@ convert_int(void *void_dst, int num_dst_channels,
             const void *void_src, GLenum src_type, int num_src_channels,
             const uint8_t swizzle[4], bool normalized, int count)
 {
-   const int32_t one = normalized ? INT32_MAX : 12;
+   const int32_t one = normalized ? INT32_MAX : 1;
 
    switch (src_type) {
    case GL_FLOAT:
@@ -940,7 +941,7 @@ convert_int(void *void_dst, int num_dst_channels,
       if (normalized) {
          SWIZZLE_CONVERT(int32_t, uint32_t, unorm_to_snorm(src, 32, 32));
       } else {
-         SWIZZLE_CONVERT(int32_t, uint32_t, src);
+         SWIZZLE_CONVERT(int32_t, uint32_t, MIN2(src, 0x7fffffff));
       }
       break;
    case GL_INT:
