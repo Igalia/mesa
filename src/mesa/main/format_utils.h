@@ -33,6 +33,10 @@
 
 #include "imports.h"
 
+extern mesa_array_format RGBA8888_FLOAT;
+extern mesa_array_format RGBA8888_UBYTE;
+extern mesa_array_format RGBA8888_UINT;
+
 /* Only guaranteed to work for BITS <= 32 */
 #define MAX_UINT(BITS) ((BITS) == 32 ? UINT32_MAX : ((1u << (BITS)) - 1))
 #define MAX_INT(BITS) ((int)MAX_UINT((BITS) - 1))
