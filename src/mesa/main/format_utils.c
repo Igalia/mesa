@@ -360,7 +360,8 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
             }
             return;
          } else if (dst_array_format.as_uint == RGBA8888_UINT.as_uint &&
-                    _mesa_is_format_integer_color(src_format)) {
+                    _mesa_is_format_integer_color(src_format) &&
+                    _mesa_is_format_unsigned(src_format)) {
             for (row = 0; row < height; ++row) {
                _mesa_unpack_uint_rgba_row(src_format, width,
                                           src, (uint32_t (*)[4])dst);
