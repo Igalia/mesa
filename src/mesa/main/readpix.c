@@ -598,12 +598,22 @@ if (use_master) {
     *
     * Some source formats (Luminance) will also require to be rebased to obtain
     * the expected results and this also requires to convert to RGBA first.
+    *
+    * Converting to luminance may require specific handling for many formats,
+    * so in these cases we also transform to RGBA first. This way we only need
+    * to implement such semantics for RGBA->luminance conversions.
+    *
+    * FIXME: When we have dst luminance format, maybe we can avoid the RGBA
+    * conversion for some src formats. I think we can probably skip it for src
+    * formats that have a single component.
     */
    assert(!transferOps || (transferOps && !dst_is_integer));
-   bool rb_is_luminance = rb->_BaseFormat == GL_INTENSITY ||
-                          rb->_BaseFormat == GL_LUMINANCE ||
-                          rb->_BaseFormat == GL_LUMINANCE_ALPHA;
-   bool needs_rgba = transferOps || rb_is_luminance;
+   bool rb_is_luminance_or_intensity = rb->_BaseFormat == GL_INTENSITY ||
+                                       rb->_BaseFormat == GL_LUMINANCE ||
+                                       rb->_BaseFormat == GL_LUMINANCE_ALPHA;
+   bool dst_is_luminance = format == GL_LUMINANCE ||
+                           format == GL_LUMINANCE_ALPHA;
+   bool needs_rgba = transferOps || rb_is_luminance_or_intensity || dst_is_luminance;
 
    void *rgba = NULL;
    void *src;
@@ -669,10 +679,22 @@ if (use_master) {
       src_stride = rb_stride;
    }
 
-   _mesa_format_convert(dst, dst_format, dst_stride,
-                        src, src_format, src_stride,
-                        width, height,
-                        _mesa_get_format_base_format(dst_mesa_format));
+   /* Do the conversion. If the dst format is Luminance, we have converted
+    * src to RGBA above and we can now use an ad-hoc conversion for
+    * RGBA->Luminance.
+    */
+   if (!dst_is_luminance) {
+      _mesa_format_convert(dst, dst_format, dst_stride,
+                           src, src_format, src_stride,
+                           width, height,
+                           _mesa_get_format_base_format(dst_mesa_format));
+   } else if (!dst_is_integer) {
+      _mesa_pack_luminance_from_rgba_float(width * height, src,
+                                           dst, format, transferOps);
+   } else {
+      _mesa_pack_luminance_from_rgba_uint(width * height, src,
+                                          dst, format, transferOps);
+   }
 
    if (rgba)
       free(rgba);
