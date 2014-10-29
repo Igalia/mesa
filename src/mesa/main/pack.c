@@ -4334,4 +4334,67 @@ _mesa_rebase_rgba_uint(GLuint n, GLuint rgba[][4], GLenum baseFormat)
    }
 }
 
+void
+_mesa_pack_luminance_from_rgba_float(GLuint n, GLfloat rgba[][4],
+                                     GLvoid *dstAddr, GLenum dst_format,
+                                     GLbitfield transferOps)
+{
+   int i;
+   GLfloat *dst = (GLfloat *) dstAddr;
+
+   switch (dst_format) {
+   case GL_LUMINANCE:
+      if (transferOps & IMAGE_CLAMP_BIT) {
+         for (i = 0; i < n; i++) {
+            GLfloat sum = rgba[i][RCOMP] + rgba[i][GCOMP] + rgba[i][BCOMP];
+            dst[i] = CLAMP(sum, 0.0F, 1.0F);
+         }
+      } else {
+         for (i = 0; i < n; i++) {
+            dst[i] = rgba[i][RCOMP] + rgba[i][GCOMP] + rgba[i][BCOMP];
+         }
+      }
+      return;
+   case GL_LUMINANCE_ALPHA:
+      if (transferOps & IMAGE_CLAMP_BIT) {
+         for (i = 0; i < n; i++) {
+            GLfloat sum = rgba[i][RCOMP] + rgba[i][GCOMP] + rgba[i][BCOMP];
+            dst[2*i] = CLAMP(sum, 0.0F, 1.0F);
+            dst[2*i+1] = rgba[i][ACOMP];
+         }
+      } else {
+         for (i = 0; i < n; i++) {
+            dst[2*i] = rgba[i][RCOMP] + rgba[i][GCOMP] + rgba[i][BCOMP];
+            dst[2*i+1] = rgba[i][ACOMP];
+         }
+      }
+      return;
+   default:
+      assert(!"Unsupported format");
+   }
+}
+
+void
+_mesa_pack_luminance_from_rgba_integer(GLuint n, GLuint rgba[][4],
+                                       GLvoid *dstAddr, GLenum dst_format)
+{
+   int i;
+   GLuint *dst = (GLuint *) dstAddr;
+
+   switch (dst_format) {
+   case GL_LUMINANCE:
+      for (i = 0; i < n; i++) {
+         dst[i] = rgba[i][RCOMP] + rgba[i][GCOMP] + rgba[i][BCOMP];
+      }
+      return;
+   case GL_LUMINANCE_ALPHA:
+      for (i = 0; i < n; i++) {
+         dst[2*i] = rgba[i][RCOMP] + rgba[i][GCOMP] + rgba[i][BCOMP];
+         dst[2*i+1] = rgba[i][ACOMP];
+      }
+      return;
+   default:
+      assert(!"Unsupported format");
+   }
+}
 
