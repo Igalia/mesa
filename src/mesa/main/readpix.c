@@ -644,7 +644,7 @@ if (use_master) {
          rgba = malloc(height * rgba_stride);
          if (!rgba) {
             _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
-            goto done;
+            goto done_unmap;
          }
       }
 
@@ -666,7 +666,7 @@ if (use_master) {
        * we are done.
        */
       if (!need_convert)
-         goto done;
+         goto done_swap;
 
       /* Otherwise, we need to convert from RGBA to dst next */
       src = rgba;
@@ -720,7 +720,18 @@ if (use_master) {
    if (rgba)
       free(rgba);
 
-done:
+done_swap:
+   /* Handle byte swapping if required */
+   if (packing->SwapBytes) {
+      int components = _mesa_components_in_format(format);
+      GLint swapSize = _mesa_sizeof_packed_type(type);
+      if (swapSize == 2)
+         _mesa_swap2((GLushort *) dst, width * height * components);
+      else if (swapSize == 4)
+         _mesa_swap4((GLuint *) dst, width * height * components);
+   }
+
+done_unmap:
    ctx->Driver.UnmapRenderbuffer(ctx, rb);
    return;
 }
