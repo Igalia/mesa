@@ -155,4 +155,14 @@ _mesa_rebase_rgba_float(GLuint n, GLfloat rgba[][4], GLenum baseFormat);
 extern void
 _mesa_rebase_rgba_uint(GLuint n, GLuint rgba[][4], GLenum baseFormat);
 
+extern void
+_mesa_pack_luminance_from_rgba_float(GLuint n, GLfloat rgba[][4],
+                                     GLvoid *dstAddr, GLenum dst_format,
+                                     GLbitfield transferOps);
+
+extern void
+_mesa_pack_luminance_from_rgba_uint(GLuint n, GLuint rgba[][4],
+                                    GLvoid *dstAddr, GLenum dst_format,
+                                    GLbitfield transferOps);
+
 #endif
