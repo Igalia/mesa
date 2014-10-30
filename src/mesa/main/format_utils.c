@@ -53,6 +53,14 @@ mesa_array_format RGBA8888_UINT = {{
    0, 1
 }};
 
+mesa_array_format RGBA8888_INT = {{
+   MESA_ARRAY_FORMAT_TYPE_INT,
+   0,
+   4,
+   0, 1, 2, 3,
+   0, 1
+}};
+
 static void
 invert_swizzle(uint8_t dst[4], const uint8_t src[4])
 {
