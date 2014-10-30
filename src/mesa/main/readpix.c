@@ -571,11 +571,6 @@ if (use_master) {
    GLboolean dst_is_integer = _mesa_is_enum_format_integer(format);
    int dst_stride = _mesa_image_row_stride(packing, width, format, type);
    uint32_t dst_format = _mesa_format_from_format_and_type(format, type);
-   mesa_format dst_mesa_format;
-   if (dst_format & MESA_ARRAY_FORMAT_BIT)
-      dst_mesa_format = _mesa_format_from_array_format(dst_format);
-   else
-      dst_mesa_format = dst_format;
    GLubyte *dst = (GLubyte *)
       _mesa_image_address2d(packing, pixels, width, height,
                             format, type, 0, 0);
@@ -687,7 +682,7 @@ if (use_master) {
       _mesa_format_convert(dst, dst_format, dst_stride,
                            src, src_format, src_stride,
                            width, height,
-                           _mesa_get_format_base_format(dst_mesa_format));
+                           _mesa_get_format_base_format(dst_format));
    } else if (!dst_is_integer) {
       /* Compute float Luminance values from RGBA float */
       int luminance_stride = width * sizeof(GL_FLOAT);
