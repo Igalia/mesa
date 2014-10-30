@@ -33,10 +33,16 @@ struct gl_context;
 struct gl_pixelstore_attrib;
 
 extern void
-_mesa_swap2( GLushort *p, GLuint n );
+_mesa_swap2_copy( GLushort *dst, GLushort *src, GLuint n );
 
 extern void
-_mesa_swap4( GLuint *p, GLuint n );
+_mesa_swap4_copy( GLuint *dst, GLuint *src, GLuint n );
+
+static inline void
+_mesa_swap2( GLushort *p, GLuint n ) { _mesa_swap2_copy(p, p, n); }
+
+static inline void
+_mesa_swap4( GLuint *p, GLuint n ) { _mesa_swap4_copy(p, p, n); }
 
 extern GLintptr
 _mesa_image_offset( GLuint dimensions,
