@@ -341,12 +341,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
     * this path in these scenarios but in the future we may want to enable
     * it for specific combinations that are known to work.
     */
-   mesa_format dst_mesa_format;
-   if (dst_format & MESA_ARRAY_FORMAT_BIT)
-      dst_mesa_format = _mesa_format_from_array_format(dst_format);
-   else
-      dst_mesa_format = dst_format;
-   if (_mesa_get_format_base_format(dst_mesa_format) == dst_internal_format) {
+   if (_mesa_get_format_base_format(dst_format) == dst_internal_format) {
       /* Handle the cases where we can directly unpack */
       if (!(src_format & MESA_ARRAY_FORMAT_BIT)) {
          if (dst_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
@@ -447,7 +442,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
        * by computing the swizzle transform src->rgba->base->rgba->dst instead
        * of src->rgba->dst.
        */
-      if (dst_internal_format != _mesa_get_format_base_format(dst_mesa_format)) {
+      if (dst_internal_format != _mesa_get_format_base_format(dst_format)) {
          /* Compute src2rgba as src->rgba->base->rgba */
          GLubyte rgba2base[4], base2rgba[4];
          _mesa_compute_component_mapping(GL_RGBA, dst_internal_format, rgba2base);
@@ -591,8 +586,7 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
              */
             GLubyte rgba2base[4], base2rgba[4], map[4];
             bool need_convert = false;
-            if (dst_internal_format !=
-                _mesa_get_format_base_format(dst_mesa_format)) {
+            if (dst_internal_format != _mesa_get_format_base_format(dst_format)) {
                _mesa_compute_component_mapping(GL_RGBA, dst_internal_format,
                                                base2rgba);
                _mesa_compute_component_mapping(dst_internal_format, GL_RGBA,
