@@ -4334,6 +4334,75 @@ _mesa_rebase_rgba_uint(GLuint n, GLuint rgba[][4], GLenum baseFormat)
    }
 }
 
+GLenum
+_mesa_get_rebase_format_for_color_read_back(GLenum src_internal_base_format,
+                                            GLenum src_base_format,
+                                            GLenum dst_base_format)
+{
+   if (src_internal_base_format == GL_LUMINANCE ||
+       src_internal_base_format == GL_INTENSITY ||
+       src_internal_base_format == GL_LUMINANCE_ALPHA) {
+      /* If luminance (or intensity) is read back as RGB(A), the returned value
+       * should be (L,0,0,1), not (L,L,L,1), so we need to rebase.
+       */
+      return src_internal_base_format;
+   } else if ((src_internal_base_format == GL_RGB ||
+               src_internal_base_format == GL_RG) &&
+              (dst_base_format == GL_LUMINANCE ||
+               dst_base_format == GL_LUMINANCE_ALPHA)) {
+      /* If RG(B) is read as luminance we want to have (R,G,B,1) or (R,G,0,1),
+       * RGBA values, so we need a rebase.
+       */
+      return src_internal_base_format;
+   } else if (src_internal_base_format != src_base_format) {
+      /* If the internal format and the real format differ we can't rely
+       * on the convert functions setting the correct constant values
+       * (e.g. reading back GL_RGB8 which is actually RGBA won't set alpha=1),
+       * so we will have to rebase in certain cases.
+       */
+      switch (src_internal_base_format) {
+      case GL_RED:
+         if ((src_base_format == GL_RGBA ||
+              src_base_format == GL_RGB ||
+              src_base_format == GL_RG) &&
+             (dst_base_format == GL_RGBA ||
+              dst_base_format == GL_RGB ||
+              dst_base_format == GL_RG ||
+              dst_base_format == GL_GREEN)) {
+            return src_internal_base_format;
+            break;
+         }
+         /* fall through */
+      case GL_RG:
+         if ((src_base_format == GL_RGBA ||
+              src_base_format == GL_RGB) &&
+             (dst_base_format == GL_RGBA ||
+              dst_base_format == GL_RGB ||
+              dst_base_format == GL_BLUE)) {
+            return src_internal_base_format;
+            break;
+         }
+         /* fall through */
+      case GL_RGB:
+         if (src_base_format == GL_RGBA &&
+             (dst_base_format == GL_RGBA ||
+              dst_base_format == GL_ALPHA ||
+              dst_base_format == GL_LUMINANCE_ALPHA)) {
+             return src_internal_base_format;
+         }
+         break;
+      case GL_ALPHA:
+         if (dst_base_format != GL_ALPHA) {
+            return src_internal_base_format;
+         }
+         break;
+      }
+   }
+
+   /* No rebase needed */
+   return GL_NONE;
+}
+
 void
 _mesa_pack_luminance_from_rgba_float(GLuint n, GLfloat rgba[][4],
                                      GLvoid *dstAddr, GLenum dst_format,
