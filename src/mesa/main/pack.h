@@ -155,6 +155,11 @@ _mesa_rebase_rgba_float(GLuint n, GLfloat rgba[][4], GLenum baseFormat);
 extern void
 _mesa_rebase_rgba_uint(GLuint n, GLuint rgba[][4], GLenum baseFormat);
 
+extern GLenum
+_mesa_get_rebase_format_for_color_read_back(GLenum src_internal_base_format,
+                                            GLenum src_base_format,
+                                            GLenum dst_base_format);
+
 extern void
 _mesa_pack_luminance_from_rgba_float(GLuint n, GLfloat rgba[][4],
                                      GLvoid *dstAddr, GLenum dst_format,
