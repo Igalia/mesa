@@ -391,69 +391,21 @@ get_tex_rgba_uncompressed(struct gl_context *ctx, GLuint dimensions,
       height = 1;
    }
 
-   if (texImage->_BaseFormat == GL_LUMINANCE ||
-       texImage->_BaseFormat == GL_INTENSITY ||
-       texImage->_BaseFormat == GL_LUMINANCE_ALPHA) {
-      /* If a luminance (or intensity) texture is read back as RGB(A), the
-       * returned value should be (L,0,0,1), not (L,L,L,1).  Set rebaseFormat
-       * here to get G=B=0.
-       */
-      rebaseFormat = texImage->_BaseFormat;
-   }
-   else if ((texImage->_BaseFormat == GL_RGBA ||
-             texImage->_BaseFormat == GL_RGB ||
-             texImage->_BaseFormat == GL_RG) &&
-            (destBaseFormat == GL_LUMINANCE ||
-             destBaseFormat == GL_LUMINANCE_ALPHA)) {
+   if ((texImage->_BaseFormat == GL_RGBA ||
+        texImage->_BaseFormat == GL_RGB ||
+        texImage->_BaseFormat == GL_RG) &&
+       (destBaseFormat == GL_LUMINANCE ||
+        destBaseFormat == GL_LUMINANCE_ALPHA)) {
       /* If we're reading back an RGB(A) texture as luminance then we need
        * to return L=tex(R).  Note, that's different from glReadPixels which
        * returns L=R+G+B.
        */
       rebaseFormat = GL_LUMINANCE_ALPHA; /* this covers GL_LUMINANCE too */
-   }
-   else if (texImage->_BaseFormat != texBaseFormat) {
-      /* The internal format and the real format differ, so we can't rely
-       * on the unpack functions setting the correct constant values.
-       * (e.g. reading back GL_RGB8 which is actually RGBA won't set alpha=1)
-       */
-      switch (texImage->_BaseFormat) {
-      case GL_RED:
-         if ((texBaseFormat == GL_RGBA ||
-              texBaseFormat == GL_RGB ||
-              texBaseFormat == GL_RG) &&
-             (destBaseFormat == GL_RGBA ||
-              destBaseFormat == GL_RGB ||
-              destBaseFormat == GL_RG ||
-              destBaseFormat == GL_GREEN)) {
-            rebaseFormat = texImage->_BaseFormat;
-            break;
-         }
-         /* fall through */
-      case GL_RG:
-         if ((texBaseFormat == GL_RGBA ||
-              texBaseFormat == GL_RGB) &&
-             (destBaseFormat == GL_RGBA ||
-              destBaseFormat == GL_RGB ||
-              destBaseFormat == GL_BLUE)) {
-            rebaseFormat = texImage->_BaseFormat;
-            break;
-         }
-         /* fall through */
-      case GL_RGB:
-         if (texBaseFormat == GL_RGBA &&
-             (destBaseFormat == GL_RGBA ||
-              destBaseFormat == GL_ALPHA ||
-              destBaseFormat == GL_LUMINANCE_ALPHA)) {
-            rebaseFormat = texImage->_BaseFormat;
-         }
-         break;
-
-      case GL_ALPHA:
-         if (destBaseFormat != GL_ALPHA) {
-            rebaseFormat = texImage->_BaseFormat;
-         }
-         break;
-      }
+   } else {
+      rebaseFormat =
+         _mesa_get_rebase_format_for_color_read_back(texImage->_BaseFormat,
+                                                     texBaseFormat,
+                                                     destBaseFormat);
    }
 
    /* Describe the dst format */
