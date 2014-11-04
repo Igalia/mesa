@@ -431,6 +431,8 @@ read_rgba_pixels( struct gl_context *ctx,
    int dst_stride = _mesa_image_row_stride(packing, width, format, type);
    uint32_t dst_format = _mesa_format_from_format_and_type(format, type);
    GLenum dst_base_format = _mesa_get_format_base_format(dst_format);
+   bool dst_is_luminance = format == GL_LUMINANCE ||
+                           format == GL_LUMINANCE_ALPHA;
    GLubyte *dst = (GLubyte *)
       _mesa_image_address2d(packing, pixels, width, height,
                             format, type, 0, 0);
@@ -454,68 +456,17 @@ read_rgba_pixels( struct gl_context *ctx,
     *
     * Depending on the base formats involved in the conversion we might need to
     * rebase some values and for that we need to converto to RGBA first too.
+    *
+    * Converting to luminance requires converting to RGBA first, so we can then
+    * compute luminance values as L=R+G+B.
     */
    assert(!transferOps || (transferOps && !dst_is_integer));
-   GLenum rebase_format = GL_NONE;
-   if (rb->_BaseFormat == GL_LUMINANCE ||
-       rb->_BaseFormat == GL_INTENSITY ||
-       rb->_BaseFormat == GL_LUMINANCE_ALPHA) {
-      /* If luminance (or intensity) is read back as RGB(A), the returned value
-       * should be (L,0,0,1), not (L,L,L,1), so we need to rebase.
-       */
-      rebase_format = rb->_BaseFormat;
-   } else if (dst_base_format == GL_LUMINANCE ||
-              dst_base_format == GL_LUMINANCE_ALPHA) {
-      /* If dst is luminance we will convert to RGBA first so we can then
-       * compute luminance values as L=R+G+B. We will need a rebase or not
-       * depending on the base format of the render buffer.
-       */
-      rebase_format = rb->_BaseFormat;
-   } else if (rb->_BaseFormat != rb_base_format) {
-      /* If the internal format and the real format differ we can't rely
-       * on the convert functions setting the correct constant values
-       * (e.g. reading back GL_RGB8 which is actually RGBA won't set alpha=1),
-       * so we will have to rebase in certain cases.
-       */
-      switch (rb->_BaseFormat) {
-      case GL_RED:
-         if ((rb_base_format == GL_RGBA ||
-              rb_base_format == GL_RGB ||
-              rb_base_format == GL_RG) &&
-             (dst_base_format == GL_RGBA ||
-              dst_base_format == GL_RGB ||
-              dst_base_format == GL_RG ||
-              dst_base_format == GL_GREEN)) {
-            rebase_format = rb->_BaseFormat;
-            break;
-         }
-         /* fall through */
-      case GL_RG:
-         if ((rb_base_format == GL_RGBA ||
-              rb_base_format == GL_RGB) &&
-             (dst_base_format == GL_RGBA ||
-              dst_base_format == GL_RGB ||
-              dst_base_format == GL_BLUE)) {
-            rebase_format = rb->_BaseFormat;
-            break;
-         }
-         /* fall through */
-      case GL_RGB:
-         if (rb_base_format == GL_RGBA &&
-             (dst_base_format == GL_RGBA ||
-              dst_base_format == GL_ALPHA)) {
-             rebase_format = rb->_BaseFormat;
-         }
-         break;
-      case GL_ALPHA:
-         if (dst_base_format != GL_ALPHA) {
-            rebase_format = rb->_BaseFormat;
-         }
-         break;
-      }
-   }
+   GLenum rebase_format =
+      _mesa_get_rebase_format_for_color_read_back(rb->_BaseFormat,
+                                                  rb_base_format,
+                                                  dst_base_format);
 
-   bool needs_rgba = transferOps || rebase_format;
+   bool needs_rgba = transferOps || rebase_format || dst_is_luminance;
    void *rgba = NULL;
 
    void *src;
@@ -594,7 +545,7 @@ read_rgba_pixels( struct gl_context *ctx,
     * If the dst format is Luminance, we need to do the conversion by computing
     * L=R+G+B values.
     */
-   if (format != GL_LUMINANCE && format != GL_LUMINANCE_ALPHA) {
+   if (!dst_is_luminance) {
       _mesa_format_convert(dst, dst_format, dst_stride,
                            src, src_format, src_stride,
                            width, height,
