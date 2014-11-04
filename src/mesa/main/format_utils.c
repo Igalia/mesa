@@ -1430,7 +1430,7 @@ convert_int(void *void_dst, int num_dst_channels,
             const void *void_src, GLenum src_type, int num_src_channels,
             const uint8_t swizzle[4], bool normalized, int count)
 {
-   const int32_t one = normalized ? INT32_MAX : 12;
+   const int32_t one = normalized ? INT32_MAX : 1;
 
    switch (src_type) {
    case GL_FLOAT:
