@@ -62,6 +62,12 @@ mesa_array_format RGBA8888_INT = {{
 }};
 
 static void
+_mesa_swizzle_and_convert_clamp(void *void_dst, GLenum dst_type, int num_dst_channels,
+                                const void *void_src, GLenum src_type, int num_src_channels,
+                                const uint8_t swizzle[4], bool normalized, int count);
+
+
+static void
 invert_swizzle(uint8_t dst[4], const uint8_t src[4])
 {
    int i, j;
@@ -305,6 +311,19 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
                      void *void_src, uint32_t src_format, size_t src_stride,
                      size_t width, size_t height, GLenum dst_internal_format)
 {
+   _mesa_format_convert_clamp(void_dst, dst_format, dst_stride,
+                              void_src, src_format, src_stride,
+                              width, height, dst_internal_format,
+                              false);
+}
+
+void
+_mesa_format_convert_clamp(void *void_dst, uint32_t dst_format, size_t dst_stride,
+                           void *void_src, uint32_t src_format, size_t src_stride,
+                           size_t width, size_t height, GLenum dst_internal_format,
+                           bool clamp)
+{
+
    uint8_t *dst = (uint8_t *)void_dst;
    uint8_t *src = (uint8_t *)void_src;
    mesa_array_format src_array_format, dst_array_format;
@@ -469,12 +488,22 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
          }
       }
 
-      for (row = 0; row < height; ++row) {
-         _mesa_swizzle_and_convert(dst, dst_gl_type, dst_array_format.num_channels,
-                                   src, src_gl_type, src_array_format.num_channels,
-                                   src2dst, normalized, width);
-         src += src_stride;
-         dst += dst_stride;
+      if (clamp) {
+         for (row = 0; row < height; ++row) {
+            _mesa_swizzle_and_convert_clamp(dst, dst_gl_type, dst_array_format.num_channels,
+                                            src, src_gl_type, src_array_format.num_channels,
+                                            src2dst, normalized, width);
+            src += src_stride;
+            dst += dst_stride;
+         }
+      } else {
+         for (row = 0; row < height; ++row) {
+            _mesa_swizzle_and_convert(dst, dst_gl_type, dst_array_format.num_channels,
+                                      src, src_gl_type, src_array_format.num_channels,
+                                      src2dst, normalized, width);
+            src += src_stride;
+            dst += dst_stride;
+         }
       }
       return;
    }
@@ -534,12 +563,22 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
       common_gl_type = is_signed ? GL_INT : GL_UNSIGNED_INT;
 
       if (src_format & MESA_ARRAY_FORMAT_BIT) {
-         for (row = 0; row < height; ++row) {
-            _mesa_swizzle_and_convert(tmp_uint + row * width, common_gl_type, 4,
-                                      src, src_gl_type,
-                                      src_array_format.num_channels,
-                                      src2rgba, normalized, width);
-            src += src_stride;
+         if (clamp) {
+            for (row = 0; row < height; ++row) {
+               _mesa_swizzle_and_convert_clamp(tmp_uint + row * width, common_gl_type, 4,
+                                               src, src_gl_type,
+                                               src_array_format.num_channels,
+                                               src2rgba, normalized, width);
+               src += src_stride;
+            }
+         } else {
+            for (row = 0; row < height; ++row) {
+               _mesa_swizzle_and_convert(tmp_uint + row * width, common_gl_type, 4,
+                                         src, src_gl_type,
+                                         src_array_format.num_channels,
+                                         src2rgba, normalized, width);
+               src += src_stride;
+            }
          }
       } else {
          for (row = 0; row < height; ++row) {
@@ -550,17 +589,28 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
       }
 
       if (dst_format & MESA_ARRAY_FORMAT_BIT) {
-         for (row = 0; row < height; ++row) {
-            _mesa_swizzle_and_convert(dst, dst_gl_type,
-                                      dst_array_format.num_channels,
-                                      tmp_uint + row * width, common_gl_type, 4,
-                                      rgba2dst, normalized, width);
-            dst += dst_stride;
+         if (clamp) {
+            for (row = 0; row < height; ++row) {
+               _mesa_swizzle_and_convert_clamp(dst, dst_gl_type,
+                                               dst_array_format.num_channels,
+                                               tmp_uint + row * width, common_gl_type, 4,
+                                               rgba2dst, normalized, width);
+               dst += dst_stride;
+            }
+         } else {
+            for (row = 0; row < height; ++row) {
+               _mesa_swizzle_and_convert(dst, dst_gl_type,
+                                         dst_array_format.num_channels,
+                                         tmp_uint + row * width, common_gl_type, 4,
+                                         rgba2dst, normalized, width);
+               dst += dst_stride;
+            }
          }
       } else {
          for (row = 0; row < height; ++row) {
             _mesa_pack_uint_rgba_row(dst_format, width,
-                                     (const uint32_t (*)[4])tmp_uint + row * width, dst);
+                                     (const uint32_t (*)[4])tmp_uint + row * width,
+                                     dst);
             dst += dst_stride;
          }
       }
@@ -571,12 +621,22 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
          tmp_float = malloc(width * height * sizeof(*tmp_float));
 
          if (src_format & MESA_ARRAY_FORMAT_BIT) {
-            for (row = 0; row < height; ++row) {
-               _mesa_swizzle_and_convert(tmp_float + row * width, GL_FLOAT, 4,
-                                         src, src_gl_type,
-                                         src_array_format.num_channels,
-                                         src2rgba, normalized, width);
-               src += src_stride;
+            if (clamp) {
+               for (row = 0; row < height; ++row) {
+                  _mesa_swizzle_and_convert_clamp(tmp_float + row * width, GL_FLOAT, 4,
+                                                  src, src_gl_type,
+                                                  src_array_format.num_channels,
+                                                  src2rgba, normalized, width);
+                  src += src_stride;
+               }
+            } else {
+               for (row = 0; row < height; ++row) {
+                  _mesa_swizzle_and_convert(tmp_float + row * width, GL_FLOAT, 4,
+                                            src, src_gl_type,
+                                            src_array_format.num_channels,
+                                            src2rgba, normalized, width);
+                  src += src_stride;
+               }
             }
          } else {
             /* For some conversions, doing src->rgba->dst is not enough and we
@@ -607,6 +667,9 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
                _mesa_unpack_rgba_row(src_format, width,
                                      src, tmp_float + row * width);
                if (need_convert)
+                  /* No clamp version as GL_FLOAT to GL_FLOAT conversion
+                   * executes same path
+                   */
                   _mesa_swizzle_and_convert(tmp_float + row * width, GL_FLOAT, 4,
                                             tmp_float + row * width, GL_FLOAT, 4,
                                             map, false, width);
@@ -616,6 +679,9 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
 
          if (dst_format & MESA_ARRAY_FORMAT_BIT) {
             for (row = 0; row < height; ++row) {
+               /* No clamp version as source format GL_FLOAT to dst execute
+                * same conversion in both paths.
+                */
                _mesa_swizzle_and_convert(dst, dst_gl_type,
                                          dst_array_format.num_channels,
                                          tmp_float + row * width, GL_FLOAT, 4,
@@ -625,7 +691,8 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
          } else {
             for (row = 0; row < height; ++row) {
                _mesa_pack_float_rgba_row(dst_format, width,
-                                         (const float (*)[4])tmp_float + row * width, dst);
+                                         (const float (*)[4])tmp_float + row * width,
+                                         dst);
                dst += dst_stride;
             }
          }
@@ -635,12 +702,22 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
          tmp_ubyte = malloc(width * height * sizeof(*tmp_ubyte));
 
          if (src_format & MESA_ARRAY_FORMAT_BIT) {
-            for (row = 0; row < height; ++row) {
-               _mesa_swizzle_and_convert(tmp_ubyte + row * width, GL_UNSIGNED_BYTE, 4,
-                                         src, src_gl_type,
-                                         src_array_format.num_channels,
-                                         src2rgba, normalized, width);
-               src += src_stride;
+            if (clamp) {
+               for (row = 0; row < height; ++row) {
+                  _mesa_swizzle_and_convert_clamp(tmp_ubyte + row * width, GL_UNSIGNED_BYTE, 4,
+                                                  src, src_gl_type,
+                                                  src_array_format.num_channels,
+                                                  src2rgba, normalized, width);
+                  src += src_stride;
+               }
+            } else {
+               for (row = 0; row < height; ++row) {
+                  _mesa_swizzle_and_convert(tmp_ubyte + row * width, GL_UNSIGNED_BYTE, 4,
+                                            src, src_gl_type,
+                                            src_array_format.num_channels,
+                                            src2rgba, normalized, width);
+                  src += src_stride;
+               }
             }
          } else {
             for (row = 0; row < height; ++row) {
@@ -651,12 +728,22 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
          }
 
          if (dst_format & MESA_ARRAY_FORMAT_BIT) {
-            for (row = 0; row < height; ++row) {
-               _mesa_swizzle_and_convert(dst, dst_gl_type,
-                                         dst_array_format.num_channels,
-                                         tmp_ubyte + row * width, GL_UNSIGNED_BYTE, 4,
-                                         rgba2dst, normalized, width);
-               dst += dst_stride;
+            if (clamp) {
+               for (row = 0; row < height; ++row) {
+                  _mesa_swizzle_and_convert_clamp(dst, dst_gl_type,
+                                                  dst_array_format.num_channels,
+                                                  tmp_ubyte + row * width, GL_UNSIGNED_BYTE, 4,
+                                                  rgba2dst, normalized, width);
+                  dst += dst_stride;
+               }
+            } else {
+               for (row = 0; row < height; ++row) {
+                  _mesa_swizzle_and_convert(dst, dst_gl_type,
+                                            dst_array_format.num_channels,
+                                            tmp_ubyte + row * width, GL_UNSIGNED_BYTE, 4,
+                                            rgba2dst, normalized, width);
+                  dst += dst_stride;
+               }
             }
          } else {
             for (row = 0; row < height; ++row) {
