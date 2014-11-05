@@ -649,9 +649,9 @@ if (use_master) {
       }
 
       /* Convert to RGBA now */
-      _mesa_format_convert(rgba, rgba_format, rgba_stride,
-                           map, rb_format, rb_stride,
-                           width, height, GL_RGBA);
+      _mesa_format_convert_clamp(rgba, rgba_format, rgba_stride,
+                                 map, rb_format, rb_stride,
+                                 width, height, GL_RGBA, true);
 
       /* Rebase and handle transfer ops as necessary */
       if (dst_is_integer) {
@@ -687,10 +687,10 @@ if (use_master) {
     * L=R+G+B values.
     */
    if (!dst_is_luminance) {
-      _mesa_format_convert(dst, dst_format, dst_stride,
-                           src, src_format, src_stride,
-                           width, height,
-                           dst_base_format);
+      _mesa_format_convert_clamp(dst, dst_format, dst_stride,
+                                 src, src_format, src_stride,
+                                 width, height,
+                                 dst_base_format, true);
    } else if (!dst_is_integer) {
       /* Compute float Luminance values from RGBA float */
       int luminance_stride = width * sizeof(GL_FLOAT);
@@ -711,9 +711,9 @@ if (use_master) {
        */
       uint32_t luminance_format =
          _mesa_format_from_format_and_type(format, GL_FLOAT);
-      _mesa_format_convert(dst, dst_format, dst_stride,
-                           luminance, luminance_format, luminance_stride,
-                           width, height, dst_base_format);
+      _mesa_format_convert_clamp(dst, dst_format, dst_stride,
+                                 luminance, luminance_format, luminance_stride,
+                                 width, height, dst_base_format, true);
    } else {
       _mesa_pack_luminance_from_rgba_integer(width * height, src, dst, format);
    }
