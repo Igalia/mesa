@@ -1932,6 +1932,70 @@ convert_short_clamp(void *void_dst, int num_dst_channels,
    }
 }
 
+static void
+convert_int_clamp(void *void_dst, int num_dst_channels,
+                  const void *void_src, GLenum src_type, int num_src_channels,
+                  const uint8_t swizzle[4], bool normalized, int count)
+{
+   const int32_t one = normalized ? INT32_MAX : 1;
+
+   switch (src_type) {
+   case GL_FLOAT:
+      if (normalized) {
+         SWIZZLE_CONVERT(uint32_t, float, _mesa_float_to_snorm(src, 32));
+      } else {
+         SWIZZLE_CONVERT(uint32_t, float, src);
+      }
+      break;
+   case GL_HALF_FLOAT:
+      if (normalized) {
+         SWIZZLE_CONVERT(uint32_t, uint16_t, _mesa_half_to_snorm(src, 32));
+      } else {
+         SWIZZLE_CONVERT(uint32_t, uint16_t, _mesa_half_to_float(src));
+      }
+      break;
+   case GL_UNSIGNED_BYTE:
+      if (normalized) {
+         SWIZZLE_CONVERT(int32_t, uint8_t, _mesa_unorm_to_snorm(src, 8, 32));
+      } else {
+         SWIZZLE_CONVERT(int32_t, uint8_t, src);
+      }
+      break;
+   case GL_BYTE:
+      if (normalized) {
+         SWIZZLE_CONVERT(int32_t, int8_t, _mesa_snorm_to_snorm(src, 8, 32));
+      } else {
+         SWIZZLE_CONVERT(int32_t, int8_t, src);
+      }
+      break;
+   case GL_UNSIGNED_SHORT:
+      if (normalized) {
+         SWIZZLE_CONVERT(int32_t, uint16_t, _mesa_unorm_to_snorm(src, 16, 32));
+      } else {
+         SWIZZLE_CONVERT(int32_t, uint16_t, src);
+      }
+      break;
+   case GL_SHORT:
+      if (normalized) {
+         SWIZZLE_CONVERT(int32_t, int16_t, _mesa_snorm_to_snorm(src, 16, 32));
+      } else {
+         SWIZZLE_CONVERT(int32_t, int16_t, src);
+      }
+      break;
+   case GL_UNSIGNED_INT:
+      if (normalized) {
+         SWIZZLE_CONVERT(int32_t, uint32_t, _mesa_unorm_to_snorm(src, 32, 32));
+      } else {
+         SWIZZLE_CONVERT(int32_t, uint32_t, MIN2(src, 0x7fffffff));
+      }
+      break;
+   case GL_INT:
+      SWIZZLE_CONVERT(int32_t, int32_t, src);
+      break;
+   default:
+      assert(!"Invalid channel type combination");
+   }
+}
 
 /**
  * Convert between array-based color formats.
@@ -1978,7 +2042,7 @@ _mesa_swizzle_and_convert_clamp(void *void_dst, GLenum dst_type, int num_dst_cha
                    num_src_channels, swizzle, normalized, count);
       break;
    case GL_INT:
-      convert_int(void_dst, num_dst_channels, void_src, src_type,
+      convert_int_clamp(void_dst, num_dst_channels, void_src, src_type,
                   num_src_channels, swizzle, normalized, count);
       break;
    default:
