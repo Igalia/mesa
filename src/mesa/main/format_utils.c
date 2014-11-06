@@ -302,7 +302,7 @@ _mesa_compute_component_mapping(GLenum inFormat, GLenum outFormat, GLubyte *map)
 void
 _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
                      void *void_src, uint32_t src_format, size_t src_stride,
-                     size_t width, size_t height)
+                     size_t width, size_t height, GLenum dst_internal_format)
 {
    uint8_t *dst = (uint8_t *)void_dst;
    uint8_t *src = (uint8_t *)void_src;
@@ -419,6 +419,35 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
    if (src_array_format.as_uint && dst_array_format.as_uint) {
       assert(src_array_format.normalized == dst_array_format.normalized);
 
+      /* If the base format of our dst is not the same as the provided base
+       * format it means that we are converting to a different format
+       * than the one originally requested by the client. This can happen when
+       * the internal base format requested is not supported by the driver.
+       * In this case we need to consider the requested internal base format to
+       * compute the correct swizzle operation from src to dst. We will do this
+       * by computing the swizzle transform src->rgba->base->rgba->dst instead
+       * of src->rgba->dst.
+       */
+      mesa_format dst_mesa_format;
+      if (dst_format & MESA_ARRAY_FORMAT_BIT)
+         dst_mesa_format = _mesa_format_from_array_format(dst_format);
+      else
+         dst_mesa_format = dst_format;
+      if (dst_internal_format != _mesa_get_format_base_format(dst_mesa_format)) {
+         /* Compute src2rgba as src->rgba->base->rgba */
+         GLubyte rgba2base[4], base2rgba[4];
+         _mesa_compute_component_mapping(GL_RGBA, dst_internal_format, rgba2base);
+         _mesa_compute_component_mapping(dst_internal_format, GL_RGBA, base2rgba);
+
+         for (i = 0; i < 4; i++) {
+            if (base2rgba[i] > MESA_FORMAT_SWIZZLE_W)
+               src2rgba[i] = base2rgba[i];
+            else
+               src2rgba[i] = src2rgba[rgba2base[base2rgba[i]]];
+         }
+      }
+
+      /* Compute src2dst from src2rgba */
       for (i = 0; i < 4; i++) {
          if (rgba2dst[i] > MESA_FORMAT_SWIZZLE_W) {
             src2dst[i] = rgba2dst[i];
