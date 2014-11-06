@@ -407,145 +407,6 @@ read_stencil_pixels( struct gl_context *ctx,
    ctx->Driver.UnmapRenderbuffer(ctx, rb);
 }
 
-
-/**
- * Try to do glReadPixels of RGBA data using swizzle.
- * \return GL_TRUE if successful, GL_FALSE otherwise (use the slow path)
- */
-static GLboolean
-read_rgba_pixels_swizzle(struct gl_context *ctx,
-                         GLint x, GLint y,
-                         GLsizei width, GLsizei height,
-                         GLenum format, GLenum type,
-                         GLvoid *pixels,
-                         const struct gl_pixelstore_attrib *packing)
-{
-   struct gl_renderbuffer *rb = ctx->ReadBuffer->_ColorReadBuffer;
-   GLubyte *dst, *map;
-   int dstStride, stride, j;
-   GLboolean swizzle_rb = GL_FALSE, copy_xrgb = GL_FALSE;
-
-   /* XXX we could check for other swizzle/special cases here as needed */
-   if (rb->Format == MESA_FORMAT_R8G8B8A8_UNORM &&
-       format == GL_BGRA &&
-       type == GL_UNSIGNED_INT_8_8_8_8_REV &&
-       !ctx->Pack.SwapBytes) {
-      swizzle_rb = GL_TRUE;
-   }
-   else if (rb->Format == MESA_FORMAT_B8G8R8X8_UNORM &&
-       format == GL_BGRA &&
-       type == GL_UNSIGNED_INT_8_8_8_8_REV &&
-       !ctx->Pack.SwapBytes) {
-      copy_xrgb = GL_TRUE;
-   }
-   else {
-      return GL_FALSE;
-   }
-
-   dstStride = _mesa_image_row_stride(packing, width, format, type);
-   dst = (GLubyte *) _mesa_image_address2d(packing, pixels, width, height,
-					   format, type, 0, 0);
-
-   ctx->Driver.MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
-			       &map, &stride);
-   if (!map) {
-      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
-      return GL_TRUE;  /* don't bother trying the slow path */
-   }
-
-   if (swizzle_rb) {
-      /* swap R/B */
-      for (j = 0; j < height; j++) {
-         int i;
-         for (i = 0; i < width; i++) {
-            GLuint *dst4 = (GLuint *) dst, *map4 = (GLuint *) map;
-            GLuint pixel = map4[i];
-            dst4[i] = (pixel & 0xff00ff00)
-                   | ((pixel & 0x00ff0000) >> 16)
-                   | ((pixel & 0x000000ff) << 16);
-         }
-         dst += dstStride;
-         map += stride;
-      }
-   } else if (copy_xrgb) {
-      /* convert xrgb -> argb */
-      for (j = 0; j < height; j++) {
-         GLuint *dst4 = (GLuint *) dst, *map4 = (GLuint *) map;
-         int i;
-         for (i = 0; i < width; i++) {
-            dst4[i] = map4[i] | 0xff000000;  /* set A=0xff */
-         }
-         dst += dstStride;
-         map += stride;
-      }
-   }
-
-   ctx->Driver.UnmapRenderbuffer(ctx, rb);
-
-   return GL_TRUE;
-}
-
-static void
-slow_read_rgba_pixels( struct gl_context *ctx,
-		       GLint x, GLint y,
-		       GLsizei width, GLsizei height,
-		       GLenum format, GLenum type,
-		       GLvoid *pixels,
-		       const struct gl_pixelstore_attrib *packing,
-		       GLbitfield transferOps )
-{
-   struct gl_renderbuffer *rb = ctx->ReadBuffer->_ColorReadBuffer;
-   const mesa_format rbFormat = _mesa_get_srgb_format_linear(rb->Format);
-   void *rgba;
-   GLubyte *dst, *map;
-   int dstStride, stride, j;
-   GLboolean dst_is_integer = _mesa_is_enum_format_integer(format);
-   GLboolean dst_is_uint = _mesa_is_format_unsigned(rbFormat);
-
-   dstStride = _mesa_image_row_stride(packing, width, format, type);
-   dst = (GLubyte *) _mesa_image_address2d(packing, pixels, width, height,
-					   format, type, 0, 0);
-
-   ctx->Driver.MapRenderbuffer(ctx, rb, x, y, width, height, GL_MAP_READ_BIT,
-			       &map, &stride);
-   if (!map) {
-      _mesa_error(ctx, GL_OUT_OF_MEMORY, "glReadPixels");
-      return;
-   }
-
-   rgba = malloc(width * MAX_PIXEL_BYTES);
-   if (!rgba)
-      goto done;
-
-   for (j = 0; j < height; j++) {
-      if (dst_is_integer) {
-	 _mesa_unpack_uint_rgba_row(rbFormat, width, map, (GLuint (*)[4]) rgba);
-         _mesa_rebase_rgba_uint(width, (GLuint (*)[4]) rgba,
-                                rb->_BaseFormat);
-         if (dst_is_uint) {
-            _mesa_pack_rgba_span_from_uints(ctx, width, (GLuint (*)[4]) rgba, format,
-                                            type, dst);
-         } else {
-            _mesa_pack_rgba_span_from_ints(ctx, width, (GLint (*)[4]) rgba, format,
-                                           type, dst);
-         }
-      } else {
-	 _mesa_unpack_rgba_row(rbFormat, width, map, (GLfloat (*)[4]) rgba);
-         _mesa_rebase_rgba_float(width, (GLfloat (*)[4]) rgba,
-                                 rb->_BaseFormat);
-	 _mesa_pack_rgba_span_float(ctx, width, (GLfloat (*)[4]) rgba, format,
-                                    type, dst, packing, transferOps);
-      }
-      dst += dstStride;
-      map += stride;
-   }
-
-   free(rgba);
-
-done:
-   ctx->Driver.UnmapRenderbuffer(ctx, rb);
-}
-
 /*
  * Read R, G, B, A, RGB, L, or LA pixels.
  */
@@ -565,8 +426,6 @@ read_rgba_pixels( struct gl_context *ctx,
 
    transferOps = get_readpixels_transfer_ops(ctx, rb->Format, format, type,
                                              GL_FALSE);
-bool use_master = true;
-if (use_master) {
    /* Describe the dst format */
    GLboolean dst_is_integer = _mesa_is_enum_format_integer(format);
    int dst_stride = _mesa_image_row_stride(packing, width, format, type);
@@ -734,18 +593,6 @@ done_swap:
 
 done_unmap:
    ctx->Driver.UnmapRenderbuffer(ctx, rb);
-   return;
-}
-
-   /* Try the optimized paths first. */
-   if (!transferOps &&
-       read_rgba_pixels_swizzle(ctx, x, y, width, height,
-                                    format, type, pixels, packing)) {
-      return;
-   }
-
-   slow_read_rgba_pixels(ctx, x, y, width, height,
-			 format, type, pixels, packing, transferOps);
 }
 
 /**
