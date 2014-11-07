@@ -164,4 +164,18 @@ extern void
 _mesa_pack_luminance_from_rgba_integer(GLuint n, GLuint rgba[][4],
                                        GLvoid *dstAddr, GLenum dst_format);
 
+extern GLfloat *
+_mesa_unpack_color_index_to_rgba_float(struct gl_context *ctx, GLuint dims,
+                                       const void *src, GLenum srcFormat, GLenum srcType,
+                                       int srcWidth, int srcHeight, int srcDepth,
+                                       const struct gl_pixelstore_attrib *srcPacking,
+                                       GLbitfield transferOps);
+
+extern GLubyte *
+_mesa_unpack_color_index_to_rgba_ubyte(struct gl_context *ctx, GLuint dims,
+                                       const void *src, GLenum srcFormat, GLenum srcType,
+                                       int srcWidth, int srcHeight, int srcDepth,
+                                       const struct gl_pixelstore_attrib *srcPacking,
+                                       GLbitfield transferOps);
+
 #endif
