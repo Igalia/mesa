@@ -87,14 +87,19 @@ _mesa_texstore_red_rgtc1(TEXSTORE_PARAMS)
    ASSERT(dstFormat == MESA_FORMAT_R_RGTC1_UNORM ||
           dstFormat == MESA_FORMAT_L_LATC1_UNORM);
 
-   tempImage = _mesa_make_temp_ubyte_image(ctx, dims,
-					  baseInternalFormat,
-					  _mesa_get_format_base_format(dstFormat),
-					  srcWidth, srcHeight, srcDepth,
-					  srcFormat, srcType, srcAddr,
-					  srcPacking);
+   int redRowStride = 1 * srcWidth * sizeof(GLubyte);
+   tempImage = malloc(srcWidth * srcHeight * 1 * sizeof(GLubyte));
    if (!tempImage)
       return GL_FALSE; /* out of memory */
+   GLubyte *tempImageSlices[1];
+   tempImageSlices[0] = (GLubyte *) tempImage;
+   _mesa_texstore(ctx, dims,
+                  baseInternalFormat,
+                  MESA_FORMAT_R_UNORM8,
+                  redRowStride, tempImageSlices,
+                  srcWidth, srcHeight, srcDepth,
+                  srcFormat, srcType, srcAddr,
+                  srcPacking);
 
    dst = dstSlices[0];
 
@@ -182,14 +187,25 @@ _mesa_texstore_rg_rgtc2(TEXSTORE_PARAMS)
    ASSERT(dstFormat == MESA_FORMAT_RG_RGTC2_UNORM ||
           dstFormat == MESA_FORMAT_LA_LATC2_UNORM);
 
-   tempImage = _mesa_make_temp_ubyte_image(ctx, dims,
-					  baseInternalFormat,
-					  _mesa_get_format_base_format(dstFormat),
-					  srcWidth, srcHeight, srcDepth,
-					  srcFormat, srcType, srcAddr,
-					  srcPacking);
+   mesa_format tempFormat;
+   if (baseInternalFormat == GL_RG)
+      tempFormat = MESA_FORMAT_R8G8_UNORM;
+   else
+      tempFormat = MESA_FORMAT_L8A8_UNORM;
+
+   int rgRowStride = 2 * srcWidth * sizeof(GLubyte);
+   tempImage = malloc(srcWidth * srcHeight * 2 * sizeof(GLubyte));
    if (!tempImage)
       return GL_FALSE; /* out of memory */
+   GLubyte *tempImageSlices[1];
+   tempImageSlices[0] = (GLubyte *) tempImage;
+   _mesa_texstore(ctx, dims,
+                  baseInternalFormat,
+                  tempFormat,
+                  rgRowStride, tempImageSlices,
+                  srcWidth, srcHeight, srcDepth,
+                  srcFormat, srcType, srcAddr,
+                  srcPacking);
 
    dst = dstSlices[0];
 
