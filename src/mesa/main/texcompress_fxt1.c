@@ -69,12 +69,17 @@ _mesa_texstore_rgb_fxt1(TEXSTORE_PARAMS)
        srcPacking->RowLength != srcWidth ||
        srcPacking->SwapBytes) {
       /* convert image to RGB/GLubyte */
-      tempImage = _mesa_make_temp_ubyte_image(ctx, dims,
-                                             baseInternalFormat,
-                                             _mesa_get_format_base_format(dstFormat),
-                                             srcWidth, srcHeight, srcDepth,
-                                             srcFormat, srcType, srcAddr,
-                                             srcPacking);
+      int rgbRowStride = 3 * srcWidth * sizeof(GLubyte);
+      tempImage = malloc(srcWidth * srcHeight * 3 * sizeof(GLubyte));
+      GLubyte *tempImageSlices[1];
+      tempImageSlices[0] = (GLubyte *) tempImage;
+      _mesa_texstore(ctx, dims,
+                     baseInternalFormat,
+                     MESA_FORMAT_RGB_UNORM8,
+                     rgbRowStride, tempImageSlices,
+                     srcWidth, srcHeight, srcDepth,
+                     srcFormat, srcType, srcAddr,
+                     srcPacking);
       if (!tempImage)
          return GL_FALSE; /* out of memory */
       pixels = tempImage;
@@ -118,12 +123,17 @@ _mesa_texstore_rgba_fxt1(TEXSTORE_PARAMS)
        ctx->_ImageTransferState ||
        srcPacking->SwapBytes) {
       /* convert image to RGBA/GLubyte */
-      tempImage = _mesa_make_temp_ubyte_image(ctx, dims,
-                                             baseInternalFormat,
-                                             _mesa_get_format_base_format(dstFormat),
-                                             srcWidth, srcHeight, srcDepth,
-                                             srcFormat, srcType, srcAddr,
-                                             srcPacking);
+      int rgbaRowStride = 4 * srcWidth * sizeof(GLubyte);
+      tempImage = malloc(srcWidth * srcHeight * 4 * sizeof(GLubyte));
+      GLubyte *tempImageSlices[1];
+      tempImageSlices[0] = (GLubyte *) tempImage;
+      _mesa_texstore(ctx, dims,
+                     baseInternalFormat,
+                     MESA_FORMAT_R8G8B8A8_UNORM,
+                     rgbaRowStride, tempImageSlices,
+                     srcWidth, srcHeight, srcDepth,
+                     srcFormat, srcType, srcAddr,
+                     srcPacking);
       if (!tempImage)
          return GL_FALSE; /* out of memory */
       pixels = tempImage;
