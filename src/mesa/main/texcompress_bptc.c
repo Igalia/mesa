@@ -1276,7 +1276,6 @@ _mesa_texstore_bptc_rgba_unorm(TEXSTORE_PARAMS)
 {
    const GLubyte *pixels;
    const GLubyte *tempImage = NULL;
-   GLenum baseFormat;
    int rowstride;
 
    if (srcFormat != GL_RGBA ||
@@ -1284,13 +1283,17 @@ _mesa_texstore_bptc_rgba_unorm(TEXSTORE_PARAMS)
        ctx->_ImageTransferState ||
        srcPacking->SwapBytes) {
       /* convert image to RGBA/ubyte */
-      baseFormat = _mesa_get_format_base_format(dstFormat);
-      tempImage = _mesa_make_temp_ubyte_image(ctx, dims,
-                                              baseInternalFormat,
-                                              baseFormat,
-                                              srcWidth, srcHeight, srcDepth,
-                                              srcFormat, srcType, srcAddr,
-                                              srcPacking);
+      int rgbaRowStride = 4 * srcWidth * sizeof(GLubyte);
+      tempImage = malloc(srcWidth * srcHeight * 4 * sizeof(GLubyte));
+      GLubyte *tempImageSlices[1];
+      tempImageSlices[0] = (GLubyte *) tempImage;
+      _mesa_texstore(ctx, dims,
+                     baseInternalFormat,
+                     MESA_FORMAT_R8G8B8A8_UNORM,
+                     rgbaRowStride, tempImageSlices,
+                     srcWidth, srcHeight, srcDepth,
+                     srcFormat, srcType, srcAddr,
+                     srcPacking);
       if (!tempImage)
          return GL_FALSE; /* out of memory */
 
