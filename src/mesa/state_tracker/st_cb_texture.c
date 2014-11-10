@@ -29,6 +29,7 @@
 #include "main/enums.h"
 #include "main/fbobject.h"
 #include "main/formats.h"
+#include "main/format_utils.h"
 #include "main/image.h"
 #include "main/imports.h"
 #include "main/macros.h"
@@ -1148,6 +1149,9 @@ st_GetTexImage(struct gl_context * ctx,
       if (ST_DEBUG & DEBUG_FALLBACK)
          debug_printf("%s: fallback format translation\n", __FUNCTION__);
 
+      uint32_t dstMesaFormat = _mesa_format_from_format_and_type(format, type);
+      int dstStride = _mesa_image_row_stride(&ctx->Pack, width, format, type);
+      int srcStride = 4 * width * sizeof(GLfloat);
       for (slice = 0; slice < depth; slice++) {
          if (gl_target == GL_TEXTURE_1D_ARRAY) {
             /* 1D array textures.
@@ -1161,8 +1165,9 @@ st_GetTexImage(struct gl_context * ctx,
             pipe_get_tile_rgba_format(tex_xfer, map, 0, 0, width, 1,
                                       dst_format, rgba);
 
-            _mesa_pack_rgba_span_float(ctx, width, (GLfloat (*)[4]) rgba, format,
-                                       type, dest, &ctx->Pack, 0);
+            _mesa_format_convert(dest, dstMesaFormat, dstStride,
+                                 rgba, RGBA8888_FLOAT.as_uint, srcStride,
+                                 width, 1, GL_RGBA);
          }
          else {
             for (row = 0; row < height; row++) {
@@ -1174,8 +1179,9 @@ st_GetTexImage(struct gl_context * ctx,
                pipe_get_tile_rgba_format(tex_xfer, map, 0, row, width, 1,
                                          dst_format, rgba);
 
-               _mesa_pack_rgba_span_float(ctx, width, (GLfloat (*)[4]) rgba, format,
-                                          type, dest, &ctx->Pack, 0);
+               _mesa_format_convert(dest, dstMesaFormat, dstStride,
+                                    rgba, RGBA8888_FLOAT.as_uint, srcStride,
+                                    width, 1, GL_RGBA);
             }
          }
          map += tex_xfer->layer_stride;
