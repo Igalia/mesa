@@ -247,8 +247,8 @@ get_tex_rgba_compressed(struct gl_context *ctx, GLuint dimensions,
    const GLuint width = texImage->Width;
    const GLuint height = texImage->Height;
    const GLuint depth = texImage->Depth;
-   GLfloat *tempImage, *tempSlice, *srcRow;
-   GLuint row, slice;
+   GLfloat *tempImage, *tempSlice;
+   GLuint slice;
 
    /* Decompress into temp float buffer, then pack into user buffer */
    tempImage = malloc(width * height * depth
@@ -310,18 +310,17 @@ get_tex_rgba_compressed(struct gl_context *ctx, GLuint dimensions,
                               rebaseFormat);
    }
 
+   int srcStride = 4 * width * sizeof(GLfloat);
+   int dstStride = _mesa_image_row_stride(&ctx->Pack, width, format, type);
+   uint32_t dstFormat = _mesa_format_from_format_and_type(format, type);
    tempSlice = tempImage;
    for (slice = 0; slice < depth; slice++) {
-      srcRow = tempSlice;
-      for (row = 0; row < height; row++) {
-         void *dest = _mesa_image_address(dimensions, &ctx->Pack, pixels,
-                                          width, height, format, type,
-                                          slice, row, 0);
-
-         _mesa_pack_rgba_span_float(ctx, width, (GLfloat (*)[4]) srcRow,
-                                    format, type, dest, &ctx->Pack, transferOps);
-         srcRow += 4 * width;
-      }
+      void *dest = _mesa_image_address(dimensions, &ctx->Pack, pixels,
+                                       width, height, format, type,
+                                       slice, 0, 0);
+      _mesa_format_convert(dest, dstFormat, dstStride,
+                           tempSlice, RGBA8888_FLOAT.as_uint, srcStride,
+                           width, height, destBaseFormat);
       tempSlice += 4 * width * height;
    }
 
