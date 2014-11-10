@@ -416,7 +416,6 @@ draw_rgba_pixels( struct gl_context *ctx, GLint x, GLint y,
 {
    const GLint imgX = x, imgY = y;
    const GLboolean zoom = ctx->Pixel.ZoomX!=1.0 || ctx->Pixel.ZoomY!=1.0;
-   GLfloat *convImage = NULL;
    GLbitfield transferOps = ctx->_ImageTransferState;
    SWspan span;
 
@@ -523,8 +522,6 @@ draw_rgba_pixels( struct gl_context *ctx, GLint x, GLint y,
       if (tempImage)
          free(tempImage);
    }
-
-   free(convImage);
 
    swrast_render_finish(ctx);
 }
