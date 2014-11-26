@@ -155,6 +155,9 @@ _mesa_swizzle_and_convert(void *dst, GLenum dst_type, int num_dst_channels,
 void
 _mesa_compute_component_mapping(GLenum inFormat, GLenum outFormat, GLubyte *map);
 
+bool
+_mesa_compute_rgba2base2rgba_component_mapping(GLenum baseFormat, uint8_t *map);
+
 void
 _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
                      void *void_src, uint32_t src_format, size_t src_stride,
