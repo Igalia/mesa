@@ -299,6 +299,75 @@ _mesa_compute_component_mapping(GLenum inFormat, GLenum outFormat, GLubyte *map)
 #endif
 }
 
+/* Takes a src to RGBA swizzle and applies a rebase swizzle to it. This
+ * is used when we need to rebase a format to match a different
+ * base internal format.
+ *
+ * The rebase swizzle can be NULL, which means that no rebase is necessary,
+ * in which case the src to RGBA swizzle is copied to the output without
+ * changes.
+ *
+ * The resulting rebased swizzle and well as the input swizzles are
+ * all 4-element swizzles, but the rebase swizzle can be NULL if no rebase
+ * is necessary.
+ */
+static void
+compute_rebased_rgba_component_mapping(uint8_t *src2rgba,
+                                       uint8_t *rebase_swizzle,
+                                       uint8_t *rebased_src2rgba)
+{
+   int i;
+
+   if (rebase_swizzle) {
+      for (i = 0; i < 4; i++) {
+         if (rebase_swizzle[i] > MESA_FORMAT_SWIZZLE_W)
+            rebased_src2rgba[i] = rebase_swizzle[i];
+         else
+            rebased_src2rgba[i] = src2rgba[rebase_swizzle[i]];
+      }
+   } else {
+      /* No rebase needed, so src2rgba is all that we need */
+      memcpy(rebased_src2rgba, src2rgba, 4 * sizeof(uint8_t));
+   }
+}
+
+/* Computes the final swizzle transform to apply from src to dst in a
+ * conversion that might involve a rebase swizzle.
+ *
+ * This is used to compute the swizzle transform to apply in conversions
+ * between array formats where we have a src2rgba swizzle, a rgba2dst swizzle
+ * and possibly, a rebase swizzle.
+ *
+ * The final swizzle transform to apply (src2dst) when a rebase swizzle is
+ * involved is: src -> rgba -> base -> rgba -> dst
+ */
+static void
+compute_src2dst_component_mapping(uint8_t *src2rgba, uint8_t *rgba2dst,
+                                  uint8_t *rebase_swizzle, uint8_t *src2dst)
+{
+   int i;
+
+   if (!rebase_swizzle) {
+      for (i = 0; i < 4; i++) {
+         if (rgba2dst[i] > MESA_FORMAT_SWIZZLE_W) {
+            src2dst[i] = rgba2dst[i];
+         } else {
+            src2dst[i] = src2rgba[rgba2dst[i]];
+         }
+      }
+   } else {
+      for (i = 0; i < 4; i++) {
+         if (rgba2dst[i] > MESA_FORMAT_SWIZZLE_W) {
+            src2dst[i] = rgba2dst[i];
+         } else if (rebase_swizzle[rgba2dst[i]] > MESA_FORMAT_SWIZZLE_W) {
+            src2dst[i] = rebase_swizzle[rgba2dst[i]];
+         } else {
+            src2dst[i] = src2rgba[rebase_swizzle[rgba2dst[i]]];
+         }
+      }
+   }
+}
+
 /**
  * This can be used to convert between most color formats.
  *
@@ -319,22 +388,29 @@ _mesa_compute_component_mapping(GLenum inFormat, GLenum outFormat, GLubyte *map)
  * \param src_stride  The stride of the source format in bytes.
  * \param width  The width, in pixels, of the source image to convert.
  * \param height  The height, in pixels, of the source image to convert.
+ * \param rebase_swizzle  A swizzle transform to apply during the conversion,
+ *                        typically used to match a different internal base
+ *                        format involved. NULL if no rebase transform is needed
+ *                        (i.e. the internal base format and the base format of
+ *                        the dst or the src -depending on whether we are doing
+ *                        an upload or a download respectively- are the same).
  */
 void
 _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
                      void *void_src, uint32_t src_format, size_t src_stride,
-                     size_t width, size_t height)
+                     size_t width, size_t height, uint8_t *rebase_swizzle)
 {
    uint8_t *dst = (uint8_t *)void_dst;
    uint8_t *src = (uint8_t *)void_src;
    mesa_array_format src_array_format, dst_array_format;
    uint8_t src2dst[4], src2rgba[4], rgba2dst[4], dst2rgba[4];
+   uint8_t rebased_src2rgba[4];
    GLenum src_gl_type, dst_gl_type, common_gl_type;
    bool normalized, dst_integer, src_integer, is_signed;
    uint8_t (*tmp_ubyte)[4];
    float (*tmp_float)[4];
    uint32_t (*tmp_uint)[4];
-   int i, bits;
+   int bits;
    size_t row;
 
    if (src_format & MESA_ARRAY_FORMAT_BIT) {
@@ -351,67 +427,79 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
       dst_array_format.as_uint = _mesa_format_to_array_format(dst_format);
    }
 
-   /* Handle the cases where we can directly unpack */
-   if (!(src_format & MESA_ARRAY_FORMAT_BIT)) {
-      if (dst_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
-         for (row = 0; row < height; ++row) {
-            _mesa_unpack_rgba_row(src_format, width,
-                                  src, (float (*)[4])dst);
-            src += src_stride;
-            dst += dst_stride;
+   /* First we see if we can implement the conversion with a direct pack
+    * or unpack.
+    *
+    * In this case we want to be careful when we need to apply a swizzle to
+    * match an internal base format, since in these cases a simple pack/unpack
+    * to the dst format from the src format may not match the requirements
+    * of the internal base format. For now we decide to be safe and
+    * avoid this path in these scenarios but in the future we may want to
+    * enable it for specific combinations that are known to work.
+    */
+   if (!rebase_swizzle) {
+      /* Handle the cases where we can directly unpack */
+      if (!(src_format & MESA_ARRAY_FORMAT_BIT)) {
+         if (dst_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
+            for (row = 0; row < height; ++row) {
+               _mesa_unpack_rgba_row(src_format, width,
+                                     src, (float (*)[4])dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
+         } else if (dst_array_format.as_uint == RGBA8888_UBYTE.as_uint) {
+            assert(!_mesa_is_format_integer_color(src_format));
+            for (row = 0; row < height; ++row) {
+               _mesa_unpack_ubyte_rgba_row(src_format, width,
+                                           src, (uint8_t (*)[4])dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
+         } else if (dst_array_format.as_uint == RGBA8888_UINT.as_uint &&
+                    _mesa_is_format_unsigned(src_format)) {
+            assert(_mesa_is_format_integer_color(src_format));
+            for (row = 0; row < height; ++row) {
+               _mesa_unpack_uint_rgba_row(src_format, width,
+                                          src, (uint32_t (*)[4])dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
          }
-         return;
-      } else if (dst_array_format.as_uint == RGBA8888_UBYTE.as_uint) {
-         assert(!_mesa_is_format_integer_color(src_format));
-         for (row = 0; row < height; ++row) {
-            _mesa_unpack_ubyte_rgba_row(src_format, width,
-                                        src, (uint8_t (*)[4])dst);
-            src += src_stride;
-            dst += dst_stride;
-         }
-         return;
-      } else if (dst_array_format.as_uint == RGBA8888_UINT.as_uint &&
-                 _mesa_is_format_unsigned(src_format)) {
-         assert(_mesa_is_format_integer_color(src_format));
-         for (row = 0; row < height; ++row) {
-            _mesa_unpack_uint_rgba_row(src_format, width,
-                                       src, (uint32_t (*)[4])dst);
-            src += src_stride;
-            dst += dst_stride;
-         }
-         return;
       }
-   }
 
-   /* Handle the cases where we can directly pack */
-   if (!(dst_format & MESA_ARRAY_FORMAT_BIT)) {
-      if (src_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
-         for (row = 0; row < height; ++row) {
-            _mesa_pack_float_rgba_row(dst_format, width,
-                                      (const float (*)[4])src, dst);
-            src += src_stride;
-            dst += dst_stride;
+      /* Handle the cases where we can directly pack */
+      if (!(dst_format & MESA_ARRAY_FORMAT_BIT)) {
+         if (src_array_format.as_uint == RGBA8888_FLOAT.as_uint) {
+            for (row = 0; row < height; ++row) {
+               _mesa_pack_float_rgba_row(dst_format, width,
+                                         (const float (*)[4])src, dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
+         } else if (src_array_format.as_uint == RGBA8888_UBYTE.as_uint) {
+            assert(!_mesa_is_format_integer_color(dst_format));
+            for (row = 0; row < height; ++row) {
+               _mesa_pack_ubyte_rgba_row(dst_format, width,
+                                         (const uint8_t (*)[4])src, dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
+         } else if (src_array_format.as_uint == RGBA8888_UINT.as_uint &&
+                    _mesa_is_format_unsigned(dst_format)) {
+            assert(_mesa_is_format_integer_color(dst_format));
+            for (row = 0; row < height; ++row) {
+               _mesa_pack_uint_rgba_row(dst_format, width,
+                                        (const uint32_t (*)[4])src, dst);
+               src += src_stride;
+               dst += dst_stride;
+            }
+            return;
          }
-         return;
-      } else if (src_array_format.as_uint == RGBA8888_UBYTE.as_uint) {
-         assert(!_mesa_is_format_integer_color(dst_format));
-         for (row = 0; row < height; ++row) {
-            _mesa_pack_ubyte_rgba_row(dst_format, width,
-                                      (const uint8_t (*)[4])src, dst);
-            src += src_stride;
-            dst += dst_stride;
-         }
-         return;
-      } else if (src_array_format.as_uint == RGBA8888_UINT.as_uint &&
-                 _mesa_is_format_unsigned(dst_format)) {
-         assert(_mesa_is_format_integer_color(dst_format));
-         for (row = 0; row < height; ++row) {
-            _mesa_pack_uint_rgba_row(dst_format, width,
-                                     (const uint32_t (*)[4])src, dst);
-            src += src_stride;
-            dst += dst_stride;
-         }
-         return;
       }
    }
 
@@ -443,15 +531,8 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
 
    if (src_array_format.as_uint && dst_array_format.as_uint) {
       assert(src_array_format.normalized == dst_array_format.normalized);
-
-      for (i = 0; i < 4; i++) {
-         if (rgba2dst[i] > MESA_FORMAT_SWIZZLE_W) {
-            src2dst[i] = rgba2dst[i];
-         } else {
-            src2dst[i] = src2rgba[rgba2dst[i]];
-         }
-      }
-
+      compute_src2dst_component_mapping(src2rgba, rgba2dst, rebase_swizzle,
+                                        src2dst);
       for (row = 0; row < height; ++row) {
          _mesa_swizzle_and_convert(dst, dst_gl_type, dst_array_format.num_channels,
                                    src, src_gl_type, src_array_format.num_channels,
@@ -538,17 +619,23 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
        */
       common_gl_type = is_signed ? GL_INT : GL_UNSIGNED_INT;
       if (src_array_format.as_uint) {
+         compute_rebased_rgba_component_mapping(src2rgba, rebase_swizzle,
+                                                rebased_src2rgba);
          for (row = 0; row < height; ++row) {
             _mesa_swizzle_and_convert(tmp_uint + row * width, common_gl_type, 4,
                                       src, src_gl_type,
                                       src_array_format.num_channels,
-                                      src2rgba, normalized, width);
+                                      rebased_src2rgba, normalized, width);
             src += src_stride;
          }
       } else {
          for (row = 0; row < height; ++row) {
             _mesa_unpack_uint_rgba_row(src_format, width,
                                        src, tmp_uint + row * width);
+            if (rebase_swizzle)
+               _mesa_swizzle_and_convert(tmp_uint + row * width, common_gl_type, 4,
+                                         tmp_uint + row * width, common_gl_type, 4,
+                                         rebase_swizzle, false, width);
             src += src_stride;
          }
       }
@@ -578,17 +665,23 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
       tmp_float = malloc(width * height * sizeof(*tmp_float));
 
       if (src_format & MESA_ARRAY_FORMAT_BIT) {
+         compute_rebased_rgba_component_mapping(src2rgba, rebase_swizzle,
+                                                rebased_src2rgba);
          for (row = 0; row < height; ++row) {
             _mesa_swizzle_and_convert(tmp_float + row * width, GL_FLOAT, 4,
                                       src, src_gl_type,
                                       src_array_format.num_channels,
-                                      src2rgba, normalized, width);
+                                      rebased_src2rgba, normalized, width);
             src += src_stride;
          }
       } else {
          for (row = 0; row < height; ++row) {
             _mesa_unpack_rgba_row(src_format, width,
                                   src, tmp_float + row * width);
+            if (rebase_swizzle)
+               _mesa_swizzle_and_convert(tmp_float + row * width, GL_FLOAT, 4,
+                                         tmp_float + row * width, GL_FLOAT, 4,
+                                         rebase_swizzle, false, width);
             src += src_stride;
          }
       }
@@ -614,17 +707,23 @@ _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
       tmp_ubyte = malloc(width * height * sizeof(*tmp_ubyte));
 
       if (src_format & MESA_ARRAY_FORMAT_BIT) {
+         compute_rebased_rgba_component_mapping(src2rgba, rebase_swizzle,
+                                                rebased_src2rgba);
          for (row = 0; row < height; ++row) {
             _mesa_swizzle_and_convert(tmp_ubyte + row * width, GL_UNSIGNED_BYTE, 4,
                                       src, src_gl_type,
                                       src_array_format.num_channels,
-                                      src2rgba, normalized, width);
+                                      rebased_src2rgba, normalized, width);
             src += src_stride;
          }
       } else {
          for (row = 0; row < height; ++row) {
             _mesa_unpack_ubyte_rgba_row(src_format, width,
                                         src, tmp_ubyte + row * width);
+            if (rebase_swizzle)
+               _mesa_swizzle_and_convert(tmp_ubyte + row * width, GL_UNSIGNED_BYTE, 4,
+                                         tmp_ubyte + row * width, GL_UNSIGNED_BYTE, 4,
+                                         rebase_swizzle, false, width);
             src += src_stride;
          }
       }
