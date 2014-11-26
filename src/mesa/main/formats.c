@@ -214,17 +214,82 @@ _mesa_get_format_datatype(mesa_format format)
    return info->DataType;
 }
 
+static GLenum
+get_base_format_for_array_format(mesa_array_format format)
+{
+   switch (format.num_channels) {
+   case 4:
+      /* FIXME: RGBX formats have 4 channels, but their base format is GL_RGB.
+       * This is not really a problem for now because we only create array
+       * formats from GL format/type combinations, and these cannot specify
+       * RGBX formats.
+       */
+      return GL_RGBA;
+   case 3:
+      return GL_RGB;
+   case 2:
+      if (format.swizzle_x == 0 &&
+          format.swizzle_y == 0 &&
+          format.swizzle_z == 0 &&
+          format.swizzle_w == 1)
+         return GL_LUMINANCE_ALPHA;
+      if (format.swizzle_x == 1 &&
+          format.swizzle_y == 1 &&
+          format.swizzle_z == 1 &&
+          format.swizzle_w == 0)
+         return GL_LUMINANCE_ALPHA;
+      if (format.swizzle_x == 0 &&
+          format.swizzle_y == 1 &&
+          format.swizzle_z == 4 &&
+          format.swizzle_w == 5)
+         return GL_RG;
+      if (format.swizzle_x == 1 &&
+          format.swizzle_y == 0 &&
+          format.swizzle_z == 4 &&
+          format.swizzle_w == 5)
+         return GL_RG;
+      break;
+   case 1:
+      if (format.swizzle_x == 0 &&
+          format.swizzle_y == 0 &&
+          format.swizzle_z == 0 &&
+          format.swizzle_w == 5)
+         return GL_LUMINANCE;
+      if (format.swizzle_x == 0 &&
+          format.swizzle_y == 0 &&
+          format.swizzle_z == 0 &&
+          format.swizzle_w == 0)
+         return GL_INTENSITY;
+      if (format.swizzle_x <= MESA_FORMAT_SWIZZLE_W)
+         return GL_RED;
+      if (format.swizzle_y <= MESA_FORMAT_SWIZZLE_W)
+         return GL_GREEN;
+      if (format.swizzle_z <= MESA_FORMAT_SWIZZLE_W)
+         return GL_BLUE;
+      if (format.swizzle_w <= MESA_FORMAT_SWIZZLE_W)
+         return GL_ALPHA;
+      break;
+   }
+   assert(!"Unsupported format");
+}
 
 /**
  * Return the basic format for the given type.  The result will be one of
  * GL_RGB, GL_RGBA, GL_ALPHA, GL_LUMINANCE, GL_LUMINANCE_ALPHA, GL_INTENSITY,
  * GL_YCBCR_MESA, GL_DEPTH_COMPONENT, GL_STENCIL_INDEX, GL_DEPTH_STENCIL.
+ * This functions accepts a mesa_format or a mesa_array_format.
  */
 GLenum
-_mesa_get_format_base_format(mesa_format format)
+_mesa_get_format_base_format(uint32_t format)
 {
-   const struct gl_format_info *info = _mesa_get_format_info(format);
-   return info->BaseFormat;
+   if (!(format & MESA_ARRAY_FORMAT_BIT)) {
+      const struct gl_format_info *info = _mesa_get_format_info(format);
+      return info->BaseFormat;
+   } else {
+      mesa_array_format array_format;
+      array_format.as_uint = format;
+      return get_base_format_for_array_format(array_format);
+   }
 }
 
 
