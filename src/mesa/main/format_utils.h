@@ -158,6 +158,6 @@ _mesa_compute_component_mapping(GLenum inFormat, GLenum outFormat, GLubyte *map)
 void
 _mesa_format_convert(void *void_dst, uint32_t dst_format, size_t dst_stride,
                      void *void_src, uint32_t src_format, size_t src_stride,
-                     size_t width, size_t height);
+                     size_t width, size_t height, uint8_t *rebase_swizzle);
 
 #endif
