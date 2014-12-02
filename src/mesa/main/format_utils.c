@@ -133,15 +133,6 @@ _mesa_format_to_array(mesa_format format, GLenum *type, int *num_components,
 }
 
 static inline unsigned
-float_to_uint(float x)
-{
-   if (x < 0.0f)
-      return 0;
-   else
-      return x;
-}
-
-static inline unsigned
 half_to_uint(uint16_t x)
 {
    if (_mesa_half_is_negative(x))
