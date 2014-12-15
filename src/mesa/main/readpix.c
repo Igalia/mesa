@@ -425,6 +425,7 @@ read_rgba_pixels( struct gl_context *ctx,
    mesa_format rb_format;
    bool needs_rgba;
    void *rgba, *src;
+   bool src_is_uint = false;
    uint8_t rebase_swizzle[4];
    struct gl_framebuffer *fb = ctx->ReadBuffer;
    struct gl_renderbuffer *rb = fb->_ColorReadBuffer;
@@ -438,7 +439,10 @@ read_rgba_pixels( struct gl_context *ctx,
    dst_is_integer = _mesa_is_enum_format_integer(format);
    dst_stride = _mesa_image_row_stride(packing, width, format, type);
    dst_format = _mesa_format_from_format_and_type(format, type);
-   dst_is_luminance = format == GL_LUMINANCE || format == GL_LUMINANCE_ALPHA;
+   dst_is_luminance = format == GL_LUMINANCE ||
+                      format == GL_LUMINANCE_ALPHA ||
+                      format == GL_LUMINANCE_INTEGER_EXT ||
+                      format == GL_LUMINANCE_ALPHA_INTEGER_EXT;
    dst = (GLubyte *) _mesa_image_address2d(packing, pixels, width, height,
                                            format, type, 0, 0);
 
@@ -493,9 +497,9 @@ read_rgba_pixels( struct gl_context *ctx,
       int rgba_stride;
       bool need_convert;
 
-      /* Convert to RGBA float or int/uint depending on the type of the dst. */
+      /* Convert to RGBA float or int/uint depending on the type of the src */
       if (dst_is_integer) {
-         GLboolean src_is_uint = _mesa_is_format_unsigned(rb_format);
+         src_is_uint = _mesa_is_format_unsigned(rb_format);
          if (src_is_uint) {
             rgba_format = RGBA8888_UINT;
             rgba_stride = width * 4 * sizeof(GLuint);
@@ -559,7 +563,7 @@ read_rgba_pixels( struct gl_context *ctx,
     * If the dst format is Luminance, we need to do the conversion by computing
     * L=R+G+B values.
     */
-   if (format != GL_LUMINANCE && format != GL_LUMINANCE_ALPHA) {
+   if (!dst_is_luminance) {
       _mesa_format_convert(dst, dst_format, dst_stride,
                            src, src_format, src_stride,
                            width, height,
@@ -591,7 +595,8 @@ read_rgba_pixels( struct gl_context *ctx,
                            luminance, luminance_format, luminance_stride,
                            width, height, NULL);
    } else {
-      _mesa_pack_luminance_from_rgba_integer(width * height, src, dst, format);
+      _mesa_pack_luminance_from_rgba_integer(width * height, src, !src_is_uint,
+                                             dst, format, type);
    }
 
    if (rgba)
