@@ -91,8 +91,9 @@ _mesa_pack_luminance_from_rgba_float(GLuint n, GLfloat rgba[][4],
                                      GLbitfield transferOps);
 
 extern void
-_mesa_pack_luminance_from_rgba_integer(GLuint n, GLuint rgba[][4],
-                                       GLvoid *dstAddr, GLenum dst_format);
+_mesa_pack_luminance_from_rgba_integer(GLuint n, GLuint rgba[][4], bool rgba_is_signed,
+                                       GLvoid *dstAddr, GLenum dst_format,
+                                       GLenum dst_type);
 
 extern GLfloat *
 _mesa_unpack_color_index_to_rgba_float(struct gl_context *ctx, GLuint dims,

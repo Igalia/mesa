@@ -1365,27 +1365,94 @@ _mesa_pack_luminance_from_rgba_float(GLuint n, GLfloat rgba[][4],
    }
 }
 
-void
-_mesa_pack_luminance_from_rgba_integer(GLuint n, GLuint rgba[][4],
-                                       GLvoid *dstAddr, GLenum dst_format)
-{
-   int i;
-   GLuint *dst = (GLuint *) dstAddr;
+#define PACK_LUMINANCE(COUNT, RGBA, DST, FORMAT, TYPE, CONVERT)              \
+   do {                                                                      \
+      int i;                                                                 \
+      int bits = sizeof(TYPE) * 8;                                           \
+      TYPE *luminance = (TYPE *) DST;                                        \
+      switch (FORMAT) {                                                      \
+      case GL_LUMINANCE_INTEGER_EXT:                                         \
+         for (i = 0; i < COUNT; i++) {                                       \
+            luminance[i] =                                                   \
+               CONVERT(RGBA[i][RCOMP] + RGBA[i][GCOMP] + RGBA[i][BCOMP], bits); \
+         }                                                                   \
+         return;                                                             \
+      case GL_LUMINANCE_ALPHA_INTEGER_EXT:                                   \
+         for (i = 0; i < COUNT; i++) {                                       \
+            luminance[2*i] =                                                 \
+               CONVERT(RGBA[i][RCOMP] + RGBA[i][GCOMP] + RGBA[i][BCOMP], bits); \
+            luminance[2*i+1] = CONVERT(RGBA[i][ACOMP], bits);                \
+         }                                                                   \
+      }                                                                      \
+   } while(0)
 
-   switch (dst_format) {
-   case GL_LUMINANCE:
-      for (i = 0; i < n; i++) {
-         dst[i] = rgba[i][RCOMP] + rgba[i][GCOMP] + rgba[i][BCOMP];
+void
+_mesa_pack_luminance_from_rgba_integer(GLuint n,
+                                       GLuint rgba[][4], bool rgba_is_signed,
+                                       GLvoid *dstAddr,
+                                       GLenum dst_format,
+                                       GLenum dst_type)
+{
+   assert(dst_format == GL_LUMINANCE_INTEGER_EXT ||
+          dst_format == GL_LUMINANCE_ALPHA_INTEGER_EXT);
+
+   switch (dst_type) {
+   case GL_BYTE:
+      if (rgba_is_signed) {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLbyte,
+                        _mesa_signed_to_signed);
+      } else {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLbyte,
+                        _mesa_unsigned_to_signed);
       }
       return;
-   case GL_LUMINANCE_ALPHA:
-      for (i = 0; i < n; i++) {
-         dst[2*i] = rgba[i][RCOMP] + rgba[i][GCOMP] + rgba[i][BCOMP];
-         dst[2*i+1] = rgba[i][ACOMP];
+   case GL_UNSIGNED_BYTE:
+      if (rgba_is_signed) {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLubyte,
+                        _mesa_signed_to_unsigned);
+      } else {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLubyte,
+                        _mesa_unsigned_to_unsigned);
+      }
+      return;
+   case GL_SHORT:
+      if (rgba_is_signed) {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLshort,
+                        _mesa_signed_to_signed);
+      } else {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLshort,
+                        _mesa_unsigned_to_signed);
+      }
+      return;
+   case GL_UNSIGNED_SHORT:
+      if (rgba_is_signed) {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLushort,
+                        _mesa_signed_to_unsigned);
+      } else {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLushort,
+                        _mesa_unsigned_to_unsigned);
+      }
+      return;
+   case GL_INT:
+      if (rgba_is_signed) {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLint,
+                        _mesa_signed_to_signed);
+      } else {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLint,
+                        _mesa_unsigned_to_signed);
+      }
+      return;
+   case GL_UNSIGNED_INT:
+      if (rgba_is_signed) {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLuint,
+                        _mesa_signed_to_unsigned);
+      } else {
+         PACK_LUMINANCE(n, rgba, dstAddr, dst_format, GLuint,
+                        _mesa_unsigned_to_unsigned);
       }
       return;
    default:
-      assert(!"Unsupported format");
+      assert(!"Unsupported type");
    }
 }
 
