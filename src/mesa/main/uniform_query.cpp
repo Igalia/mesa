@@ -51,6 +51,11 @@ _mesa_GetActiveUniform(GLuint program, GLuint index,
    if (!shProg)
       return;
 
+   if (maxLength < 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE, "glGetActiveUniform(maxLength < 0)");
+      return;
+   }
+
    if (index >= shProg->NumUserUniformStorage) {
       _mesa_error(ctx, GL_INVALID_VALUE, "glGetActiveUniform(index)");
       return;
