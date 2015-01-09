@@ -825,6 +825,21 @@ public:
       unsigned max_array_access;
 
       /**
+       * Precision qualifier.
+       *
+       * In desktop GLSL we do not care about precision qualifiers at all, in
+       * fact the spec does not care about some incoherent uses of qualifiers
+       * that do raise an error in GLSL ES (specifically, declaring the same
+       * uniform in multiple shaders with different precision qualifiers).
+       *
+       * To make things easy, we make it so that this field is always
+       * GLSL_PRECISION_NONE on desktop shaders. This way all the variables
+       * have the same precision value and the checks we add in the compiler
+       * for this field will never break a desktop shader compile.
+       */
+      unsigned precision;
+
+      /**
        * Allow (only) ir_variable direct access private members.
        */
       friend class ir_variable;

@@ -100,6 +100,13 @@ enum glsl_matrix_layout {
    GLSL_MATRIX_LAYOUT_ROW_MAJOR
 };
 
+enum {
+   GLSL_PRECISION_NONE = 0,
+   GLSL_PRECISION_HIGH,
+   GLSL_PRECISION_MEDIUM,
+   GLSL_PRECISION_LOW
+};
+
 #ifdef __cplusplus
 #include "GL/gl.h"
 #include "util/ralloc.h"
@@ -117,6 +124,7 @@ struct glsl_type {
 				* and \c GLSL_TYPE_UINT are valid.
 				*/
    unsigned interface_packing:2;
+   unsigned precision:2;
 
    /* Callers of this ralloc-based new need not call delete. It's
     * easier to just ralloc_free 'mem_ctx' (or any of its ancestors). */
@@ -732,6 +740,11 @@ struct glsl_struct_field {
     * streams (as in ir_variable::stream). -1 otherwise.
     */
    int stream;
+
+   /**
+    * Precission qualifier
+    */
+   unsigned precision;
 };
 
 static inline unsigned int

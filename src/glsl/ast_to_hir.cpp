@@ -2460,6 +2460,10 @@ apply_type_qualifier_to_variable(const struct ast_type_qualifier *qual,
    if (qual->flags.q.sample)
       var->data.sample = 1;
 
+   /* Precision qualifiers do not hold any meaning in Desktop GLSL */
+   if (state->es_shader && qual->precision)
+      var->data.precision = qual->precision;
+
    if (state->stage == MESA_SHADER_GEOMETRY &&
        qual->flags.q.out && qual->flags.q.stream) {
       var->data.stream = qual->stream;
@@ -5213,6 +5217,10 @@ ast_process_structure_or_interface_block(exec_list *instructions,
          fields[i].centroid = qual->flags.q.centroid ? 1 : 0;
          fields[i].sample = qual->flags.q.sample ? 1 : 0;
 
+         /* Precision qualifiers do not hold any meaning in Desktop GLSL */
+         fields[i].precision = state->es_shader ? qual->precision :
+                                                  GLSL_PRECISION_NONE;
+
          /* Only save explicitly defined streams in block's field */
          fields[i].stream = qual->flags.q.explicit_stream ? qual->stream : -1;
 
@@ -5687,6 +5695,10 @@ ast_interface_block::hir(exec_list *instructions,
          var->data.centroid = fields[i].centroid;
          var->data.sample = fields[i].sample;
          var->init_interface_type(block_type);
+
+         /* Precision qualifiers do not hold any meaning in Desktop GLSL */
+         var->data.precision = state->es_shader ? fields[i].precision :
+                                                  GLSL_PRECISION_NONE;
 
          if (fields[i].matrix_layout == GLSL_MATRIX_LAYOUT_INHERITED) {
             var->data.matrix_layout = matrix_layout == GLSL_MATRIX_LAYOUT_INHERITED

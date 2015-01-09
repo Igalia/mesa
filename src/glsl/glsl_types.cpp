@@ -122,6 +122,7 @@ glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
       this->fields.structure[i].centroid = fields[i].centroid;
       this->fields.structure[i].sample = fields[i].sample;
       this->fields.structure[i].matrix_layout = fields[i].matrix_layout;
+      this->fields.structure[i].precision = fields[i].precision;
    }
 
    mtx_unlock(&glsl_type::mutex);
@@ -556,6 +557,9 @@ glsl_type::record_compare(const glsl_type *b) const
          return false;
       if (this->fields.structure[i].sample
           != b->fields.structure[i].sample)
+         return false;
+      if (this->fields.structure[i].precision
+          != b->fields.structure[i].precision)
          return false;
    }
 
