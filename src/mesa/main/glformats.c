@@ -1775,6 +1775,112 @@ _mesa_es_error_check_format_and_type(GLenum format, GLenum type,
    return type_valid ? GL_NO_ERROR : GL_INVALID_OPERATION;
 }
 
+/**
+ * Check that internal format is a valid enum for OpenGL ES 3.
+ * \return TRUE if valid, FALSE otherwise.
+ */
+static GLboolean
+_mesa_es3_is_valid_internal_format(GLenum internalFormat)
+{
+   switch (internalFormat) {
+   case GL_RGB:
+   case GL_RGBA:
+   case GL_LUMINANCE_ALPHA:
+   case GL_LUMINANCE:
+   case GL_ALPHA:
+   case GL_R8:
+   case GL_R8_SNORM:
+   case GL_R16F:
+   case GL_R32F:
+   case GL_R8UI:
+   case GL_R8I:
+   case GL_R16UI:
+   case GL_R16I:
+   case GL_R32UI:
+   case GL_R32I:
+   case GL_RG8:
+   case GL_RG8_SNORM:
+   case GL_RG16F:
+   case GL_RG32F:
+   case GL_RG8UI:
+   case GL_RG8I:
+   case GL_RG16UI:
+   case GL_RG16I:
+   case GL_RG32UI:
+   case GL_RG32I:
+   case GL_RGB8:
+   case GL_SRGB8:
+   case GL_RGB565:
+   case GL_RGB8_SNORM:
+   case GL_R11F_G11F_B10F:
+   case GL_RGB9_E5:
+   case GL_RGB16F:
+   case GL_RGB32F:
+   case GL_RGB8UI:
+   case GL_RGB8I:
+   case GL_RGB16UI:
+   case GL_RGB16I:
+   case GL_RGB32UI:
+   case GL_RGB32I:
+   case GL_RGBA8:
+   case GL_SRGB8_ALPHA8:
+   case GL_RGBA8_SNORM:
+   case GL_RGB5_A1:
+   case GL_RGBA4:
+   case GL_RGB10_A2:
+   case GL_RGBA16F:
+   case GL_RGBA32F:
+   case GL_RGBA8UI:
+   case GL_RGBA8I:
+   case GL_RGB10_A2UI:
+   case GL_RGBA16UI:
+   case GL_RGBA16I:
+   case GL_RGBA32I:
+   case GL_RGBA32UI:
+   case GL_DEPTH_COMPONENT16:
+   case GL_DEPTH_COMPONENT24:
+   case GL_DEPTH_COMPONENT32F:
+   case GL_DEPTH24_STENCIL8:
+   case GL_DEPTH32F_STENCIL8:
+      break;
+   default:
+      return GL_FALSE;
+   }
+
+   return GL_TRUE;
+}
+
+/**
+ * Check that format type is a valid enum for OpenGL ES 3.
+ * \return TRUE if valid, FALSE otherwise.
+ */
+static GLboolean
+_mesa_es3_is_valid_format_type(GLenum type)
+{
+   switch (type) {
+   case GL_UNSIGNED_BYTE:
+   case GL_UNSIGNED_SHORT_5_6_5:
+   case GL_UNSIGNED_SHORT_4_4_4_4:
+   case GL_UNSIGNED_SHORT_5_5_5_1:
+   case GL_BYTE:
+   case GL_HALF_FLOAT:
+   case GL_FLOAT:
+   case GL_UNSIGNED_SHORT:
+   case GL_SHORT:
+   case GL_UNSIGNED_INT:
+   case GL_INT:
+   case GL_UNSIGNED_INT_10F_11F_11F_REV:
+   case GL_UNSIGNED_INT_5_9_9_9_REV:
+   case GL_UNSIGNED_INT_2_10_10_10_REV:
+   case GL_UNSIGNED_INT_24_8:
+   case GL_FLOAT_32_UNSIGNED_INT_24_8_REV:
+      break;
+   default:
+      return GL_FALSE;
+   }
+
+   return GL_TRUE;
+}
 
 /**
  * Do error checking of format/type combinations for OpenGL ES 3
@@ -1785,6 +1891,14 @@ GLenum
 _mesa_es3_error_check_format_and_type(GLenum format, GLenum type,
                                       GLenum internalFormat)
 {
+   if (!_mesa_es3_is_valid_format_type(type)) {
+      return GL_INVALID_ENUM;
+   }
+
+   if (!_mesa_es3_is_valid_internal_format(internalFormat)) {
+      return GL_INVALID_VALUE;
+   }
+
    switch (format) {
    case GL_RGBA:
       switch (type) {
