@@ -3406,7 +3406,7 @@ ast_declarator_list::hir(exec_list *instructions,
                "lowp"
             };
 
-            _mesa_glsl_warning(&loc, state,
+            _mesa_glsl_error(&loc, state,
                                "empty declaration with precision qualifier, "
                                "to set the default precision, use "
                                "`precision %s %s;'",
@@ -3414,7 +3414,7 @@ ast_declarator_list::hir(exec_list *instructions,
                                type_name);
          }
       } else if (this->type->specifier->structure == NULL) {
-         _mesa_glsl_warning(&loc, state, "empty declaration");
+         _mesa_glsl_error(&loc, state, "empty declaration");
       }
    }
 
