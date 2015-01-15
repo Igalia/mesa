@@ -53,7 +53,20 @@ _mesa_init_renderbuffer(struct gl_renderbuffer *rb, GLuint name)
    rb->Width = 0;
    rb->Height = 0;
    rb->Depth = 0;
-   rb->InternalFormat = GL_RGBA;
+
+   /* Table 6.15. "Renderbuffer (state per renderbuffer object)" of
+    * OpenGL ES 3.0.0 spec (page 251) states that the initial value of
+    * Renderbuffer's internal format is GL_RGBA4, instead of GL_RGBA
+    * as in Desktop GL.
+    */
+   GET_CURRENT_CONTEXT(ctx);
+   if (ctx && _mesa_is_gles3(ctx)) {
+      rb->InternalFormat = GL_RGBA4;
+   }
+   else {
+      rb->InternalFormat = GL_RGBA;
+   }
+
    rb->Format = MESA_FORMAT_NONE;
 }
 
