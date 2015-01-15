@@ -36,7 +36,7 @@
  * - EXP_TO_EXP2
  * - POW_TO_EXP2
  * - LOG_TO_LOG2
- * - MOD_TO_FRACT
+ * - MOD_TO_FLOOR
  * - LDEXP_TO_ARITH
  * - BITFIELD_INSERT_TO_BFM_BFI
  * - CARRY_TO_ARITH
@@ -77,13 +77,16 @@
  * Many older GPUs don't have an x**y instruction.  For these GPUs, convert
  * x**y to 2**(y * log2(x)).
  *
- * MOD_TO_FRACT:
+ * MOD_TO_FLOOR:
  * -------------
- * Breaks an ir_binop_mod expression down to (op1 * fract(op0 / op1))
+ * Breaks an ir_binop_mod expression down to (op0 - op1 * floor(op0 / op1))
  *
  * Many GPUs don't have a MOD instruction (945 and 965 included), and
  * if we have to break it down like this anyway, it gives an
  * opportunity to do things like constant fold the (1.0 / op1) easily.
+ *
+ * Note: before we used to implement this as op1 * fract(op / op1) but this
+ * implementation had significant precission errors.
  *
  * LDEXP_TO_ARITH:
  * -------------
@@ -136,7 +139,7 @@ private:
    void sub_to_add_neg(ir_expression *);
    void div_to_mul_rcp(ir_expression *);
    void int_div_to_mul_rcp(ir_expression *);
-   void mod_to_fract(ir_expression *);
+   void mod_to_floor(ir_expression *);
    void exp_to_exp2(ir_expression *);
    void pow_to_exp2(ir_expression *);
    void log_to_log2(ir_expression *);
@@ -276,22 +279,15 @@ lower_instructions_visitor::log_to_log2(ir_expression *ir)
 }
 
 void
-lower_instructions_visitor::mod_to_fract(ir_expression *ir)
+lower_instructions_visitor::mod_to_floor(ir_expression *ir)
 {
-   ir_variable *temp = new(ir) ir_variable(ir->operands[1]->type, "mod_b",
-					   ir_var_temporary);
-   this->base_ir->insert_before(temp);
-
-   ir_assignment *const assign =
-      new(ir) ir_assignment(new(ir) ir_dereference_variable(temp),
-			    ir->operands[1], NULL);
-
-   this->base_ir->insert_before(assign);
+   ir_rvalue *x = ir->operands[0];
+   ir_rvalue *y = ir->operands[1];
+   ir_rvalue *x_clone = x->clone(ir, NULL);
+   ir_rvalue *y_clone = y->clone(ir, NULL);
 
    ir_expression *const div_expr =
-      new(ir) ir_expression(ir_binop_div, ir->operands[0]->type,
-			    ir->operands[0],
-			    new(ir) ir_dereference_variable(temp));
+      new(ir) ir_expression(ir_binop_div, x->type, x, y);
 
    /* Don't generate new IR that would need to be lowered in an additional
     * pass.
@@ -299,14 +295,15 @@ lower_instructions_visitor::mod_to_fract(ir_expression *ir)
    if (lowering(DIV_TO_MUL_RCP))
       div_to_mul_rcp(div_expr);
 
-   ir_rvalue *expr = new(ir) ir_expression(ir_unop_fract,
-					   ir->operands[0]->type,
-					   div_expr,
-					   NULL);
+   ir_expression *const floor_expr =
+      new(ir) ir_expression(ir_unop_floor, x->type, div_expr);
 
-   ir->operation = ir_binop_mul;
-   ir->operands[0] = new(ir) ir_dereference_variable(temp);
-   ir->operands[1] = expr;
+   ir_expression *const mul_expr =
+      new(ir) ir_expression(ir_binop_mul, y_clone, floor_expr);
+
+   ir->operation = ir_binop_sub;
+   ir->operands[0] = x_clone;
+   ir->operands[1] = mul_expr;
    this->progress = true;
 }
 
@@ -535,8 +532,8 @@ lower_instructions_visitor::visit_leave(ir_expression *ir)
       break;
 
    case ir_binop_mod:
-      if (lowering(MOD_TO_FRACT) && ir->type->is_float())
-	 mod_to_fract(ir);
+      if (lowering(MOD_TO_FLOOR) && ir->type->is_float())
+	 mod_to_floor(ir);
       break;
 
    case ir_binop_pow:
