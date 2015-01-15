@@ -397,6 +397,11 @@ descriptor=[
   [ "MAX_TRANSFORM_FEEDBACK_SEPARATE_COMPONENTS", "CONTEXT_INT(Const.MaxTransformFeedbackSeparateComponents), extra_EXT_transform_feedback" ],
 ]},
 
+# Enums in OpenGL ES 3.+ only
+{ "apis": ["GLES3"], "params": [
+  [ "PRIMITIVE_RESTART_FIXED_INDEX", "CONTEXT_BOOL(Array.PrimitiveRestartFixedIndex), NO_EXTRA" ],
+]},
+
 { "apis": ["GLES", "GLES2"], "params": [
 # GL_OES_EGL_image_external
   [ "TEXTURE_BINDING_EXTERNAL_OES", "LOC_CUSTOM, TYPE_INT, TEXTURE_EXTERNAL_INDEX, extra_OES_EGL_image_external" ],
