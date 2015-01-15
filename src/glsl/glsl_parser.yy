@@ -362,6 +362,13 @@ any_identifier:
    IDENTIFIER
    | TYPE_IDENTIFIER
    | NEW_IDENTIFIER
+   {
+      if (state->es_shader && strlen($1) > 1024) {
+         _mesa_glsl_error(& @1, state,
+                          "Identifier `%s' exceeds "
+                          "1024 characters", $1);
+      }
+   }
    ;
 
 extension_statement:
