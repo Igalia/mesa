@@ -195,9 +195,13 @@ fs_visitor::register_coalesce()
             continue;
          }
          reg_to_offset[offset] = inst->dst.reg_offset;
-         if (inst->exec_size == 16)
-            reg_to_offset[offset + 1] = inst->dst.reg_offset + 1;
          mov[offset] = inst;
+
+         if (inst->exec_size * type_sz(inst->src[0].type) > REG_SIZE) {
+            reg_to_offset[offset + 1] = inst->dst.reg_offset + 1;
+            mov[offset + 1] = inst;
+         }
+
          channels_remaining -= inst->regs_written;
       }
 
