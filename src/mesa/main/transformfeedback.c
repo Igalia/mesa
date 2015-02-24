@@ -96,8 +96,19 @@ reference_transform_feedback_object(struct gl_transform_feedback_object **ptr,
       assert(oldObj->RefCount > 0);
       oldObj->RefCount--;
 
+      /* If the transform feedback object to delete (obj == NULL) is bound
+       * then revert the binding to the default transform feedback object.
+       */
+      GET_CURRENT_CONTEXT(ctx);
+      if (ctx && obj == NULL &&
+          oldObj == ctx->TransformFeedback.CurrentObject &&
+          oldObj != ctx->TransformFeedback.DefaultObject) {
+         ctx->TransformFeedback.CurrentObject = NULL;
+         reference_transform_feedback_object(&ctx->TransformFeedback.CurrentObject,
+                                             ctx->TransformFeedback.DefaultObject);
+      }
+
       if (oldObj->RefCount == 0) {
-         GET_CURRENT_CONTEXT(ctx);
          if (ctx)
             ctx->Driver.DeleteTransformFeedback(ctx, oldObj);
       }
