@@ -1043,6 +1043,7 @@ single_declaration:
       $$ = new(ctx) ast_declarator_list($1);
       $$->set_location_range(@1, @2);
       $$->declarations.push_tail(&decl->link);
+      state->symbols->add_variable(new(state) ir_variable(NULL, $2, ir_var_auto));
    }
    | fully_specified_type any_identifier array_specifier
    {
@@ -1053,6 +1054,7 @@ single_declaration:
       $$ = new(ctx) ast_declarator_list($1);
       $$->set_location_range(@1, @3);
       $$->declarations.push_tail(&decl->link);
+      state->symbols->add_variable(new(state) ir_variable(NULL, $2, ir_var_auto));
    }
    | fully_specified_type any_identifier array_specifier '=' initializer
    {
@@ -1063,6 +1065,7 @@ single_declaration:
       $$ = new(ctx) ast_declarator_list($1);
       $$->set_location_range(@1, @3);
       $$->declarations.push_tail(&decl->link);
+      state->symbols->add_variable(new(state) ir_variable(NULL, $2, ir_var_auto));
    }
    | fully_specified_type any_identifier '=' initializer
    {
@@ -1073,6 +1076,7 @@ single_declaration:
       $$ = new(ctx) ast_declarator_list($1);
       $$->set_location_range(@1, @2);
       $$->declarations.push_tail(&decl->link);
+      state->symbols->add_variable(new(state) ir_variable(NULL, $2, ir_var_auto));
    }
    | INVARIANT variable_identifier
    {
@@ -1085,6 +1089,7 @@ single_declaration:
       $$->invariant = true;
 
       $$->declarations.push_tail(&decl->link);
+      state->symbols->add_variable(new(state) ir_variable(NULL, $2, ir_var_auto));
    }
    | PRECISE variable_identifier
    {
@@ -1097,6 +1102,7 @@ single_declaration:
       $$->precise = true;
 
       $$->declarations.push_tail(&decl->link);
+      state->symbols->add_variable(new(state) ir_variable(NULL, $2, ir_var_auto));
    }
    ;
 
