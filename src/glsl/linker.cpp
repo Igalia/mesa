@@ -958,12 +958,21 @@ cross_validate_globals(struct gl_shader_program *prog,
                   if (var->type->is_record() && existing->type->is_record()
                       && existing->type->record_compare(var->type)) {
                      existing->type = var->type;
-                  } else {
+                  } else if (strcmp(var->type->name, existing->type->name)) {
                      linker_error(prog, "%s `%s' declared as type "
                                   "`%s' and type `%s'\n",
                                   mode_string(var),
                                   var->name, var->type->name,
                                   existing->type->name);
+                     return;
+                  } else {
+                     /* The global is declared with the same type name but the type
+                      * declarations mismatch (e.g. the same struct type name, but
+                      * the actual struct declarations mismatch).
+                      */
+                     linker_error(prog, "%s `%s' declared with mismatching definitions "
+                                  "of type `%s'\n",
+                                  mode_string(var), var->name, var->type->name);
                      return;
                   }
 	       }
@@ -1120,6 +1129,29 @@ cross_validate_globals(struct gl_shader_program *prog,
                             "mismatching sample qualifiers\n",
                             mode_string(var), var->name);
                return;
+            }
+            /* From the GLSL ES3 spec, 4.5.3 Precision qualifiers:
+             *
+             * "The same uniform declared in different shaders that are linked
+             *  together must have the same precision qualification."
+             *
+             * In the GLSL ES2 spec this was resolved in the issue amendments
+             * (10.3 Precision Qualifiers). The GLSL ES1 spec overlooked this,
+             * but seems like an obvious error since we can only have one
+             * consistent definition of a global.
+             *
+             * The desktop GLSL spec does not include this reference
+             * because precision qualifiers are ignored. We will never
+             * hit this scenario in desktop GLSL though because we always set
+             * the precision of variables to GLSL_PRECISION_NONE.
+             */
+            if (var->data.mode == ir_var_uniform) {
+               if (existing->data.precision != var->data.precision) {
+                  linker_error(prog, "declarations for %s `%s` have "
+                               "mismatching precision qualifiers\n",
+                               mode_string(var), var->name);
+                  return;
+               }
             }
 	 } else
 	    variables.add_variable(var);
