@@ -2025,7 +2025,6 @@ precision_qualifier_allowed(const glsl_type *type)
     */
    return type->is_float()
        || type->is_integer()
-       || type->is_record()
        || type->is_sampler();
 }
 
