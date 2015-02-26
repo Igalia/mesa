@@ -101,6 +101,13 @@ enum glsl_matrix_layout {
    GLSL_MATRIX_LAYOUT_ROW_MAJOR
 };
 
+enum {
+   GLSL_PRECISION_NONE = 0,
+   GLSL_PRECISION_HIGH,
+   GLSL_PRECISION_MEDIUM,
+   GLSL_PRECISION_LOW
+};
+
 #ifdef __cplusplus
 #include "GL/gl.h"
 #include "util/ralloc.h"
@@ -781,6 +788,11 @@ struct glsl_struct_field {
     * streams (as in ir_variable::stream). -1 otherwise.
     */
    int stream;
+
+   /**
+    * Precission qualifier
+    */
+   unsigned precision;
 };
 
 static inline unsigned int

@@ -1993,6 +1993,41 @@ process_array_type(YYLTYPE *loc, const glsl_type *base,
    return array_type;
 }
 
+static bool
+precision_qualifier_allowed(const glsl_type *type)
+{
+   /* Precision qualifiers apply to floating point, integer and sampler
+    * types.
+    *
+    * Section 4.5.2 (Precision Qualifiers) of the GLSL 1.30 spec says:
+    *    "Any floating point or any integer declaration can have the type
+    *    preceded by one of these precision qualifiers [...] Literal
+    *    constants do not have precision qualifiers. Neither do Boolean
+    *    variables.
+    *
+    * Section 4.5 (Precision and Precision Qualifiers) of the GLSL 1.30
+    * spec also says:
+    *
+    *     "Precision qualifiers are added for code portability with OpenGL
+    *     ES, not for functionality. They have the same syntax as in OpenGL
+    *     ES."
+    *
+    * Section 8 (Built-In Functions) of the GLSL ES 1.00 spec says:
+    *
+    *     "uniform lowp sampler2D sampler;
+    *     highp vec2 coord;
+    *     ...
+    *     lowp vec4 col = texture2D (sampler, coord);
+    *                                            // texture2D returns lowp"
+    *
+    * From this, we infer that GLSL 1.30 (and later) should allow precision
+    * qualifiers on sampler types just like float and integer types.
+    */
+   return type->is_float()
+       || type->is_integer()
+       || type->is_record()
+       || type->is_sampler();
+}
 
 const glsl_type *
 ast_type_specifier::glsl_type(const char **name,
@@ -2009,31 +2044,155 @@ ast_type_specifier::glsl_type(const char **name,
    return type;
 }
 
+/**
+ * From the OpenGL ES 3.0 spec, 4.5.4 Default Precision Qualifiers:
+ *
+ * "The precision statement
+ *
+ *    precision precision-qualifier type;
+ *
+ *  can be used to establish a default precision qualifier. The type field can
+ *  be either int or float or any of the sampler types, (...) If type is float,
+ *  the directive applies to non-precision-qualified floating point type
+ *  (scalar, vector, and matrix) declarations. If type is int, the directive
+ *  applies to all non-precision-qualified integer type (scalar, vector, signed,
+ *  and unsigned) declarations."
+ *
+ * We use the symbol table to keep the values of the default precisions for
+ * each 'type' in each scope and we use the 'type' string from the precision
+ * statement as key in the symbol table. When we want to retrieve the default
+ * precision associated with a given glsl_type we need to know the type string
+ * associated with it. This is what this function returns.
+ */
+static const char *
+get_type_name_for_precision_qualifier(const glsl_type *type)
+{
+   switch (type->base_type) {
+   case GLSL_TYPE_FLOAT:
+      return "float";
+   case GLSL_TYPE_UINT:
+   case GLSL_TYPE_INT:
+      return "int";
+   case GLSL_TYPE_SAMPLER: {
+      bool array = type->sampler_array;
+      bool shadow = type->sampler_shadow;
+      switch (type->sampler_type) {
+      case GLSL_TYPE_FLOAT:
+         switch (type->sampler_dimensionality) {
+         case GLSL_SAMPLER_DIM_1D:
+            if (!array && !shadow)
+               return "sampler1D";
+            if (array && !shadow)
+               return "sampler1DArray";
+            if (!array && shadow)
+               return "sampler1DShadow";
+            return "sampler1DArrayShadow";
+         case GLSL_SAMPLER_DIM_2D:
+            if (!array && !shadow)
+               return "sampler2D";
+            if (array && !shadow)
+               return "sampler2DArray";
+            if (!array && shadow)
+               return "sampler2DShadow";
+            return "sampler2DArrayShadow";
+         case GLSL_SAMPLER_DIM_3D:
+            if (!array && !shadow)
+               return "sampler3D";
+            assert(!"Not reached");
+            break;
+         case GLSL_SAMPLER_DIM_CUBE:
+            if (!array && !shadow)
+               return "samplerCube";
+            if (array && !shadow)
+               return "samplercubeArray";
+            if (!array && shadow)
+               return "samplerCubeShadow";
+            return "samplerCubeArrayShadow";
+         default:
+            assert(!"Not reached");
+         } /* sampler float dimensionality */
+         break;
+      case GLSL_TYPE_INT:
+         switch (type->sampler_dimensionality) {
+         case GLSL_SAMPLER_DIM_1D:
+            if (!array && !shadow)
+               return "isampler1D";
+            if (array && !shadow)
+               return "isampler1DArray";
+            assert(!"Not reached");
+            break;
+         case GLSL_SAMPLER_DIM_2D:
+            if (!array && !shadow)
+               return "isampler2D";
+            if (array && !shadow)
+               return "isampler2DArray";
+            assert(!"Not reached");
+            break;
+         case GLSL_SAMPLER_DIM_3D:
+            if (!array && !shadow)
+               return "isampler3D";
+            assert(!"Not reached");
+            break;
+         case GLSL_SAMPLER_DIM_CUBE:
+            if (!array && !shadow)
+               return "isamplerCube";
+            if (array && !shadow)
+               return "isamplerCubeArray";
+            assert(!"Not reached");
+            break;
+         default:
+            assert(!"Not reached");
+         } /* sampler int dimensionality */
+         break;
+      case GLSL_TYPE_UINT:
+         switch (type->sampler_dimensionality) {
+         case GLSL_SAMPLER_DIM_1D:
+            if (!array && !shadow)
+               return "usampler1D";
+            if (array && !shadow)
+               return "usampler1DArray";
+            assert(!"Not reached");
+            break;
+         case GLSL_SAMPLER_DIM_2D:
+            if (!array && !shadow)
+               return "usampler2D";
+            if (array && !shadow)
+               return "usampler2DArray";
+            assert(!"Not reached");
+            break;
+         case GLSL_SAMPLER_DIM_3D:
+            if (!array && !shadow)
+               return "usampler3D";
+            assert(!"Not reached");
+            break;
+         case GLSL_SAMPLER_DIM_CUBE:
+            if (!array && !shadow)
+               return "usamplerCube";
+            if (array && !shadow)
+               return "usamplerCubeArray";
+            assert(!"Not reached");
+            break;
+         default:
+            assert(!"Not reached");
+         } /* sampler uint dimensionality */
+         break;
+      default:
+         assert(!"Not reached");
+      } /* sampler type */
+      break;
+   } /* GLSL_TYPE_SAMPLER */
+   break;
+   default:
+      assert(!"Not reached");
+      break;
+   } /* base type */
+}
+
 const glsl_type *
 ast_fully_specified_type::glsl_type(const char **name,
                                     struct _mesa_glsl_parse_state *state) const
 {
-   const struct glsl_type *type = this->specifier->glsl_type(name, state);
-
-   if (type == NULL)
-      return NULL;
-
-   /* The fragment language does not define a default precision value
-    * for float types, so check that one is defined if the type declaration
-    * isn't providing one explictly.
-    */
-   if (type->base_type == GLSL_TYPE_FLOAT
-       && state->es_shader
-       && state->stage == MESA_SHADER_FRAGMENT
-       && this->qualifier.precision == ast_precision_none
-       && state->symbols->get_default_precision_qualifier("float") == ast_precision_none) {
-      YYLTYPE loc = this->get_location();
-      _mesa_glsl_error(&loc, state,
-                       "no precision specified this scope for type `%s'",
-                       type->name);
-   }
-
-   return type;
+   return this->specifier->glsl_type(name, state);
 }
 
 /**
@@ -2543,6 +2702,30 @@ apply_type_qualifier_to_variable(const struct ast_type_qualifier *qual,
 
    if (qual->flags.q.sample)
       var->data.sample = 1;
+
+   /* Precision qualifiers do not have any meaning in Desktop GLSL.
+    * In GLES we take the precision from the type qualifier if present,
+    * otherwise, if the type of the variable allows precision qualifiers at all,
+    * we look for the default precision qualifier for that type in the current
+    * scope.
+    */
+   if (state->es_shader) {
+      if (qual->precision) {
+         var->data.precision = qual->precision;
+      } else if (precision_qualifier_allowed(var->type)) {
+         const char *type_name =
+            get_type_name_for_precision_qualifier(var->type);
+         int default_precision =
+            state->symbols->get_default_precision_qualifier(type_name);
+         if (default_precision == ast_precision_none) {
+            _mesa_glsl_error(loc, state,
+                             "No precision specified in this scope for type `%s'",
+                             var->type->name);
+         } else {
+            var->data.precision = default_precision;
+         }
+      }
+   }
 
    if (state->stage == MESA_SHADER_GEOMETRY &&
        qual->flags.q.out && qual->flags.q.stream) {
@@ -3379,42 +3562,6 @@ validate_identifier(const char *identifier, YYLTYPE loc,
                          "identifier `%s' uses reserved `__' string",
                          identifier);
    }
-}
-
-static bool
-precision_qualifier_allowed(const glsl_type *type)
-{
-   /* Precision qualifiers apply to floating point, integer and sampler
-    * types.
-    *
-    * Section 4.5.2 (Precision Qualifiers) of the GLSL 1.30 spec says:
-    *    "Any floating point or any integer declaration can have the type
-    *    preceded by one of these precision qualifiers [...] Literal
-    *    constants do not have precision qualifiers. Neither do Boolean
-    *    variables.
-    *
-    * Section 4.5 (Precision and Precision Qualifiers) of the GLSL 1.30
-    * spec also says:
-    *
-    *     "Precision qualifiers are added for code portability with OpenGL
-    *     ES, not for functionality. They have the same syntax as in OpenGL
-    *     ES."
-    *
-    * Section 8 (Built-In Functions) of the GLSL ES 1.00 spec says:
-    *
-    *     "uniform lowp sampler2D sampler;
-    *     highp vec2 coord;
-    *     ...
-    *     lowp vec4 col = texture2D (sampler, coord);
-    *                                            // texture2D returns lowp"
-    *
-    * From this, we infer that GLSL 1.30 (and later) should allow precision
-    * qualifiers on sampler types just like float and integer types.
-    */
-   return type->is_float()
-       || type->is_integer()
-       || type->is_record()
-       || type->is_sampler();
 }
 
 ir_rvalue *
@@ -5672,6 +5819,25 @@ ast_process_structure_or_interface_block(exec_list *instructions,
          fields[i].sample = qual->flags.q.sample ? 1 : 0;
          fields[i].patch = qual->flags.q.patch ? 1 : 0;
 
+         /* Precision qualifiers do not hold any meaning in Desktop GLSL */
+         if (state->es_shader) {
+            if (qual->precision) {
+               fields[i].precision = qual->precision;
+            } else if (precision_qualifier_allowed(field_type)) {
+               const char *type_name =
+                  get_type_name_for_precision_qualifier(field_type);
+               int default_precision =
+                  state->symbols->get_default_precision_qualifier(type_name);
+               if (default_precision == ast_precision_none) {
+                  _mesa_glsl_error(&loc, state,
+                                   "No precision specified in this scope for type `%s'",
+                                   field_type->name);
+               } else {
+                  fields[i].precision = default_precision;
+               }
+            }
+         }
+
          /* Only save explicitly defined streams in block's field */
          fields[i].stream = qual->flags.q.explicit_stream ? qual->stream : -1;
 
@@ -6241,6 +6407,25 @@ ast_interface_block::hir(exec_list *instructions,
 
          if (var_mode == ir_var_shader_in || var_mode == ir_var_uniform)
             var->data.read_only = true;
+
+         /* Precision qualifiers do not have any meaning in Desktop GLSL */
+         if (state->es_shader) {
+            if (fields[i].precision) {
+               var->data.precision = fields[i].precision;
+            } else if (precision_qualifier_allowed(fields[i].type)) {
+               const char *type_name =
+                  get_type_name_for_precision_qualifier(var->type);
+               int default_precision =
+                  state->symbols->get_default_precision_qualifier(type_name);
+               if (default_precision == ast_precision_none) {
+                  _mesa_glsl_error(&loc, state,
+                                   "No precision specified in this scope for type `%s'",
+                                   var->type->name);
+               } else {
+                  var->data.precision = default_precision;
+               }
+            }
+         }
 
          if (fields[i].matrix_layout == GLSL_MATRIX_LAYOUT_INHERITED) {
             var->data.matrix_layout = matrix_layout == GLSL_MATRIX_LAYOUT_INHERITED
