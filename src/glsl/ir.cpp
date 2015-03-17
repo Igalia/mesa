@@ -600,6 +600,7 @@ static const char *const operator_strs[] = {
    "packHalf2x16_split",
    "bfm",
    "ubo_load",
+   "ssbo_load",
    "ldexp",
    "vector_extract",
    "interpolate_at_offset",
@@ -1974,6 +1975,9 @@ mode_string(const ir_variable *var)
 
    case ir_var_uniform:
       return "uniform";
+
+   case ir_var_buffer:
+      return "buffer";
 
    case ir_var_shader_in:
       return "shader input";
