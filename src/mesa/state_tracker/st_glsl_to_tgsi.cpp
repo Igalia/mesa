@@ -2022,6 +2022,10 @@ glsl_to_tgsi_visitor::visit(ir_expression *ir)
       assert(!"GLSL 1.30 features unsupported");
       break;
 
+   case ir_binop_ssbo_load:
+      assert(!"Not implemented");
+      break;
+
    case ir_binop_ubo_load: {
       ir_constant *const_uniform_block = ir->operands[0]->as_constant();
       ir_constant *const_offset_ir = ir->operands[1]->as_constant();
