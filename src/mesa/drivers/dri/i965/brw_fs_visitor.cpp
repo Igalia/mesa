@@ -1191,6 +1191,12 @@ fs_visitor::visit(ir_expression *ir)
    case ir_binop_pack_half_2x16_split:
       emit(FS_OPCODE_PACK_HALF_2x16_SPLIT, this->result, op[0], op[1]);
       break;
+
+   case ir_binop_ssbo_load:
+      assert(brw->gen >= 7);
+      assert(!"Not implemented");
+      break;
+
    case ir_binop_ubo_load: {
       /* This IR node takes a constant uniform block and a constant or
        * variable byte offset within the block and loads a vector from that.
@@ -1269,6 +1275,10 @@ fs_visitor::visit(ir_expression *ir)
       result.reg_offset = 0;
       break;
    }
+
+   case ir_binop_ssbo_store:
+      assert(!"Not implemented");
+      break;
 
    case ir_triop_fma:
       /* Note that the instruction's argument order is reversed from GLSL
@@ -2672,7 +2682,8 @@ fs_visitor::emit_bool_to_cond_code(ir_rvalue *ir)
 {
    ir_expression *expr = ir->as_expression();
 
-   if (!expr || expr->operation == ir_binop_ubo_load) {
+   if (!expr || expr->operation == ir_binop_ubo_load ||
+       expr->operation == ir_binop_ssbo_load) {
       ir->accept(this);
 
       fs_inst *inst = emit(AND(reg_null_d, this->result, fs_reg(1)));
@@ -2804,7 +2815,8 @@ fs_visitor::emit_if_gen6(ir_if *ir)
 {
    ir_expression *expr = ir->condition->as_expression();
 
-   if (expr && expr->operation != ir_binop_ubo_load) {
+   if (expr && expr->operation != ir_binop_ubo_load &&
+       expr->operation != ir_binop_ssbo_load) {
       fs_reg op[3];
       fs_inst *inst;
       fs_reg temp;
