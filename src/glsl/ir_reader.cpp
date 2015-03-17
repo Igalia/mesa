@@ -418,6 +418,8 @@ ir_reader::read_declaration(s_expression *expr)
 	 var->data.invariant = 1;
       } else if (strcmp(qualifier->value(), "uniform") == 0) {
 	 var->data.mode = ir_var_uniform;
+      } else if (strcmp(qualifier->value(), "buffer") == 0) {
+	 var->data.mode = ir_var_buffer;
       } else if (strcmp(qualifier->value(), "auto") == 0) {
 	 var->data.mode = ir_var_auto;
       } else if (strcmp(qualifier->value(), "in") == 0) {
