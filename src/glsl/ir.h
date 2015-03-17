@@ -323,6 +323,7 @@ protected:
 enum ir_variable_mode {
    ir_var_auto = 0,     /**< Function local variables and globals. */
    ir_var_uniform,      /**< Variable declared as a uniform. */
+   ir_var_buffer,       /**< Variable declared as an ssbo. */
    ir_var_shader_in,
    ir_var_shader_out,
    ir_var_function_in,
@@ -444,7 +445,8 @@ public:
     */
    inline bool is_in_uniform_block() const
    {
-      return this->data.mode == ir_var_uniform && this->interface_type != NULL;
+      return (this->data.mode == ir_var_uniform ||
+              this->data.mode == ir_var_buffer) && this->interface_type != NULL;
    }
 
    /**
@@ -1491,6 +1493,24 @@ enum ir_expression_operation {
     * operand1 is a byte offset within the uniform block.
     */
    ir_binop_ubo_load,
+
+   /**
+    * Load a value the size of a given GLSL type from a buffer block.
+    *
+    * operand0 is the ir_constant buffer block index in the linked shader.
+    * operand1 is a byte offset within the uniform block.
+    */
+   ir_binop_ssbo_load,
+
+   /**
+    * Store a value the size of a given GLSL type to a buffer block.
+    *
+    * operand0 is the ir_constant buffer block index in the linked shader.
+    * operand1 is a byte offset within the uniform block.
+    * operand2 is the value.
+    */
+   ir_binop_ssbo_store,
+
 
    /**
     * \name Multiplies a number by two to a power, part of ARB_gpu_shader5.

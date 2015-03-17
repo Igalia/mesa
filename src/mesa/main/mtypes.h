@@ -2575,6 +2575,11 @@ struct gl_uniform_block
    GLuint UniformBufferSize;
 
    /**
+    * Is this actually an interface block for a shader storage buffer?
+    */
+   bool IsBuffer;
+
+   /**
     * Layout specified in the shader
     *
     * This isn't accessible through the API, but it is used while
