@@ -1178,6 +1178,10 @@ fs_visitor::visit(ir_expression *ir)
    case ir_binop_pack_half_2x16_split:
       emit(FS_OPCODE_PACK_HALF_2x16_SPLIT, this->result, op[0], op[1]);
       break;
+
+   case ir_binop_ssbo_load:
+      assert(brw->gen >= 7);
+      /* fallthrough */
    case ir_binop_ubo_load: {
       /* This IR node takes a constant uniform block and a constant or
        * variable byte offset within the block and loads a vector from that.
@@ -1213,9 +1217,15 @@ fs_visitor::visit(ir_expression *ir)
       if (const_offset) {
          fs_reg packed_consts = vgrf(glsl_type::float_type);
          packed_consts.type = result.type;
+         enum opcode opcode;
+
+         if (ir->operation == ir_binop_ssbo_load)
+            opcode = SHADER_OPCODE_BUFFER_LOAD;
+         else
+            opcode = FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD;
 
          fs_reg const_offset_reg = fs_reg(const_offset->value.u[0] & ~15);
-         emit(new(mem_ctx) fs_inst(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD, 8,
+         emit(new(mem_ctx) fs_inst(opcode, 8,
                                    packed_consts, surf_index, const_offset_reg));
 
          for (int i = 0; i < ir->type->vector_elements; i++) {
@@ -1242,6 +1252,9 @@ fs_visitor::visit(ir_expression *ir)
          fs_reg base_offset = vgrf(glsl_type::int_type);
          emit(SHR(base_offset, op[1], fs_reg(2)));
 
+         if (ir->operation == ir_binop_ssbo_load)
+            assert(!"Not implemented");
+
          for (int i = 0; i < ir->type->vector_elements; i++) {
             emit(VARYING_PULL_CONSTANT_LOAD(result, surf_index,
                                             base_offset, i));
@@ -1256,6 +1269,10 @@ fs_visitor::visit(ir_expression *ir)
       result.reg_offset = 0;
       break;
    }
+
+   case ir_binop_ssbo_store:
+      assert(!"Not implemented");
+      break;
 
    case ir_triop_fma:
       /* Note that the instruction's argument order is reversed from GLSL
@@ -2651,7 +2668,8 @@ fs_visitor::emit_bool_to_cond_code(ir_rvalue *ir)
 {
    ir_expression *expr = ir->as_expression();
 
-   if (!expr || expr->operation == ir_binop_ubo_load) {
+   if (!expr || expr->operation == ir_binop_ubo_load ||
+       expr->operation == ir_binop_ssbo_load) {
       ir->accept(this);
 
       fs_inst *inst = emit(AND(reg_null_d, this->result, fs_reg(1)));
@@ -2783,7 +2801,8 @@ fs_visitor::emit_if_gen6(ir_if *ir)
 {
    ir_expression *expr = ir->condition->as_expression();
 
-   if (expr && expr->operation != ir_binop_ubo_load) {
+   if (expr && expr->operation != ir_binop_ubo_load &&
+       expr->operation != ir_binop_ssbo_load) {
       fs_reg op[3];
       fs_inst *inst;
       fs_reg temp;

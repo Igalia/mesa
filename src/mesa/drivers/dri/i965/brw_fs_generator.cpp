@@ -1016,6 +1016,26 @@ fs_generator::generate_uniform_pull_constant_load(fs_inst *inst,
 }
 
 void
+fs_generator::generate_buffer_load(fs_inst *inst,
+                                   struct brw_reg dst,
+                                   struct brw_reg index,
+                                   struct brw_reg offset)
+{
+   assert(index.file == BRW_IMMEDIATE_VALUE &&
+	  index.type == BRW_REGISTER_TYPE_UD);
+   uint32_t surf_index = index.dw1.ud;
+
+   assert(offset.file == BRW_IMMEDIATE_VALUE &&
+	  offset.type == BRW_REGISTER_TYPE_UD);
+   uint32_t read_offset = offset.dw1.ud;
+
+   brw_oword_block_read(p, dst, brw_message_reg(inst->base_mrf),
+			read_offset, surf_index);
+
+   brw_mark_surface_used(prog_data, surf_index);
+}
+
+void
 fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
                                                        struct brw_reg dst,
                                                        struct brw_reg index,
@@ -2018,6 +2038,10 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
 
       case SHADER_OPCODE_UNTYPED_SURFACE_READ:
          generate_untyped_surface_read(inst, dst, src[0], src[1]);
+         break;
+
+      case SHADER_OPCODE_BUFFER_LOAD:
+         generate_buffer_load(inst, dst, src[0], src[1]);
          break;
 
       case FS_OPCODE_SET_SIMD4X2_OFFSET:
