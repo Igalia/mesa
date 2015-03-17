@@ -2483,7 +2483,7 @@ apply_type_qualifier_to_variable(const struct ast_type_qualifier *qual,
    else if (qual->flags.q.uniform)
       var->data.mode = ir_var_uniform;
    else if (qual->flags.q.buffer)
-      var->data.mode = ir_var_uniform;
+      var->data.mode = ir_var_buffer;
 
    if (!is_parameter && is_varying_var(var, state->stage)) {
       /* User-defined ins/outs are not permitted in compute shaders. */
