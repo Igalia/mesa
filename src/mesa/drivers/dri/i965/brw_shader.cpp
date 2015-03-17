@@ -456,6 +456,8 @@ brw_instruction_name(enum opcode op)
       return "untyped_atomic";
    case SHADER_OPCODE_UNTYPED_SURFACE_READ:
       return "untyped_surface_read";
+   case SHADER_OPCODE_BUFFER_LOAD:
+      return "buffer_load";
 
    case SHADER_OPCODE_LOAD_PAYLOAD:
       return "load_payload";
