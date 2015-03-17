@@ -149,6 +149,7 @@ public:
    struct gl_shader *shader;
    struct gl_uniform_buffer_variable *ubo_var;
    ir_rvalue *uniform_block;
+   enum ir_expression_operation opcode;
    bool progress;
 };
 
@@ -251,6 +252,11 @@ lower_ubo_reference_visitor::handle_rvalue(ir_rvalue **rvalue)
          } else {
             this->uniform_block = index;
          }
+
+         if (shader->UniformBlocks[i].IsBuffer)
+            this->opcode = ir_binop_ssbo_load;
+         else
+            this->opcode = ir_binop_ubo_load;
 
          struct gl_uniform_block *block = &shader->UniformBlocks[i];
 
@@ -413,7 +419,7 @@ lower_ubo_reference_visitor::ubo_load(const glsl_type *type,
 {
    ir_rvalue *block_ref = this->uniform_block->clone(mem_ctx, NULL);
    return new(mem_ctx)
-      ir_expression(ir_binop_ubo_load,
+      ir_expression(this->opcode,
                     type,
                     block_ref,
                     offset);
