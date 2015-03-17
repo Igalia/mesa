@@ -506,6 +506,7 @@ fs_inst::is_send_from_grf() const
    case SHADER_OPCODE_UNTYPED_ATOMIC:
    case SHADER_OPCODE_UNTYPED_SURFACE_READ:
    case SHADER_OPCODE_URB_WRITE_SIMD8:
+   case SHADER_OPCODE_BUFFER_LOAD:
       return true;
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
       return src[1].file == GRF;
@@ -1031,6 +1032,7 @@ fs_visitor::implied_mrf_writes(fs_inst *inst)
       return 2;
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
+   case SHADER_OPCODE_BUFFER_LOAD:
       return 1;
    case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD:
       return inst->mlen;
