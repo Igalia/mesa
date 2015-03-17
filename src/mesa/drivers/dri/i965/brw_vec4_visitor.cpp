@@ -783,7 +783,8 @@ vec4_visitor::emit_bool_to_cond_code(ir_rvalue *ir,
 
    *predicate = BRW_PREDICATE_NORMAL;
 
-   if (expr && expr->operation != ir_binop_ubo_load) {
+   if (expr && expr->operation != ir_binop_ubo_load &&
+      expr->operation != ir_binop_ssbo_load) {
       src_reg op[3];
       vec4_instruction *inst;
 
@@ -931,7 +932,8 @@ vec4_visitor::emit_if_gen6(ir_if *ir)
 {
    ir_expression *expr = ir->condition->as_expression();
 
-   if (expr && expr->operation != ir_binop_ubo_load) {
+   if (expr && expr->operation != ir_binop_ubo_load &&
+       expr->operation != ir_binop_ssbo_load) {
       src_reg op[3];
       dst_reg temp;
 
@@ -1722,6 +1724,7 @@ vec4_visitor::visit(ir_expression *ir)
       emit(BFI1(result_dst, op[0], op[1]));
       break;
 
+   case ir_binop_ssbo_load:
    case ir_binop_ubo_load: {
       ir_constant *const_uniform_block = ir->operands[0]->as_constant();
       ir_constant *const_offset_ir = ir->operands[1]->as_constant();
@@ -1822,6 +1825,10 @@ vec4_visitor::visit(ir_expression *ir)
       }
       break;
    }
+
+   case ir_binop_ssbo_store:
+      assert(!"Not implemented");
+      break;
 
    case ir_binop_vector_extract:
       unreachable("should have been lowered by vec_index_to_cond_assign");
