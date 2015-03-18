@@ -5507,6 +5507,19 @@ private:
    bool found;
 };
 
+static bool
+is_unsized_array_last_element(ir_variable *v)
+{
+   const glsl_type *interface_type = v->get_interface_type();
+   int length = interface_type->length;
+
+   assert(v->type->is_unsized_array());
+
+   /* Check if it is the last element of the interface */
+   if (strcmp(interface_type->fields.structure[length-1].name, v->name) == 0)
+      return true;
+   return false;
+}
 
 ir_rvalue *
 ast_interface_block::hir(exec_list *instructions,
@@ -5828,6 +5841,15 @@ ast_interface_block::hir(exec_list *instructions,
          var->data.explicit_binding = this->layout.flags.q.explicit_binding;
          var->data.binding = this->layout.binding;
 
+         if (var->is_in_shader_storage_block() && var->type->is_unsized_array()) {
+            var->data.from_ssbo_unsized_array = true;
+            if (!is_unsized_array_last_element(var)) {
+               _mesa_glsl_error(&loc, state, "unsized array `%s' should be the"
+                                 " last member of a shader storage block",
+                                 var->name);
+            }
+         }
+
          state->symbols->add_variable(var);
          instructions->push_tail(var);
       }
@@ -5899,6 +5921,16 @@ ast_interface_block::hir(exec_list *instructions,
           */
          var->data.explicit_binding = this->layout.flags.q.explicit_binding;
          var->data.binding = this->layout.binding;
+
+         if (var->data.mode == ir_var_shader_storage && var->type->is_unsized_array()) {
+            var->data.from_ssbo_unsized_array = true;
+            if (var->is_in_shader_storage_block() &&
+                !is_unsized_array_last_element(var)) {
+               _mesa_glsl_error(&loc, state, "unsized array `%s' should be the"
+                                 " last member of a shader storage block",
+                                 var->name);
+            }
+         }
 
          state->symbols->add_variable(var);
          instructions->push_tail(var);
