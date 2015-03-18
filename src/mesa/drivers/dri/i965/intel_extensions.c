@@ -306,6 +306,7 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.ARB_gpu_shader5 = true;
       ctx->Extensions.ARB_shader_atomic_counters = true;
       ctx->Extensions.ARB_texture_view = true;
+      ctx->Extensions.ARB_shader_storage_buffer_object = true;
       if (can_do_pipelined_register_writes(brw)) {
          ctx->Extensions.ARB_transform_feedback2 = true;
          ctx->Extensions.ARB_transform_feedback3 = true;
