@@ -783,6 +783,11 @@ public:
       unsigned image_restrict:1;
 
       /**
+       * ARB_shader_storage_buffer_object
+       */
+      unsigned from_ssbo_unsized_array:1; /**< unsized array buffer variable. */
+
+      /**
        * Emit a warning if this variable is accessed.
        */
    private:
