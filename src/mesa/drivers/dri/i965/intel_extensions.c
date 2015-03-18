@@ -342,8 +342,10 @@ intelInitExtensions(struct gl_context *ctx)
 
    ctx->Extensions.ANGLE_texture_compression_dxt = true;
 
-   if (brw->gen >= 7)
+   if (brw->gen >= 7) {
       ctx->Extensions.ARB_shader_atomic_counters = true;
+      ctx->Extensions.ARB_shader_storage_buffer_object = true;
+   }
 
    if (brw->gen == 7)
       ctx->Extensions.ARB_gpu_shader5 = true;
