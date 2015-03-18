@@ -2996,6 +2996,15 @@ process_initializer(ir_variable *var, ast_declaration *decl,
                            "cannot initialize uniforms");
    }
 
+   /* Section 4.3.7 "Buffer Variables" of the GLSL 4.30 spec:
+    *
+    *    "Buffer variables cannot have initializers."
+    */
+   if (var->data.mode == ir_var_buffer) {
+      _mesa_glsl_error(& initializer_loc, state,
+                       "cannot initialize shader buffer variables");
+   }
+
    /* From section 4.1.7 of the GLSL 4.40 spec:
     *
     *    "Opaque variables [...] are initialized only through the
