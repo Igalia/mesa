@@ -2513,7 +2513,15 @@ basic_interface_block:
       block->declarations.push_degenerate_list_at_head(& $4->link);
 
       if ($1.flags.q.buffer) {
-         /* buffer checks here */
+         if (!state->has_shader_storage_buffer_objects()) {
+            _mesa_glsl_error(& @1, state,
+                             "#version 430 / GL_ARB_shader_storage_buffer_object "
+                             "required for defining shader storage blocks");
+         } else if (state->ARB_shader_storage_buffer_object_warn) {
+            _mesa_glsl_warning(& @1, state,
+                               "#version 430 / GL_ARB_shader_storage_buffer_object "
+                               "required for defining shader storage blocks");
+         }
       } else if ($1.flags.q.uniform) {
          if (!state->has_uniform_buffer_objects()) {
             _mesa_glsl_error(& @1, state,
