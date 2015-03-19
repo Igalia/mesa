@@ -5820,8 +5820,11 @@ ast_interface_block::hir(exec_list *instructions,
           * the UBO declaration itself doesn't get an ir_variable unless it
           * has an instance name.  This is ugly.
           */
-         var->data.explicit_binding = this->layout.flags.q.explicit_binding;
-         var->data.binding = this->layout.binding;
+         if (this->layout.flags.q.explicit_binding &&
+             validate_binding_qualifier(state, &loc, var, &this->layout)) {
+               var->data.explicit_binding = true;
+               var->data.binding = this->layout.binding;
+         }
 
          state->symbols->add_variable(var);
          instructions->push_tail(var);
