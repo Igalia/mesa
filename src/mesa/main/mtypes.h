@@ -4262,6 +4262,12 @@ struct gl_context
    struct gl_buffer_object *UniformBuffer;
 
    /**
+    * Current GL_ARB_shader_storage_buffer_object binding referenced by
+    * GL_SHADER_STORAGE_BUFFER target for glBufferData, glMapBuffer, etc.
+    */
+   struct gl_buffer_object *ShaderStorageBuffer;
+
+   /**
     * Array of uniform buffers for GL_ARB_uniform_buffer_object and GL 3.1.
     * This is set up using glBindBufferRange() or glBindBufferBase().  They are
     * associated with uniform blocks by glUniformBlockBinding()'s state in the
