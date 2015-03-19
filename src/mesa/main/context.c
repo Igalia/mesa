@@ -618,6 +618,7 @@ _mesa_init_constants(struct gl_constants *consts, gl_api api)
    /* FIXME: Find a correct value for this */
    consts->MaxCombinedShaderStorageBlocks = 36;
    consts->MaxShaderStorageBufferBindings = 36;
+   consts->MaxShaderStorageBlockSize = 16384;
    consts->ShaderStorageBufferOffsetAlignment = 1;
 
    /* GL_ARB_explicit_uniform_location, GL_MAX_UNIFORM_LOCATIONS */
