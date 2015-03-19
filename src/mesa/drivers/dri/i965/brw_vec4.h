@@ -45,6 +45,7 @@ extern "C" {
 #endif
 
 #include "glsl/ir.h"
+#include "glsl/nir/nir.h"
 
 
 struct brw_vec4_compile {
@@ -390,6 +391,21 @@ public:
    void dump_instruction(backend_instruction *inst, FILE *file);
 
    void visit_atomic_counter_intrinsic(ir_call *ir);
+
+   virtual void emit_nir_code();
+   virtual void nir_setup_inputs(nir_shader *shader);
+   virtual void nir_setup_outputs(nir_shader *shader);
+   virtual void nir_emit_main(nir_shader *shader);
+   virtual void nir_emit_load_const(nir_load_const_instr *instr);
+   virtual void nir_emit_intrinsic(nir_intrinsic_instr *instr);
+   virtual void nir_emit_intrinsic_load_input(nir_intrinsic_instr *instr);
+   virtual void nir_emit_intrinsic_store_output(nir_intrinsic_instr *instr);
+   virtual void nir_emit_alu(nir_alu_instr *instr);
+
+   dst_reg get_nir_dest(nir_dest dest);
+   src_reg get_nir_src(nir_src src);
+
+   dst_reg *nir_locals;
 
 protected:
    void emit_vertex();

@@ -1711,6 +1711,9 @@ vec4_visitor::emit_shader_time_write(enum shader_time_shader_type type,
 bool
 vec4_visitor::run()
 {
+   bool use_nir =
+      brw->ctx.Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].NirOptions != NULL;
+
    sanity_param_count = prog->Parameters->NumParameters;
 
    if (INTEL_DEBUG & DEBUG_SHADER_TIME)
@@ -1720,14 +1723,21 @@ vec4_visitor::run()
 
    emit_prolog();
 
-   /* Generate VS IR for main().  (the visitor only descends into
-    * functions called "main").
-    */
-   if (shader) {
-      visit_instructions(shader->base.ir);
+   if (use_nir) {
+      emit_nir_code();
+      if (failed)
+         return false;
    } else {
-      emit_program_code();
+      /* Generate VS IR for main().  (the visitor only descends into
+       * functions called "main").
+       */
+      if (shader) {
+        visit_instructions(shader->base.ir);
+      } else {
+        emit_program_code();
+      }
    }
+
    base_ir = NULL;
 
    if (key->userclip_active && !prog->UsesClipDistanceOut)
