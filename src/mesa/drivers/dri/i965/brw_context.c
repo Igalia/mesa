@@ -337,6 +337,8 @@ brw_initialize_context_constants(struct brw_context *brw)
    if (_mesa_extension_override_enables.ARB_compute_shader) {
       ctx->Const.Program[MESA_SHADER_COMPUTE].MaxTextureImageUnits = BRW_MAX_TEX_UNIT;
       ctx->Const.MaxUniformBufferBindings += 12;
+      /* FIXME: is this correct? */
+      ctx->Const.MaxShaderStorageBufferBindings += 12;
    } else {
       ctx->Const.Program[MESA_SHADER_COMPUTE].MaxTextureImageUnits = 0;
    }
