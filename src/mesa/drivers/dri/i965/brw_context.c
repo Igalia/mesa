@@ -544,6 +544,7 @@ brw_initialize_context_constants(struct brw_context *brw)
     * However, unaligned accesses are slower, so enforce buffer alignment.
     */
    ctx->Const.UniformBufferOffsetAlignment = 16;
+   ctx->Const.ShaderStorageBufferOffsetAlignment = 16;
    ctx->Const.TextureBufferOffsetAlignment = 16;
 
    if (brw->gen >= 6) {
