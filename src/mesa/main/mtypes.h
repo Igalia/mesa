@@ -3361,6 +3361,7 @@ struct gl_constants
     */
    GLuint MaxCombinedShaderStorageBlocks;
    GLuint MaxShaderStorageBufferBindings;
+   GLuint MaxShaderStorageBlockSize;
    GLuint ShaderStorageBufferOffsetAlignment;
    /** @} */
 
