@@ -3357,6 +3357,12 @@ struct gl_constants
    GLuint UniformBufferOffsetAlignment;
    /** @} */
 
+   /** @{
+    * GL_ARB_shader_storage_buffer_object
+    */
+   GLuint MaxShaderStorageBufferBindings;
+   /** @} */
+
    /**
     * GL_ARB_explicit_uniform_location
     */
