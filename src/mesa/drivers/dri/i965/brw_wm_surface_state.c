@@ -410,6 +410,27 @@ brw_create_constant_surface(struct brw_context *brw,
 }
 
 /**
+ * Create the buffer surface.  Vertex/fragment shader buffer variables will be
+ * read from / write to this buffer with Data Port Read/Write
+ * instructions/messages.
+ */
+void
+brw_create_buffer_surface(struct brw_context *brw,
+                          drm_intel_bo *bo,
+                          uint32_t offset,
+                          uint32_t size,
+                          uint32_t *out_offset,
+                          bool dword_pitch)
+{
+   uint32_t stride = dword_pitch ? 4 : 16;
+   uint32_t elements = ALIGN(size, stride) / stride;
+
+   brw->vtbl.emit_buffer_surface_state(brw, out_offset, bo, offset,
+                                       BRW_SURFACEFORMAT_R32G32B32A32_FLOAT,
+                                       elements, stride, true);
+}
+
+/**
  * Set up a binding table entry for use by stream output logic (transform
  * feedback).
  *
@@ -886,24 +907,39 @@ brw_upload_ubo_surfaces(struct brw_context *brw,
       &stage_state->surf_offset[prog_data->binding_table.ubo_start];
 
    for (int i = 0; i < shader->NumUniformBlocks; i++) {
-      struct gl_uniform_buffer_binding *binding;
       struct intel_buffer_object *intel_bo;
-
-      binding = &ctx->UniformBufferBindings[shader->UniformBlocks[i].Binding];
-      intel_bo = intel_buffer_object(binding->BufferObject);
-      drm_intel_bo *bo =
-         intel_bufferobj_buffer(brw, intel_bo,
-                                binding->Offset,
-                                binding->BufferObject->Size - binding->Offset);
 
       /* Because behavior for referencing outside of the binding's size in the
        * glBindBufferRange case is undefined, we can just bind the whole buffer
        * glBindBufferBase wants and be a correct implementation.
        */
-      brw_create_constant_surface(brw, bo, binding->Offset,
-                                  bo->size - binding->Offset,
-                                  &surf_offsets[i],
-                                  dword_pitch);
+      if (!shader->UniformBlocks[i].IsBuffer) {
+         struct gl_uniform_buffer_binding *binding;
+         binding =
+            &ctx->UniformBufferBindings[shader->UniformBlocks[i].Binding];
+         intel_bo = intel_buffer_object(binding->BufferObject);
+         drm_intel_bo *bo =
+            intel_bufferobj_buffer(brw, intel_bo,
+                                   binding->Offset,
+                                   binding->BufferObject->Size - binding->Offset);
+         brw_create_constant_surface(brw, bo, binding->Offset,
+                                     bo->size - binding->Offset,
+                                     &surf_offsets[i],
+                                     dword_pitch);
+      } else {
+         struct gl_shader_storage_buffer_binding *binding;
+         binding =
+            &ctx->ShaderStorageBufferBindings[shader->UniformBlocks[i].Binding];
+         intel_bo = intel_buffer_object(binding->BufferObject);
+         drm_intel_bo *bo =
+            intel_bufferobj_buffer(brw, intel_bo,
+                                   binding->Offset,
+                                   binding->BufferObject->Size - binding->Offset);
+         brw_create_buffer_surface(brw, bo, binding->Offset,
+                                   bo->size - binding->Offset,
+                                   &surf_offsets[i],
+                                   dword_pitch);
+      }
    }
 
    if (shader->NumUniformBlocks)
