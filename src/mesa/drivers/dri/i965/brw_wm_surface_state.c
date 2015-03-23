@@ -889,7 +889,12 @@ brw_upload_ubo_surfaces(struct brw_context *brw,
       struct gl_uniform_buffer_binding *binding;
       struct intel_buffer_object *intel_bo;
 
-      binding = &ctx->UniformBufferBindings[shader->UniformBlocks[i].Binding];
+      if (!shader->UniformBlocks[i].IsBuffer)
+         binding =
+            &ctx->UniformBufferBindings[shader->UniformBlocks[i].Binding];
+      else
+         binding =
+            &ctx->ShaderStorageBufferBindings[shader->UniformBlocks[i].Binding];
       intel_bo = intel_buffer_object(binding->BufferObject);
       drm_intel_bo *bo =
          intel_bufferobj_buffer(brw, intel_bo,
