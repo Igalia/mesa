@@ -1828,10 +1828,6 @@ vec4_visitor::visit(ir_expression *ir)
       break;
    }
 
-   case ir_binop_ssbo_store:
-      assert(!"Not implemented");
-      break;
-
    case ir_binop_vector_extract:
       unreachable("should have been lowered by vec_index_to_cond_assign");
 
@@ -2897,9 +2893,74 @@ vec4_visitor::visit(ir_end_primitive *)
 }
 
 void
-vec4_visitor::visit(ir_ssbo_store *)
+vec4_visitor::visit(ir_ssbo_store *ir)
 {
-   unreachable("not implemented yet");
+   ir_constant *const_uniform_block = ir->block->as_constant();
+   ir_constant *const_offset_ir = ir->offset->as_constant();
+
+   unsigned const_offset = const_offset_ir ? const_offset_ir->value.u[0] : 0;
+   src_reg offset;
+
+   /* FIXME: We probably want this assertion when we handle type information
+    * assert(ir->type->is_vector() || ir->type->is_scalar());
+    */
+
+   src_reg surf_index;
+
+   if (const_uniform_block) {
+      surf_index = src_reg(prog_data->base.binding_table.ubo_start +
+                           const_uniform_block->value.u[0]);
+   } else {
+      ir->block->accept(this);
+      src_reg block_reg = this->result;
+      surf_index = src_reg(this, glsl_type::uint_type);
+      emit(ADD(dst_reg(surf_index), block_reg,
+               src_reg(prog_data->base.binding_table.ubo_start)));
+
+       brw_mark_surface_used(&prog_data->base,
+                             prog_data->base.binding_table.ubo_start +
+                             shader_prog->NumUniformBlocks - 1);
+   }
+
+   if (const_offset_ir) {
+      if (brw->gen >= 8) {
+         offset = src_reg(this, glsl_type::int_type);
+         emit(MOV(dst_reg(offset), src_reg(const_offset / 16)));
+      } else {
+         offset = src_reg(const_offset / 16);
+      }
+   } else {
+      ir->offset->accept(this);
+      src_reg offset_reg = this->result;
+      offset = src_reg(this, glsl_type::uint_type);
+      emit(SHR(dst_reg(offset), offset_reg, src_reg(4)));
+   }
+
+   dst_reg grf_offset = dst_reg(this, glsl_type::int_type);
+
+   if (brw->gen >= 9) {
+      grf_offset.reg_offset++;
+      alloc.sizes[grf_offset.reg] = 2;
+   }
+
+   grf_offset.type = offset.type;
+
+   emit(MOV(grf_offset, offset));
+
+   ir->val->accept(this);
+   src_reg val_reg = this->result;
+
+   struct brw_reg brw_dst = brw_vec8_grf(0, 0);
+   brw_dst.dw1.bits.writemask = ir->write_mask;
+   dst_reg push_dst = dst_reg(brw_dst);
+   vec4_instruction *push =
+      emit(new(mem_ctx) vec4_instruction(VS_OPCODE_BUFFER_WRITE,
+                                         push_dst,
+                                         surf_index,
+                                         src_reg(grf_offset),
+                                         val_reg));
+   push->base_mrf = 13;
+   push->mlen = 3;
 }
 
 void
