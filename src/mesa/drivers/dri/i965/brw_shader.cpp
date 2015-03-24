@@ -191,6 +191,13 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
                     "back to very inefficient code generation\n");
       }
 
+      /* The lowering pass for UBO references will rewrite UBO array accesses
+       * even on the LHS. This won't happen with UBOs because they are
+       * read-only and thus, they cannot be on the LHS of an assignment.
+       * However, this can happen with SSBOs, so make sure we lower SSBO
+       * writes first.
+       */
+      lower_ssbo_writes(&shader->base, shader->base.ir);
       lower_ubo_reference(&shader->base, shader->base.ir);
 
       do {
@@ -543,6 +550,8 @@ brw_instruction_name(enum opcode op)
       return "pull_constant_load";
    case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
       return "pull_constant_load_gen7";
+   case VS_OPCODE_BUFFER_WRITE:
+      return "vs_buffer_write";
    case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
       return "unpack_flags_simd4x2";
 
@@ -997,6 +1006,7 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
    case SHADER_OPCODE_URB_WRITE_SIMD8:
    case FS_OPCODE_FB_WRITE:
+   case VS_OPCODE_BUFFER_WRITE:
       return true;
    default:
       return false;
