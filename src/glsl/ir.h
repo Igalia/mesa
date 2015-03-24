@@ -451,6 +451,14 @@ public:
    }
 
    /**
+    * Determine whether or not a variable is part of a shader storage block.
+    */
+   inline bool is_in_shader_storage_block() const
+   {
+      return this->data.mode == ir_var_buffer && this->interface_type != NULL;
+   }
+
+   /**
     * Determine whether or not a variable is the declaration of an interface
     * block
     *
