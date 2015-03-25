@@ -2493,19 +2493,12 @@ texsubimage_error_check(struct gl_context *ctx, GLuint dimensions,
       return GL_TRUE;
    }
 
-   /* OpenGL ES 1.x and OpenGL ES 2.0 impose additional restrictions on the
-    * combinations of format and type that can be used.  Formats and types
-    * that require additional extensions (e.g., GL_FLOAT requires
-    * GL_OES_texture_float) are filtered elsewhere.
-    */
-   if (_mesa_is_gles(ctx) && !_mesa_is_gles3(ctx)) {
-      err = _mesa_es_error_check_format_and_type(format, type, dimensions);
-      if (err != GL_NO_ERROR) {
-         _mesa_error(ctx, err, "%s(format = %s, type = %s)",
-                     callerName, _mesa_enum_to_string(format),
-                     _mesa_enum_to_string(type));
-         return GL_TRUE;
-      }
+   texImage = _mesa_select_tex_image(texObj, target, level);
+   if (!texImage) {
+      /* non-existant texture level */
+      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(invalid texture image)",
+                  callerName);
+      return GL_TRUE;
    }
 
    err = _mesa_error_check_format_and_type(ctx, format, type);
@@ -2517,18 +2510,40 @@ texsubimage_error_check(struct gl_context *ctx, GLuint dimensions,
       return GL_TRUE;
    }
 
+   /* OpenGL ES impose additional restrictions on the combinations of format
+    * and type that can be used. Formats and types that require additional
+    * extensions (e.g., GL_FLOAT requires GL_OES_texture_float) are filtered
+    * elsewhere.
+    */
+   if (_mesa_is_gles(ctx)) {
+      if (!_mesa_is_gles3(ctx)) {
+         err = _mesa_es_error_check_format_and_type(format, type, dimensions);
+         if (err != GL_NO_ERROR) {
+            _mesa_error(ctx, err, "%s(format = %s, type = %s)",
+                        callerName, _mesa_enum_to_string(format),
+                        _mesa_enum_to_string(type));
+            return GL_TRUE;
+         }
+      }
+      else {
+         err = _mesa_es3_error_check_format_and_type(ctx, format, type,
+                                                     texImage->InternalFormat);
+         if (err != GL_NO_ERROR) {
+            _mesa_error(ctx, err,
+                        "%s(incompatible format = %s, type = %s, "
+                        "internalformat = %s)",
+                        callerName, _mesa_enum_to_string(format),
+                        _mesa_enum_to_string(type),
+                        _mesa_enum_to_string(texImage->InternalFormat));
+            return GL_TRUE;
+         }
+      }
+   }
+
    /* validate the bound PBO, if any */
    if (!_mesa_validate_pbo_source(ctx, dimensions, &ctx->Unpack,
                                   width, height, depth, format, type,
                                   INT_MAX, pixels, callerName)) {
-      return GL_TRUE;
-   }
-
-   texImage = _mesa_select_tex_image(texObj, target, level);
-   if (!texImage) {
-      /* non-existant texture level */
-      _mesa_error(ctx, GL_INVALID_OPERATION, "%s(invalid texture image)",
-                  callerName);
       return GL_TRUE;
    }
 
