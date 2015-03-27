@@ -429,3 +429,26 @@ ir_end_primitive::accept(ir_hierarchical_visitor *v)
 
    return (s == visit_stop) ? s : v->visit_leave(this);
 }
+
+
+ir_visitor_status
+ir_ssbo_store::accept(ir_hierarchical_visitor *v)
+{
+   ir_visitor_status s = v->visit_enter(this);
+   if (s != visit_continue)
+      return (s == visit_continue_with_parent) ? visit_continue : s;
+
+   s = this->block->accept(v);
+   if (s != visit_continue)
+      return (s == visit_continue_with_parent) ? visit_continue : s;
+
+   s = this->offset->accept(v);
+   if (s != visit_continue)
+      return (s == visit_continue_with_parent) ? visit_continue : s;
+
+   s = this->val->accept(v);
+   if (s != visit_continue)
+      return (s == visit_continue_with_parent) ? visit_continue : s;
+
+   return (s == visit_stop) ? s : v->visit_leave(this);
+}

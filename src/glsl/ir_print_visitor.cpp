@@ -576,3 +576,15 @@ ir_print_visitor::visit(ir_end_primitive *ir)
    fprintf(f, ")\n");
 
 }
+
+void
+ir_print_visitor::visit(ir_ssbo_store *ir)
+{
+   fprintf(f, "(ssbo_store ");
+   ir->block->accept(this);
+   ir->offset->accept(this);
+   ir->val->accept(this);
+   fprintf(f, "(writemask=0x%x)", ir->write_mask);
+   fprintf(f, ")\n");
+
+}
