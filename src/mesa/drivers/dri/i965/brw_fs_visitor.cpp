@@ -3248,6 +3248,12 @@ fs_visitor::visit(ir_end_primitive *)
 }
 
 void
+fs_visitor::visit(ir_ssbo_store *)
+{
+   unreachable("not implemented yet");
+}
+
+void
 fs_visitor::emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
                                 fs_reg dst, fs_reg offset, fs_reg src0,
                                 fs_reg src1)
