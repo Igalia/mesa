@@ -372,6 +372,7 @@ public:
    virtual void visit(ir_if *);
    virtual void visit(ir_emit_vertex *);
    virtual void visit(ir_end_primitive *);
+   virtual void visit(ir_ssbo_store *);
    /*@}*/
 
    st_src_reg result;
@@ -3342,6 +3343,12 @@ glsl_to_tgsi_visitor::visit(ir_end_primitive *ir)
 
    ir->stream->accept(this);
    emit(ir, TGSI_OPCODE_ENDPRIM, undef_dst, this->result);
+}
+
+void
+glsl_to_tgsi_visitor::visit(ir_ssbo_store *ir)
+{
+   assert(!"Not implemented yet");
 }
 
 glsl_to_tgsi_visitor::glsl_to_tgsi_visitor()
