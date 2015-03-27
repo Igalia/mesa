@@ -2973,6 +2973,12 @@ vec4_visitor::visit(ir_end_primitive *)
 }
 
 void
+vec4_visitor::visit(ir_ssbo_store *)
+{
+   unreachable("not implemented yet");
+}
+
+void
 vec4_visitor::emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
                                   dst_reg dst, src_reg offset,
                                   src_reg src0, src_reg src1)
