@@ -139,6 +139,8 @@ public:
    virtual ir_visitor_status visit_leave(class ir_emit_vertex *);
    virtual ir_visitor_status visit_enter(class ir_end_primitive *);
    virtual ir_visitor_status visit_leave(class ir_end_primitive *);
+   virtual ir_visitor_status visit_enter(class ir_ssbo_store *);
+   virtual ir_visitor_status visit_leave(class ir_ssbo_store *);
    /*@}*/
 
 
