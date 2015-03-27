@@ -78,6 +78,7 @@ enum ir_node_type {
    ir_type_discard,
    ir_type_emit_vertex,
    ir_type_end_primitive,
+   ir_type_ssbo_store,
    ir_type_max, /**< maximum ir_type enum number, for validation */
    ir_type_unset = ir_type_max
 };
@@ -2404,6 +2405,43 @@ public:
    }
 
    ir_rvalue *stream;
+};
+
+/**
+ * IR instruction to write to a shader storage buffer object (SSBO)
+ */
+class ir_ssbo_store : public ir_instruction {
+public:
+   ir_ssbo_store(ir_rvalue *block, ir_rvalue *offset, ir_rvalue *val,
+                 unsigned write_mask)
+      : ir_instruction(ir_type_ssbo_store),
+        block(block), offset(offset), val(val), write_mask(write_mask)
+   {
+      assert(block);
+      assert(offset);
+      assert(val);
+      assert(write_mask != 0);
+   }
+
+   virtual void accept(ir_visitor *v)
+   {
+      v->visit(this);
+   }
+
+   virtual ir_ssbo_store *clone(void *mem_ctx, struct hash_table *ht) const
+   {
+      return new(mem_ctx) ir_ssbo_store(this->block->clone(mem_ctx, ht),
+                                        this->offset->clone(mem_ctx, ht),
+                                        this->val->clone(mem_ctx, ht),
+                                        this->write_mask);
+   }
+
+   virtual ir_visitor_status accept(ir_hierarchical_visitor *);
+
+   ir_rvalue *block;
+   ir_rvalue *offset;
+   ir_rvalue *val;
+   unsigned write_mask;
 };
 
 /*@}*/
