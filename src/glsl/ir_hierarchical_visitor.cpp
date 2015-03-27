@@ -349,6 +349,24 @@ ir_hierarchical_visitor::visit_leave(ir_end_primitive *ir)
    return visit_continue;
 }
 
+ir_visitor_status
+ir_hierarchical_visitor::visit_enter(ir_ssbo_store *ir)
+{
+   if (this->callback_enter != NULL)
+      this->callback_enter(ir, this->data_enter);
+
+   return visit_continue;
+}
+
+ir_visitor_status
+ir_hierarchical_visitor::visit_leave(ir_ssbo_store *ir)
+{
+   if (this->callback_leave != NULL)
+      this->callback_leave(ir, this->data_leave);
+
+   return visit_continue;
+}
+
 void
 ir_hierarchical_visitor::run(exec_list *instructions)
 {
