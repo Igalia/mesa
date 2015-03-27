@@ -58,6 +58,7 @@ public:
    virtual void visit(ir_assignment *);
    virtual void visit(ir_emit_vertex *);
    virtual void visit(ir_end_primitive *);
+   virtual void visit(ir_ssbo_store *);
    virtual void visit(ir_expression *);
    virtual void visit(ir_swizzle *);
    virtual void visit(ir_texture *);
@@ -567,6 +568,12 @@ nir_visitor::visit(ir_end_primitive *ir)
       nir_intrinsic_instr_create(this->shader, nir_intrinsic_end_primitive);
    instr->const_index[0] = ir->stream_id();
    nir_instr_insert_after_cf_list(this->cf_node_list, &instr->instr);
+}
+
+void
+nir_visitor::visit(ir_ssbo_store *ir)
+{
+   assert("Not implemented yet");
 }
 
 void
