@@ -170,6 +170,15 @@ ir_rvalue_base_visitor::rvalue_visit(ir_end_primitive *ir)
 }
 
 ir_visitor_status
+ir_rvalue_base_visitor::rvalue_visit(ir_ssbo_store *ir)
+{
+   handle_rvalue(&ir->block);
+   handle_rvalue(&ir->offset);
+   handle_rvalue(&ir->val);
+   return visit_continue;
+}
+
+ir_visitor_status
 ir_rvalue_visitor::visit_leave(ir_expression *ir)
 {
    return rvalue_visit(ir);
@@ -242,6 +251,12 @@ ir_rvalue_visitor::visit_leave(ir_end_primitive *ir)
 }
 
 ir_visitor_status
+ir_rvalue_visitor::visit_leave(ir_ssbo_store *ir)
+{
+   return rvalue_visit(ir);
+}
+
+ir_visitor_status
 ir_rvalue_enter_visitor::visit_enter(ir_expression *ir)
 {
    return rvalue_visit(ir);
@@ -309,6 +324,12 @@ ir_rvalue_enter_visitor::visit_enter(ir_emit_vertex *ir)
 
 ir_visitor_status
 ir_rvalue_enter_visitor::visit_enter(ir_end_primitive *ir)
+{
+   return rvalue_visit(ir);
+}
+
+ir_visitor_status
+ir_rvalue_enter_visitor::visit_enter(ir_ssbo_store *ir)
 {
    return rvalue_visit(ir);
 }
