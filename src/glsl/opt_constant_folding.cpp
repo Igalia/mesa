@@ -53,6 +53,7 @@ public:
    virtual ir_visitor_status visit_enter(ir_discard *ir);
    virtual ir_visitor_status visit_enter(ir_assignment *ir);
    virtual ir_visitor_status visit_enter(ir_call *ir);
+   virtual ir_visitor_status visit_enter(ir_ssbo_store *ir);
 
    virtual void handle_rvalue(ir_rvalue **rvalue);
 
@@ -175,6 +176,21 @@ ir_constant_folding_visitor::visit_enter(ir_call *ir)
 	 new(ralloc_parent(ir)) ir_assignment(ir->return_deref, const_val);
       ir->replace_with(assignment);
    }
+
+   return visit_continue_with_parent;
+}
+
+ir_visitor_status
+ir_constant_folding_visitor::visit_enter(ir_ssbo_store *ir)
+{
+   ir->block->accept(this);
+   handle_rvalue(&ir->block);
+
+   ir->offset->accept(this);
+   handle_rvalue(&ir->offset);
+
+   ir->val->accept(this);
+   handle_rvalue(&ir->val);
 
    return visit_continue_with_parent;
 }
