@@ -245,6 +245,28 @@ contains_rvalue(ir_rvalue *haystack, ir_rvalue *needle)
 }
 
 static bool
+expression_contains_ssbo_load(ir_expression *expr)
+{
+   if (expr->operation == ir_binop_ssbo_load)
+      return true;
+
+   for (unsigned i = 0; i < expr->get_num_operands(); i++) {
+      ir_rvalue *op = expr->operands[i];
+      if (op->ir_type == ir_type_expression &&
+          expression_contains_ssbo_load(op->as_expression())) {
+         return true;
+      } else if (op->ir_type == ir_type_swizzle) {
+         ir_swizzle *swizzle = op->as_swizzle();
+         ir_expression *val = swizzle->val->as_expression();
+         if (val && expression_contains_ssbo_load(val))
+            return true;
+      }
+   }
+
+   return false;
+}
+
+static bool
 is_cse_candidate(ir_rvalue *ir)
 {
    /* Our temporary variable assignment generation isn't ready to handle
@@ -260,7 +282,16 @@ is_cse_candidate(ir_rvalue *ir)
     * to variable-index array dereferences at some point.
     */
    switch (ir->ir_type) {
-   case ir_type_expression:
+   case ir_type_expression: {
+         /* Skip expressions involving SSBO loads, since these operate on
+          * read-write variables, meaning that the same ssbo_load expression
+          * may return a different value if the underlying buffer storage
+          * is written in between.
+          */
+         if (expression_contains_ssbo_load(ir->as_expression()))
+            return false;
+      }
+      break;
    case ir_type_texture:
       break;
    default:
