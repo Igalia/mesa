@@ -263,14 +263,20 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    switch(instr->op) {
-
+   case nir_op_vec2:
+   case nir_op_vec3:
    case nir_op_vec4:
-      /* TODO: This is top priority to implement right now, to resolve the
-         instruction: 'r1 = vec4 r0.yxxx, r0.xxxx, ssa_11.xxxx, ssa_11.yxxx'
-         from our sample NIR code */
-
+      /* @TODO: Reduce the number of MOV when possible.  Several operands stored in
+       *  the same register can be moved to the dst in one MOV.
+       */
       for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-         printf("%d\n", nir_op_infos[instr->op].input_sizes[i]);
+         if (!(instr->dest.write_mask & (1 << i)))
+            continue;
+
+         dst.writemask = 1 << i;
+         op[i].swizzle = instr->src[i].swizzle[0] << (i * 2);
+         inst = emit(MOV(dst, retype(op[i], dst.type)));
+         inst->saturate = instr->dest.saturate;
       }
       break;
 
