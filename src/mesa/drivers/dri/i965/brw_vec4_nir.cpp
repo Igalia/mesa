@@ -230,6 +230,19 @@ vec4_visitor::nir_emit_intrinsic_store_output(nir_intrinsic_instr *instr)
 void
 vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 {
+   vec4_instruction *inst;
+
+   dst_reg dst = get_nir_dest(instr->dest.dest);
+   dst.type = brw_type_for_nir_type(nir_op_infos[instr->op].output_type);
+
+   src_reg op[4];
+   for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
+      op[i] = get_nir_src(instr->src[i].src);
+      op[i].type = brw_type_for_nir_type(nir_op_infos[instr->op].input_types[i]);
+      op[i].abs = instr->src[i].abs;
+      op[i].negate = instr->src[i].negate;
+   }
+
    switch(instr->op) {
 
    case nir_op_vec4:
