@@ -232,7 +232,15 @@ is_cse_candidate(ir_rvalue *ir)
     * to variable-index array dereferences at some point.
     */
    switch (ir->ir_type) {
-   case ir_type_expression:
+   case ir_type_expression: {
+         /* Skip expressions involving SSBO loads, since these operate on
+          * read-write variables.
+          */
+         ir_expression *expr = ir->as_expression();
+         if (expr->operation == ir_binop_ssbo_load)
+            return false;
+      }
+      break;
    case ir_type_texture:
       break;
    default:
