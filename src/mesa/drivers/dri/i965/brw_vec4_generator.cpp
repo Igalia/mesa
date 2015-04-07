@@ -1236,31 +1236,56 @@ vec4_generator::generate_buffer_write(vec4_instruction *inst,
       write_commit = true;
    }
 
-   /* FIXME:
-    * We probably need to support the case where index (block) is not a
-    * constant value
-    */
-
    /* Each of the 8 channel enables is considered for whether each
     * dword is written.
     */
-   brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
-   brw_set_dest(p, send, dst);
-   brw_set_src0(p, send, header);
-   if (brw->gen < 6)
-      brw_inst_set_cond_modifier(brw, send, inst->base_mrf);
-   brw_set_dp_write_message(p, send,
-                            index.dw1.ud,
-                            BRW_DATAPORT_OWORD_DUAL_BLOCK_1OWORD,
-                            msg_type,
-                            3, /* mlen */
-                            true, /* header present */
-                            false, /* not a render target write */
-                            write_commit, /* rlen */
-                            false, /* eot */
-                            write_commit);
+   if (index.file == BRW_IMMEDIATE_VALUE) {
+      brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
+      brw_set_dest(p, send, dst);
+      brw_set_src0(p, send, header);
+      if (brw->gen < 6)
+         brw_inst_set_cond_modifier(brw, send, inst->base_mrf);
+      brw_set_dp_write_message(p, send,
+                               index.dw1.ud,
+                               BRW_DATAPORT_OWORD_DUAL_BLOCK_1OWORD,
+                               msg_type,
+                               3, /* mlen */
+                               true, /* header present */
+                               false, /* not a render target write */
+                               write_commit, /* rlen */
+                               false, /* eot */
+                               write_commit);
 
-   brw_mark_surface_used(&prog_data->base, index.dw1.ud);
+      brw_mark_surface_used(&prog_data->base, index.dw1.ud);
+   } else {
+      struct brw_reg addr = vec1(retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD));
+
+      brw_push_insn_state(p);
+      brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+      brw_set_default_access_mode(p, BRW_ALIGN_1);
+
+      /* a0.0 = surf_index & 0xff */
+      brw_inst *insn_and = brw_next_insn(p, BRW_OPCODE_AND);
+      brw_inst_set_exec_size(p->brw, insn_and, BRW_EXECUTE_1);
+      brw_set_dest(p, insn_and, addr);
+      brw_set_src0(p, insn_and, vec1(retype(index, BRW_REGISTER_TYPE_UD)));
+      brw_set_src1(p, insn_and, brw_imm_ud(0x0ff));
+      brw_pop_insn_state(p);
+
+      /* dst = send(payload, a0.0 | <descriptor>) */
+      brw_inst *insn =
+         brw_send_indirect_message(p, GEN7_SFID_DATAPORT_DATA_CACHE, dst, header, addr);
+      brw_set_dp_write_message(p, insn,
+                               0,
+                               BRW_DATAPORT_OWORD_DUAL_BLOCK_1OWORD,
+                               msg_type,
+                               3, /* mlen */
+                               true, /* header present */
+                               false, /* not a render target write */
+                               write_commit, /* rlen */
+                               false, /* eot */
+                               write_commit);
+   }
 }
 
 void
