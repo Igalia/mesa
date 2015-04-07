@@ -496,6 +496,10 @@ private:
                                          struct brw_reg dst,
                                          struct brw_reg surf_index,
                                          struct brw_reg offset);
+   void generate_buffer_read(vec4_instruction *inst,
+                             struct brw_reg dst,
+                             struct brw_reg index,
+                             struct brw_reg offset);
    void generate_buffer_write(vec4_instruction *inst,
                               struct brw_reg dst,
                               struct brw_reg index,
