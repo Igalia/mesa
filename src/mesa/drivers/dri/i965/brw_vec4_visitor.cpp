@@ -1727,6 +1727,8 @@ vec4_visitor::visit(ir_expression *ir)
       break;
 
    case ir_binop_ssbo_load:
+      assert(brw->gen >= 7);
+      /* fallthrough */
    case ir_binop_ubo_load: {
       ir_constant *const_uniform_block = ir->operands[0]->as_constant();
       ir_constant *const_offset_ir = ir->operands[1]->as_constant();
@@ -1794,12 +1796,22 @@ vec4_visitor::visit(ir_expression *ir)
 
          emit(MOV(grf_offset, offset));
 
-         vec4_instruction *pull =
-            emit(new(mem_ctx) vec4_instruction(VS_OPCODE_PULL_CONSTANT_LOAD_GEN7,
-                                               dst_reg(packed_consts),
-                                               surf_index,
-                                               src_reg(grf_offset)));
-         pull->mlen = 1;
+         vec4_instruction *pull;
+         if (ir->operation == ir_binop_ubo_load) {
+            pull = emit(new(mem_ctx)
+                        vec4_instruction(VS_OPCODE_PULL_CONSTANT_LOAD_GEN7,
+                                         dst_reg(packed_consts),
+                                         surf_index,
+                                         src_reg(grf_offset)));
+            pull->mlen = 1;
+         } else { /* ir_binop_ssbo_load */
+            pull = emit(new(mem_ctx)
+                        vec4_instruction(VS_OPCODE_BUFFER_READ,
+                                         dst_reg(packed_consts),
+                                         surf_index,
+                                         src_reg(grf_offset)));
+            pull->mlen = 2;
+         }
       } else {
          vec4_instruction *pull =
             emit(new(mem_ctx) vec4_instruction(VS_OPCODE_PULL_CONSTANT_LOAD,

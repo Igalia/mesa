@@ -1113,6 +1113,48 @@ vec4_generator::generate_pull_constant_load_gen7(vec4_instruction *inst,
 }
 
 void
+vec4_generator::generate_buffer_read(vec4_instruction *inst,
+                                     struct brw_reg dst,
+                                     struct brw_reg index,
+                                     struct brw_reg offset)
+{
+   struct brw_reg header = brw_vec8_grf(0, 0);
+
+   gen6_resolve_implied_move(p, &header, inst->base_mrf);
+
+   brw_MOV(p, retype(brw_message_reg(inst->base_mrf + 1), BRW_REGISTER_TYPE_D),
+                     offset);
+
+   uint32_t msg_type;
+
+   if (brw->gen >= 6)
+      msg_type = GEN6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
+   else if (brw->gen == 5 || brw->is_g4x)
+      msg_type = G45_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
+   else
+      msg_type = BRW_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
+
+   /* Each of the 8 channel enables is considered for whether each
+    * dword is written.
+    */
+   brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
+   brw_set_dest(p, send, dst);
+   brw_set_src0(p, send, header);
+   if (brw->gen < 6)
+      brw_inst_set_cond_modifier(brw, send, inst->base_mrf);
+   brw_set_dp_read_message(p, send,
+                           index.dw1.ud, /* binding table index */
+                           BRW_DATAPORT_OWORD_DUAL_BLOCK_1OWORD,
+                           msg_type,
+                           BRW_DATAPORT_READ_TARGET_RENDER_CACHE,
+                           2, /* mlen */
+                           true, /* header_present */
+                           1 /* rlen */);
+   brw_mark_surface_used(&prog_data->base, index.dw1.ud);
+}
+
+
+void
 vec4_generator::generate_buffer_write(vec4_instruction *inst,
                                       struct brw_reg dst,
                                       struct brw_reg index,
@@ -1514,6 +1556,10 @@ vec4_generator::generate_code(const cfg_t *cfg)
 
       case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
          generate_pull_constant_load_gen7(inst, dst, src[0], src[1]);
+         break;
+
+      case VS_OPCODE_BUFFER_READ:
+         generate_buffer_read(inst, dst, src[0], src[1]);
          break;
 
       case VS_OPCODE_BUFFER_WRITE:
