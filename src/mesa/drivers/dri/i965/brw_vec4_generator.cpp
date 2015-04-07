@@ -1150,6 +1150,7 @@ vec4_generator::generate_buffer_read(vec4_instruction *inst,
                            2, /* mlen */
                            true, /* header_present */
                            1 /* rlen */);
+   brw_mark_surface_used(&prog_data->base, index.dw1.ud);
 }
 
 
