@@ -1727,6 +1727,8 @@ vec4_visitor::visit(ir_expression *ir)
       break;
 
    case ir_binop_ssbo_load:
+      assert(brw->gen >= 7);
+      /* fallthrough */
    case ir_binop_ubo_load: {
       ir_constant *const_uniform_block = ir->operands[0]->as_constant();
       ir_constant *const_offset_ir = ir->operands[1]->as_constant();
@@ -1794,12 +1796,47 @@ vec4_visitor::visit(ir_expression *ir)
 
          emit(MOV(grf_offset, offset));
 
-         vec4_instruction *pull =
-            emit(new(mem_ctx) vec4_instruction(VS_OPCODE_PULL_CONSTANT_LOAD_GEN7,
-                                               dst_reg(packed_consts),
-                                               surf_index,
-                                               src_reg(grf_offset)));
-         pull->mlen = 1;
+         vec4_instruction *pull;
+         if (ir->operation == ir_binop_ubo_load) {
+            pull = emit(new(mem_ctx)
+                        vec4_instruction(VS_OPCODE_PULL_CONSTANT_LOAD_GEN7,
+                                         dst_reg(packed_consts),
+                                         surf_index,
+                                         src_reg(grf_offset)));
+            pull->mlen = 1;
+         } else { /* ir_binop_ssbo_load */
+            /* FIXME: handle unaligned non-constant offset properly. For
+             * example:
+             *
+             * struct S {
+             *    float a, b, c, d;
+             * }
+             *
+             * layout(std140, binding=0) buffer B {
+             *    TB s[4];
+             * };
+             *
+             * If we read s[i].c, for i=1 we have a byte offset of 24, which
+             * is not 16-byte aligned. The code below uses const_offset
+             * to swizzle the read result, but since we are indexing the array
+             * with a variable we won't have a const_offset and the swizzle
+             * won't be right. Notice that ir_binop_ubo_load does not handle
+             * this case either).
+             *
+             * We probably want to use a read message that can use a DWord
+             * offset so we can just read 4 elements from the exact Dword offset
+             * we have. The Dual OWord Read message we are using here uses OWord
+             * offsets and that is why we need to swizzle the read result
+             * based on the modulo of the offset we have, which we can only do
+             * for constant offsets.
+             */
+            pull = emit(new(mem_ctx)
+                        vec4_instruction(VS_OPCODE_BUFFER_READ,
+                                         dst_reg(packed_consts),
+                                         surf_index,
+                                         src_reg(grf_offset)));
+            pull->mlen = 2;
+         }
       } else {
          vec4_instruction *pull =
             emit(new(mem_ctx) vec4_instruction(VS_OPCODE_PULL_CONSTANT_LOAD,
