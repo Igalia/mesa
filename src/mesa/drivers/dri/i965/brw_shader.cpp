@@ -568,6 +568,8 @@ brw_instruction_name(enum opcode op)
       return "pull_constant_load";
    case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
       return "pull_constant_load_gen7";
+   case VS_OPCODE_BUFFER_READ:
+      return "vs_buffer_read";
    case VS_OPCODE_BUFFER_WRITE:
       return "vs_buffer_write";
    case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
