@@ -1803,9 +1803,10 @@ vec4_visitor::run()
       iteration++;
 
       OPT(opt_reduce_swizzle);
-      OPT(dead_code_eliminate);
-      OPT(dead_control_flow_eliminate, this);
-      OPT(opt_copy_propagation);
+      /* @FIXME: temporarily commented for debugging purposes */
+      // OPT(dead_code_eliminate);
+      // OPT(dead_control_flow_eliminate, this);
+      // OPT(opt_copy_propagation);
       OPT(opt_cse);
       OPT(opt_algebraic);
       OPT(opt_register_coalesce);
@@ -1844,7 +1845,8 @@ vec4_visitor::run()
          return false;
    }
 
-   opt_schedule_instructions();
+   /* @FIXME: temporarily commented for debugging purposes */
+   // opt_schedule_instructions();
 
    opt_set_dependency_control();
 
