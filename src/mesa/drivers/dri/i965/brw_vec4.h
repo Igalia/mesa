@@ -406,6 +406,9 @@ public:
    src_reg get_nir_src(nir_src src);
 
    dst_reg *nir_locals;
+   src_reg *nir_inputs;
+   int nir_num_inputs;
+   int nir_loaded_inputs;
 
 protected:
    void emit_vertex();

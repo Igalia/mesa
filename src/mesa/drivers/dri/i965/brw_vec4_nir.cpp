@@ -36,6 +36,9 @@ vec4_visitor::emit_nir_code()
 {
    nir_shader *nir = prog->nir;
 
+   nir_num_inputs = 0;
+   nir_loaded_inputs = 0;
+   nir_inputs = reralloc(mem_ctx, nir_inputs, src_reg, 2);
    nir_setup_inputs(nir);
 
    nir_setup_outputs(nir);
@@ -46,10 +49,13 @@ vec4_visitor::emit_nir_code()
 void
 vec4_visitor::nir_setup_inputs(nir_shader *shader)
 {
-   /* @FIXME: this method is likely not needed, so don't implement
-      it for now. */
+   /* @FIXME: We need to analyze why shader->num_inputs reports zero
+    * here even if we have attributes. It looks like a bug.
+    */
    foreach_list_typed(nir_variable, var, node, &shader->inputs) {
-      /* @TODO */
+      src_reg src = src_reg(ATTR, var->data.location, var->type);
+      nir_inputs[nir_num_inputs] = src;
+      nir_num_inputs++;
    }
 }
 
@@ -188,7 +194,18 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 void
 vec4_visitor::nir_emit_intrinsic_load_input(nir_intrinsic_instr *instr)
 {
-   /* @TODO */
+   dst_reg dest = get_nir_dest(instr->dest);
+
+   dest.writemask = 0;
+   for (int i = 0; i < instr->num_components; i++)
+      dest.writemask |= 1 << i;
+
+   src_reg src = nir_inputs[nir_loaded_inputs];
+   nir_loaded_inputs++;
+
+   dest = retype(dest, src.type);
+
+   emit(MOV(dest, src));
 }
 
 void
