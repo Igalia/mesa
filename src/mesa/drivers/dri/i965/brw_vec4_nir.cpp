@@ -112,13 +112,14 @@ vec4_visitor::get_nir_src(nir_src src)
    if (src.is_ssa) {
       assert(src.ssa->parent_instr->type == nir_instr_type_load_const);
       nir_load_const_instr *load = nir_instr_as_load_const(src.ssa->parent_instr);
+
       reg = dst_reg(GRF, alloc.allocate(src.ssa->num_components));
       reg.type = BRW_REGISTER_TYPE_D;
 
-      for (unsigned i = 0; i < src.ssa->num_components; ++i)
-         emit(MOV(offset(reg, i), src_reg(load->value.i[i])));
-
-      return src_reg(reg);
+      for (unsigned i = 0; i < src.ssa->num_components; ++i) {
+         reg.writemask = 1 << i;
+         emit(MOV(reg, retype(src_reg(load->value.i[i]), reg.type)));
+      }
    }
    else {
       reg = nir_locals[src.reg.reg->index];
