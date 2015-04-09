@@ -492,6 +492,8 @@ brw_instruction_name(enum opcode op)
       return "untyped_surface_read";
    case SHADER_OPCODE_BUFFER_LOAD:
       return "buffer_load";
+   case SHADER_OPCODE_BUFFER_STORE:
+      return "buffer_store";
 
    case SHADER_OPCODE_LOAD_PAYLOAD:
       return "load_payload";
@@ -1036,6 +1038,7 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_URB_WRITE_SIMD8:
    case FS_OPCODE_FB_WRITE:
    case VS_OPCODE_BUFFER_WRITE:
+   case SHADER_OPCODE_BUFFER_STORE:
       return true;
    default:
       return false;
