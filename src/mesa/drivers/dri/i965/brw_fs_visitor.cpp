@@ -1249,21 +1249,42 @@ fs_visitor::visit(ir_expression *ir)
             result = offset(result, 1);
          }
       } else {
-         /* Turn the byte offset into a dword offset. */
-         fs_reg base_offset = vgrf(glsl_type::int_type);
-         emit(SHR(base_offset, op[1], fs_reg(2)));
+         if (ir->operation == ir_binop_ubo_load) {
+            /* Turn the byte offset into a dword offset. */
+            fs_reg base_offset = vgrf(glsl_type::int_type);
+            emit(SHR(base_offset, op[1], fs_reg(2)));
 
-         if (ir->operation == ir_binop_ssbo_load)
-            assert(!"Not implemented");
+            for (int i = 0; i < ir->type->vector_elements; i++) {
+               emit(VARYING_PULL_CONSTANT_LOAD(result, surf_index,
+                                               base_offset, i));
 
-         for (int i = 0; i < ir->type->vector_elements; i++) {
-            emit(VARYING_PULL_CONSTANT_LOAD(result, surf_index,
-                                            base_offset, i));
+               if (ir->type->base_type == GLSL_TYPE_BOOL)
+                  emit(CMP(result, result, fs_reg(0), BRW_CONDITIONAL_NZ));
 
-            if (ir->type->base_type == GLSL_TYPE_BOOL)
-               emit(CMP(result, result, fs_reg(0), BRW_CONDITIONAL_NZ));
+               result = offset(result, 1);
+            }
+         } else {
+            fs_reg offset_reg = vgrf(glsl_type::uint_type);
+            emit(MOV(offset_reg, op[1]));
 
-            result = offset(result, 1);
+            fs_reg packed_consts = vgrf(glsl_type::float_type);
+            packed_consts.type = result.type;
+
+            emit(new(mem_ctx) fs_inst(SHADER_OPCODE_BUFFER_LOAD, 8,
+                                      packed_consts, surf_index, offset_reg));
+
+            for (int i = 0; i < ir->type->vector_elements; i++) {
+               packed_consts.set_smear(i);
+               assert(packed_consts.subreg_offset < 32);
+
+               if (ir->type->base_type == GLSL_TYPE_BOOL) {
+                  emit(CMP(result, packed_consts, fs_reg(0u), BRW_CONDITIONAL_NZ));
+               } else {
+                  emit(MOV(result, packed_consts));
+               }
+
+               result = offset(result, 1);
+            }
          }
       }
 
