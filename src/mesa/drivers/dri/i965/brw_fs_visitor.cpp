@@ -153,7 +153,8 @@ fs_visitor::visit(ir_variable *ir)
 	    this->output_components[output] = vector_elements;
 	 }
       }
-   } else if (ir->data.mode == ir_var_uniform) {
+   } else if (ir->data.mode == ir_var_uniform ||
+              ir->data.mode == ir_var_buffer) {
       int param_index = uniforms;
 
       /* Thanks to the lower_ubo_reference pass, we will see only
