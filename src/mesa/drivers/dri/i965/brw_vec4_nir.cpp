@@ -288,6 +288,10 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       }
       break;
 
+   case nir_op_fadd:
+      inst = emit(ADD(dst, op[0], op[1]));
+      inst->saturate = instr->dest.saturate;
+      break;
    default:
       fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
       break;
