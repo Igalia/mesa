@@ -255,7 +255,8 @@ link_uniform_blocks(void *mem_ctx,
                  == unsigned(ubo_packing_shared));
    STATIC_ASSERT(unsigned(GLSL_INTERFACE_PACKING_PACKED)
                  == unsigned(ubo_packing_packed));
-
+   STATIC_ASSERT(unsigned(GLSL_INTERFACE_PACKING_STD430)
+                 == unsigned(ubo_packing_std430));
 
    hash_table_foreach (block_hash, entry) {
       const struct link_uniform_block_active *const b =
