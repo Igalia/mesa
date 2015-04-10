@@ -77,7 +77,8 @@ enum glsl_sampler_dim {
 enum glsl_interface_packing {
    GLSL_INTERFACE_PACKING_STD140,
    GLSL_INTERFACE_PACKING_SHARED,
-   GLSL_INTERFACE_PACKING_PACKED
+   GLSL_INTERFACE_PACKING_PACKED,
+   GLSL_INTERFACE_PACKING_STD430
 };
 
 enum glsl_matrix_layout {
@@ -324,6 +325,18 @@ struct glsl_type {
     * elements in the array)
     */
    unsigned std140_size(bool row_major) const;
+
+   /**
+    * Alignment in bytes of the start of this type in a std430 shader
+    * storage block.
+    */
+   unsigned std430_base_alignment(bool row_major) const;
+
+   /** Size in bytes of this type in a std430 shader storage block.
+    *
+    * Note that this is not GL_BUFFER_SIZE
+    */
+   unsigned std430_size(bool row_major) const;
 
    /**
     * \brief Can this type be implicitly converted to another?
