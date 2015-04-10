@@ -1281,23 +1281,31 @@ glsl_type::std140_size(bool row_major) const
 unsigned
 glsl_type::std430_base_alignment(bool row_major) const
 {
+   unsigned base_alignment = 0;
    /* When using the "std430" storage layout, shader storage
     * blocks will be laid out in buffer storage identically to uniform and
     * shader storage blocks using the "std140" layout, except that the base
     * alignment of arrays of scalars and vectors in rule (4) and of structures
     * in rule (9) are not rounded up a multiple of the base alignment of a vec4.
     */
+
+   /* (1) If the member is a scalar consuming <N> basic machine units, the
+    *     base alignment is <N>.
+    *
+    * (2) If the member is a two- or four-component vector with components
+    *     consuming <N> basic machine units, the base alignment is 2<N> or
+    *     4<N>, respectively.
+    *
+    * (3) If the member is a three-component vector with components consuming
+    *     <N> basic machine units, the base alignment is 4<N>.
+    */
    if (this->is_array()) {
-      if (this->fields.array->is_scalar() ||
-          this->fields.array->is_vector()) {
-         return this->fields.array->std140_base_alignment(row_major);
-      } else {
-         assert(this->fields.array->is_record());
-         return this->fields.array->std140_base_alignment(row_major);
-      }
+      base_alignment = this->fields.array->std430_base_alignment(row_major);
+   } else {
+      /* For the rest of cases, use std140_base_alignment() */
+      base_alignment = this->std140_base_alignment(row_major);
    }
-   /* For the rest of cases, use std140_base_alignment() */
-   return this->std140_base_alignment(row_major);
+   return base_alignment;
 }
 
 unsigned
