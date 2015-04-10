@@ -2539,7 +2539,8 @@ enum gl_uniform_block_packing
 {
    ubo_packing_std140,
    ubo_packing_shared,
-   ubo_packing_packed
+   ubo_packing_packed,
+   ubo_packing_std430
 };
 
 

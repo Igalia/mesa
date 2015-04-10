@@ -117,6 +117,7 @@ ast_type_qualifier::merge_qualifier(YYLTYPE *loc,
    ubo_layout_mask.flags.q.std140 = 1;
    ubo_layout_mask.flags.q.packed = 1;
    ubo_layout_mask.flags.q.shared = 1;
+   ubo_layout_mask.flags.q.std430 = 1;
 
    ast_type_qualifier ubo_binding_mask;
    ubo_binding_mask.flags.i = 0;
