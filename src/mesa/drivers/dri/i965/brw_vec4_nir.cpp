@@ -246,6 +246,12 @@ brw_type_for_nir_type(nir_alu_type type)
    return BRW_REGISTER_TYPE_F;
 }
 
+static unsigned
+brw_swizzle_for_nir_swizzle(uint8_t swizzle[4])
+{
+   return  BRW_SWIZZLE4(swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
+}
+
 void
 vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 {
