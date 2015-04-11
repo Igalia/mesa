@@ -259,10 +259,12 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    dst_reg dst = get_nir_dest(instr->dest.dest);
    dst.type = brw_type_for_nir_type(nir_op_infos[instr->op].output_type);
+   dst.writemask = instr->dest.write_mask;
 
    src_reg op[4];
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
       op[i] = get_nir_src(instr->src[i].src);
+      op[i].swizzle = brw_swizzle_for_nir_swizzle(instr->src[i].swizzle);
       op[i].type = brw_type_for_nir_type(nir_op_infos[instr->op].input_types[i]);
       op[i].abs = instr->src[i].abs;
       op[i].negate = instr->src[i].negate;
