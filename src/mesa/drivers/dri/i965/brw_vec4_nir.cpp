@@ -298,6 +298,10 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_inot:
+      inst = emit(NOT(dst, op[0]));
+      break;
+
    default:
       fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
       break;
