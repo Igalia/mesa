@@ -530,6 +530,9 @@ brw_instruction_name(enum opcode op)
    case FS_OPCODE_LINTERP:
       return "linterp";
 
+   case FS_OPCODE_UNSIZED_ARRAY_LENGTH:
+      return "fs_unsized_array_length";
+
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
       return "uniform_pull_const";
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
