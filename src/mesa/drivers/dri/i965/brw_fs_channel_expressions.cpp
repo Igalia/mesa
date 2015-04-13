@@ -430,6 +430,8 @@ ir_channel_expressions_visitor::visit_leave(ir_assignment *ir)
    case ir_triop_vector_insert:
    case ir_quadop_bitfield_insert:
    case ir_quadop_vector:
+   case ir_unop_ssbo_unsized_array_length:
+   case ir_triop_ssbo_unsized_array_length:
       unreachable("should have been lowered");
 
    case ir_unop_unpack_half_2x16_split_x:
