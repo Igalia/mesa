@@ -343,8 +343,15 @@ lower_ubo_reference_visitor::setup_for_load_or_write(ir_variable *var,
             const bool array_row_major =
                is_dereferenced_thing_row_major(deref_array);
 
-            array_stride = deref_array->type->std140_size(array_row_major);
-            array_stride = glsl_align(array_stride, 16);
+            /* The array type will give the correct interface packing
+             * information
+             */
+            if (deref_array->array->type->interface_packing == GLSL_INTERFACE_PACKING_STD430) {
+               array_stride = deref_array->type->std430_size(array_row_major);
+            } else {
+               array_stride = deref_array->type->std140_size(array_row_major);
+               array_stride = glsl_align(array_stride, 16);
+            }
          }
 
          ir_rvalue *array_index = deref_array->array_index;
@@ -380,7 +387,12 @@ lower_ubo_reference_visitor::setup_for_load_or_write(ir_variable *var,
 
             ralloc_free(field_deref);
 
-            unsigned field_align = type->std140_base_alignment(field_row_major);
+            unsigned field_align = 0;
+
+            if (struct_type->interface_packing == GLSL_INTERFACE_PACKING_STD430)
+               field_align = type->std430_base_alignment(field_row_major);
+            else
+               field_align = type->std140_base_alignment(field_row_major);
 
             intra_struct_offset = glsl_align(intra_struct_offset, field_align);
 
@@ -388,7 +400,10 @@ lower_ubo_reference_visitor::setup_for_load_or_write(ir_variable *var,
                        deref_record->field) == 0)
                break;
 
-            intra_struct_offset += type->std140_size(field_row_major);
+            if (struct_type->interface_packing == GLSL_INTERFACE_PACKING_STD430)
+               intra_struct_offset += type->std430_size(field_row_major);
+            else
+               intra_struct_offset += type->std140_size(field_row_major);
 
             /* If the field just examined was itself a structure, apply rule
              * #9:
@@ -885,8 +900,12 @@ lower_ubo_reference_visitor::calculate_unsized_array_stride(ir_dereference *dere
       const bool array_row_major =
          is_dereferenced_thing_row_major(deref_var);
 
-      array_stride = unsized_array_type->std140_size(array_row_major);
-      array_stride = glsl_align(array_stride, 16);
+      if (deref->type->interface_packing == GLSL_INTERFACE_PACKING_STD430) {
+         array_stride = unsized_array_type->std430_size(array_row_major);
+      } else {
+         array_stride = unsized_array_type->std140_size(array_row_major);
+         array_stride = glsl_align(array_stride, 16);
+      }
       break;
    }
    case ir_type_dereference_record:
@@ -901,8 +920,13 @@ lower_ubo_reference_visitor::calculate_unsized_array_stride(ir_dereference *dere
 
       const bool array_row_major =
          is_dereferenced_thing_row_major(deref_record);
-      array_stride = unsized_array_type->std140_size(array_row_major);
-      array_stride = glsl_align(array_stride, 16);
+
+      if (deref->type->interface_packing == GLSL_INTERFACE_PACKING_STD430) {
+         array_stride = unsized_array_type->std430_size(array_row_major);
+      } else {
+         array_stride = unsized_array_type->std140_size(array_row_major);
+         array_stride = glsl_align(array_stride, 16);
+      }
       break;
    }
    default:
