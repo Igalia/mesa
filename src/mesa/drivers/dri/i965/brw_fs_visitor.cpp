@@ -1288,6 +1288,57 @@ fs_visitor::visit(ir_expression *ir)
       emit_lrp(this->result, op[0], op[1], op[2]);
       break;
 
+   case ir_triop_ssbo_unsized_array_length: {
+      ir_constant *const_uniform_block = ir->operands[0]->as_constant();
+      unsigned ubo_index = const_uniform_block->value.u[0];
+      ir_constant *const_offset_ir = ir->operands[1]->as_constant();
+      int const_offset = const_offset_ir ? const_offset_ir->value.u[0] : 0;
+      ir_constant *const_stride_ir = ir->operands[2]->as_constant();
+      unsigned unsized_array_stride = const_stride_ir ? const_stride_ir->value.u[0] : 1;
+      int reg_width = dispatch_width / 8;
+
+      assert(shader->base.UniformBlocks[ubo_index].IsShaderStorage);
+
+      /* Set LOD = 0 */
+      fs_reg source = fs_reg(0);
+
+      int mlen = 1 * reg_width;
+      fs_reg src_payload = fs_reg(GRF, alloc.allocate(mlen),
+                                   BRW_REGISTER_TYPE_UD, dispatch_width);
+      emit(LOAD_PAYLOAD(src_payload, &source, 1, 0));
+
+      fs_reg surf_index = fs_reg(prog_data->binding_table.ubo_start + ubo_index);
+      fs_reg buffer_size = vgrf(glsl_type::int_type);
+
+      fs_inst *inst = emit(FS_OPCODE_UNSIZED_ARRAY_LENGTH, buffer_size,
+                           src_payload, surf_index);
+      inst->header_size = 0;
+      inst->base_mrf = -1;
+      inst->mlen = mlen;
+      inst->regs_written = 4 * reg_width;
+      emit(inst);
+
+      /* array.length() =
+          max((buffer_object_size - offset_of_array) / stride_of_array, 0) */
+      fs_reg temp = vgrf(glsl_type::float_type);
+      emit(ADD(buffer_size, buffer_size, fs_reg(-const_offset)));
+
+      emit(MOV(temp, buffer_size));
+
+      assert(unsized_array_stride > 0);
+
+      fs_reg stride = fs_reg((float)1/unsized_array_stride);
+      emit(MUL(temp, temp, stride));
+      emit(MOV(this->result, fs_reg(0)));
+      emit(CMP(reg_null_f, temp, fs_reg(0), BRW_CONDITIONAL_G));
+      emit(IF(BRW_PREDICATE_NORMAL));
+      {
+         emit(MOV(this->result, temp));
+      }
+      emit(BRW_OPCODE_ENDIF);
+      break;
+   }
+
    case ir_triop_csel:
    case ir_unop_interpolate_at_centroid:
    case ir_binop_interpolate_at_offset:
@@ -1307,6 +1358,9 @@ fs_visitor::visit(ir_expression *ir)
    case ir_unop_frexp_sig:
    case ir_unop_frexp_exp:
       unreachable("fp64 todo");
+      break;
+   case ir_unop_ssbo_unsized_array_length:
+      unreachable("not reached: should be handled by lower_ubo_reference");
       break;
    }
 }
