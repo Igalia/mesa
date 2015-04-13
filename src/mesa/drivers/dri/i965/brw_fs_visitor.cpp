@@ -1313,7 +1313,7 @@ fs_visitor::visit(ir_expression *ir)
       ir_constant *const_offset_ir = ir->operands[1]->as_constant();
       int const_offset = const_offset_ir ? const_offset_ir->value.u[0] : 0;
       ir_constant *const_stride_ir = ir->operands[2]->as_constant();
-      int unsized_array_stride = const_stride_ir ? const_stride_ir->value.u[0] : 1;
+      unsigned unsized_array_stride = const_stride_ir ? const_stride_ir->value.u[0] : 1;
       int reg_width = dispatch_width / 8;
 
       assert(shader->base.UniformBlocks[ubo_index].IsBuffer);
@@ -1354,21 +1354,15 @@ fs_visitor::visit(ir_expression *ir)
       /* array.length() =
           max((buffer_object_size - offset_of_array) / stride_of_array, 0) */
       /* TODO: Optimize these instructions */
-      if (0) {
-         fs_reg temp = vgrf(glsl_type::int_type);
-         emit(MUL(temp, offset(buffer_size, 0), fs_reg(16)));
-         emit(ADD(temp, temp, fs_reg(-const_offset)));
-         fs_reg stride = fs_reg(unsized_array_stride);
-         emit_math(SHADER_OPCODE_INT_QUOTIENT,
-                  this->result,
-                  temp,
-                  stride);
-      } else {
-         emit(MOV(this->result, buffer_size));
-      }
-      //TODO: Calculate the stride of array
-      printf("SIG: FS -> offset %d stride %d, surface index %d\n",
-             const_offset, unsized_array_stride, prog_data->binding_table.ubo_start + ubo_index);
+      fs_reg temp = vgrf(glsl_type::float_type);
+      emit(MUL(buffer_size, buffer_size, fs_reg(4)));
+      emit(ADD(buffer_size, buffer_size, fs_reg(-const_offset)));
+
+      emit(MOV(temp, buffer_size));
+
+      fs_reg stride = fs_reg((float)1/unsized_array_stride);
+      emit(MUL(temp, temp, stride));
+      emit(MOV(this->result, temp));
       break;
    }
 
