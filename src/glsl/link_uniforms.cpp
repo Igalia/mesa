@@ -216,8 +216,9 @@ program_resource_visitor::recursion(const glsl_type *t, char **name,
          (*name)[name_length] = '\0';
          this->leave_record(t, *name, row_major);
       }
-   } else if (t->is_array() && (t->fields.array->is_record()
-                                || t->fields.array->is_interface())) {
+   } else if (t->is_array() &&
+              (t->fields.array->is_record() || t->fields.array->is_interface()) &&
+              !t->is_unsized_array()) {
       if (record_type == NULL && t->fields.array->is_record())
          record_type = t->fields.array;
 
@@ -236,6 +237,21 @@ program_resource_visitor::recursion(const glsl_type *t, char **name,
           */
          record_type = NULL;
       }
+   } else if (t->is_array() &&
+              (t->fields.array->is_record() || t->fields.array->is_interface()) &&
+              t->is_unsized_array()) {
+      if (record_type == NULL && t->fields.array->is_record())
+         record_type = t->fields.array;
+
+         size_t new_length = name_length;
+
+         recursion(t->fields.array, name, new_length, row_major,
+                   record_type, 1);
+
+         /* Only the first leaf-field of the record gets called with the
+          * record type pointer.
+          */
+         record_type = NULL;
    } else {
       this->visit_field(t, *name, row_major, record_type, last_field);
    }
@@ -771,10 +787,15 @@ link_update_uniform_buffer_variables(struct gl_shader *shader)
       bool found = false;
       char sentinel = '\0';
 
-      if (var->type->is_record()) {
+      /* Unsized arrays of structs might not be sized by lowering passes, for that
+       * case, use same sentinel than normal structs.
+       */
+      if (var->type->is_record() ||
+         (var->type->is_array() && var->type->fields.array->is_record() &&
+                 var->data.from_ssbo_unsized_array)) {
          sentinel = '.';
-      } else if (var->type->is_array()
-                 && var->type->fields.array->is_record()) {
+      } else if (var->type->is_array() && var->type->fields.array->is_record() &&
+                 !var->data.from_ssbo_unsized_array) {
          sentinel = '[';
       }
 
