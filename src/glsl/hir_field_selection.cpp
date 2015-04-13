@@ -71,10 +71,17 @@ _mesa_ast_field_selection_to_hir(const ast_expression *expr,
             _mesa_glsl_error(&loc, state, "length method takes no arguments");
 
          if (op->type->is_array()) {
-            if (op->type->is_unsized_array())
-               _mesa_glsl_error(&loc, state, "length called on unsized array");
-
-            result = new(ctx) ir_constant(op->type->array_size());
+            if (op->type->is_unsized_array()) {
+               if (!state->ARB_shader_storage_buffer_object_enable) {
+                  _mesa_glsl_error(&loc, state, "length called on unsized array"
+                                                " only available with "
+                                                "ARB_shader_storage_buffer_object");
+               }
+               /* Calculate length of an unsized array in run-time */
+               result = new(ctx) ir_expression(ir_unop_ssbo_unsized_array_length, op);
+            } else {
+               result = new(ctx) ir_constant(op->type->array_size());
+            }
          } else if (op->type->is_vector()) {
             if (state->ARB_shading_language_420pack_enable) {
                /* .length() returns int. */

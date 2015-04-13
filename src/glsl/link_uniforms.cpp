@@ -216,8 +216,9 @@ program_resource_visitor::recursion(const glsl_type *t, char **name,
          (*name)[name_length] = '\0';
          this->leave_record(t, *name, row_major);
       }
-   } else if (t->is_array() && (t->fields.array->is_record()
-                                || t->fields.array->is_interface())) {
+   } else if (t->is_array() &&
+              (t->fields.array->is_record() || t->fields.array->is_interface()) &&
+              !t->is_unsized_array()) {
       if (record_type == NULL && t->fields.array->is_record())
          record_type = t->fields.array;
 
@@ -773,8 +774,8 @@ link_update_uniform_buffer_variables(struct gl_shader *shader)
 
       if (var->type->is_record()) {
          sentinel = '.';
-      } else if (var->type->is_array()
-                 && var->type->fields.array->is_record()) {
+      } else if (var->type->is_array() && var->type->fields.array->is_record() &&
+                 !var->data.from_unsized_array) {
          sentinel = '[';
       }
 
