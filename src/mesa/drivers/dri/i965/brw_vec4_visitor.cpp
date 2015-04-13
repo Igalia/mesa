@@ -1579,6 +1579,10 @@ vec4_visitor::visit(ir_expression *ir)
       emit(MOV(result_dst, op[0]));
       break;
 
+   case ir_unop_ssbo_unsized_array_length:
+      unreachable("not reached: should be handled by lower_ubo_reference");
+      break;
+
    case ir_binop_add:
       emit(ADD(result_dst, op[0], op[1]));
       break;
@@ -1934,6 +1938,10 @@ vec4_visitor::visit(ir_expression *ir)
        * and the IR.
        */
       emit(BFE(result_dst, op[2], op[1], op[0]));
+      break;
+
+   case ir_triop_ssbo_unsized_array_length:
+      unreachable("not reached: not implemented");
       break;
 
    case ir_triop_vector_insert:

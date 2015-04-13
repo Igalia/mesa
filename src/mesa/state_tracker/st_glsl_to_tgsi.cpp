@@ -2194,9 +2194,14 @@ glsl_to_tgsi_visitor::visit(ir_expression *ir)
    case ir_triop_vector_insert:
    case ir_binop_carry:
    case ir_binop_borrow:
+   case ir_unop_ssbo_unsized_array_length:
       /* This operation is not supported, or should have already been handled.
        */
       assert(!"Invalid ir opcode in glsl_to_tgsi_visitor::visit()");
+      break;
+
+   case ir_triop_ssbo_unsized_array_length:
+      assert(!"Not implemented yet");
       break;
    }
 
