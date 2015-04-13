@@ -34,7 +34,10 @@ nir_optimize(nir_shader *nir)
       progress = false;
       nir_lower_vars_to_ssa(nir);
       nir_validate_shader(nir);
-      nir_lower_alu_to_scalar(nir);
+      /* @FIXME: Temporary disable alu_to_scalar pass because it is
+         undesired for nir->vec4. In the future we should conditionally
+         enable/disable it */
+      /* nir_lower_alu_to_scalar(nir); */
       nir_validate_shader(nir);
       progress |= nir_copy_prop(nir);
       nir_validate_shader(nir);
