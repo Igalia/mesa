@@ -1583,6 +1583,10 @@ vec4_visitor::visit(ir_expression *ir)
       emit(MOV(result_dst, op[0]));
       break;
 
+   case ir_unop_ssbo_unsized_array_length:
+      unreachable("not reached: should be handled by lower_ubo_reference");
+      break;
+
    case ir_binop_add:
       emit(ADD(result_dst, op[0], op[1]));
       break;
@@ -1787,6 +1791,10 @@ vec4_visitor::visit(ir_expression *ir)
       break;
    case ir_unop_round_even:
       emit(RNDE(result_dst, op[0]));
+      break;
+
+   case ir_unop_get_buffer_size:
+      unreachable("not reached: not implemented");
       break;
 
    case ir_binop_min:
