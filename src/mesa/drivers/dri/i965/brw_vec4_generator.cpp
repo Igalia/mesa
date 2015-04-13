@@ -1032,6 +1032,50 @@ vec4_generator::generate_pull_constant_load(vec4_instruction *inst,
 }
 
 void
+vec4_generator::generate_unsized_array_length(vec4_instruction *inst,
+                                                 struct brw_reg dst,
+                                                 struct brw_reg src,
+                                                 struct brw_reg surf_index)
+{
+   assert(brw->gen >= 7);
+   assert(surf_index.type == BRW_REGISTER_TYPE_UD &&
+          surf_index.file == BRW_IMMEDIATE_VALUE);
+
+   /* FIXME: this message needs to be adapted for Skylake (i.e. use header) */
+//    brw_inst *insn = brw_next_insn(p, BRW_OPCODE_SEND);
+//    brw_set_dest(p, insn, dst);
+//    brw_set_src0(p, insn, src);
+//    //brw_set_src1(p, insn, brw_imm_d(0));
+//    brw_set_sampler_message(p, insn,
+//                            surf_index.dw1.ud,
+//                            0, /* RESINFO message ignores sampler unit */
+//                            GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO,
+//                            1, /* rlen */
+//                            mlen,
+//                            header_present,
+//                            BRW_SAMPLER_SIMD_MODE_SIMD4X2,
+//                            BRW_SAMPLER_RETURN_FORMAT_SINT32);
+//
+//    brw_mark_surface_used(&prog_data->base, surf_index.dw1.ud);
+
+
+   brw_SAMPLE(p,
+              dst,
+              inst->base_mrf,
+              src,
+              surf_index.dw1.ud,
+              0,
+              GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO,
+              1, /* response length */
+              inst->mlen,
+              inst->header_present,
+              BRW_SAMPLER_SIMD_MODE_SIMD4X2,
+              BRW_SAMPLER_RETURN_FORMAT_SINT32);
+
+   brw_mark_surface_used(&prog_data->base, surf_index.dw1.ud);
+}
+
+void
 vec4_generator::generate_pull_constant_load_gen7(vec4_instruction *inst,
                                                  struct brw_reg dst,
                                                  struct brw_reg surf_index,
@@ -1617,6 +1661,10 @@ vec4_generator::generate_code(const cfg_t *cfg)
 
       case VS_OPCODE_BUFFER_WRITE:
          generate_buffer_write(inst, dst, src[0], src[1], src[2]);
+         break;
+
+      case VS_OPCODE_UNSIZED_ARRAY_LENGTH:
+         generate_unsized_array_length(inst, dst, src[0], src[1]);
          break;
 
       case GS_OPCODE_URB_WRITE:
