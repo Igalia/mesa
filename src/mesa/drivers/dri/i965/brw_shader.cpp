@@ -179,6 +179,8 @@ process_glsl_ir(struct brw_context *brw,
                  "back to very inefficient code generation\n");
    }
 
+   lower_ssbo_unsized_array_length(shader, shader->ir);
+
    /* The lowering pass for UBO references will rewrite UBO array accesses
     * even on the LHS. This won't happen with UBOs because they are
     * read-only and thus, they cannot be on the LHS of an assignment.
@@ -583,6 +585,8 @@ brw_instruction_name(enum opcode op)
       return "vs_buffer_read";
    case VS_OPCODE_BUFFER_WRITE:
       return "vs_buffer_write";
+   case VS_OPCODE_UNSIZED_ARRAY_LENGTH:
+      return "vs_unsized_array_length";
    case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
       return "unpack_flags_simd4x2";
 
