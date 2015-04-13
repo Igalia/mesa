@@ -781,6 +781,7 @@ fs_visitor::implied_mrf_writes(fs_inst *inst)
       return 1;
    case FS_OPCODE_FB_WRITE:
       return 2;
+   case FS_OPCODE_UNSIZED_ARRAY_LENGTH:
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
       return 1;
