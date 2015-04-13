@@ -1303,6 +1303,65 @@ fs_visitor::visit(ir_expression *ir)
       emit_lrp(this->result, op[0], op[1], op[2]);
       break;
 
+   case ir_triop_ssbo_unsized_array_length: {
+      ir_constant *const_uniform_block = ir->operands[0]->as_constant();
+      unsigned ubo_index = const_uniform_block->value.u[0];
+      ir_constant *const_offset_ir = ir->operands[1]->as_constant();
+      int const_offset = const_offset_ir ? const_offset_ir->value.u[0] : 0;
+      ir_constant *const_stride_ir = ir->operands[2]->as_constant();
+      unsigned unsized_array_stride = const_stride_ir ? const_stride_ir->value.u[0] : 1;
+      int reg_width = dispatch_width / 8;
+
+      assert(shader->base.UniformBlocks[ubo_index].IsBuffer);
+
+      fs_reg *sources = ralloc_array(mem_ctx, fs_reg, MAX_SAMPLER_MESSAGE_SIZE);
+      for (int i = 0; i < MAX_SAMPLER_MESSAGE_SIZE; i++) {
+         sources[i] = vgrf(glsl_type::float_type);
+      }
+       int length = 0;
+
+      /* Set LOD = 0 */
+      emit(MOV(retype(sources[length], BRW_REGISTER_TYPE_UD), fs_reg(0)));
+      length++;
+
+      int mlen;
+      bool header_present = false;
+      if (reg_width == 2)
+         mlen = length * reg_width - header_present;
+      else
+         mlen = length * reg_width;
+
+       fs_reg src_payload = fs_reg(GRF, alloc.allocate(mlen),
+                                   BRW_REGISTER_TYPE_F);
+      emit(LOAD_PAYLOAD(src_payload, sources, length));
+
+      fs_reg surf_index = fs_reg(1);//prog_data->binding_table.ubo_start + ubo_index);
+      fs_reg buffer_size = vgrf(glsl_type::int_type);
+
+      fs_inst *inst = emit(FS_OPCODE_UNSIZED_ARRAY_LENGTH, buffer_size,
+                           src_payload, surf_index);
+      /* TODO: The message header is necessary for Gen9+ for selecting SIMD4x2 */
+      inst->header_present = false;
+      inst->base_mrf = -1;
+      inst->mlen = mlen;
+      inst->regs_written = 4 * reg_width;
+      emit(inst);
+
+      /* array.length() =
+          max((buffer_object_size - offset_of_array) / stride_of_array, 0) */
+      /* TODO: Optimize these instructions */
+      fs_reg temp = vgrf(glsl_type::float_type);
+      emit(MUL(buffer_size, buffer_size, fs_reg(4)));
+      emit(ADD(buffer_size, buffer_size, fs_reg(-const_offset)));
+
+      emit(MOV(temp, buffer_size));
+
+      fs_reg stride = fs_reg((float)1/unsized_array_stride);
+      emit(MUL(temp, temp, stride));
+      emit(MOV(this->result, temp));
+      break;
+   }
+
    case ir_triop_csel:
    case ir_unop_interpolate_at_centroid:
    case ir_binop_interpolate_at_offset:
