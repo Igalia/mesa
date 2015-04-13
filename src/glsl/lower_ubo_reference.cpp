@@ -164,7 +164,7 @@ public:
    void emit_access(bool is_write, ir_dereference *deref,
                     ir_variable *base_offset, unsigned int deref_offset,
                     bool row_major, int matrix_columns,
-                    unsigned write_mask);
+                    bool is_std430, unsigned write_mask);
 
    ir_visitor_status visit_enter(class ir_expression *);
    ir_expression *calculate_ssbo_unsize_array_length(ir_expression *expr);
@@ -343,8 +343,15 @@ lower_ubo_reference_visitor::setup_for_load_or_store(ir_variable *var,
             const bool array_row_major =
                is_dereferenced_thing_row_major(deref_array);
 
-            array_stride = deref_array->type->std140_size(array_row_major);
-            array_stride = glsl_align(array_stride, 16);
+            /* The array type will give the correct interface packing
+             * information
+             */
+            if (deref_array->array->type->interface_packing == GLSL_INTERFACE_PACKING_STD430) {
+               array_stride = deref_array->type->std430_size(array_row_major);
+            } else {
+               array_stride = deref_array->type->std140_size(array_row_major);
+               array_stride = glsl_align(array_stride, 16);
+            }
          }
 
          ir_rvalue *array_index = deref_array->array_index;
@@ -380,7 +387,12 @@ lower_ubo_reference_visitor::setup_for_load_or_store(ir_variable *var,
 
             ralloc_free(field_deref);
 
-            unsigned field_align = type->std140_base_alignment(field_row_major);
+            unsigned field_align = 0;
+
+            if (struct_type->interface_packing == GLSL_INTERFACE_PACKING_STD430)
+               field_align = type->std430_base_alignment(field_row_major);
+            else
+               field_align = type->std140_base_alignment(field_row_major);
 
             intra_struct_offset = glsl_align(intra_struct_offset, field_align);
 
@@ -388,7 +400,10 @@ lower_ubo_reference_visitor::setup_for_load_or_store(ir_variable *var,
                        deref_record->field) == 0)
                break;
 
-            intra_struct_offset += type->std140_size(field_row_major);
+            if (struct_type->interface_packing == GLSL_INTERFACE_PACKING_STD430)
+               intra_struct_offset += type->std430_size(field_row_major);
+            else
+               intra_struct_offset += type->std140_size(field_row_major);
 
             /* If the field just examined was itself a structure, apply rule
              * #9:
@@ -463,7 +478,7 @@ lower_ubo_reference_visitor::handle_rvalue(ir_rvalue **rvalue)
 
    deref = new(mem_ctx) ir_dereference_variable(load_var);
    emit_access(false, deref, load_offset, const_offset,
-               row_major, matrix_columns, 0);
+               row_major, matrix_columns, false, 0);
    *rvalue = deref;
 
    progress = true;
@@ -581,6 +596,7 @@ lower_ubo_reference_visitor::emit_access(bool is_write,
                                          unsigned int deref_offset,
                                          bool row_major,
                                          int matrix_columns,
+                                         bool is_std430,
                                          unsigned write_mask)
 {
    if (deref->type->is_record()) {
@@ -599,7 +615,7 @@ lower_ubo_reference_visitor::emit_access(bool is_write,
 
          emit_access(is_write, field_deref, base_offset,
                      deref_offset + field_offset,
-                     row_major, 1,
+                     row_major, 1, is_std430,
                      writemask_for_size(field_deref->type->vector_elements));
 
          field_offset += field->type->std140_size(row_major);
@@ -608,7 +624,8 @@ lower_ubo_reference_visitor::emit_access(bool is_write,
    }
 
    if (deref->type->is_array()) {
-      unsigned array_stride =
+      unsigned array_stride = is_std430 ?
+         deref->type->fields.array->std430_size(row_major) :
          glsl_align(deref->type->fields.array->std140_size(row_major), 16);
 
       for (unsigned i = 0; i < deref->type->length; i++) {
@@ -618,7 +635,7 @@ lower_ubo_reference_visitor::emit_access(bool is_write,
                                               element);
          emit_access(is_write, element_deref, base_offset,
                      deref_offset + i * array_stride,
-                     row_major, 1,
+                     row_major, 1, is_std430,
                      writemask_for_size(element_deref->type->vector_elements));
       }
       return;
@@ -637,7 +654,7 @@ lower_ubo_reference_visitor::emit_access(bool is_write,
             int size_mul = deref->type->is_double() ? 8 : 4;
             emit_access(is_write, col_deref, base_offset,
                         deref_offset + i * size_mul,
-                        row_major, deref->type->matrix_columns,
+                        row_major, deref->type->matrix_columns, is_std430,
                         writemask_for_size(col_deref->type->vector_elements));
          } else {
             /* std140 always rounds the stride of arrays (and matrices) to a
@@ -646,9 +663,15 @@ lower_ubo_reference_visitor::emit_access(bool is_write,
              */
             int size_mul = (deref->type->is_double() &&
                             deref->type->vector_elements > 2) ? 32 : 16;
+            /* This is not the case for std430 matrices of two vector components */
+            if (is_std430 && deref->type->vector_elements <= 2) {
+               size_mul = deref->type->is_double() ?
+                           8 * deref->type->vector_elements :
+                           4 * deref->type->vector_elements;
+            }
             emit_access(is_write, col_deref, base_offset,
                         deref_offset + i * size_mul,
-                        row_major, deref->type->matrix_columns,
+                        row_major, deref->type->matrix_columns, is_std430,
                         writemask_for_size(col_deref->type->vector_elements));
          }
       }
@@ -727,6 +750,7 @@ lower_ubo_reference_visitor::write_to_memory(ir_dereference *deref,
    unsigned const_offset;
    bool row_major;
    int matrix_columns;
+   bool is_std430 = var->type->interface_packing == GLSL_INTERFACE_PACKING_STD430;
 
    /* Compute the offset to the start if the dereference as well as other
     * information we need to configure the write
@@ -747,7 +771,7 @@ lower_ubo_reference_visitor::write_to_memory(ir_dereference *deref,
 
    deref = new(mem_ctx) ir_dereference_variable(write_var);
    emit_access(true, deref, write_offset, const_offset,
-               row_major, matrix_columns, write_mask);
+               row_major, matrix_columns, is_std430, write_mask);
 }
 
 ir_visitor_status
@@ -852,8 +876,12 @@ lower_ubo_reference_visitor::calculate_unsized_array_stride(ir_dereference *dere
       const bool array_row_major =
          is_dereferenced_thing_row_major(deref_var);
 
-      array_stride = unsized_array_type->std140_size(array_row_major);
-      array_stride = glsl_align(array_stride, 16);
+      if (deref->type->interface_packing == GLSL_INTERFACE_PACKING_STD430) {
+         array_stride = unsized_array_type->std430_size(array_row_major);
+      } else {
+         array_stride = unsized_array_type->std140_size(array_row_major);
+         array_stride = glsl_align(array_stride, 16);
+      }
       break;
    }
    case ir_type_dereference_record:
@@ -868,8 +896,13 @@ lower_ubo_reference_visitor::calculate_unsized_array_stride(ir_dereference *dere
 
       const bool array_row_major =
          is_dereferenced_thing_row_major(deref_record);
-      array_stride = unsized_array_type->std140_size(array_row_major);
-      array_stride = glsl_align(array_stride, 16);
+
+      if (deref->type->interface_packing == GLSL_INTERFACE_PACKING_STD430) {
+         array_stride = unsized_array_type->std430_size(array_row_major);
+      } else {
+         array_stride = unsized_array_type->std140_size(array_row_major);
+         array_stride = glsl_align(array_stride, 16);
+      }
       break;
    }
    default:
