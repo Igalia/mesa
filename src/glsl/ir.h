@@ -1406,9 +1406,17 @@ enum ir_expression_operation {
    ir_unop_interpolate_at_centroid,
 
    /**
+    * Calculate length of an unsized array inside a buffer block.
+    * This opcode is going to be replaced in a lowering pass inside the linker.
+    *
+    * operand0 is the unsized array's ir_value for the calculation of its lenght.
+    */
+   ir_unop_ssbo_unsized_array_length,
+
+   /**
     * A sentinel marking the last of the unary operations.
     */
-   ir_last_unop = ir_unop_interpolate_at_centroid,
+   ir_last_unop = ir_unop_ssbo_unsized_array_length,
 
    ir_binop_add,
    ir_binop_sub,
@@ -1578,6 +1586,15 @@ enum ir_expression_operation {
    /*@}*/
 
    ir_triop_bitfield_extract,
+
+   /**
+    * Calculate length of an unsized array inside a buffer block.
+    *
+    * operand0 is the ir_constant buffer block index in the linked shader.
+    * operand1 is a byte offset of the unsized array inside the buffer block
+    * operand2 is the array stride if the unsized array were sized.
+    */
+   ir_triop_ssbo_unsized_array_length,
 
    /**
     * Generate a value with one field of a vector changed

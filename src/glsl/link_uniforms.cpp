@@ -221,7 +221,13 @@ program_resource_visitor::recursion(const glsl_type *t, char **name,
       if (record_type == NULL && t->fields.array->is_record())
          record_type = t->fields.array;
 
-      for (unsigned i = 0; i < t->length; i++) {
+      unsigned length = t->length;
+      /* Shader storage block unsized arrays: add subscript [0] to variable
+       * names */
+      if (t->is_unsized_array())
+         length = 1;
+
+      for (unsigned i = 0; i < length; i++) {
 	 size_t new_length = name_length;
 
 	 /* Append the subscript to the current variable name */
