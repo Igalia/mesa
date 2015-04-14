@@ -271,6 +271,8 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    switch(instr->op) {
+   case nir_op_imov:
+   case nir_op_fmov:
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
