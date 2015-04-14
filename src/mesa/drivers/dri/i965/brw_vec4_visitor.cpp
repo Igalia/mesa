@@ -1919,11 +1919,23 @@ vec4_visitor::visit(ir_expression *ir)
       /* TODO: Optimize these instructions */
       emit(MUL(buffer_size, src_reg(buffer_size), brw_imm_d(16)));
       emit(ADD(buffer_size, src_reg(buffer_size), brw_imm_d(-const_offset)));
+
+      assert(unsized_array_stride > 0);
+
       src_reg stride = src_reg(unsized_array_stride);
+      dst_reg temp = dst_reg(this, glsl_type::int_type);
       emit_math(SHADER_OPCODE_INT_QUOTIENT,
-                result_dst,
+                temp,
                 src_reg(buffer_size),
                 stride);
+
+      emit(MOV(result_dst, brw_imm_d(0)));
+      emit(CMP(dst_null_f(), src_reg(temp), brw_imm_d(0), BRW_CONDITIONAL_G));
+      emit(IF(BRW_PREDICATE_NORMAL));
+      {
+         emit(MOV(result_dst, src_reg(temp)));
+      }
+      emit(BRW_OPCODE_ENDIF);
       break;
    }
 
