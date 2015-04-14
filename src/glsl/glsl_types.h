@@ -247,7 +247,10 @@ struct glsl_type {
     * Get the instance of an array type
     */
    static const glsl_type *get_array_instance(const glsl_type *base,
-					      unsigned elements);
+                                              unsigned elements);
+   static const glsl_type *get_array_instance(const glsl_type *base,
+					      unsigned elements,
+                                              enum glsl_interface_packing packing);
 
    /**
     * Get the instance of a record type
@@ -690,7 +693,8 @@ private:
 	     enum glsl_interface_packing packing, const char *name);
 
    /** Constructor for array types */
-   glsl_type(const glsl_type *array, unsigned length);
+   glsl_type(const glsl_type *array, unsigned length,
+             enum glsl_interface_packing packing);
 
    /** Hash table containing the known array types. */
    static struct hash_table *array_types;
