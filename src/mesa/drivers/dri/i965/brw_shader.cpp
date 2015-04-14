@@ -485,6 +485,8 @@ brw_instruction_name(enum opcode op)
       return "untyped_surface_read";
    case SHADER_OPCODE_BUFFER_LOAD:
       return "buffer_load";
+   case SHADER_OPCODE_UNALIGNED_BUFFER_LOAD:
+      return "unaligned_buffer_load";
    case SHADER_OPCODE_BUFFER_STORE:
       return "buffer_store";
 
