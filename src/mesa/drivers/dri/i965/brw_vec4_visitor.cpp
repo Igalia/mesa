@@ -2890,10 +2890,96 @@ vec4_visitor::visit(ir_end_primitive *)
    unreachable("not reached");
 }
 
-void
-vec4_visitor::visit(ir_ssbo_store *)
+static bool
+is_vec2_swizzle(unsigned swizzle)
 {
-   unreachable("not implemented yet");
+   return (swizzle == BRW_SWIZZLE4(0, 1, 1, 1));
+}
+
+void
+vec4_visitor::visit(ir_ssbo_store *ir)
+{
+   ir_constant *const_uniform_block = ir->block->as_constant();
+   ir_constant *const_offset_ir = ir->offset->as_constant();
+
+   unsigned const_offset = const_offset_ir ? const_offset_ir->value.u[0] :
+                                             ir->const_offset;
+   src_reg offset;
+   src_reg surf_index;
+
+   if (const_uniform_block) {
+      surf_index = src_reg(prog_data->base.binding_table.ubo_start +
+                           const_uniform_block->value.u[0]);
+   } else {
+      ir->block->accept(this);
+      src_reg block_reg = this->result;
+      surf_index = src_reg(this, glsl_type::uint_type);
+      emit(ADD(dst_reg(surf_index), block_reg,
+               src_reg(prog_data->base.binding_table.ubo_start)));
+
+       brw_mark_surface_used(&prog_data->base,
+                             prog_data->base.binding_table.ubo_start +
+                             shader_prog->NumUniformBlocks - 1);
+   }
+
+   if (const_offset_ir) {
+      if (brw->gen >= 8) {
+         offset = src_reg(this, glsl_type::int_type);
+         emit(MOV(dst_reg(offset), src_reg(const_offset / 16)));
+      } else {
+         offset = src_reg(const_offset / 16);
+      }
+   } else {
+      ir->offset->accept(this);
+      src_reg offset_reg = this->result;
+      offset = src_reg(this, glsl_type::uint_type);
+      emit(SHR(dst_reg(offset), offset_reg, src_reg(4)));
+   }
+
+   dst_reg grf_offset = dst_reg(this, glsl_type::int_type);
+
+   if (brw->gen >= 9) {
+      grf_offset.reg_offset++;
+      alloc.sizes[grf_offset.reg] = 2;
+   }
+
+   grf_offset.type = offset.type;
+
+   emit(MOV(grf_offset, offset));
+
+   ir->val->accept(this);
+   src_reg val_reg = this->result;
+
+   /* We write data to memory in entries of the size of a vec4, so prepare
+    * a vec4 with the values to store, then compute the write maks to use
+    * so that we only write the channels we need to write.
+    */
+   dst_reg packed_val_reg = dst_reg(this, glsl_type::vec4_type);
+   int write_mask = ir->write_mask << ((const_offset / 4) % 4);
+
+   /* Vec2 is special because they can be aligned to either the beginning of
+    * the vec4 entry or to its second half. If we are writing to a vec2 located
+    * in the second half of the vec4 entry (that is, we are writing to channels
+    * Z or W), then we need to swizzle the vec2 so we map its XY components to
+    * the ZW channels in the vec4.
+    */
+   if (is_vec2_swizzle(val_reg.swizzle) && (write_mask & WRITEMASK_ZW))
+      val_reg.swizzle = BRW_SWIZZLE4(0, 0, 0, 1);
+
+   packed_val_reg.type = val_reg.type;
+   emit(MOV(packed_val_reg, val_reg));
+
+   struct brw_reg brw_dst = brw_vec8_grf(0, 0);
+   brw_dst.dw1.bits.writemask = write_mask;
+   dst_reg push_dst = dst_reg(brw_dst);
+   vec4_instruction *push =
+      emit(new(mem_ctx) vec4_instruction(VS_OPCODE_BUFFER_WRITE,
+                                         push_dst,
+                                         surf_index,
+                                         src_reg(grf_offset),
+                                         src_reg(packed_val_reg)));
+   push->base_mrf = 13;
+   push->mlen = 3;
 }
 
 void
