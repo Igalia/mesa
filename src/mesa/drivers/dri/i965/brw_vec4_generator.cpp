@@ -1113,6 +1113,112 @@ vec4_generator::generate_pull_constant_load_gen7(vec4_instruction *inst,
 }
 
 void
+vec4_generator::generate_buffer_write(vec4_instruction *inst,
+                                      struct brw_reg dst,
+                                      struct brw_reg index,
+                                      struct brw_reg offset,
+                                      struct brw_reg src)
+{
+   struct brw_reg header = brw_vec8_grf(0, 0);
+   bool write_commit;
+
+   /* If the instruction is predicated, we'll predicate the send, not
+    * the header setup.
+    */
+   brw_set_default_predicate_control(p, false);
+
+   gen6_resolve_implied_move(p, &header, inst->base_mrf);
+
+   brw_MOV(p, retype(brw_message_reg(inst->base_mrf + 1), BRW_REGISTER_TYPE_D),
+                     offset);
+
+   brw_MOV(p,
+           retype(brw_message_reg(inst->base_mrf + 2), BRW_REGISTER_TYPE_D),
+           retype(src, BRW_REGISTER_TYPE_D));
+
+   uint32_t msg_type;
+
+   if (brw->gen >= 7)
+      msg_type = GEN7_DATAPORT_DC_OWORD_DUAL_BLOCK_WRITE;
+   else if (brw->gen == 6)
+      msg_type = GEN6_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE;
+   else
+      msg_type = BRW_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE;
+
+   brw_set_default_predicate_control(p, inst->predicate);
+
+   /* Pre-gen6, we have to specify write commits to ensure ordering
+    * between reads and writes within a thread.  Afterwards, that's
+    * guaranteed and write commits only matter for inter-thread
+    * synchronization.
+    */
+   if (brw->gen >= 6) {
+      write_commit = false;
+   } else {
+      /* The visitor set up our destination register to be g0.  This
+       * means that when the next read comes along, we will end up
+       * reading from g0 and causing a block on the write commit.  For
+       * write-after-read, we are relying on the value of the previous
+       * read being used (and thus blocking on completion) before our
+       * write is executed.  This means we have to be careful in
+       * instruction scheduling to not violate this assumption.
+       */
+      write_commit = true;
+   }
+
+   /* Each of the 8 channel enables is considered for whether each
+    * dword is written.
+    */
+   if (index.file == BRW_IMMEDIATE_VALUE) {
+      brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
+      brw_set_dest(p, send, dst);
+      brw_set_src0(p, send, header);
+      if (brw->gen < 6)
+         brw_inst_set_cond_modifier(brw, send, inst->base_mrf);
+      brw_set_dp_write_message(p, send,
+                               index.dw1.ud,
+                               BRW_DATAPORT_OWORD_DUAL_BLOCK_1OWORD,
+                               msg_type,
+                               3, /* mlen */
+                               true, /* header present */
+                               false, /* not a render target write */
+                               write_commit, /* rlen */
+                               false, /* eot */
+                               write_commit);
+
+      brw_mark_surface_used(&prog_data->base, index.dw1.ud);
+   } else {
+      struct brw_reg addr = vec1(retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD));
+
+      brw_push_insn_state(p);
+      brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+      brw_set_default_access_mode(p, BRW_ALIGN_1);
+
+      /* a0.0 = surf_index & 0xff */
+      brw_inst *insn_and = brw_next_insn(p, BRW_OPCODE_AND);
+      brw_inst_set_exec_size(p->brw, insn_and, BRW_EXECUTE_1);
+      brw_set_dest(p, insn_and, addr);
+      brw_set_src0(p, insn_and, vec1(retype(index, BRW_REGISTER_TYPE_UD)));
+      brw_set_src1(p, insn_and, brw_imm_ud(0x0ff));
+      brw_pop_insn_state(p);
+
+      /* dst = send(payload, a0.0 | <descriptor>) */
+      brw_inst *insn =
+         brw_send_indirect_message(p, GEN7_SFID_DATAPORT_DATA_CACHE, dst, header, addr);
+      brw_set_dp_write_message(p, insn,
+                               0,
+                               BRW_DATAPORT_OWORD_DUAL_BLOCK_1OWORD,
+                               msg_type,
+                               3, /* mlen */
+                               true, /* header present */
+                               false, /* not a render target write */
+                               write_commit, /* rlen */
+                               false, /* eot */
+                               write_commit);
+   }
+}
+
+void
 vec4_generator::generate_untyped_atomic(vec4_instruction *inst,
                                         struct brw_reg dst,
                                         struct brw_reg atomic_op,
@@ -1433,6 +1539,10 @@ vec4_generator::generate_code(const cfg_t *cfg)
 
       case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
          generate_pull_constant_load_gen7(inst, dst, src[0], src[1]);
+         break;
+
+      case VS_OPCODE_BUFFER_WRITE:
+         generate_buffer_write(inst, dst, src[0], src[1], src[2]);
          break;
 
       case GS_OPCODE_URB_WRITE:
