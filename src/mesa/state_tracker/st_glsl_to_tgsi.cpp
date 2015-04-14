@@ -2199,6 +2199,10 @@ glsl_to_tgsi_visitor::visit(ir_expression *ir)
        */
       assert(!"Invalid ir opcode in glsl_to_tgsi_visitor::visit()");
       break;
+
+   case ir_triop_ssbo_unsized_array_length:
+      assert(!"Not implemented yet");
+      break;
    }
 
    this->result = result_src;
