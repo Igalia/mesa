@@ -246,6 +246,36 @@ brw_type_for_nir_type(nir_alu_type type)
    return BRW_REGISTER_TYPE_F;
 }
 
+/* @FIXME: brw_fs_nir could also use this function, we would have to put this into a common place
+ * and rewrite the brw_fs_nir relational operations in terms of this function.
+ */
+enum brw_conditional_mod
+brw_conditional_for_nir_comparison(nir_op op)
+{
+   switch (op) {
+   case nir_op_flt:
+   case nir_op_ilt:
+   case nir_op_ult:
+      return BRW_CONDITIONAL_L;
+   case ir_binop_greater:
+      return BRW_CONDITIONAL_G;
+   case ir_binop_lequal:
+      return BRW_CONDITIONAL_LE;
+   case nir_op_fge:
+   case nir_op_ige:
+   case nir_op_uge:
+      return BRW_CONDITIONAL_GE;
+   case nir_op_feq:
+   case nir_op_ieq:
+      return BRW_CONDITIONAL_Z;
+   case nir_op_fne:
+   case nir_op_ine:
+      return BRW_CONDITIONAL_NZ;
+   default:
+      unreachable("not reached: bad operation for comparison");
+   }
+}
+
 static unsigned
 brw_swizzle_for_nir_swizzle(uint8_t swizzle[4])
 {
@@ -395,6 +425,26 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_fddy_coarse:
    case nir_op_fddy_fine:
       unreachable("derivatives not valid in vertex shader");
+
+   case nir_op_flt:
+   case nir_op_ilt:
+   case nir_op_ult:
+   case nir_op_fge:
+   case nir_op_ige:
+   case nir_op_uge:
+   case nir_op_feq:
+   case nir_op_ieq:
+   case nir_op_fne:
+   case nir_op_ine:
+      /* @FIXME: if (gen <=5) both fs_visitor and vec4_visitor call the function
+       * resolve_bool_comparison for every operand before doing the emit.
+       * This check and function calls are not done in the brw_fs_nir.
+       * Check if we need to add it, it could be the case that NIR is not available
+       * for (gen <= 5) or this check and calls not needed for other reasons.
+       */
+      emit(CMP(dst, op[0], op[1],
+               brw_conditional_for_nir_comparison(instr->op)));
+      break;
 
    case nir_op_inot:
       inst = emit(NOT(dst, op[0]));
