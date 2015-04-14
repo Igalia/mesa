@@ -1359,7 +1359,13 @@ fs_visitor::visit(ir_expression *ir)
 
       fs_reg stride = fs_reg((float)1/unsized_array_stride);
       emit(MUL(temp, temp, stride));
-      emit(MOV(this->result, temp));
+      emit(MOV(this->result, fs_reg(0)));
+      emit(CMP(reg_null_f, temp, fs_reg(0), BRW_CONDITIONAL_G));
+      emit(IF(BRW_PREDICATE_NORMAL));
+      {
+         emit(MOV(this->result, temp));
+      }
+      emit(BRW_OPCODE_ENDIF);
       break;
    }
 
