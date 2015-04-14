@@ -578,11 +578,6 @@ ir_validate::visit_leave(ir_expression *ir)
       assert(ir->operands[1]->type == glsl_type::uint_type);
       break;
 
-   case ir_binop_ssbo_store:
-      assert(ir->operands[0]->type == glsl_type::uint_type);
-      assert(ir->operands[1]->type == glsl_type::uint_type);
-      break;
-
    case ir_binop_ldexp:
       assert(ir->operands[0]->type == ir->type);
       assert(ir->operands[0]->type->is_float() ||

@@ -1504,16 +1504,6 @@ enum ir_expression_operation {
    ir_binop_ssbo_load,
 
    /**
-    * Store a value the size of a given GLSL type to a buffer block.
-    *
-    * operand0 is the ir_constant buffer block index in the linked shader.
-    * operand1 is a byte offset within the uniform block.
-    * operand2 is the value.
-    */
-   ir_binop_ssbo_store,
-
-
-   /**
     * \name Multiplies a number by two to a power, part of ARB_gpu_shader5.
     */
    /*@{*/
