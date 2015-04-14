@@ -1826,10 +1826,6 @@ vec4_visitor::visit(ir_expression *ir)
       break;
    }
 
-   case ir_binop_ssbo_store:
-      assert(!"Not implemented");
-      break;
-
    case ir_binop_vector_extract:
       unreachable("should have been lowered by vec_index_to_cond_assign");
 
