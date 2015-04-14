@@ -338,7 +338,7 @@ vec4_visitor::fix_math_operand(src_reg src)
    return src_reg(expanded);
 }
 
-void
+vec4_instruction *
 vec4_visitor::emit_math(enum opcode opcode,
                         const dst_reg &dst,
                         const src_reg &src0, const src_reg &src1)
@@ -355,6 +355,8 @@ vec4_visitor::emit_math(enum opcode opcode,
       math->base_mrf = 1;
       math->mlen = src1.file == BAD_FILE ? 1 : 2;
    }
+
+   return math;
 }
 
 void
