@@ -1335,7 +1335,7 @@ fs_visitor::visit(ir_expression *ir)
                                    BRW_REGISTER_TYPE_F);
       emit(LOAD_PAYLOAD(src_payload, sources, length));
 
-      fs_reg surf_index = fs_reg(1);//prog_data->binding_table.ubo_start + ubo_index);
+      fs_reg surf_index = fs_reg(prog_data->binding_table.ubo_start + ubo_index);
       fs_reg buffer_size = vgrf(glsl_type::int_type);
 
       fs_inst *inst = emit(FS_OPCODE_UNSIZED_ARRAY_LENGTH, buffer_size,
@@ -1349,12 +1349,13 @@ fs_visitor::visit(ir_expression *ir)
 
       /* array.length() =
           max((buffer_object_size - offset_of_array) / stride_of_array, 0) */
-      /* TODO: Optimize these instructions */
       fs_reg temp = vgrf(glsl_type::float_type);
       emit(MUL(buffer_size, buffer_size, fs_reg(4)));
       emit(ADD(buffer_size, buffer_size, fs_reg(-const_offset)));
 
       emit(MOV(temp, buffer_size));
+
+      assert(unsized_array_stride > 0);
 
       fs_reg stride = fs_reg((float)1/unsized_array_stride);
       emit(MUL(temp, temp, stride));
