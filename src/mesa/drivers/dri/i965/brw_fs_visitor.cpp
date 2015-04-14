@@ -3234,9 +3234,72 @@ fs_visitor::visit(ir_end_primitive *)
 }
 
 void
-fs_visitor::visit(ir_ssbo_store *)
+fs_visitor::visit(ir_ssbo_store *ir)
 {
-   unreachable("not implemented yet");
+   ir_constant *const_uniform_block = ir->block->as_constant();
+   ir_constant *const_offset_ir = ir->offset->as_constant();
+   unsigned const_offset = const_offset_ir ? const_offset_ir->value.u[0] :
+                                             ir->const_offset;
+   fs_reg offset_reg;
+
+   fs_reg surf_index;
+   if (const_uniform_block) {
+      surf_index = fs_reg(stage_prog_data->binding_table.ubo_start +
+                              const_uniform_block->value.u[0]);
+   } else {
+      ir->block->accept(this);
+      fs_reg block_reg = this->result;
+      surf_index = vgrf(glsl_type::uint_type);
+      emit(ADD(surf_index, block_reg,
+               fs_reg(stage_prog_data->binding_table.ubo_start)))
+         ->force_writemask_all = true;
+
+      brw_mark_surface_used(prog_data,
+                            stage_prog_data->binding_table.ubo_start +
+                            shader_prog->NumUniformBlocks - 1);
+   }
+
+   ir->val->accept(this);
+   fs_reg val_reg = this->result;
+
+   if (const_offset_ir) {
+      offset_reg = vgrf(glsl_type::uint_type);
+      emit(MOV(offset_reg, fs_reg(const_offset / 16)));
+   } else {
+      ir->offset->accept(this);
+      fs_reg offset_reg_orig = this->result;
+      offset_reg = vgrf(glsl_type::uint_type);
+      emit(SHR(offset_reg, offset_reg_orig, fs_reg(4)));
+   }
+
+   /* Emit a buffer store message for each channel enabled in the write mask */
+   for (int i = 0; i < ir->val->type->vector_elements; i++) {
+      int component_mask = 1 << i;
+      if (!(ir->write_mask & component_mask))
+         continue;
+
+      /* A buffer store is an oword block write message so we setup the
+       * dst write_mask to select the offset in that oword where we
+       * want this channel to be written
+       */
+      int write_mask = component_mask << ((const_offset / 4) % 4);
+
+      /* FIXME: for row_major matrix with non-constant offset, the writemask
+       * to use is the result of offset_reg_orig / 4 % 4.... how can we do
+       * that? Maybe in this case we need to read the OWORD first, then
+       * update the components we need in the result, and finally write the
+       * entire oword
+       */
+
+      struct brw_reg brw_dst =
+         brw_set_writemask(brw_vec8_grf(0, 0), write_mask);
+      fs_reg push_dst = fs_reg(brw_dst);
+      emit(new(mem_ctx) fs_inst(SHADER_OPCODE_BUFFER_STORE, 8,
+                                push_dst,
+                                offset(val_reg, i),
+                                surf_index,
+                                offset_reg));
+   }
 }
 
 void
