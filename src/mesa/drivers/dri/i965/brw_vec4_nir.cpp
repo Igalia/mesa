@@ -450,6 +450,32 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst = emit(NOT(dst, op[0]));
       break;
 
+   case nir_op_b2i:
+      emit(AND(dst, op[0], src_reg(1)));
+      break;
+   case nir_op_b2f:
+      /* @FIXME: as for the relational operations,  both the fs_visitor and vec4_visitor
+       * call to resolve_bool_comparison for the operand if (gen <= 5). Check if it is
+       * needed.
+      */
+
+      /* @FIXME: fs_visitor and vec4_visitor, do:
+       *      op[0].type = BRW_REGISTER_TYPE_D;
+       *      result_dst.type = BRW_REGISTER_TYPE_D;
+       *      emit(AND(result_dst, op[0], src_reg(0x3f800000u)));
+       *      result_dst.type = BRW_REGISTER_TYPE_F;
+       * instead of the following emit (C&P from brw_fs_nir):
+       */
+      emit(AND(retype(dst, BRW_REGISTER_TYPE_UD), op[0], src_reg(0x3f800000u)));
+      break;
+
+   case nir_op_f2b:
+      emit(CMP(dst, op[0], src_reg(0.0f), BRW_CONDITIONAL_NZ));
+      break;
+   case nir_op_i2b:
+      emit(CMP(dst, op[0],  src_reg(0), BRW_CONDITIONAL_NZ));
+      break;
+
    default:
       fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
       break;
