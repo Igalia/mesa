@@ -596,6 +596,11 @@ private:
                              struct brw_reg dst,
                              struct brw_reg index,
                              struct brw_reg offset);
+   void generate_buffer_store(fs_inst *inst,
+                              struct brw_reg dst,
+                              struct brw_reg src,
+                              struct brw_reg index,
+                              struct brw_reg offset);
 
    void generate_mov_dispatch_to_flags(fs_inst *inst);
 
