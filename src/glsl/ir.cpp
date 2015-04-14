@@ -601,7 +601,6 @@ static const char *const operator_strs[] = {
    "bfm",
    "ubo_load",
    "ssbo_load",
-   "ssbo_store",
    "ldexp",
    "vector_extract",
    "interpolate_at_offset",
