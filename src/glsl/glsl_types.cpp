@@ -380,10 +380,11 @@ _mesa_glsl_release_types(void)
 }
 
 
-glsl_type::glsl_type(const glsl_type *array, unsigned length) :
+glsl_type::glsl_type(const glsl_type *array, unsigned length,
+                     enum glsl_interface_packing packing) :
    base_type(GLSL_TYPE_ARRAY),
    sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
-   sampler_type(0), interface_packing(0),
+   sampler_type(0), interface_packing(packing),
    vector_elements(0), matrix_columns(0),
    length(length), name(NULL)
 {
@@ -677,6 +678,13 @@ glsl_type::get_sampler_instance(enum glsl_sampler_dim dim,
 const glsl_type *
 glsl_type::get_array_instance(const glsl_type *base, unsigned array_size)
 {
+   return get_array_instance(base, array_size, GLSL_INTERFACE_PACKING_STD140);
+}
+
+const glsl_type *
+glsl_type::get_array_instance(const glsl_type *base, unsigned array_size,
+                              enum glsl_interface_packing packing)
+{
    /* Generate a name using the base type pointer in the key.  This is
     * done because the name of the base type may not be unique across
     * shaders.  For example, two shaders may have different record types
@@ -695,7 +703,7 @@ glsl_type::get_array_instance(const glsl_type *base, unsigned array_size)
    const struct hash_entry *entry = _mesa_hash_table_search(array_types, key);
    if (entry == NULL) {
       mtx_unlock(&glsl_type::mutex);
-      const glsl_type *t = new glsl_type(base, array_size);
+      const glsl_type *t = new glsl_type(base, array_size, packing);
       mtx_lock(&glsl_type::mutex);
 
       entry = _mesa_hash_table_insert(array_types,
