@@ -1276,10 +1276,6 @@ fs_visitor::visit(ir_expression *ir)
       break;
    }
 
-   case ir_binop_ssbo_store:
-      assert(!"Not implemented");
-      break;
-
    case ir_triop_fma:
       /* Note that the instruction's argument order is reversed from GLSL
        * and the IR.
