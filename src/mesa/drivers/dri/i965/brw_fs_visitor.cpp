@@ -1389,7 +1389,11 @@ fs_visitor::visit(ir_expression *ir)
    case ir_unop_frexp_exp:
       unreachable("fp64 todo");
       break;
+   case ir_unop_ssbo_unsized_array_length:
+      unreachable("not reached: should be handled by ir_triop_ssbo_unsized_array_length");
+      break;
    }
+
 }
 
 void
