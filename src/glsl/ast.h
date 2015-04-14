@@ -730,6 +730,11 @@ public:
 				     struct _mesa_glsl_parse_state *state)
       const;
 
+   const struct glsl_type *glsl_type(const char **name,
+                                     struct _mesa_glsl_parse_state *state,
+                                     enum glsl_interface_packing packing)
+      const;
+
    virtual void print(void) const;
 
    ir_rvalue *hir(exec_list *, struct _mesa_glsl_parse_state *);
@@ -755,6 +760,11 @@ public:
 
    const struct glsl_type *glsl_type(const char **name,
 				     struct _mesa_glsl_parse_state *state)
+      const;
+
+   const struct glsl_type *glsl_type(const char **name,
+                                     struct _mesa_glsl_parse_state *state,
+                                     enum glsl_interface_packing packing)
       const;
 
    ast_type_qualifier qualifier;

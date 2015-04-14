@@ -1951,9 +1951,14 @@ process_array_size(exec_node *node,
 static const glsl_type *
 process_array_type(YYLTYPE *loc, const glsl_type *base,
                    ast_array_specifier *array_specifier,
-                   struct _mesa_glsl_parse_state *state)
+                   struct _mesa_glsl_parse_state *state,
+                   enum glsl_interface_packing packing)
 {
    const glsl_type *array_type = base;
+
+   /* Mesa uses std140 interface packing by default. */
+   if (packing != GLSL_INTERFACE_PACKING_STD430)
+      packing = GLSL_INTERFACE_PACKING_STD140;
 
    if (array_specifier != NULL) {
       if (base->is_array()) {
@@ -1983,11 +1988,12 @@ process_array_type(YYLTYPE *loc, const glsl_type *base,
       for (exec_node *node = array_specifier->array_dimensions.tail_pred;
            !node->is_head_sentinel(); node = node->prev) {
          unsigned array_size = process_array_size(node, state);
-         array_type = glsl_type::get_array_instance(array_type, array_size);
+         array_type = glsl_type::get_array_instance(array_type, array_size,
+                                                    packing);
       }
 
       if (array_specifier->is_unsized_array)
-         array_type = glsl_type::get_array_instance(array_type, 0);
+         array_type = glsl_type::get_array_instance(array_type, 0, packing);
    }
 
    return array_type;
@@ -1998,13 +2004,22 @@ const glsl_type *
 ast_type_specifier::glsl_type(const char **name,
                               struct _mesa_glsl_parse_state *state) const
 {
+   return glsl_type(name, state, GLSL_INTERFACE_PACKING_STD140);
+}
+
+const glsl_type *
+ast_type_specifier::glsl_type(const char **name,
+                              struct _mesa_glsl_parse_state *state,
+                              enum glsl_interface_packing packing) const
+{
    const struct glsl_type *type;
 
    type = state->symbols->get_type(this->type_name);
    *name = this->type_name;
 
    YYLTYPE loc = this->get_location();
-   type = process_array_type(&loc, type, this->array_specifier, state);
+   type = process_array_type(&loc, type, this->array_specifier, state,
+                             packing);
 
    return type;
 }
@@ -2013,7 +2028,14 @@ const glsl_type *
 ast_fully_specified_type::glsl_type(const char **name,
                                     struct _mesa_glsl_parse_state *state) const
 {
-   const struct glsl_type *type = this->specifier->glsl_type(name, state);
+   return glsl_type(name, state, GLSL_INTERFACE_PACKING_STD140);
+}
+const glsl_type *
+ast_fully_specified_type::glsl_type(const char **name,
+                                    struct _mesa_glsl_parse_state *state,
+                                    enum glsl_interface_packing packing) const
+{
+   const struct glsl_type *type = this->specifier->glsl_type(name, state, packing);
 
    if (type == NULL)
       return NULL;
@@ -3638,7 +3660,7 @@ ast_declarator_list::hir(exec_list *instructions,
 
       }
       var_type = process_array_type(&loc, decl_type, decl->array_specifier,
-                                    state);
+                                    state, GLSL_INTERFACE_PACKING_STD140);
 
       var = new(ctx) ir_variable(var_type, identifier, ir_var_auto);
 
@@ -4311,7 +4333,8 @@ ast_parameter_declarator::hir(exec_list *instructions,
    /* This only handles "vec4 foo[..]".  The earlier specifier->glsl_type(...)
     * call already handled the "vec4[..] foo" case.
     */
-   type = process_array_type(&loc, type, this->array_specifier, state);
+   type = process_array_type(&loc, type, this->array_specifier, state,
+                             GLSL_INTERFACE_PACKING_STD140);
 
    if (!type->is_error() && type->is_unsized_array()) {
       _mesa_glsl_error(&loc, state, "arrays passed as parameters must have "
@@ -5569,7 +5592,8 @@ ast_process_structure_or_interface_block(exec_list *instructions,
                                          bool is_interface,
                                          enum glsl_matrix_layout matrix_layout,
                                          bool allow_reserved_names,
-                                         ir_variable_mode var_mode)
+                                         ir_variable_mode var_mode,
+                                         enum glsl_interface_packing packing)
 {
    unsigned decl_count = 0;
 
@@ -5605,7 +5629,7 @@ ast_process_structure_or_interface_block(exec_list *instructions,
       }
 
       const glsl_type *decl_type =
-         decl_list->type->glsl_type(& type_name, state);
+         decl_list->type->glsl_type(& type_name, state, packing);
 
       foreach_list_typed (ast_declaration, decl, link,
                           &decl_list->declarations) {
@@ -5674,7 +5698,8 @@ ast_process_structure_or_interface_block(exec_list *instructions,
          }
 
          field_type = process_array_type(&loc, decl_type,
-                                         decl->array_specifier, state);
+                                         decl->array_specifier, state,
+                                         packing);
          fields[i].type = field_type;
          fields[i].name = decl->identifier;
          fields[i].location = -1;
@@ -5788,7 +5813,8 @@ ast_struct_specifier::hir(exec_list *instructions,
                                                false,
                                                GLSL_MATRIX_LAYOUT_INHERITED,
                                                false /* allow_reserved_names */,
-                                               ir_var_auto);
+                                               ir_var_auto,
+                                               GLSL_INTERFACE_PACKING_STD140);
 
    validate_identifier(this->name, loc, state);
 
@@ -5943,7 +5969,8 @@ ast_interface_block::hir(exec_list *instructions,
                                                true,
                                                matrix_layout,
                                                redeclaring_per_vertex,
-                                               var_mode);
+                                               var_mode,
+                                               packing);
 
    state->struct_specifier_depth--;
 
@@ -6199,7 +6226,8 @@ ast_interface_block::hir(exec_list *instructions,
          }
 
          const glsl_type *block_array_type =
-            process_array_type(&loc, block_type, this->array_specifier, state);
+            process_array_type(&loc, block_type, this->array_specifier, state,
+                               GLSL_INTERFACE_PACKING_STD140);
 
           /* From section 4.3.9 (Interface Blocks) of the GLSL ES 3.10 spec:
           *
