@@ -1470,7 +1470,7 @@ vec4_visitor::visit(ir_expression *ir)
       unreachable("not reached: should be handled by lower_noise");
 
    case ir_unop_ssbo_unsized_array_length:
-      unreachable("not reached: should be handled by ir_tritripop_ssbo_unsized_array_length");
+      unreachable("not reached: should be handled by ir_triop_ssbo_unsized_array_length");
 
    case ir_binop_add:
       emit(ADD(result_dst, op[0], op[1]));
