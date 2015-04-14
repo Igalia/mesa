@@ -310,6 +310,11 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       }
       break;
    }
+   case nir_op_f2i:
+   case nir_op_f2u:
+      inst = emit(MOV(dst, op[0]));
+      break;
+
    case nir_op_fadd:
       inst = emit(ADD(dst, op[0], op[1]));
       inst->saturate = instr->dest.saturate;
