@@ -1036,6 +1036,107 @@ fs_generator::generate_buffer_load(fs_inst *inst,
 }
 
 void
+fs_generator::generate_buffer_store(fs_inst *inst,
+                                    struct brw_reg dst,
+                                    struct brw_reg src,
+                                    struct brw_reg index,
+                                    struct brw_reg offset)
+{
+   struct brw_reg header = brw_vec8_grf(0, 0);
+   brw_set_default_predicate_control(p, false);
+   gen6_resolve_implied_move(p, &header, inst->base_mrf);
+
+   struct brw_reg mrf =
+      retype(brw_message_reg(inst->base_mrf), BRW_REGISTER_TYPE_UD);
+
+   uint32_t msg_control;
+   int mlen;
+   int num_regs = inst->exec_size / 8;
+   if (num_regs == 1) {
+      msg_control = BRW_DATAPORT_OWORD_BLOCK_2_OWORDS;
+      mlen = 2;
+   } else {
+      msg_control = BRW_DATAPORT_OWORD_BLOCK_4_OWORDS;
+      mlen = 3;
+   }
+
+   /* Global offset header */
+   brw_push_insn_state(p);
+   brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+   brw_set_default_compression_control(p, BRW_COMPRESSION_NONE);
+   brw_MOV(p, mrf, retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
+   offset = retype(brw_vec1_grf(offset.nr, 0), BRW_REGISTER_TYPE_UD);
+   brw_MOV(p,
+           retype(brw_vec1_reg(BRW_MESSAGE_REGISTER_FILE, mrf.nr, 2),
+                  BRW_REGISTER_TYPE_UD),
+           offset);
+   brw_pop_insn_state(p);
+
+   /* Value to write */
+   brw_MOV(p,
+           brw_uvec_mrf(inst->exec_size, (inst->base_mrf + 1), 0),
+           retype(src, BRW_REGISTER_TYPE_UD));
+
+   /* We need ALIGN_16 mode for SEND to honor the dst writemask which is used
+    * to select the channels that we want to write in the OWORD
+    */
+   if (index.file == BRW_IMMEDIATE_VALUE) {
+      assert(index.type == BRW_REGISTER_TYPE_UD);
+      uint32_t surf_index = index.dw1.ud;
+
+      brw_push_insn_state(p);
+      brw_set_default_access_mode(p, BRW_ALIGN_16);
+      brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
+      brw_pop_insn_state(p);
+      brw_set_dest(p, send, dst);
+      brw_set_src0(p, send, header);
+      brw_set_dp_write_message(p, send,
+                               surf_index, /* binding table index */
+                               msg_control,
+                               GEN7_DATAPORT_DC_OWORD_BLOCK_WRITE,
+                               mlen,
+                               true, /* header_present */
+                               0, /* not a render target */
+                               0, /* response_length */
+                               0, /* eot */
+                               0);
+
+      brw_mark_surface_used(prog_data, surf_index);
+   } else {
+      struct brw_reg addr = vec1(retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD));
+
+      brw_push_insn_state(p);
+      brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+      brw_set_default_access_mode(p, BRW_ALIGN_1);
+
+      /* a0.0 = surf_index & 0xff */
+      brw_inst *insn_and = brw_next_insn(p, BRW_OPCODE_AND);
+      brw_inst_set_exec_size(p->brw, insn_and, BRW_EXECUTE_1);
+      brw_set_dest(p, insn_and, addr);
+      brw_set_src0(p, insn_and, vec1(retype(index, BRW_REGISTER_TYPE_UD)));
+      brw_set_src1(p, insn_and, brw_imm_ud(0x0ff));
+      brw_pop_insn_state(p);
+
+      /* dst = send(payload, a0.0 | <descriptor>) */
+      brw_push_insn_state(p);
+      brw_set_default_access_mode(p, BRW_ALIGN_16);
+      brw_inst *insn = brw_send_indirect_message(
+         p, GEN7_SFID_DATAPORT_DATA_CACHE, dst, header, addr);
+      brw_set_dp_write_message(p, insn,
+                               0, /* binding table index */
+                               msg_control,
+                               GEN7_DATAPORT_DC_OWORD_BLOCK_WRITE,
+                               mlen,
+                               true, /* header_present */
+                               0, /* not a render target */
+                               0, /* response_length */
+                               0, /* eot */
+                               0);
+      brw_pop_insn_state(p);
+   }
+}
+
+void
 fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
                                                        struct brw_reg dst,
                                                        struct brw_reg index,
@@ -2042,6 +2143,10 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
 
       case SHADER_OPCODE_BUFFER_LOAD:
          generate_buffer_load(inst, dst, src[0], src[1]);
+         break;
+
+      case SHADER_OPCODE_BUFFER_STORE:
+         generate_buffer_store(inst, dst, src[0], src[1], src[2]);
          break;
 
       case FS_OPCODE_SET_SIMD4X2_OFFSET:
