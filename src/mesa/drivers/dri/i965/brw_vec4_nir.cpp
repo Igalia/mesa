@@ -389,6 +389,15 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       }
       break;
 
+   case nir_op_imul_high:
+   case nir_op_umul_high: {
+      struct brw_reg acc = retype(brw_acc_reg(8), dst.type);
+
+      emit(MUL(acc, op[0], op[1]));
+      emit(MACH(dst, op[0], op[1]));
+      break;
+   }
+
    case nir_op_frcp:
       inst = emit_math(SHADER_OPCODE_RCP, dst, op[0]);
       inst->saturate = instr->dest.saturate;
