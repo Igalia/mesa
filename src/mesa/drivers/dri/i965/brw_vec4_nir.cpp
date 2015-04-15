@@ -446,8 +446,25 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
                brw_conditional_for_nir_comparison(instr->op)));
       break;
 
+      /* @FIXME: for the following logical operations: inot, ixor, ior, iand,
+       * brw_fs_nir calls to resolve_source_modifiers for every operand
+       * if (gen > =8). This call and check is not present in the fs and vec4
+       * visitors. Decide if we want to add it.
+       */
    case nir_op_inot:
       inst = emit(NOT(dst, op[0]));
+      break;
+
+  case nir_op_ixor:
+      emit(XOR(dst, op[0], op[1]));
+      break;
+
+   case nir_op_ior:
+      emit(OR(dst, op[0], op[1]));
+      break;
+
+   case nir_op_iand:
+        emit(AND(dst, op[0], op[1]));
       break;
 
    case nir_op_b2i:
