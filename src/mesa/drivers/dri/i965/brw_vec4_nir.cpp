@@ -624,6 +624,12 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_pack_half_2x16_split:
       unreachable("not reached: should not occur in vertex shader");
 
+   case nir_op_pack_snorm_2x16:
+   case nir_op_pack_unorm_2x16:
+   case nir_op_unpack_snorm_2x16:
+   case nir_op_unpack_unorm_2x16:
+      unreachable("not reached: should be handled by lower_packing_builtins");
+
    case nir_op_fsign:
          /* AND(val, 0x80000000) gives the sign bit.
           *
