@@ -501,6 +501,31 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_fmin:
+   case nir_op_imin:
+   case nir_op_umin:
+      /* @FIXME: I took the code for max and min from the vec4_visitor,
+       * in fs_nir and fs_visitor  was a bit different. First, in the fs_visitor
+       * before  performing the operation a call to resolve_ud_negate was
+       * made for every operand. Second, the emit_minmax code of both
+       * the fs_visitor and fs_nir was equivalent to the vec4 emit_minmax
+       * code with the exception that (if gen < 6) they do:
+       *    emit(CMP(reg_null_d, src0, src1, conditionalmod)); ...
+       * instead of:
+       *    emit(CMP(dst, src0, src1, conditionalmod)); ...
+       * See the fs_visitor and vec4_visitor emit_minmax code for more details.
+       */
+      inst = emit_minmax(BRW_CONDITIONAL_L, dst, op[0], op[1]);
+      inst->saturate = instr->dest.saturate;
+      break;
+
+   case nir_op_fmax:
+   case nir_op_imax:
+   case nir_op_umax:
+      inst = emit_minmax(BRW_CONDITIONAL_GE, dst, op[0], op[1]);
+      inst->saturate = instr->dest.saturate;
+      break;
+
    case nir_op_fddx:
    case nir_op_fddx_coarse:
    case nir_op_fddx_fine:
