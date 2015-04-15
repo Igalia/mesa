@@ -619,6 +619,11 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_fnoise4_4:
       unreachable("not reached: should be handled by lower_noise");
 
+   case nir_op_unpack_half_2x16_split_x:
+   case nir_op_unpack_half_2x16_split_y:
+   case nir_op_pack_half_2x16_split:
+      unreachable("not reached: should not occur in vertex shader");
+
    case nir_op_fsign:
          /* AND(val, 0x80000000) gives the sign bit.
           *
