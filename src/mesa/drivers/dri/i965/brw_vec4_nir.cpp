@@ -470,6 +470,37 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_ftrunc:
+      inst = emit(RNDZ(dst, op[0]));
+      inst->saturate = instr->dest.saturate;
+      break;
+
+   case nir_op_fceil: {
+      src_reg tmp = src_reg(this, glsl_type::float_type);
+
+      op[0].negate = !op[0].negate;
+      emit(RNDD(dst_reg(tmp), op[0]));
+      tmp.negate = true;
+      inst = emit(MOV(dst, tmp));
+      inst->saturate = instr->dest.saturate;
+      break;
+   }
+
+   case nir_op_ffloor:
+      inst = emit(RNDD(dst, op[0]));
+      inst->saturate = instr->dest.saturate;
+      break;
+
+   case nir_op_ffract:
+      inst = emit(FRC(dst, op[0]));
+      inst->saturate = instr->dest.saturate;
+      break;
+
+   case nir_op_fround_even:
+      inst = emit(RNDE(dst, op[0]));
+      inst->saturate = instr->dest.saturate;
+      break;
+
    case nir_op_fddx:
    case nir_op_fddx_coarse:
    case nir_op_fddx_fine:
