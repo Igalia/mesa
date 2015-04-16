@@ -519,6 +519,10 @@ private:
    void generate_scattered_buffer_write(vec4_instruction *inst,
                                         struct brw_reg dst,
                                         struct brw_reg index);
+   void generate_unsized_array_length(vec4_instruction *inst,
+                                      struct brw_reg dst,
+                                      struct brw_reg src,
+                                      struct brw_reg index);
    void generate_unpack_flags(struct brw_reg dst);
 
    void generate_untyped_atomic(vec4_instruction *inst,
