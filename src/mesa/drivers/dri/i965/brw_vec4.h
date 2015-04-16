@@ -514,6 +514,10 @@ private:
                               struct brw_reg index,
                               struct brw_reg offset,
                               struct brw_reg value);
+   void generate_unsized_array_length(vec4_instruction *inst,
+                                      struct brw_reg dst,
+                                      struct brw_reg src,
+                                      struct brw_reg index);
    void generate_unpack_flags(struct brw_reg dst);
 
    void generate_untyped_atomic(vec4_instruction *inst,

@@ -584,6 +584,8 @@ brw_instruction_name(enum opcode op)
       return "vs_merge_simd4x2_value";
    case VS_OPCODE_BUFFER_WRITE:
       return "vs_buffer_write";
+   case VS_OPCODE_UNSIZED_ARRAY_LENGTH:
+      return "vs_unsized_array_length";
    case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
       return "unpack_flags_simd4x2";
 
