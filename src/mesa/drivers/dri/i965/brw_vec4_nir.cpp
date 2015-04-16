@@ -42,11 +42,82 @@ vec4_visitor::emit_nir_code()
    nir_outputs = reralloc(mem_ctx, nir_outputs, int, nir->num_outputs);
    nir_setup_outputs(nir);
 
+   nir_emit_system_values(nir);
+
    /* get the main function and emit it */
    nir_foreach_overload(nir, overload) {
       assert(strcmp(overload->function->name, "main") == 0);
       assert(overload->impl);
       nir_emit_impl(overload->impl);
+   }
+}
+
+static bool
+emit_system_values_block(nir_block *block, void *void_visitor)
+{
+   vec4_visitor *v = (vec4_visitor *)void_visitor;
+   dst_reg *reg;
+
+   nir_foreach_instr(block, instr) {
+      if (instr->type != nir_instr_type_intrinsic)
+         continue;
+
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+      /* @FIXME: brw_fs_nir included asserts of being at vertex shader
+       * stage. I assume that those would not be needed in this case. */
+      switch (intrin->intrinsic) {
+      case nir_intrinsic_load_vertex_id:
+         /* @FIXME: note that lower_vertex_id is an ir lowering. So when the
+          * intermediate ir pass get removed, a equivalent lowering would be
+          * needed on nir (probably on nir_lower_system_values.c) */
+         unreachable("should be lowered by lower_vertex_id().");
+
+      case nir_intrinsic_load_vertex_id_zero_base:
+         reg = &v->nir_system_values[SYSTEM_VALUE_VERTEX_ID_ZERO_BASE];
+         if (reg->file == BAD_FILE)
+            *reg = *v->make_reg_for_system_value(SYSTEM_VALUE_VERTEX_ID_ZERO_BASE, NULL);
+         break;
+
+      case nir_intrinsic_load_base_vertex:
+         reg = &v->nir_system_values[SYSTEM_VALUE_BASE_VERTEX];
+         if (reg->file == BAD_FILE)
+            *reg = *v->make_reg_for_system_value(SYSTEM_VALUE_BASE_VERTEX, NULL);
+         break;
+
+      case nir_intrinsic_load_instance_id:
+         reg = &v->nir_system_values[SYSTEM_VALUE_INSTANCE_ID];
+         if (reg->file == BAD_FILE)
+            *reg = *v->make_reg_for_system_value(SYSTEM_VALUE_INSTANCE_ID, NULL);
+         break;
+
+      default:
+         break;
+      }
+   }
+
+   return true;
+}
+
+/* @FIXME: this name is somewhat misleading. I doesn't do the emission yet,
+ * but just some setups. Probably nir_setup_system_values would be a better
+ * name (like nir_setup_inputs or nir_setup_outputs).
+ *
+ * Using nir_emit_system_values as is the one used at brw_fs_nir, for
+ * consistency.
+ *
+ **/
+void
+vec4_visitor::nir_emit_system_values(nir_shader *shader)
+{
+   /* @FIXME: vec4_visitor doesn't support fragment shader system values, so
+    * we could use a smaller array. Keeping that way for now for simplicity
+    * sake */
+   nir_system_values = ralloc_array(mem_ctx, dst_reg, SYSTEM_VALUE_MAX);
+   nir_foreach_overload(shader, overload) {
+      assert(strcmp(overload->function->name, "main") == 0);
+      assert(overload->impl);
+      nir_foreach_block(overload->impl, emit_system_values_block, this);
    }
 }
 
@@ -232,6 +303,39 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       int offset = instr->const_index[0];
       int output = nir_outputs[offset];
       output_reg[output] = dest;
+      break;
+   }
+
+   case nir_intrinsic_load_vertex_id:
+      unreachable("should be lowered by lower_vertex_id()");
+
+   case nir_intrinsic_load_vertex_id_zero_base: {
+      src_reg vertex_id = src_reg(nir_system_values[SYSTEM_VALUE_VERTEX_ID_ZERO_BASE]);
+      dest = get_nir_dest(instr->dest);
+      assert(vertex_id.file != BAD_FILE);
+      dest.type = vertex_id.type;
+      emit(MOV(dest, vertex_id));
+
+      break;
+   }
+
+   case nir_intrinsic_load_base_vertex: {
+      src_reg base_vertex = src_reg(nir_system_values[SYSTEM_VALUE_BASE_VERTEX]);
+      dest = get_nir_dest(instr->dest);
+      assert(base_vertex.file != BAD_FILE);
+      dest.type = base_vertex.type;
+      emit(MOV(dest, base_vertex));
+
+      break;
+   }
+
+   case nir_intrinsic_load_instance_id: {
+      src_reg instance_id = src_reg(nir_system_values[SYSTEM_VALUE_INSTANCE_ID]);
+      dest = get_nir_dest(instr->dest);
+      assert(instance_id.file != BAD_FILE);
+      dest.type = instance_id.type;
+      emit(MOV(dest, instance_id));
+
       break;
    }
 
