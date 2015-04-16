@@ -736,6 +736,19 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
          inst = emit(OR(dst, src_reg(dst), src_reg(1)));
          inst->predicate = BRW_PREDICATE_NORMAL;
       break;
+
+   case nir_op_ishl:
+      emit(SHL(dst, op[0], op[1]));
+      break;
+
+   case nir_op_ishr:
+      emit(ASR(dst, op[0], op[1]));
+      break;
+
+   case nir_op_ushr:
+      emit(SHR(dst, op[0], op[1]));
+      break;
+
    default:
       fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
       break;
