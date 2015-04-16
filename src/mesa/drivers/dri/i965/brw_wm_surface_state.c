@@ -941,6 +941,11 @@ brw_upload_ubo_surfaces(struct brw_context *brw,
          struct gl_shader_storage_buffer_binding *binding;
          binding =
             &ctx->ShaderStorageBufferBindings[shader->UniformBlocks[i].Binding];
+         /* Emit null buffer surface if it is bound to null buffer object */
+         if (binding->BufferObject == ctx->Shared->NullBufferObj) {
+            brw->vtbl.emit_null_surface_state(brw, 1, 1, 1, &surf_offsets[i]);
+            return;
+         }
          intel_bo = intel_buffer_object(binding->BufferObject);
          drm_intel_bo *bo =
             intel_bufferobj_buffer(brw, intel_bo,
