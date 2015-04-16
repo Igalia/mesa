@@ -3264,9 +3264,6 @@ fs_visitor::visit(ir_ssbo_store *ir)
 {
    ir_constant *const_uniform_block = ir->block->as_constant();
    ir_constant *const_offset_ir = ir->offset->as_constant();
-   unsigned const_offset = const_offset_ir ? const_offset_ir->value.u[0] :
-                                             ir->const_offset;
-   fs_reg offset_reg;
 
    fs_reg surf_index;
    if (const_uniform_block) {
@@ -3288,43 +3285,59 @@ fs_visitor::visit(ir_ssbo_store *ir)
    ir->val->accept(this);
    fs_reg val_reg = this->result;
 
+   /* We need the offsets in units of dword */
+   fs_reg offset_reg;
+   unsigned const_offset_dwords;
    if (const_offset_ir) {
+      const_offset_dwords = const_offset_ir->value.u[0] / 4;
       offset_reg = vgrf(glsl_type::uint_type);
-      emit(MOV(offset_reg, fs_reg(const_offset / 16)));
+      emit(MOV(offset_reg, fs_reg(const_offset_dwords)));
    } else {
       ir->offset->accept(this);
       fs_reg offset_reg_orig = this->result;
       offset_reg = vgrf(glsl_type::uint_type);
-      emit(SHR(offset_reg, offset_reg_orig, fs_reg(4)));
+      emit(SHR(offset_reg, offset_reg_orig, fs_reg(2)));
    }
 
-   /* Emit a buffer store message for each channel enabled in the write mask */
+   /* Write each vector element present in the writemask */
    for (int i = 0; i < ir->val->type->vector_elements; i++) {
       int component_mask = 1 << i;
-      if (!(ir->write_mask & component_mask))
-         continue;
+      if (ir->write_mask & component_mask) {
+         fs_reg push_dst = fs_reg(brw_vec8_grf(0, 0));
+         fs_inst *inst =
+            new(mem_ctx) fs_inst(SHADER_OPCODE_SCATTERED_BUFFER_STORE,
+                                 dispatch_width, push_dst, surf_index);
 
-      /* A buffer store is an oword block write message so we setup the
-       * dst write_mask to select the offset in that oword where we
-       * want this channel to be written
-       */
-      int write_mask = component_mask << ((const_offset / 4) % 4);
+         /* SIMD8:  M1 offset,    M2 data
+          * SIMD16: M1:M2 offset, M2:M3 data
+          */
+         int data_mrf;
+         inst->base_mrf = 1;
+         if (dispatch_width == 8) {
+            inst->mlen = 3;
+            data_mrf = inst->base_mrf + 2;
+         } else {
+            inst->mlen = 5;
+            data_mrf = inst->base_mrf + 3;
+         }
 
-      /* FIXME: for row_major matrix with non-constant offset, the writemask
-       * to use is the result of offset_reg_orig / 4 % 4.... how can we do
-       * that? Maybe in this case we need to read the OWORD first, then
-       * update the components we need in the result, and finally write the
-       * entire oword
-       */
+         /* Offset payload */
+         fs_reg mrf = fs_reg(MRF, inst->base_mrf + 1, BRW_REGISTER_TYPE_UD);
+         emit(MOV(mrf, offset_reg));
 
-      struct brw_reg brw_dst =
-         brw_set_writemask(brw_vec8_grf(0, 0), write_mask);
-      fs_reg push_dst = fs_reg(brw_dst);
-      emit(new(mem_ctx) fs_inst(SHADER_OPCODE_BUFFER_STORE, 8,
-                                push_dst,
-                                offset(val_reg, i),
-                                surf_index,
-                                offset_reg));
+         /* Data payload */
+         mrf = fs_reg(MRF, data_mrf, val_reg.type);
+         emit(MOV(mrf, offset(val_reg, i)));
+
+         emit(inst);
+      }
+
+      /* Vector components are stored contiguous in memory */
+      if (const_offset_ir) {
+         emit(MOV(offset_reg, fs_reg(++const_offset_dwords)));
+      } else {
+         emit(ADD(offset_reg, offset_reg, brw_imm_ud(1)));
+      }
    }
 }
 
