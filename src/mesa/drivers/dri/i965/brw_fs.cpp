@@ -506,6 +506,7 @@ fs_inst::is_send_from_grf() const
    case SHADER_OPCODE_BUFFER_LOAD:
    case SHADER_OPCODE_UNALIGNED_BUFFER_LOAD:
    case SHADER_OPCODE_BUFFER_STORE:
+   case SHADER_OPCODE_SCATTERED_BUFFER_STORE:
       return true;
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
       return src[1].file == GRF;
@@ -950,6 +951,8 @@ fs_inst::regs_read(int arg) const
       return mlen;
    } else if (opcode == FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET && arg == 0) {
       return mlen;
+   } else if (opcode == SHADER_OPCODE_SCATTERED_BUFFER_STORE && arg == 0) {
+      return mlen;
    }
 
    switch (src[arg].file) {
@@ -1040,6 +1043,8 @@ fs_visitor::implied_mrf_writes(fs_inst *inst)
       return 2;
    case SHADER_OPCODE_BUFFER_STORE:
       return 1 + inst->exec_size / 8;
+   case SHADER_OPCODE_SCATTERED_BUFFER_STORE:
+      return 1; /* only the header, visitor writes the rest of the payload */
    case SHADER_OPCODE_UNTYPED_ATOMIC:
    case SHADER_OPCODE_UNTYPED_SURFACE_READ:
    case SHADER_OPCODE_URB_WRITE_SIMD8:
