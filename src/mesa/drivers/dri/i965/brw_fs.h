@@ -592,6 +592,10 @@ private:
                                                  struct brw_reg index,
                                                  struct brw_reg offset);
 
+   void generate_scattered_buffer_store(fs_inst *inst,
+                                        struct brw_reg dst,
+                                        struct brw_reg index);
+
    void generate_mov_dispatch_to_flags(fs_inst *inst);
 
    void generate_pixel_interpolator_query(fs_inst *inst,
