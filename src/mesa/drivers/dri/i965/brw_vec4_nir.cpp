@@ -630,6 +630,75 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_unpack_unorm_2x16:
       unreachable("not reached: should be handled by lower_packing_builtins");
 
+   case nir_op_bitfield_reverse:
+      emit(BFREV(dst, op[0]));
+      break;
+
+   case nir_op_bit_count:
+      emit(CBIT(dst, op[0]));
+      break;
+   case nir_op_ufind_msb:
+   case nir_op_ifind_msb: {
+      /* @FIXME: FBH only supports UD type for dst, in the fs_visitor
+       * and the vec4_visitor, instead of using a retype in the FBH call
+       * like in fs_nir, they use a temporary UD register to make the call
+       * and a MOV to convert back UD to D after the FBH. Something like this:
+       *       src_reg temp = src_reg(this, glsl_type::uint_type);
+       *       inst = emit(FBH(dst_reg(temp), op[0]));
+       *       emit(MOV(dst, temp));
+       * Apart from this, the vec4_visitor also set before the MOV:
+       *       inst->dst.writemask = WRITEMASK_XYZW;
+       *       temp.swizzle = BRW_SWIZZLE_NOOP;
+       * Check if it is enough doing the retype (like in fs_nir) or we need to do the MOV.
+       */
+      emit(FBH(retype(dst, BRW_REGISTER_TYPE_UD), op[0]));
+
+      /* FBH counts from the MSB side, while GLSL's findMSB() wants the count
+       * from the LSB side. If FBH didn't return an error (0xFFFFFFFF), then
+       * subtract the result from 31 to convert the MSB count into an LSB count.
+       */
+      src_reg tmp = src_reg(dst);
+
+      emit(CMP(dst_null_d(), tmp, src_reg(-1), BRW_CONDITIONAL_NZ));
+      tmp.negate = true;
+      inst = emit(ADD(dst, tmp, src_reg(31)));
+      inst->predicate = BRW_PREDICATE_NORMAL;
+      break;
+   }
+
+   case nir_op_find_lsb:
+      emit(FBL(dst, op[0]));
+      break;
+
+   case nir_op_ubitfield_extract:
+   case nir_op_ibitfield_extract:
+      /* @FIXME: vec4_visitor adds:
+       *       op[0] = fix_3src_operand(op[0]);
+       *       op[1] = fix_3src_operand(op[1]);
+       *       op[2] = fix_3src_operand(op[2]);
+       * We probably want to add it too. To confirm.
+       */
+      emit(BFE(dst, op[2], op[1], op[0]));
+      break;
+
+   case nir_op_bfm:
+      emit(BFI1(dst, op[0], op[1]));
+      break;
+
+   case nir_op_bfi:
+      /* @FIXME: vec4_visitor adds:
+       *       op[0] = fix_3src_operand(op[0]);
+       *       op[1] = fix_3src_operand(op[1]);
+       *       op[2] = fix_3src_operand(op[2]);
+       * We probably want to add it too. To confirm.
+       */
+      emit(BFI2(dst, op[0], op[1], op[2]));
+      break;
+
+   case nir_op_bitfield_insert:
+      unreachable("not reached: should be handled by "
+                  "lower_instructions::bitfield_insert_to_bfm_bfi");
+
    case nir_op_fsign:
          /* AND(val, 0x80000000) gives the sign bit.
           *
