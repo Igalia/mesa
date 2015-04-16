@@ -505,6 +505,9 @@ brw_instruction_name(enum opcode op)
    case SHADER_OPCODE_MEMORY_FENCE:
       return "memory_fence";
 
+   case SHADER_OPCODE_SCATTERED_BUFFER_STORE:
+      return "scattered_buffer_store";
+
    case SHADER_OPCODE_LOAD_PAYLOAD:
       return "load_payload";
 
@@ -1059,6 +1062,7 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_MEMORY_FENCE:
    case SHADER_OPCODE_URB_WRITE_SIMD8:
    case FS_OPCODE_FB_WRITE:
+   case SHADER_OPCODE_SCATTERED_BUFFER_STORE:
       return true;
    default:
       return false;
