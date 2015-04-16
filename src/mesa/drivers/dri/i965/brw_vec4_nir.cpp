@@ -1022,6 +1022,19 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_bany2:
+   case nir_op_bany3:
+   case nir_op_bany4:
+      /* @FIXME: if (gen <= 5) the vec4_visitor calls to resolve_bool_comparison for
+       * the operand. To check if we want to add it.
+       */
+      emit(CMP(dst_null_d(), op[0], src_reg(0), BRW_CONDITIONAL_NZ));
+      emit(MOV(dst, src_reg(0)));
+
+      inst = emit(MOV(dst, src_reg((int)ctx->Const.UniformBooleanTrue)));
+      inst->predicate = BRW_PREDICATE_ALIGN16_ANY4H;
+      break;
+
    default:
       fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
       break;
