@@ -396,6 +396,7 @@ public:
    virtual void emit_nir_code();
    virtual void nir_setup_inputs(nir_shader *shader);
    virtual void nir_setup_outputs(nir_shader *shader);
+   virtual void nir_emit_system_values (nir_shader *shader);
    virtual void nir_emit_intrinsic(nir_intrinsic_instr *instr);
    virtual void nir_emit_impl(nir_function_impl *impl);
    virtual void nir_emit_cf_list(exec_list *list);
@@ -410,6 +411,10 @@ public:
    dst_reg *nir_locals;
    src_reg *nir_inputs;
    int *nir_outputs;
+   dst_reg *nir_system_values;
+
+   virtual dst_reg *make_reg_for_system_value(int location,
+                                              const glsl_type *type) = 0;
 
 protected:
    void emit_vertex();
@@ -417,7 +422,7 @@ protected:
                                     bool interleaved);
    void setup_payload_interference(struct ra_graph *g, int first_payload_node,
                                    int reg_node_count);
-   virtual dst_reg *make_reg_for_system_value(ir_variable *ir) = 0;
+   virtual dst_reg *make_reg_for_system_value(ir_variable *ir);
    virtual void assign_binding_table_offsets();
    virtual void setup_payload() = 0;
    virtual void emit_prolog() = 0;
