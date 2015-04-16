@@ -760,6 +760,14 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_flrp:
+      /* @FIXME: emit_lrp is implicitly calling to fix_3src_operand.
+       * Notice that we are not doing it for other operations.
+       * Probably we want to do it.
+       */
+      emit_lrp(dst, op[0], op[1], op[2]);
+      break;
+
    default:
       fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
       break;
