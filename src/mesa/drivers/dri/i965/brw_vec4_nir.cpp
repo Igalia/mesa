@@ -973,7 +973,8 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
        * Notice that we are not doing it for other operations.
        * Probably we want to do it.
        */
-      emit_lrp(dst, op[0], op[1], op[2]);
+      inst = emit_lrp(dst, op[0], op[1], op[2]);
+      inst->saturate = instr->dest.saturate;
       break;
 
    default:
