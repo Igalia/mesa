@@ -489,6 +489,8 @@ brw_instruction_name(enum opcode op)
       return "unaligned_buffer_load";
    case SHADER_OPCODE_BUFFER_STORE:
       return "buffer_store";
+   case SHADER_OPCODE_SCATTERED_BUFFER_STORE:
+      return "scattered_buffer_store";
 
    case SHADER_OPCODE_LOAD_PAYLOAD:
       return "load_payload";
@@ -1034,6 +1036,7 @@ backend_instruction::has_side_effects() const
    case FS_OPCODE_FB_WRITE:
    case VS_OPCODE_BUFFER_WRITE:
    case SHADER_OPCODE_BUFFER_STORE:
+   case SHADER_OPCODE_SCATTERED_BUFFER_STORE:
       return true;
    default:
       return false;
