@@ -1934,16 +1934,55 @@ process_array_type(YYLTYPE *loc, const glsl_type *base,
            !node->is_head_sentinel(); node = node->prev) {
          unsigned array_size = process_array_size(node, state);
          array_type = glsl_type::get_array_instance(array_type, array_size,
-                                                    packing);
+                                                    packing, true);
       }
 
       if (array_specifier->is_unsized_array)
-         array_type = glsl_type::get_array_instance(array_type, 0, packing);
+         array_type = glsl_type::get_array_instance(array_type, 0, packing, true);
    }
 
    return array_type;
 }
 
+static const glsl_type *
+process_record_type(YYLTYPE *loc, const glsl_type *base,
+                    ast_array_specifier *array_specifier,
+                    struct _mesa_glsl_parse_state *state,
+                    enum glsl_interface_packing packing)
+{
+   const glsl_type *record = base;
+
+   /* Don't change anything if we are not in std430. We don't want to
+    * propagate interface packing information for that case as it would affect
+    * hashes because of fields replacement.
+    */
+   if (packing != GLSL_INTERFACE_PACKING_STD430)
+      return record;
+
+   for (unsigned i = 0; i < record->length; i++) {
+      const glsl_type *field_type = record->fields.structure[i].type;
+
+      if (field_type != NULL) {
+         if (field_type->is_array()) {
+            field_type = glsl_type::get_array_instance(field_type->fields.array,
+                                                       field_type->length,
+                                                       packing,
+                                                       false);
+         }
+         if (field_type->is_record()) {
+            field_type = process_record_type(loc, field_type, array_specifier,
+                                             state, packing);
+         }
+         record->fields.structure[i].type = field_type;
+      }
+   }
+
+   if (record->interface_packing != packing) {
+      record = glsl_type::get_record_instance(record->fields.structure,
+                                              record->length, packing, record->name);
+   }
+   return record;
+}
 
 const glsl_type *
 ast_type_specifier::glsl_type(const char **name,
@@ -1963,9 +2002,17 @@ ast_type_specifier::glsl_type(const char **name,
    *name = this->type_name;
 
    YYLTYPE loc = this->get_location();
-   type = process_array_type(&loc, type, this->array_specifier, state,
-                             packing);
 
+   if (type == NULL)
+      return type;
+
+   if (type->is_record()) {
+      type = process_record_type(&loc, type, this->array_specifier, state,
+                                 packing);
+   }
+
+   type = process_array_type(&loc, type, this->array_specifier, state,
+                                packing);
    return type;
 }
 
@@ -5362,6 +5409,15 @@ ast_process_structure_or_interface_block(exec_list *instructions,
             _mesa_glsl_error(&loc, state,
                              "const storage qualifier cannot be applied "
                              "to struct or interface block members");
+         }
+
+         if (decl_type->is_record()) {
+            /* Propagate packing information to struct members before
+             * processing an array of structs.
+             */
+            decl_type = process_record_type(&loc, decl_type,
+                                             decl->array_specifier, state,
+                                             packing);
          }
 
          field_type = process_array_type(&loc, decl_type,
