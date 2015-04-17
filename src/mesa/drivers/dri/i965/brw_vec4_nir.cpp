@@ -846,6 +846,22 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       emit_unpack_half_2x16(dst, op[0]);
       break;
 
+   case nir_op_unpack_unorm_4x8:
+      emit_unpack_unorm_4x8(dst, op[0]);
+      break;
+
+   case nir_op_unpack_snorm_4x8:
+      emit_unpack_snorm_4x8(dst, op[0]);
+      break;
+
+   case nir_op_pack_unorm_4x8:
+      emit_pack_unorm_4x8(dst, op[0]);
+      break;
+
+   case nir_op_pack_snorm_4x8:
+      emit_pack_snorm_4x8(dst, op[0]);
+      break;
+
    case nir_op_bitfield_reverse:
       emit(BFREV(dst, op[0]));
       break;
