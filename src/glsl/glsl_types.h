@@ -270,6 +270,10 @@ struct glsl_type {
    static const glsl_type *get_record_instance(const glsl_struct_field *fields,
 					       unsigned num_fields,
 					       const char *name);
+   static const glsl_type *get_record_instance(const glsl_struct_field *fields,
+                                               const unsigned num_fields,
+                                               enum glsl_interface_packing packing,
+                                               const char *name);
 
    /**
     * Get the instance of an interface block type
