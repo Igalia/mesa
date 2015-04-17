@@ -49,7 +49,8 @@
 
 #define STRUCT_TYPE(NAME)                                       \
    const glsl_type glsl_type::_struct_##NAME##_type =           \
-      glsl_type(NAME##_fields, ARRAY_SIZE(NAME##_fields), #NAME); \
+      glsl_type(GLSL_TYPE_STRUCT, NAME##_fields, ARRAY_SIZE(NAME##_fields), \
+                GLSL_INTERFACE_PACKING_STD140, #NAME); \
    const glsl_type *const glsl_type::struct_##NAME##_type =     \
       &glsl_type::_struct_##NAME##_type;
 

@@ -2001,6 +2001,62 @@ process_array_type(YYLTYPE *loc, const glsl_type *base,
    return array_type;
 }
 
+static const glsl_type *
+process_record_type(YYLTYPE *loc, const glsl_type *base,
+                    ast_array_specifier *array_specifier,
+                    struct _mesa_glsl_parse_state *state,
+                    enum glsl_interface_packing packing)
+{
+   const glsl_type *record = base;
+
+   /* Don't propagate interface packing if we are not in std430. Mesa works
+    * with std140 by default.
+    */
+   if (packing != GLSL_INTERFACE_PACKING_STD430)
+      return record;
+
+   glsl_struct_field *structure = ralloc_array(record->fields.structure,
+                                               glsl_struct_field,
+                                               record->length);
+
+   for (unsigned i = 0; i < record->length; i++) {
+      const glsl_type *field_type = record->fields.structure[i].type;
+
+      assert(field_type);
+      if (field_type->is_array()) {
+         if (field_type->fields.array->is_record()) {
+            /* Propagate interface packing information to arrays of struct */
+            const glsl_type *array_type = field_type->fields.array;
+            array_type = process_record_type(loc, array_type, array_specifier,
+                                             state, packing);
+            field_type = glsl_type::get_array_instance(array_type,
+                                                       field_type->length,
+                                                       packing);
+         } else {
+            field_type = glsl_type::get_array_instance(field_type->fields.array,
+                                                       field_type->length,
+                                                       packing);
+         }
+      }
+      if (field_type->is_record()) {
+         field_type = process_record_type(loc, field_type, array_specifier,
+                                          state, packing);
+      }
+      structure[i].type = field_type;
+      structure[i].name = ralloc_strdup(structure,
+                                       record->fields.structure[i].name);;
+      structure[i].location = record->fields.structure[i].location;
+      structure[i].interpolation = record->fields.structure[i].interpolation;
+      structure[i].centroid = record->fields.structure[i].centroid;
+      structure[i].sample = record->fields.structure[i].sample;
+      structure[i].matrix_layout = record->fields.structure[i].matrix_layout;
+   }
+
+   record = glsl_type::get_record_instance(structure,
+                                           record->length, packing, record->name);
+
+   return record;
+}
 
 const glsl_type *
 ast_type_specifier::glsl_type(const char **name,
@@ -2020,9 +2076,17 @@ ast_type_specifier::glsl_type(const char **name,
    *name = this->type_name;
 
    YYLTYPE loc = this->get_location();
-   type = process_array_type(&loc, type, this->array_specifier, state,
-                             packing);
 
+   if (type == NULL)
+      return type;
+
+   if (type->is_record()) {
+      type = process_record_type(&loc, type, this->array_specifier, state,
+                                 packing);
+   }
+
+   type = process_array_type(&loc, type, this->array_specifier, state,
+                                packing);
    return type;
 }
 
@@ -5733,6 +5797,15 @@ ast_process_structure_or_interface_block(exec_list *instructions,
             _mesa_glsl_error(&loc, state,
                              "const storage qualifier cannot be applied "
                              "to struct or interface block members");
+         }
+
+         if (decl_type->is_record()) {
+            /* Propagate packing information to struct members before
+             * processing an array of structs.
+             */
+            decl_type = process_record_type(&loc, decl_type,
+                                             decl->array_specifier, state,
+                                             packing);
          }
 
          field_type = process_array_type(&loc, decl_type,
