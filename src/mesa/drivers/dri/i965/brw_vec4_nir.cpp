@@ -213,36 +213,6 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    }
 }
 
-/* @FIXME: brw_fs_nir could also use this function, we would have to put this into a common place
- * and rewrite the brw_fs_nir relational operations in terms of this function.
- */
-enum brw_conditional_mod
-brw_conditional_for_nir_comparison(nir_op op)
-{
-   switch (op) {
-   case nir_op_flt:
-   case nir_op_ilt:
-   case nir_op_ult:
-      return BRW_CONDITIONAL_L;
-   case ir_binop_greater:
-      return BRW_CONDITIONAL_G;
-   case ir_binop_lequal:
-      return BRW_CONDITIONAL_LE;
-   case nir_op_fge:
-   case nir_op_ige:
-   case nir_op_uge:
-      return BRW_CONDITIONAL_GE;
-   case nir_op_feq:
-   case nir_op_ieq:
-      return BRW_CONDITIONAL_Z;
-   case nir_op_fne:
-   case nir_op_ine:
-      return BRW_CONDITIONAL_NZ;
-   default:
-      unreachable("not reached: bad operation for comparison");
-   }
-}
-
 static unsigned
 brw_swizzle_for_nir_swizzle(uint8_t swizzle[4])
 {
