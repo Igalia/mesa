@@ -699,13 +699,10 @@ private:
 	     enum glsl_sampler_dim dim, bool shadow, bool array,
 	     unsigned type, const char *name);
 
-   /** Constructor for record types */
-   glsl_type(const glsl_struct_field *fields, unsigned num_fields,
-	     const char *name);
-
-   /** Constructor for interface types */
-   glsl_type(const glsl_struct_field *fields, unsigned num_fields,
-	     enum glsl_interface_packing packing, const char *name);
+   /** Constructor for interface and record types */
+   glsl_type(glsl_base_type base_type, const glsl_struct_field *fields,
+             unsigned num_fields, enum glsl_interface_packing packing,
+             const char *name);
 
    /** Constructor for array types */
    glsl_type(const glsl_type *array, unsigned length,
