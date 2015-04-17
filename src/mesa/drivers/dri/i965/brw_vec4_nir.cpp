@@ -41,6 +41,7 @@ vec4_visitor::emit_nir_code()
    nir_inputs = reralloc(mem_ctx, nir_inputs, src_reg, 2);
    nir_setup_inputs(nir);
 
+   nir_outputs = reralloc(mem_ctx, nir_outputs, int, nir->num_outputs);
    nir_setup_outputs(nir);
 
    nir_emit_main(nir);
@@ -63,7 +64,8 @@ void
 vec4_visitor::nir_setup_outputs(nir_shader *shader)
 {
    foreach_list_typed(nir_variable, var, node, &shader->outputs) {
-      /* @TODO */
+      int offset = var->data.driver_location;
+      nir_outputs[offset] = var->data.location;
    }
 }
 
@@ -219,12 +221,12 @@ vec4_visitor::nir_emit_intrinsic_store_output(nir_intrinsic_instr *instr)
    for (unsigned i = 0; i < instr->num_components; i++)
       dst.writemask |= (1 << i);
 
-   /* @FIXME: is it safe to hardcode the type to float here? */
    dst = retype(dst, BRW_REGISTER_TYPE_F);
 
-   /* @FIXME: hardcode offset to zero to support only gl_Position by now,
-      until const_index[0] is fixed to contain the right offset */
-   output_reg[0] = dst;
+   int offset = instr->const_index[0];
+   int output = nir_outputs[offset];
+
+   output_reg[output] = dst;
 }
 
 /* @FIXME: C&P from brw_fs_nir. Candidate to be revamped to a common place. */
