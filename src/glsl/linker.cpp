@@ -691,30 +691,39 @@ validate_intrastage_arrays(struct gl_shader_program *prog,
     * In addition, set the type of the linked variable to the
     * explicitly sized array.
     */
-   if (var->type->is_array() && existing->type->is_array() &&
-       (var->type->fields.array == existing->type->fields.array) &&
-       ((var->type->length == 0)|| (existing->type->length == 0))) {
-      if (var->type->length != 0) {
-         if (var->type->length <= existing->data.max_array_access) {
-            linker_error(prog, "%s `%s' declared as type "
-                         "`%s' but outermost dimension has an index"
-                         " of `%i'\n",
-                         mode_string(var),
-                         var->name, var->type->name,
-                         existing->data.max_array_access);
+   if (var->type->is_array() && existing->type->is_array()) {
+      if ((var->type->fields.array == existing->type->fields.array) &&
+          ((var->type->length == 0)|| (existing->type->length == 0))) {
+         if (var->type->length != 0) {
+            if (var->type->length <= existing->data.max_array_access) {
+               linker_error(prog, "%s `%s' declared as type "
+                           "`%s' but outermost dimension has an index"
+                           " of `%i'\n",
+                           mode_string(var),
+                           var->name, var->type->name,
+                           existing->data.max_array_access);
+            }
+            existing->type = var->type;
+            return true;
+         } else if (existing->type->length != 0) {
+            if(existing->type->length <= var->data.max_array_access) {
+               linker_error(prog, "%s `%s' declared as type "
+                           "`%s' but outermost dimension has an index"
+                           " of `%i'\n",
+                           mode_string(var),
+                           var->name, existing->type->name,
+                           var->data.max_array_access);
+            }
+            return true;
          }
-         existing->type = var->type;
-         return true;
-      } else if (existing->type->length != 0) {
-         if(existing->type->length <= var->data.max_array_access) {
-            linker_error(prog, "%s `%s' declared as type "
-                         "`%s' but outermost dimension has an index"
-                         " of `%i'\n",
-                         mode_string(var),
-                         var->name, existing->type->name,
-                         var->data.max_array_access);
-         }
-         return true;
+      } else {
+         /* The arrays of structs could have different glsl_type pointers but
+          * they are actually the same type. Use record_compare() to check that.
+          */
+         if (existing->type->fields.array->is_record() &&
+             var->type->fields.array->is_record() &&
+             existing->type->fields.array->record_compare(var->type->fields.array))
+            return true;
       }
    }
    return false;
