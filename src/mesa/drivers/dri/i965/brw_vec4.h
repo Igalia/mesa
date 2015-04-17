@@ -410,9 +410,6 @@ public:
    src_reg *nir_inputs;
    int *nir_outputs;
 
-   int nir_num_inputs;
-   int nir_loaded_inputs;
-
 protected:
    void emit_vertex();
    void lower_attributes_to_hw_regs(const int *attribute_map,

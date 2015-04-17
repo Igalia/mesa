@@ -36,9 +36,7 @@ vec4_visitor::emit_nir_code()
 {
    nir_shader *nir = prog->nir;
 
-   nir_num_inputs = 0;
-   nir_loaded_inputs = 0;
-   nir_inputs = reralloc(mem_ctx, nir_inputs, src_reg, 2);
+   nir_inputs = reralloc(mem_ctx, nir_inputs, src_reg, nir->num_inputs);
    nir_setup_inputs(nir);
 
    nir_outputs = reralloc(mem_ctx, nir_outputs, int, nir->num_outputs);
@@ -50,13 +48,11 @@ vec4_visitor::emit_nir_code()
 void
 vec4_visitor::nir_setup_inputs(nir_shader *shader)
 {
-   /* @FIXME: We need to analyze why shader->num_inputs reports zero
-    * here even if we have attributes. It looks like a bug.
-    */
    foreach_list_typed(nir_variable, var, node, &shader->inputs) {
       src_reg src = src_reg(ATTR, var->data.location, var->type);
-      nir_inputs[nir_num_inputs] = src;
-      nir_num_inputs++;
+
+      int offset = var->data.driver_location;
+      nir_inputs[offset] = src;
    }
 }
 
@@ -202,8 +198,8 @@ vec4_visitor::nir_emit_intrinsic_load_input(nir_intrinsic_instr *instr)
    for (int i = 0; i < instr->num_components; i++)
       dest.writemask |= 1 << i;
 
-   src_reg src = nir_inputs[nir_loaded_inputs];
-   nir_loaded_inputs++;
+   int offset = instr->const_index[0];
+   src_reg src = nir_inputs[offset];
 
    dest = retype(dest, src.type);
 
