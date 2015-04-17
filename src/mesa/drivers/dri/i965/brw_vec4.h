@@ -408,6 +408,8 @@ public:
 
    dst_reg *nir_locals;
    src_reg *nir_inputs;
+   int *nir_outputs;
+
    int nir_num_inputs;
    int nir_loaded_inputs;
 
