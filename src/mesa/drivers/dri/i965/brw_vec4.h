@@ -399,8 +399,6 @@ public:
    virtual void nir_emit_main(nir_shader *shader);
    virtual void nir_emit_load_const(nir_load_const_instr *instr);
    virtual void nir_emit_intrinsic(nir_intrinsic_instr *instr);
-   virtual void nir_emit_intrinsic_load_input(nir_intrinsic_instr *instr);
-   virtual void nir_emit_intrinsic_store_output(nir_intrinsic_instr *instr);
    virtual void nir_emit_alu(nir_alu_instr *instr);
 
    dst_reg get_nir_dest(nir_dest dest);
