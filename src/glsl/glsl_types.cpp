@@ -94,12 +94,14 @@ glsl_type::glsl_type(GLenum gl_type, glsl_base_type base_type,
    }
 }
 
-glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
+glsl_type::glsl_type(glsl_base_type base_type,
+                     const glsl_struct_field *fields,
+                     unsigned num_fields, enum glsl_interface_packing packing,
 		     const char *name) :
    gl_type(0),
-   base_type(GLSL_TYPE_STRUCT),
+   base_type(base_type),
    sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
-   sampler_type(0), interface_packing(0),
+   sampler_type(0), interface_packing(packing),
    vector_elements(0), matrix_columns(0),
    length(num_fields)
 {
@@ -113,38 +115,6 @@ glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
    this->fields.structure = ralloc_array(this->mem_ctx,
 					 glsl_struct_field, length);
 
-   for (i = 0; i < length; i++) {
-      this->fields.structure[i].type = fields[i].type;
-      this->fields.structure[i].name = ralloc_strdup(this->fields.structure,
-						     fields[i].name);
-      this->fields.structure[i].location = fields[i].location;
-      this->fields.structure[i].interpolation = fields[i].interpolation;
-      this->fields.structure[i].centroid = fields[i].centroid;
-      this->fields.structure[i].sample = fields[i].sample;
-      this->fields.structure[i].matrix_layout = fields[i].matrix_layout;
-   }
-
-   mtx_unlock(&glsl_type::mutex);
-}
-
-glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
-		     enum glsl_interface_packing packing, const char *name) :
-   gl_type(0),
-   base_type(GLSL_TYPE_INTERFACE),
-   sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
-   sampler_type(0), interface_packing((unsigned) packing),
-   vector_elements(0), matrix_columns(0),
-   length(num_fields)
-{
-   unsigned int i;
-
-   mtx_lock(&glsl_type::mutex);
-
-   init_ralloc_type_ctx();
-   assert(name != NULL);
-   this->name = ralloc_strdup(this->mem_ctx, name);
-   this->fields.structure = ralloc_array(this->mem_ctx,
-					 glsl_struct_field, length);
    for (i = 0; i < length; i++) {
       this->fields.structure[i].type = fields[i].type;
       this->fields.structure[i].name = ralloc_strdup(this->fields.structure,
@@ -656,7 +626,7 @@ glsl_type::get_array_instance(const glsl_type *base, unsigned array_size,
     * named 'foo'.
     */
    char key[128];
-   snprintf(key, sizeof(key), "%p[%u]", (void *) base, array_size);
+   snprintf(key, sizeof(key), "%p[%u]_%d", (void *) base, array_size, packing);
 
    mtx_lock(&glsl_type::mutex);
 
@@ -769,13 +739,22 @@ glsl_type::record_key_hash(const void *a)
    return retval;
 }
 
+const glsl_type *
+glsl_type::get_record_instance(const glsl_struct_field *fields,
+                               unsigned num_fields,
+                               const char *name)
+{
+   return get_record_instance(fields, num_fields,
+                              GLSL_INTERFACE_PACKING_STD140, name);
+}
 
 const glsl_type *
 glsl_type::get_record_instance(const glsl_struct_field *fields,
-			       unsigned num_fields,
+			       const unsigned num_fields,
+                               enum glsl_interface_packing packing,
 			       const char *name)
 {
-   const glsl_type key(fields, num_fields, name);
+   const glsl_type key(GLSL_TYPE_STRUCT, fields, num_fields, packing, name);
 
    mtx_lock(&glsl_type::mutex);
 
@@ -788,7 +767,8 @@ glsl_type::get_record_instance(const glsl_struct_field *fields,
                                                             &key);
    if (entry == NULL) {
       mtx_unlock(&glsl_type::mutex);
-      const glsl_type *t = new glsl_type(fields, num_fields, name);
+      const glsl_type *t = new glsl_type(GLSL_TYPE_STRUCT, fields, num_fields,
+                                         packing, name);
       mtx_lock(&glsl_type::mutex);
 
       entry = _mesa_hash_table_insert(record_types, t, (void *) t);
@@ -810,7 +790,7 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
 				  enum glsl_interface_packing packing,
 				  const char *block_name)
 {
-   const glsl_type key(fields, num_fields, packing, block_name);
+   const glsl_type key(GLSL_TYPE_INTERFACE, fields, num_fields, packing, block_name);
 
    mtx_lock(&glsl_type::mutex);
 
@@ -823,8 +803,8 @@ glsl_type::get_interface_instance(const glsl_struct_field *fields,
                                                             &key);
    if (entry == NULL) {
       mtx_unlock(&glsl_type::mutex);
-      const glsl_type *t = new glsl_type(fields, num_fields,
-                                         packing, block_name);
+      const glsl_type *t = new glsl_type(GLSL_TYPE_INTERFACE, fields,
+                                         num_fields, packing, block_name);
       mtx_lock(&glsl_type::mutex);
 
       entry = _mesa_hash_table_insert(interface_types, t, (void *) t);
