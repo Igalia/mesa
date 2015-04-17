@@ -82,6 +82,8 @@ nir_shader *brw_create_nir(struct brw_context *brw,
 
 enum brw_reg_type brw_type_for_nir_type(nir_alu_type type);
 
+enum brw_conditional_mod brw_conditional_for_nir_comparison(nir_op op);
+
 #ifdef __cplusplus
 }
 #endif
