@@ -250,7 +250,7 @@ struct glsl_type {
    static const glsl_type *get_array_instance(const glsl_type *base,
                                               unsigned elements);
    static const glsl_type *get_array_instance(const glsl_type *base,
-					      unsigned elements,
+                                              unsigned elements,
                                               enum glsl_interface_packing packing);
 
    /**
@@ -259,6 +259,10 @@ struct glsl_type {
    static const glsl_type *get_record_instance(const glsl_struct_field *fields,
 					       unsigned num_fields,
 					       const char *name);
+   static const glsl_type *get_record_instance(const glsl_struct_field *fields,
+                                               const unsigned num_fields,
+                                               enum glsl_interface_packing packing,
+                                               const char *name);
 
    /**
     * Get the instance of an interface block type
@@ -697,13 +701,10 @@ private:
 	     enum glsl_sampler_dim dim, bool shadow, bool array,
 	     unsigned type, const char *name);
 
-   /** Constructor for record types */
-   glsl_type(const glsl_struct_field *fields, unsigned num_fields,
-	     const char *name);
-
-   /** Constructor for interface types */
-   glsl_type(const glsl_struct_field *fields, unsigned num_fields,
-	     enum glsl_interface_packing packing, const char *name);
+   /** Constructor for interface and record types */
+   glsl_type(glsl_base_type base_type, const glsl_struct_field *fields,
+             unsigned num_fields, enum glsl_interface_packing packing,
+             const char *name);
 
    /** Constructor for array types */
    glsl_type(const glsl_type *array, unsigned length,
