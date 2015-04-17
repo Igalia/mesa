@@ -838,6 +838,14 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_unpack_unorm_2x16:
       unreachable("not reached: should be handled by lower_packing_builtins");
 
+   case nir_op_pack_half_2x16:
+      emit_pack_half_2x16(dst, op[0]);
+      break;
+
+   case nir_op_unpack_half_2x16:
+      emit_unpack_half_2x16(dst, op[0]);
+      break;
+
    case nir_op_bitfield_reverse:
       emit(BFREV(dst, op[0]));
       break;
