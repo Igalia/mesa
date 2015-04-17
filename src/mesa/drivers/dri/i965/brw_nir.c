@@ -229,3 +229,36 @@ brw_type_for_nir_type(nir_alu_type type)
 
    return BRW_REGISTER_TYPE_F;
 }
+
+enum brw_conditional_mod
+brw_conditional_for_nir_comparison(nir_op op)
+{
+   switch (op) {
+   case nir_op_flt:
+   case nir_op_ilt:
+   case nir_op_ult:
+      return BRW_CONDITIONAL_L;
+      /* @FIXME: ir_binop_greater and ir_binop_lequal are not NIR opcodes, and
+       * are declared in ir.h and only available to C++ sources.
+       * So comment them out by now until it is clear if this is not a mistake,
+       * and if so, how are we going to make them available here */
+      /*
+   case ir_binop_greater:
+      return BRW_CONDITIONAL_G;
+   case ir_binop_lequal:
+      return BRW_CONDITIONAL_LE;
+      */
+   case nir_op_fge:
+   case nir_op_ige:
+   case nir_op_uge:
+      return BRW_CONDITIONAL_GE;
+   case nir_op_feq:
+   case nir_op_ieq:
+      return BRW_CONDITIONAL_Z;
+   case nir_op_fne:
+   case nir_op_ine:
+      return BRW_CONDITIONAL_NZ;
+   default:
+      unreachable("not reached: bad operation for comparison");
+   }
+}
