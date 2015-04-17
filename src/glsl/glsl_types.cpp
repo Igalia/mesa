@@ -766,13 +766,22 @@ glsl_type::record_key_hash(const void *a)
    return hash_table_string_hash(& hash_key);
 }
 
+const glsl_type *
+glsl_type::get_record_instance(const glsl_struct_field *fields,
+                               unsigned num_fields,
+                               const char *name)
+{
+   return get_record_instance(fields, num_fields,
+                              GLSL_INTERFACE_PACKING_STD140, name);
+}
 
 const glsl_type *
 glsl_type::get_record_instance(const glsl_struct_field *fields,
-			       unsigned num_fields,
+			       const unsigned num_fields,
+                               enum glsl_interface_packing packing,
 			       const char *name)
 {
-   const glsl_type key(fields, num_fields, name);
+   const glsl_type key(GLSL_TYPE_STRUCT, fields, num_fields, packing, name);
 
    mtx_lock(&glsl_type::mutex);
 
