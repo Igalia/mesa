@@ -341,7 +341,7 @@ _mesa_glsl_release_types(void)
 
 
 glsl_type::glsl_type(const glsl_type *array, unsigned length,
-                     enum glsl_interface_packing packing) :
+                     enum glsl_interface_packing packing, bool rename) :
    base_type(GLSL_TYPE_ARRAY),
    sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
    sampler_type(0), interface_packing(packing),
@@ -355,34 +355,40 @@ glsl_type::glsl_type(const glsl_type *array, unsigned length,
     */
    this->gl_type = array->gl_type;
 
-   /* Allow a maximum of 10 characters for the array size.  This is enough
-    * for 32-bits of ~0.  The extra 3 are for the '[', ']', and terminating
-    * NUL.
-    */
-   const unsigned name_length = strlen(array->name) + 10 + 3;
+   if (rename) {
+      /* Allow a maximum of 10 characters for the array size.  This is enough
+      * for 32-bits of ~0.  The extra 3 are for the '[', ']', and terminating
+      * NUL.
+      */
+      const unsigned name_length = strlen(array->name) + 10 + 3;
 
-   mtx_lock(&glsl_type::mutex);
-   char *const n = (char *) ralloc_size(this->mem_ctx, name_length);
-   mtx_unlock(&glsl_type::mutex);
+      mtx_lock(&glsl_type::mutex);
+      char *const n = (char *) ralloc_size(this->mem_ctx, name_length);
+      mtx_unlock(&glsl_type::mutex);
 
-   if (length == 0)
-      snprintf(n, name_length, "%s[]", array->name);
-   else {
-      /* insert outermost dimensions in the correct spot
-       * otherwise the dimension order will be backwards
-       */
-      const char *pos = strchr(array->name, '[');
-      if (pos) {
-         int idx = pos - array->name;
-         snprintf(n, idx+1, "%s", array->name);
-         snprintf(n + idx, name_length - idx, "[%u]%s",
-                  length, array->name + idx);
-      } else {
-         snprintf(n, name_length, "%s[%u]", array->name, length);
+      if (length == 0)
+         snprintf(n, name_length, "%s[]", array->name);
+      else {
+         /* insert outermost dimensions in the correct spot
+         * otherwise the dimension order will be backwards
+         */
+         const char *pos = strchr(array->name, '[');
+         if (pos) {
+            int idx = pos - array->name;
+            snprintf(n, idx+1, "%s", array->name);
+            snprintf(n + idx, name_length - idx, "[%u]%s",
+                     length, array->name + idx);
+         } else {
+            snprintf(n, name_length, "%s[%u]", array->name, length);
+         }
       }
-   }
 
-   this->name = n;
+      this->name = n;
+   } else {
+      char *const n = (char *) ralloc_size(this->mem_ctx, strlen(array->name) + 1);
+      snprintf(n, strlen(array->name) + 1, "%s", array->name);
+      this->name = n;
+   }
 }
 
 
@@ -638,12 +644,21 @@ glsl_type::get_sampler_instance(enum glsl_sampler_dim dim,
 const glsl_type *
 glsl_type::get_array_instance(const glsl_type *base, unsigned array_size)
 {
-   return get_array_instance(base, array_size, GLSL_INTERFACE_PACKING_STD140);
+   return get_array_instance(base, array_size, GLSL_INTERFACE_PACKING_STD140,
+                             true);
 }
 
 const glsl_type *
 glsl_type::get_array_instance(const glsl_type *base, unsigned array_size,
                               enum glsl_interface_packing packing)
+{
+   return get_array_instance(base, array_size, packing, true);
+}
+
+const glsl_type *
+glsl_type::get_array_instance(const glsl_type *base, unsigned array_size,
+                              enum glsl_interface_packing packing,
+                              bool change_name)
 {
    /* Generate a name using the base type pointer in the key.  This is
     * done because the name of the base type may not be unique across
@@ -651,7 +666,7 @@ glsl_type::get_array_instance(const glsl_type *base, unsigned array_size,
     * named 'foo'.
     */
    char key[128];
-   snprintf(key, sizeof(key), "%p[%u]", (void *) base, array_size);
+   snprintf(key, sizeof(key), "%p[%u]_%d", (void *) base, array_size, packing);
 
    mtx_lock(&glsl_type::mutex);
 
@@ -664,7 +679,7 @@ glsl_type::get_array_instance(const glsl_type *base, unsigned array_size,
 
    if (t == NULL) {
       mtx_unlock(&glsl_type::mutex);
-      t = new glsl_type(base, array_size, packing);
+      t = new glsl_type(base, array_size, packing, change_name);
       mtx_lock(&glsl_type::mutex);
 
       hash_table_insert(array_types, (void *) t, ralloc_strdup(mem_ctx, key));
