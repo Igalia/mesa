@@ -169,17 +169,41 @@ vec4_visitor::nir_emit_load_const(nir_load_const_instr *instr)
 void
 vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 {
+   dst_reg dest;
+   src_reg src;
+
    switch (instr->intrinsic) {
 
-     /* load input */
-   case nir_intrinsic_load_input:
-      nir_emit_intrinsic_load_input(instr);
-      break;
+   case nir_intrinsic_load_input: {
+      dest = get_nir_dest(instr->dest);
 
-      /* store output */
-   case nir_intrinsic_store_output:
-      nir_emit_intrinsic_store_output(instr);
+      dest.writemask = 0;
+      for (int i = 0; i < instr->num_components; i++)
+         dest.writemask |= 1 << i;
+
+      int offset = instr->const_index[0];
+      src = nir_inputs[offset];
+
+      dest = retype(dest, src.type);
+      emit(MOV(dest, src));
       break;
+   }
+
+   case nir_intrinsic_store_output: {
+      src = get_nir_src(instr->src[0]);
+      dest = dst_reg(src);
+
+      dest.writemask = 0;
+      for (unsigned i = 0; i < instr->num_components; i++)
+         dest.writemask |= (1 << i);
+
+      dest = retype(dest, BRW_REGISTER_TYPE_F);
+
+      int offset = instr->const_index[0];
+      int output = nir_outputs[offset];
+      output_reg[output] = dest;
+      break;
+   }
 
    default:
       fprintf(stderr,
@@ -187,42 +211,6 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
               instr->intrinsic);
       break;
    }
-}
-
-void
-vec4_visitor::nir_emit_intrinsic_load_input(nir_intrinsic_instr *instr)
-{
-   dst_reg dest = get_nir_dest(instr->dest);
-
-   dest.writemask = 0;
-   for (int i = 0; i < instr->num_components; i++)
-      dest.writemask |= 1 << i;
-
-   int offset = instr->const_index[0];
-   src_reg src = nir_inputs[offset];
-
-   dest = retype(dest, src.type);
-
-   emit(MOV(dest, src));
-}
-
-void
-vec4_visitor::nir_emit_intrinsic_store_output(nir_intrinsic_instr *instr)
-{
-   src_reg reg = get_nir_src(instr->src[0]);
-   dst_reg dst = dst_reg(reg);
-
-   /* set the mask */
-   dst.writemask = 0;
-   for (unsigned i = 0; i < instr->num_components; i++)
-      dst.writemask |= (1 << i);
-
-   dst = retype(dst, BRW_REGISTER_TYPE_F);
-
-   int offset = instr->const_index[0];
-   int output = nir_outputs[offset];
-
-   output_reg[output] = dst;
 }
 
 /* @FIXME: C&P from brw_fs_nir. Candidate to be revamped to a common place. */
