@@ -8337,7 +8337,11 @@
 <!-- ARB extension #133 is ARB_multi_draw_indirect, defined in the same
      file as ARB_draw_indirect -->
 
-<!-- ARB extensions #134...#138 -->
+<!-- ARB extensions #134...#136 -->
+
+<xi:include href="ARB_shader_storage_buffer_object.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+<!-- ARB extensions #138 -->
 
 <xi:include href="ARB_texture_buffer_range.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
 
