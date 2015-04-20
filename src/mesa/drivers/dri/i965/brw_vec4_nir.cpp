@@ -42,7 +42,12 @@ vec4_visitor::emit_nir_code()
    nir_outputs = reralloc(mem_ctx, nir_outputs, int, nir->num_outputs);
    nir_setup_outputs(nir);
 
-   nir_emit_main(nir);
+   /* get the main function and emit it */
+   nir_foreach_overload(nir, overload) {
+      assert(strcmp(overload->function->name, "main") == 0);
+      assert(overload->impl);
+      nir_emit_impl(overload->impl);
+   }
 }
 
 void
@@ -65,36 +70,79 @@ vec4_visitor::nir_setup_outputs(nir_shader *shader)
    }
 }
 
-static bool
-emit_block(nir_block *block, void *void_visitor)
+void
+vec4_visitor::nir_emit_impl(nir_function_impl *impl)
 {
-   vec4_visitor *visitor = (vec4_visitor *) void_visitor;
+   nir_locals = reralloc(mem_ctx, nir_locals, dst_reg, impl->reg_alloc);
+   foreach_list_typed(nir_register, reg, node, &impl->registers) {
+      unsigned array_elems =
+         reg->num_array_elems == 0 ? 1 : reg->num_array_elems;
+      unsigned size = array_elems * reg->num_components;
 
-   nir_foreach_instr(block, instr) {
-      switch (instr->type) {
+      nir_locals[reg->index] = dst_reg(GRF, alloc.allocate(size));
+   }
 
-        // load const
-      case nir_instr_type_load_const:
-         visitor->nir_emit_load_const(nir_instr_as_load_const(instr));
+   nir_emit_cf_list(&impl->body);
+}
+
+void
+vec4_visitor::nir_emit_cf_list(exec_list *list)
+{
+   exec_list_validate(list);
+   foreach_list_typed(nir_cf_node, node, node, list) {
+      switch (node->type) {
+      case nir_cf_node_if:
+         /* @TODO */
          break;
 
-         // load input
-      case nir_instr_type_intrinsic:
-         visitor->nir_emit_intrinsic(nir_instr_as_intrinsic(instr));
+      case nir_cf_node_loop:
+         /* @TODO */
          break;
 
-         // ALU
-      case nir_instr_type_alu:
-         visitor->nir_emit_alu(nir_instr_as_alu(instr));
+      case nir_cf_node_block:
+         nir_emit_block(nir_cf_node_as_block(node));
          break;
 
       default:
-         fprintf(stderr, "VS instruction not yet implemented by NIR -> vec4\n");
-         break;
+         unreachable("Invalid CFG node block");
       }
    }
+}
 
-   return true;
+void
+vec4_visitor::nir_emit_block(nir_block *block)
+{
+   nir_foreach_instr(block, instr) {
+      nir_emit_instr(instr);
+   }
+}
+
+void
+vec4_visitor::nir_emit_instr(nir_instr *instr)
+{
+   this->base_ir = instr;
+
+   switch (instr->type) {
+   case nir_instr_type_load_const:
+      nir_emit_load_const(nir_instr_as_load_const(instr));
+      break;
+
+   case nir_instr_type_intrinsic:
+      nir_emit_intrinsic(nir_instr_as_intrinsic(instr));
+      break;
+
+   case nir_instr_type_alu:
+      nir_emit_alu(nir_instr_as_alu(instr));
+      break;
+
+   case nir_instr_type_jump:
+      /* @TODO */
+      break;
+
+   default:
+      fprintf(stderr, "VS instruction not yet implemented by NIR->vec4\n");
+      break;
+   }
 }
 
 dst_reg
@@ -131,31 +179,6 @@ vec4_visitor::get_nir_src(nir_src src)
    }
 
    return src_reg(reg);
-}
-
-void
-vec4_visitor::nir_emit_main(nir_shader *shader)
-{
-   nir_foreach_overload(shader, overload) {
-      assert(strcmp(overload->function->name, "main") == 0);
-      assert(overload->impl);
-
-      /* setup local registers */
-      /* @FIXME: this should be done for all func implentations, not only
-         main(), so will have to be moved to a nir_emit_impl()
-         function in the future, as fs_nir does. */
-      nir_locals = reralloc(mem_ctx, nir_locals, dst_reg, overload->impl->reg_alloc);
-      foreach_list_typed(nir_register, reg, node, &overload->impl->registers) {
-         unsigned array_elems =
-           reg->num_array_elems == 0 ? 1 : reg->num_array_elems;
-         unsigned size = array_elems * reg->num_components;
-
-         nir_locals[reg->index] =
-           dst_reg(GRF, alloc.allocate(size));
-      }
-
-      nir_foreach_block(overload->impl, emit_block, this);
-   }
 }
 
 void
