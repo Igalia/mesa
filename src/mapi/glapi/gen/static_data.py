@@ -1305,6 +1305,7 @@ functions = [
    "ShaderBinary",
    "ShaderSource",
    "ShaderSourceARB",
+   "ShaderStorageBlockBinding",
    "StencilFunc",
    "StencilFuncSeparate",
    "StencilMask",
