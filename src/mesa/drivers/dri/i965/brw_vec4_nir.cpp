@@ -124,7 +124,12 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
 
    switch (instr->type) {
    case nir_instr_type_load_const:
-      nir_emit_load_const(nir_instr_as_load_const(instr));
+      /* We can hit these, but we do nothing now and use them as
+       * immediates later in get_nir_src().
+       * @FIXME: while this is what fs_nir does, we can do this better in the VS
+       * stage because we can emit vector operations and save some MOVs in
+       * cases where the constants are representable in 8 bits.
+       */
       break;
 
    case nir_instr_type_intrinsic:
@@ -179,14 +184,6 @@ vec4_visitor::get_nir_src(nir_src src)
    }
 
    return src_reg(reg);
-}
-
-void
-vec4_visitor::nir_emit_load_const(nir_load_const_instr *instr)
-{
-   /* 'load_const' instructions are ignored. Instead, the get_nir_src() method
-      indirectly implements loading constant values into volatile registers.
-      This is how brw_fs_nir work and we should do the same. */
 }
 
 void
