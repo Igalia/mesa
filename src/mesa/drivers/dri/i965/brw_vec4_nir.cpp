@@ -96,7 +96,7 @@ vec4_visitor::nir_emit_cf_list(exec_list *list)
          break;
 
       case nir_cf_node_loop:
-         /* @TODO */
+         nir_emit_loop(nir_cf_node_as_loop(node));
          break;
 
       case nir_cf_node_block:
@@ -107,6 +107,16 @@ vec4_visitor::nir_emit_cf_list(exec_list *list)
          unreachable("Invalid CFG node block");
       }
    }
+}
+
+void
+vec4_visitor::nir_emit_loop(nir_loop *loop)
+{
+   emit(BRW_OPCODE_DO);
+
+   nir_emit_cf_list(&loop->body);
+
+   emit(BRW_OPCODE_WHILE);
 }
 
 void

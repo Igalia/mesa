@@ -399,6 +399,7 @@ public:
    virtual void nir_emit_intrinsic(nir_intrinsic_instr *instr);
    virtual void nir_emit_impl(nir_function_impl *impl);
    virtual void nir_emit_cf_list(exec_list *list);
+   virtual void nir_emit_loop(nir_loop *loop);
    virtual void nir_emit_block(nir_block *block);
    virtual void nir_emit_instr(nir_instr *instr);
    virtual void nir_emit_alu(nir_alu_instr *instr);
