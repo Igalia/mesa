@@ -220,6 +220,8 @@ vec4_instruction::is_send_from_grf()
    case SHADER_OPCODE_TYPED_ATOMIC:
    case SHADER_OPCODE_TYPED_SURFACE_READ:
    case SHADER_OPCODE_TYPED_SURFACE_WRITE:
+   case VS_OPCODE_BUFFER_READ:
+   case VS_OPCODE_UNALIGNED_BUFFER_READ:
       return true;
    default:
       return false;
@@ -298,6 +300,8 @@ vec4_visitor::implied_mrf_writes(vec4_instruction *inst)
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
    case VS_OPCODE_BUFFER_READ:
       return 2;
+   case VS_OPCODE_UNALIGNED_BUFFER_READ:
+      return 1;
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
       return 3;
    case GS_OPCODE_URB_WRITE:

@@ -511,6 +511,15 @@ private:
                              struct brw_reg dst,
                              struct brw_reg index,
                              struct brw_reg offset);
+   void generate_unaligned_buffer_read(vec4_instruction *inst,
+                                       struct brw_reg dst,
+                                       struct brw_reg index,
+                                       struct brw_reg offset,
+                                       struct brw_reg offset_subreg);
+   void generate_merge_simd4x2_value(vec4_instruction *inst,
+                                     struct brw_reg dst,
+                                     struct brw_reg src0,
+                                     struct brw_reg src1);
    void generate_unpack_flags(struct brw_reg dst);
 
    struct brw_context *brw;

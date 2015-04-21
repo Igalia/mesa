@@ -1854,6 +1854,10 @@ vec4_visitor::visit(ir_expression *ir)
                                shader_prog->NumUniformBlocks - 1);
       }
 
+      /* For UBO loads (and SSBO loads with constant offset) we want the offset
+       * in units of oword, but for SSBO loads with non-constant offset we
+       * want it in bytes
+       */
       if (const_offset_ir) {
          if (devinfo->gen >= 8) {
             /* Store the offset in a GRF so we can send-from-GRF. */
@@ -1867,7 +1871,10 @@ vec4_visitor::visit(ir_expression *ir)
          }
       } else {
          offset = src_reg(this, glsl_type::uint_type);
-         emit(SHR(dst_reg(offset), op[1], src_reg(4)));
+         if (ir->operation == ir_binop_ubo_load)
+            emit(SHR(dst_reg(offset), op[1], src_reg(4)));
+         else
+            emit(MOV(dst_reg(offset), op[1]));
       }
 
       emit_pull_constant_load_reg(dst_reg(packed_consts),
@@ -1899,37 +1906,63 @@ vec4_visitor::visit(ir_expression *ir)
                                          src_reg(grf_offset)));
             pull->mlen = 1;
          } else { /* ir_binop_ssbo_load */
-            /* FIXME: handle unaligned non-constant offset properly. For
-             * example:
-             *
-             * struct S {
-             *    float a, b, c, d;
-             * }
-             *
-             * layout(std140, binding=0) buffer B {
-             *    TB s[4];
-             * };
-             *
-             * If we read s[i].c, for i=1 we have a byte offset of 24, which
-             * is not 16-byte aligned. The code below uses const_offset
-             * to swizzle the read result, but since we are indexing the array
-             * with a variable we won't have a const_offset and the swizzle
-             * won't be right. Notice that ir_binop_ubo_load does not handle
-             * this case either).
-             *
-             * We probably want to use a read message that can use a DWord
-             * offset so we can just read 4 elements from the exact Dword offset
-             * we have. The Dual OWord Read message we are using here uses OWord
-             * offsets and that is why we need to swizzle the read result
-             * based on the modulo of the offset we have, which we can only do
-             * for constant offsets.
-             */
-            pull = emit(new(mem_ctx)
-                        vec4_instruction(VS_OPCODE_BUFFER_READ,
-                                         dst_reg(packed_consts),
-                                         surf_index,
-                                         src_reg(grf_offset)));
-            pull->mlen = 2;
+            if (const_offset_ir) {
+               /* This works well for all constant offsets. Non-constant offsets
+                * would only work if the offset happens to be 16-byte aligned.
+                */
+               pull = emit(new(mem_ctx)
+                          vec4_instruction(VS_OPCODE_BUFFER_READ,
+                                           dst_reg(packed_consts),
+                                           surf_index,
+                                           src_reg(grf_offset)));
+               pull->mlen = 2;
+            } else {
+               /* In order to handle non-constant non-16B aligned reads, we
+                * use unaligned dword read messages.
+                *
+                * FIXME: Fix this scenario for UBO loads too.
+                *
+                * Because these read messages do not operate in "dual" mode we
+                * need to handle each vertex in the SIMD4x2 operation separately.
+                * For this, we emit a read for the first vertex using the lower
+                * half of the offset register and then we emit another read for
+                * the second vertex using the upper half of the offset register.
+                * Finally, we merge the results of the reads in a way that is
+                * suitable for SIMD4x2 operation, so we move the result of the
+                * first read to the lower half of our dst and we move the result
+                * of the second read into the upper half of our dst.
+                */
+               this->current_annotation = "SIMD4x2 unaligned read (vertex 0)";
+               src_reg read0 = src_reg(this, glsl_type::vec4_type);
+               read0.type = result.type;
+               pull = emit(new(mem_ctx)
+                           vec4_instruction(VS_OPCODE_UNALIGNED_BUFFER_READ,
+                                            dst_reg(read0),
+                                            surf_index,
+                                            src_reg(grf_offset),
+                                            brw_imm_ud(0)));
+               pull->mlen = 1;
+               read0.swizzle = brw_swizzle_for_size(ir->type->vector_elements);
+
+               this->current_annotation = "SIMD4x2 unaligned read (vertex 1)";
+               src_reg read1 = src_reg(this, glsl_type::vec4_type);
+               read1.type = result.type;
+               pull = emit(new(mem_ctx)
+                           vec4_instruction(VS_OPCODE_UNALIGNED_BUFFER_READ,
+                                            dst_reg(read1),
+                                            surf_index,
+                                            src_reg(grf_offset),
+                                            brw_imm_ud(4)));
+               pull->mlen = 1;
+               read1.swizzle = brw_swizzle_for_size(ir->type->vector_elements);
+
+               this->current_annotation = "SIMD4x2 unaligned read merge";
+               emit(new(mem_ctx)
+                    vec4_instruction(VS_OPCODE_MERGE_SIMD4X2_VALUE,
+                                     dst_reg(packed_consts), read0, read1));
+               packed_consts.swizzle =
+                  brw_swizzle_for_size(ir->type->vector_elements);
+            }
          }
       } else {
          vec4_instruction *pull =

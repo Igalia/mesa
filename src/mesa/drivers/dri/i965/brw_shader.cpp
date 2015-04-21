@@ -605,7 +605,11 @@ brw_instruction_name(enum opcode op)
 
    case VS_OPCODE_BUFFER_READ:
       return "vs_buffer_read";
+   case VS_OPCODE_UNALIGNED_BUFFER_READ:
+      return "vs_unaligned_buffer_read";
 
+   case VS_OPCODE_MERGE_SIMD4X2_VALUE:
+      return "vs_merge_simd4x2_value";
    case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
       return "unpack_flags_simd4x2";
 
