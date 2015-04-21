@@ -238,16 +238,6 @@ brw_conditional_for_nir_comparison(nir_op op)
    case nir_op_ilt:
    case nir_op_ult:
       return BRW_CONDITIONAL_L;
-      /* @FIXME: ir_binop_greater and ir_binop_lequal are not NIR opcodes, and
-       * are declared in ir.h and only available to C++ sources.
-       * So comment them out by now until it is clear if this is not a mistake,
-       * and if so, how are we going to make them available here */
-      /*
-   case ir_binop_greater:
-      return BRW_CONDITIONAL_G;
-   case ir_binop_lequal:
-      return BRW_CONDITIONAL_LE;
-      */
    case nir_op_fge:
    case nir_op_ige:
    case nir_op_uge:
