@@ -485,6 +485,9 @@ typedef enum
    /* ARB_uniform_buffer_object */
    OPCODE_UNIFORM_BLOCK_BINDING,
 
+   /* ARB_shader_storage_buffer_object */
+   OPCODE_SHADER_STORAGE_BLOCK_BINDING,
+
    /* EXT_polygon_offset_clamp */
    OPCODE_POLYGON_OFFSET_CLAMP,
 
@@ -7681,6 +7684,22 @@ save_UniformBlockBinding(GLuint prog, GLuint index, GLuint binding)
    }
 }
 
+static void GLAPIENTRY
+save_ShaderStorageBlockBinding(GLuint prog, GLuint index, GLuint binding)
+{
+   GET_CURRENT_CONTEXT(ctx);
+   Node *n;
+   ASSERT_OUTSIDE_SAVE_BEGIN_END_AND_FLUSH(ctx);
+   n = alloc_instruction(ctx, OPCODE_SHADER_STORAGE_BLOCK_BINDING, 3);
+   if (n) {
+      n[1].ui = prog;
+      n[2].ui = index;
+      n[3].ui = binding;
+   }
+   if (ctx->ExecuteFlag) {
+      CALL_ShaderStorageBlockBinding(ctx->Exec, (prog, index, binding));
+   }
+}
 
 /**
  * Save an error-generating command into display list.
@@ -8901,6 +8920,10 @@ execute_list(struct gl_context *ctx, GLuint list)
             CALL_UniformBlockBinding(ctx->Exec, (n[1].ui, n[2].ui, n[3].ui));
             break;
 
+         case OPCODE_SHADER_STORAGE_BLOCK_BINDING:
+            CALL_ShaderStorageBlockBinding(ctx->Exec, (n[1].ui, n[2].ui, n[3].ui));
+            break;
+
          case OPCODE_CONTINUE:
             n = (Node *) get_pointer(&n[1]);
             break;
@@ -9658,6 +9681,9 @@ _mesa_initialize_save_table(const struct gl_context *ctx)
 
    /* GL_ARB_uniform_buffer_object */
    SET_UniformBlockBinding(table, save_UniformBlockBinding);
+
+   /* GL_ARB_shader_storage_buffer_object */
+   SET_ShaderStorageBlockBinding(table, save_ShaderStorageBlockBinding);
 
    /* GL_ARB_draw_instanced */
    SET_DrawArraysInstancedARB(table, save_DrawArraysInstancedARB);
