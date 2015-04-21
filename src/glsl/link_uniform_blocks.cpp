@@ -178,6 +178,7 @@ struct block {
 
 unsigned
 link_uniform_blocks(void *mem_ctx,
+                    struct gl_context *ctx,
                     struct gl_shader_program *prog,
                     struct gl_shader **shader_list,
                     unsigned num_shaders,
@@ -299,6 +300,14 @@ link_uniform_blocks(void *mem_ctx,
 
             blocks[i].UniformBufferSize = parcel.buffer_size;
 
+            /* Check SSBO size is lower than maximum supported size for SSBO */
+            if (b->is_shader_storage &&
+                parcel.buffer_size > ctx->Const.MaxShaderStorageBlockSize) {
+               linker_error(prog, "shader storage block `%s' has size %d > %d",
+                           block_type->name,
+                           parcel.buffer_size,
+                           ctx->Const.MaxShaderStorageBlockSize);
+            }
             blocks[i].NumUniforms =
                (unsigned)(ptrdiff_t)(&variables[parcel.index] - blocks[i].Uniforms);
 
@@ -319,6 +328,14 @@ link_uniform_blocks(void *mem_ctx,
 
          blocks[i].UniformBufferSize = parcel.buffer_size;
 
+         /* Check SSBO size is lower than maximum supported size for SSBO */
+         if (b->is_shader_storage &&
+             parcel.buffer_size > ctx->Const.MaxShaderStorageBlockSize) {
+            linker_error(prog, "shader storage block `%s' has size %d > %d",
+                        block_type->name,
+                        parcel.buffer_size,
+                        ctx->Const.MaxShaderStorageBlockSize);
+         }
          blocks[i].NumUniforms =
             (unsigned)(ptrdiff_t)(&variables[parcel.index] - blocks[i].Uniforms);
 
