@@ -178,6 +178,7 @@ struct block {
 
 unsigned
 link_uniform_blocks(void *mem_ctx,
+                    struct gl_context *ctx,
                     struct gl_shader_program *prog,
                     struct gl_shader **shader_list,
                     unsigned num_shaders,
@@ -220,6 +221,16 @@ link_uniform_blocks(void *mem_ctx,
          b->type->is_array() ? b->type->fields.array : b->type;
 
       assert((b->num_array_elements > 0) == b->type->is_array());
+
+      /* Check SSBO size is lower than maximum supported size for SSBO */
+      if (b->is_buffer &&
+          (block_type->std140_size(false) >
+           ctx->Const.MaxShaderStorageBlockSize)) {
+         linker_error(prog, "shader storage block `%s' has size %d > %d",
+                      block_type->name,
+                      block_type->std140_size(false),
+                      ctx->Const.MaxShaderStorageBlockSize);
+      }
 
       block_size.num_active_uniforms = 0;
       block_size.process(block_type, "");
