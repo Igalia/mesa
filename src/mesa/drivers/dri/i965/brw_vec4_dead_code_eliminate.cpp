@@ -44,6 +44,8 @@ can_do_writemask(const struct brw_context *brw,
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
    case VS_OPCODE_PULL_CONSTANT_LOAD:
    case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
+   case VS_OPCODE_BUFFER_READ:
+   case VS_OPCODE_UNALIGNED_BUFFER_READ:
       return false;
    default:
       /* The MATH instruction on Gen6 only executes in align1 mode, which does
