@@ -214,6 +214,8 @@ vec4_instruction::is_send_from_grf()
    switch (opcode) {
    case SHADER_OPCODE_SHADER_TIME_ADD:
    case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
+   case VS_OPCODE_BUFFER_READ:
+   case VS_OPCODE_UNALIGNED_BUFFER_READ:
       return true;
    default:
       return false;
@@ -286,6 +288,8 @@ vec4_visitor::implied_mrf_writes(vec4_instruction *inst)
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
    case VS_OPCODE_BUFFER_READ:
       return 2;
+   case VS_OPCODE_UNALIGNED_BUFFER_READ:
+      return 1;
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
    case VS_OPCODE_BUFFER_WRITE:
       return 3;
