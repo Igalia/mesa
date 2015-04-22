@@ -244,9 +244,21 @@ brw_conditional_for_nir_comparison(nir_op op)
       return BRW_CONDITIONAL_GE;
    case nir_op_feq:
    case nir_op_ieq:
+   case nir_op_ball_fequal2:
+   case nir_op_ball_iequal2:
+   case nir_op_ball_fequal3:
+   case nir_op_ball_iequal3:
+   case nir_op_ball_fequal4:
+   case nir_op_ball_iequal4:
       return BRW_CONDITIONAL_Z;
    case nir_op_fne:
    case nir_op_ine:
+   case nir_op_bany_fnequal2:
+   case nir_op_bany_inequal2:
+   case nir_op_bany_fnequal3:
+   case nir_op_bany_inequal3:
+   case nir_op_bany_fnequal4:
+   case nir_op_bany_inequal4:
       return BRW_CONDITIONAL_NZ;
    default:
       unreachable("not reached: bad operation for comparison");
