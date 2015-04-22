@@ -1222,6 +1222,7 @@ vec4_generator::generate_code(const cfg_t *cfg)
 
    foreach_block_and_inst (block, vec4_instruction, inst, cfg) {
       struct brw_reg src[3], dst;
+      bool multiple_instructions_emitted = false;
 
       if (unlikely(debug_flag))
          annotate(brw, &annotation, cfg, inst, p->next_insn_offset);
@@ -1650,6 +1651,9 @@ vec4_generator::generate_code(const cfg_t *cfg)
          }
          abort();
       }
+
+      if (multiple_instructions_emitted)
+         continue;
 
       if (inst->opcode == VEC4_OPCODE_PACK_BYTES) {
          /* Handled dependency hints in the generator. */
