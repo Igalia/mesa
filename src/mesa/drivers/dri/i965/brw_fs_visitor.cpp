@@ -1180,10 +1180,87 @@ fs_visitor::visit(ir_expression *ir)
       emit(FS_OPCODE_PACK_HALF_2x16_SPLIT, this->result, op[0], op[1]);
       break;
 
-   case ir_binop_ssbo_load:
+   case ir_binop_ssbo_load: {
       assert(brw->gen >= 7);
-      assert(!"Not implemented");
+
+      /* This IR node takes a constant uniform block and a constant or
+       * variable byte offset within the block and loads a vector from that.
+       */
+      ir_constant *const_uniform_block = ir->operands[0]->as_constant();
+      ir_constant *const_offset = ir->operands[1]->as_constant();
+      fs_reg surf_index;
+
+      if (const_uniform_block) {
+         /* The block index is a constant, so just emit the binding table entry
+          * as an immediate.
+          */
+         surf_index = fs_reg(stage_prog_data->binding_table.ubo_start +
+                                 const_uniform_block->value.u[0]);
+      } else {
+         /* The block index is not a constant. Evaluate the index expression
+          * per-channel and add the base UBO index; the generator will select
+          * a value from any live channel.
+          */
+         surf_index = vgrf(glsl_type::uint_type);
+         emit(ADD(surf_index, op[0],
+                  fs_reg(stage_prog_data->binding_table.ubo_start)))
+            ->force_writemask_all = true;
+
+         /* Assume this may touch any UBO. It would be nice to provide
+          * a tighter bound, but the array information is already lowered away.
+          */
+         brw_mark_surface_used(prog_data,
+                               stage_prog_data->binding_table.ubo_start +
+                               shader_prog->NumUniformBlocks - 1);
+      }
+
+      /* For scattered read message we want offset in units of dword */
+      unsigned const_offset_dwords;
+      fs_reg offset_reg = vgrf(glsl_type::uint_type);
+      if (const_offset) {
+         const_offset_dwords = const_offset->value.u[0] / 4;
+         emit(MOV(offset_reg, fs_reg(const_offset_dwords)));
+      } else {
+         emit(SHR(offset_reg, op[1], fs_reg(2)));
+      }
+
+      /* Use dword scattered read messages to load each vector component */
+      int base_mrf = 1;
+      fs_reg offset_mrf = fs_reg(MRF, base_mrf + 1, BRW_REGISTER_TYPE_UD);
+      int mlen = (dispatch_width == 8) ? 2 : 3;
+
+      fs_reg read_result = vgrf(glsl_type::float_type);
+      read_result.type = result.type;
+      read_result.width = dispatch_width;
+      for (int i = 0; i < ir->type->vector_elements; i++) {
+         fs_inst *inst = new(mem_ctx) fs_inst(SHADER_OPCODE_SCATTERED_BUFFER_LOAD,
+                                              read_result, surf_index);
+         inst->mlen = mlen;
+         inst->base_mrf = base_mrf;
+         emit(MOV(offset_mrf, offset_reg));
+         emit(inst);
+
+         if (ir->type->base_type == GLSL_TYPE_BOOL) {
+            emit(CMP(result, read_result, fs_reg(0u), BRW_CONDITIONAL_NZ));
+         } else {
+            emit(MOV(result, read_result));
+         }
+
+         result = offset(result, 1);
+
+         /* Vector components are stored contiguous in memory */
+         if (i < ir->type->vector_elements) {
+            if (const_offset) {
+               emit(MOV(offset_reg, fs_reg(++const_offset_dwords)));
+            } else {
+               emit(ADD(offset_reg, offset_reg, brw_imm_ud(1)));
+            }
+         }
+      }
+
+      result.reg_offset = 0;
       break;
+   }
 
    case ir_binop_ubo_load: {
       /* This IR node takes a constant uniform block and a constant or
