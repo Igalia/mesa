@@ -816,7 +816,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       /* @FIXME: as for the relational operations,  both the fs_visitor and vec4_visitor
        * call to resolve_bool_comparison for the operand if (gen <= 5). Check if it is
        * needed.
-      */
+       */
 
       /* @FIXME: fs_visitor and vec4_visitor, do:
        *      op[0].type = BRW_REGISTER_TYPE_D;
