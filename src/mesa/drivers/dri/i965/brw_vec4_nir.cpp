@@ -762,6 +762,32 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
                brw_conditional_for_nir_comparison(instr->op)));
       break;
 
+   case nir_op_ball_fequal2:
+   case nir_op_ball_iequal2:
+   case nir_op_ball_fequal3:
+   case nir_op_ball_iequal3:
+   case nir_op_ball_fequal4:
+   case nir_op_ball_iequal4:
+   case nir_op_bany_fnequal2:
+   case nir_op_bany_inequal2:
+   case nir_op_bany_fnequal3:
+   case nir_op_bany_inequal3:
+   case nir_op_bany_fnequal4:
+   case nir_op_bany_inequal4:
+      /* @FIXME: if (gen <= 5) the vec4_visitor and fs_visitor call to
+       * resolve_bool_comparison for every operand. To check if we
+       * want to add it.
+       */
+
+      /* "==" or "!=" operators producing a scalar boolean. */
+      emit(CMP(dst_null_d(), op[0], op[1],
+               brw_conditional_for_nir_comparison(instr->op)));
+
+      emit(MOV(dst, src_reg(0)));
+      inst = emit(MOV(dst, src_reg((int)ctx->Const.UniformBooleanTrue)));
+      inst->predicate = BRW_PREDICATE_ALIGN16_ANY4H;
+      break;
+
       /* @FIXME: for the following logical operations: inot, ixor, ior, iand,
        * brw_fs_nir calls to resolve_source_modifiers for every operand
        * if (gen > =8). This call and check is not present in the fs and vec4
