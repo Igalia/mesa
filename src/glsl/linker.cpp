@@ -706,7 +706,8 @@ validate_intrastage_arrays(struct gl_shader_program *prog,
             existing->type = var->type;
             return true;
          } else if (existing->type->length != 0) {
-            if(existing->type->length <= var->data.max_array_access) {
+            if(existing->type->length <= var->data.max_array_access &&
+               !existing->data.from_unsized_array) {
                linker_error(prog, "%s `%s' declared as type "
                            "`%s' but outermost dimension has an index"
                            " of `%i'\n",
