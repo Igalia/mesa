@@ -553,6 +553,8 @@ init_program_limits(struct gl_constants *consts, gl_shader_stage stage,
 
    prog->MaxAtomicBuffers = 0;
    prog->MaxAtomicCounters = 0;
+
+   prog->MaxShaderStorageBlocks = 12;
 }
 
 
