@@ -373,6 +373,18 @@ descriptor=[
   [ "UNIFORM_BUFFER_OFFSET_ALIGNMENT", "CONTEXT_INT(Const.UniformBufferOffsetAlignment), extra_ARB_uniform_buffer_object" ],
   [ "UNIFORM_BUFFER_BINDING", "LOC_CUSTOM, TYPE_INT, 0, extra_ARB_uniform_buffer_object" ],
 
+  # GL_ARB_shader_storage_buffer_object
+  [ "MAX_VERTEX_SHADER_STORAGE_BLOCKS", "CONTEXT_INT(Const.Program[MESA_SHADER_VERTEX].MaxShaderStorageBlocks), extra_ARB_shader_storage_buffer_object" ],
+  [ "MAX_GEOMETRY_SHADER_STORAGE_BLOCKS", "CONTEXT_INT(Const.Program[MESA_SHADER_FRAGMENT].MaxShaderStorageBlocks), extra_ARB_shader_storage_buffer_object" ],
+  [ "MAX_FRAGMENT_SHADER_STORAGE_BLOCKS", "CONTEXT_INT(Const.Program[MESA_SHADER_FRAGMENT].MaxShaderStorageBlocks), extra_ARB_shader_storage_buffer_object" ],
+  [ "MAX_COMPUTE_SHADER_STORAGE_BLOCKS", "CONTEXT_INT(Const.Program[MESA_SHADER_COMPUTE].MaxShaderStorageBlocks), extra_ARB_shader_storage_buffer_object" ],
+  [ "MAX_COMBINED_SHADER_STORAGE_BLOCKS", "CONTEXT_INT(Const.MaxCombinedShaderStorageBlocks), extra_ARB_shader_storage_buffer_object" ],
+  [ "MAX_SHADER_STORAGE_BLOCK_SIZE", "CONTEXT_INT(Const.MaxShaderStorageBlockSize), extra_ARB_shader_storage_buffer_object" ],
+  [ "MAX_SHADER_STORAGE_BUFFER_BINDINGS", "CONTEXT_INT(Const.MaxShaderStorageBufferBindings), extra_ARB_shader_storage_buffer_object" ],
+  [ "MAX_COMBINED_SHADER_OUTPUT_RESOURCES", "CONTEXT_INT(Const.MaxCombinedImageUnitsAndFragmentOutputs), extra_ARB_shader_storage_buffer_object" ],
+  [ "SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT", "CONTEXT_INT(Const.ShaderStorageBufferOffsetAlignment), extra_ARB_shader_storage_buffer_object" ],
+  [ "SHADER_STORAGE_BUFFER_BINDING", "LOC_CUSTOM, TYPE_INT, 0, extra_ARB_shader_storage_buffer_object" ],
+
 # GL_ARB_vertex_shader
   [ "MAX_VERTEX_UNIFORM_COMPONENTS_ARB", "CONTEXT_INT(Const.Program[MESA_SHADER_VERTEX].MaxUniformComponents), extra_ARB_vertex_shader" ],
   [ "MAX_VARYING_FLOATS_ARB", "LOC_CUSTOM, TYPE_INT, 0, extra_ARB_vertex_shader" ],
