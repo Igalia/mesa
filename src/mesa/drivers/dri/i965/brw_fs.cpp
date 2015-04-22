@@ -949,6 +949,8 @@ fs_inst::regs_read(int arg) const
       return mlen;
    } else if (opcode == SHADER_OPCODE_SCATTERED_BUFFER_STORE && arg == 0) {
       return mlen;
+   } else if (opcode == SHADER_OPCODE_SCATTERED_BUFFER_LOAD && arg == 0) {
+      return mlen;
    }
 
    switch (src[arg].file) {
@@ -1033,6 +1035,7 @@ fs_visitor::implied_mrf_writes(fs_inst *inst)
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
       return 1;
    case SHADER_OPCODE_SCATTERED_BUFFER_STORE:
+   case SHADER_OPCODE_SCATTERED_BUFFER_LOAD:
       return 1; /* only the header, visitor writes the rest of the payload */
    case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD:
       return inst->mlen;
