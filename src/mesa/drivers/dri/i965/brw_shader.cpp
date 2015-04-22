@@ -493,6 +493,8 @@ brw_instruction_name(enum opcode op)
 
    case SHADER_OPCODE_SCATTERED_BUFFER_STORE:
       return "scattered_buffer_store";
+   case SHADER_OPCODE_SCATTERED_BUFFER_LOAD:
+      return "scattered_buffer_load";
 
    case SHADER_OPCODE_LOAD_PAYLOAD:
       return "load_payload";
