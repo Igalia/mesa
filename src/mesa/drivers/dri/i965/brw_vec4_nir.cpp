@@ -44,6 +44,8 @@ vec4_visitor::emit_nir_code()
 
    nir_emit_system_values(nir);
 
+   nir_setup_uniforms(nir);
+
    /* get the main function and emit it */
    nir_foreach_overload(nir, overload) {
       assert(strcmp(overload->function->name, "main") == 0);
@@ -139,6 +141,86 @@ vec4_visitor::nir_setup_outputs(nir_shader *shader)
       int offset = var->data.driver_location;
       nir_outputs[offset] = var->data.location;
    }
+}
+
+void
+vec4_visitor::nir_setup_uniforms(nir_shader *shader)
+{
+   if (shader_prog) {
+      foreach_list_typed(nir_variable, var, node, &shader->uniforms) {
+         /* UBO's and atomics don't take up space in the uniform file */
+         if (var->interface_type != NULL || var->type->contains_atomic())
+            continue;
+
+         if (strncmp(var->name, "gl_", 3) == 0) {
+            nir_setup_builtin_uniform(var);
+         } else
+            nir_setup_uniform(var);
+      }
+   } else {
+      /* prog_to_nir doesn't create uniform variables; set param up directly. */
+
+      /* @FIXME: this block has not been tested yet, just copied here
+       * from fs_nir.
+       */
+      for (unsigned p = 0; p < prog->Parameters->NumParameters; p++) {
+         for (unsigned int i = 0; i < 4; i++) {
+            stage_prog_data->param[4 * p + i] =
+               &prog->Parameters->ParameterValues[p][i];
+         }
+      }
+   }
+}
+
+void
+vec4_visitor::nir_setup_uniform(nir_variable *var)
+{
+   int namelen = strlen(var->name);
+
+   /* The data for our (non-builtin) uniforms is stored in a series of
+    * gl_uniform_driver_storage structs for each subcomponent that
+    * glGetUniformLocation() could name.  We know it's been set up in the same
+    * order we'd walk the type, so walk the list of storage and find anything
+    * with our name, or the prefix of a component that starts with our name.
+    */
+
+    for (unsigned u = 0; u < shader_prog->NumUserUniformStorage; u++) {
+       struct gl_uniform_storage *storage = &shader_prog->UniformStorage[u];
+
+       if (strncmp(var->name, storage->name, namelen) != 0 ||
+           (storage->name[namelen] != 0 &&
+            storage->name[namelen] != '.' &&
+            storage->name[namelen] != '[')) {
+          continue;
+       }
+
+       gl_constant_value *components = storage->storage;
+       unsigned vector_count = (MAX2(storage->array_elements, 1) *
+                                storage->type->matrix_columns);
+
+       for (unsigned s = 0; s < vector_count; s++) {
+          assert(uniforms < uniform_array_size);
+          uniform_vector_size[uniforms] = storage->type->vector_elements;
+
+          int i;
+          for (i = 0; i < uniform_vector_size[uniforms]; i++) {
+             stage_prog_data->param[uniforms * 4 + i] = components;
+             components++;
+          }
+          for (; i < 4; i++) {
+             static gl_constant_value zero = { 0.0 };
+             stage_prog_data->param[uniforms * 4 + i] = &zero;
+          }
+
+          uniforms++;
+       }
+    }
+}
+
+void
+vec4_visitor::nir_setup_builtin_uniform(nir_variable *var)
+{
+   /* @TODO */
 }
 
 void
@@ -273,6 +355,8 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    dst_reg dest;
    src_reg src;
 
+   bool has_indirect = false;
+
    switch (instr->intrinsic) {
 
    case nir_intrinsic_load_input: {
@@ -336,6 +420,33 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       dest.type = instance_id.type;
       emit(MOV(dest, instance_id));
 
+      break;
+   }
+
+   case nir_intrinsic_load_uniform_indirect:
+      has_indirect = true;
+      /* fallthrough */
+   case nir_intrinsic_load_uniform: {
+      unsigned offset = instr->const_index[0];
+
+      dest = get_nir_dest(instr->dest);
+      src = src_reg(dst_reg(UNIFORM, 0));
+
+      dest.writemask = 0;
+      src.swizzle = 0;
+      for (int i = 0; i < instr->const_index[1]; i++) {
+         for (unsigned j = 0; j < instr->num_components; j++) {
+           dest.writemask |= (1 << offset);
+           src.swizzle |= offset << (offset * 2);
+           offset++;
+         }
+      }
+
+      /* @FIXME: this has not been tested yet, just copied from fs_nir */
+      if (has_indirect)
+        src.reladdr = new(mem_ctx) src_reg(get_nir_src(instr->src[0]));
+
+      emit(MOV(dest, src));
       break;
    }
 
