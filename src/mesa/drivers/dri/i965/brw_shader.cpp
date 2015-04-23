@@ -579,6 +579,8 @@ brw_instruction_name(enum opcode op)
       return "vs_unaligned_buffer_read";
    case VS_OPCODE_MERGE_SIMD4X2_VALUE:
       return "vs_merge_simd4x2_value";
+   case VS_OPCODE_SCATTERED_BUFFER_WRITE:
+      return "vs_scattered_buffer_write";
    case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
       return "unpack_flags_simd4x2";
 
@@ -1034,6 +1036,7 @@ backend_instruction::has_side_effects() const
    case SHADER_OPCODE_URB_WRITE_SIMD8:
    case FS_OPCODE_FB_WRITE:
    case SHADER_OPCODE_SCATTERED_BUFFER_STORE:
+   case VS_OPCODE_SCATTERED_BUFFER_WRITE:
       return true;
    default:
       return false;
