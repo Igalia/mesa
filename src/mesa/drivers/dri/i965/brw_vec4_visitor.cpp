@@ -2963,9 +2963,103 @@ vec4_visitor::visit(ir_end_primitive *)
 }
 
 void
-vec4_visitor::visit(ir_ssbo_store *)
+vec4_visitor::visit(ir_ssbo_store *ir)
 {
-   unreachable("not implemented yet");
+   ir_constant *const_uniform_block = ir->block->as_constant();
+   ir_constant *const_offset_ir = ir->offset->as_constant();
+
+   unsigned const_offset = const_offset_ir ? const_offset_ir->value.u[0] :
+                                             ir->const_offset;
+   src_reg offset;
+   src_reg surf_index;
+
+   if (const_uniform_block) {
+      surf_index = src_reg(prog_data->base.binding_table.ubo_start +
+                           const_uniform_block->value.u[0]);
+   } else {
+      ir->block->accept(this);
+      src_reg block_reg = this->result;
+      surf_index = src_reg(this, glsl_type::uint_type);
+      emit(ADD(dst_reg(surf_index), block_reg,
+               src_reg(prog_data->base.binding_table.ubo_start)));
+
+      brw_mark_surface_used(&prog_data->base,
+                            prog_data->base.binding_table.ubo_start +
+                            shader_prog->NumUniformBlocks - 1);
+   }
+
+   /* Compute offset in units of dword */
+   unsigned const_offset_dwords = 0;
+   if (const_offset_ir) {
+      const_offset_dwords = const_offset / 4;
+      if (brw->gen >= 8) {
+         offset = src_reg(this, glsl_type::int_type);
+         emit(MOV(dst_reg(offset), src_reg(const_offset_dwords)));
+      } else {
+         offset = src_reg(const_offset_dwords);
+      }
+   } else {
+      ir->offset->accept(this);
+      src_reg offset_reg = this->result;
+      offset = src_reg(this, glsl_type::uint_type);
+      emit(SHR(dst_reg(offset), offset_reg, src_reg(2)));
+   }
+
+   ir->val->accept(this);
+   src_reg val_reg = this->result;
+
+   /* The scattered write message takes 8 offsets, one in each subregister of
+    * M1. In SIMD4x2 mode, M1.0 to M1.3 will store offsets for up to 4 dwords
+    * (4 vector elements) of the first vertex and M1.4 to M1.7 will hold the
+    * offsets for the second vertex. To achieve this, for each element in
+    * the vector we select a subregister by using the writemask (channel X is
+    * subregister 0, channel Y is subregister 1, etc)
+    */
+   dst_reg offset_payload = dst_reg(this, glsl_type::vec4_type);
+   for (int i = 0; i < ir->val->type->vector_elements; i++) {
+      int component_mask = 1 << i;
+      if (ir->write_mask & component_mask) {
+         offset_payload.writemask = component_mask;
+         emit(MOV(offset_payload, offset));
+      }
+
+      /* Vector components are stored contiguous in memory */
+      if (const_offset_ir) {
+         offset = src_reg(++const_offset_dwords);
+      } else {
+         emit(ADD(dst_reg(offset), offset, brw_imm_ud(1)));
+      }
+   }
+
+   /* Reset the writemask to select all the channels we wrote, otherwise
+    * when we create a src_reg from this the swizzle won't select the channels
+    * we want
+    */
+   offset_payload.writemask = ir->write_mask;
+
+   int base_mrf = 1;
+
+   /* M1: Offset payload */
+   dst_reg mrf;
+   mrf = dst_reg(MRF, base_mrf + 1);
+   mrf.type = BRW_REGISTER_TYPE_UD;
+   emit(MOV(mrf, src_reg(offset_payload)));
+
+   /* M2: Data payload */
+   mrf = dst_reg(MRF, base_mrf + 2);
+   mrf.type = val_reg.type;
+   emit(MOV(mrf, val_reg));
+
+   /* Use the writemask on the dst to select the dwords we want to write */
+   struct brw_reg brw_dst = brw_vec8_grf(0, 0);
+   brw_dst.dw1.bits.writemask = ir->write_mask;
+   dst_reg push_dst = dst_reg(brw_dst);
+   vec4_instruction *inst =
+      new(mem_ctx) vec4_instruction(VS_OPCODE_SCATTERED_BUFFER_WRITE,
+                                    push_dst, surf_index);
+   inst->base_mrf = base_mrf;
+   inst->mlen = 3;
+   emit(inst);
 }
 
 void
