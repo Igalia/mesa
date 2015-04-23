@@ -304,6 +304,8 @@ vec4_visitor::implied_mrf_writes(vec4_instruction *inst)
       return 1;
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
       return 3;
+   case VS_OPCODE_SCATTERED_BUFFER_WRITE:
+      return 1; /* Only the header, visitor handles other payload elements */
    case GS_OPCODE_URB_WRITE:
    case GS_OPCODE_URB_WRITE_ALLOCATE:
    case GS_OPCODE_THREAD_END:
