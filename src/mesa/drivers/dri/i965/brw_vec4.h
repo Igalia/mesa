@@ -409,6 +409,7 @@ public:
    virtual void nir_emit_alu(nir_alu_instr *instr);
 
    dst_reg get_nir_dest(nir_dest dest);
+   src_reg get_nir_src(nir_src src, nir_alu_type type);
    src_reg get_nir_src(nir_src src);
 
    dst_reg *nir_locals;
