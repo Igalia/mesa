@@ -325,7 +325,7 @@ vec4_visitor::get_nir_dest(nir_dest dest)
 }
 
 src_reg
-vec4_visitor::get_nir_src(nir_src src)
+vec4_visitor::get_nir_src(nir_src src, nir_alu_type type)
 {
    dst_reg reg;
 
@@ -334,19 +334,40 @@ vec4_visitor::get_nir_src(nir_src src)
       nir_load_const_instr *load = nir_instr_as_load_const(src.ssa->parent_instr);
 
       reg = dst_reg(GRF, alloc.allocate(src.ssa->num_components));
-      reg.type = BRW_REGISTER_TYPE_D;
+      reg = retype(reg, brw_type_for_nir_type(type));
 
       for (unsigned i = 0; i < src.ssa->num_components; ++i) {
          reg.writemask = 1 << i;
-         emit(MOV(reg, retype(src_reg(load->value.i[i]), reg.type)));
+
+         switch (reg.type) {
+         case BRW_REGISTER_TYPE_F:
+            emit(MOV(reg, src_reg(load->value.f[i])));
+            break;
+         case BRW_REGISTER_TYPE_D:
+            emit(MOV(reg, src_reg(load->value.i[i])));
+            break;
+         case BRW_REGISTER_TYPE_UD:
+            emit(MOV(reg, src_reg(load->value.u[i])));
+            break;
+         default:
+            unreachable("invalid register type");
+         }
       }
    }
    else {
       reg = nir_locals[src.reg.reg->index];
       reg = offset(reg, src.reg.base_offset);
+      reg = retype(reg, brw_type_for_nir_type(type));
    }
 
    return src_reg(reg);
+}
+
+src_reg
+vec4_visitor::get_nir_src(nir_src src)
+{
+   /* if type is not specified, default to float */
+   return get_nir_src(src, nir_type_float);
 }
 
 void
@@ -470,14 +491,15 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    vec4_instruction *inst;
 
    dst_reg dst = get_nir_dest(instr->dest.dest);
-   dst.type = brw_type_for_nir_type(nir_op_infos[instr->op].output_type);
+   dst = retype(dst,
+                brw_type_for_nir_type(nir_op_infos[instr->op].output_type));
    dst.writemask = instr->dest.write_mask;
 
    src_reg op[4];
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-      op[i] = get_nir_src(instr->src[i].src);
+      op[i] = get_nir_src(instr->src[i].src,
+                          nir_op_infos[instr->op].input_types[i]);
       op[i].swizzle = brw_swizzle_for_nir_swizzle(instr->src[i].swizzle);
-      op[i].type = brw_type_for_nir_type(nir_op_infos[instr->op].input_types[i]);
       op[i].abs = instr->src[i].abs;
       op[i].negate = instr->src[i].negate;
    }
@@ -535,6 +557,9 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_fadd:
+      op[0] = retype(op[0], BRW_REGISTER_TYPE_F);
+      op[1] = retype(op[1], BRW_REGISTER_TYPE_F);
+      /* fall through */
    case nir_op_iadd:
       inst = emit(ADD(dst, op[0], op[1]));
       inst->saturate = instr->dest.saturate;
