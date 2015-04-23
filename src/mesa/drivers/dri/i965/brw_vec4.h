@@ -396,6 +396,9 @@ public:
    virtual void emit_nir_code();
    virtual void nir_setup_inputs(nir_shader *shader);
    virtual void nir_setup_outputs(nir_shader *shader);
+   virtual void nir_setup_uniforms(nir_shader *shader);
+   virtual void nir_setup_uniform(nir_variable *var);
+   virtual void nir_setup_builtin_uniform(nir_variable *var);
    virtual void nir_emit_system_values (nir_shader *shader);
    virtual void nir_emit_intrinsic(nir_intrinsic_instr *instr);
    virtual void nir_emit_impl(nir_function_impl *impl);
