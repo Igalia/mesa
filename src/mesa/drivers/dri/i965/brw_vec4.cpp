@@ -1720,6 +1720,10 @@ vec4_visitor::run()
    bool use_nir =
       brw->ctx.Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].NirOptions != NULL;
 
+   /* @FIXME: temporary condition for debugging purposes */
+   bool disable_vec4_optimizations =
+      brw_env_var_as_boolean("INTEL_DISABLE_VEC4_OPTIMIZATIONS", true);
+
    sanity_param_count = prog->Parameters->NumParameters;
 
    if (INTEL_DEBUG & DEBUG_SHADER_TIME)
@@ -1809,10 +1813,12 @@ vec4_visitor::run()
       iteration++;
 
       OPT(opt_reduce_swizzle);
-      /* @FIXME: temporarily commented for debugging purposes */
-      // OPT(dead_code_eliminate);
-      // OPT(dead_control_flow_eliminate, this);
-      // OPT(opt_copy_propagation);
+      /* @FIXME: temporary condition for debugging purposes */
+      if (!disable_vec4_optimizations) {
+         OPT(dead_code_eliminate);
+         OPT(dead_control_flow_eliminate, this);
+         OPT(opt_copy_propagation);
+      }
       OPT(opt_cse);
       OPT(opt_algebraic);
       OPT(opt_register_coalesce);
@@ -1851,8 +1857,9 @@ vec4_visitor::run()
          return false;
    }
 
-   /* @FIXME: temporarily commented for debugging purposes */
-   // opt_schedule_instructions();
+   /* @FIXME: temporarily conditioned for debugging purposes */
+   if (!disable_vec4_optimizations)
+      opt_schedule_instructions();
 
    opt_set_dependency_control();
 
