@@ -1293,6 +1293,81 @@ vec4_generator::generate_merge_simd4x2_value(vec4_instruction *inst,
 }
 
 void
+vec4_generator::generate_scattered_buffer_write(vec4_instruction *inst,
+                                                struct brw_reg dst,
+                                                struct brw_reg index)
+{
+   assert(brw->gen >= 7);
+   assert(inst->mlen == 3);
+
+   /* Zero out global offset in the header */
+   struct brw_reg header = brw_vec8_grf(0, 0);
+   gen6_resolve_implied_move(p, &header, inst->base_mrf);
+   struct brw_reg mrf = retype(brw_message_reg(inst->base_mrf),
+                               BRW_REGISTER_TYPE_UD);
+   brw_push_insn_state(p);
+   brw_set_default_access_mode(p, BRW_ALIGN_1);
+   brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+   brw_set_default_compression_control(p, BRW_COMPRESSION_NONE);
+   brw_MOV(p,
+           retype(brw_vec1_reg(BRW_MESSAGE_REGISTER_FILE, mrf.nr, 2),
+                  BRW_REGISTER_TYPE_UD),
+           brw_imm_ud(0));
+   brw_pop_insn_state(p);
+
+   /* Each of the 8 channel enables is considered for whether each
+    * dword is written.
+    */
+   if (index.file == BRW_IMMEDIATE_VALUE) {
+      brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
+      brw_set_dest(p, send, dst);
+      brw_set_src0(p, send, header);
+      brw_set_dp_write_message(p, send,
+                               index.dw1.ud,
+                               BRW_DATAPORT_DWORD_SCATTERED_BLOCK_8DWORDS,
+                               GEN7_DATAPORT_DC_DWORD_SCATTERED_WRITE,
+                               inst->mlen,
+                               true,   /* header present */
+                               false,  /* not a render target write */
+                               0,      /* rlen */
+                               false,  /* eot */
+                               false); /* write commit */
+
+      brw_mark_surface_used(&prog_data->base, index.dw1.ud);
+   } else {
+      struct brw_reg addr =
+         vec1(retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD));
+
+      brw_push_insn_state(p);
+      brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+      brw_set_default_access_mode(p, BRW_ALIGN_1);
+
+      /* a0.0 = surf_index & 0xff */
+      brw_inst *insn_and = brw_next_insn(p, BRW_OPCODE_AND);
+      brw_inst_set_exec_size(p->brw, insn_and, BRW_EXECUTE_1);
+      brw_set_dest(p, insn_and, addr);
+      brw_set_src0(p, insn_and, vec1(retype(index, BRW_REGISTER_TYPE_UD)));
+      brw_set_src1(p, insn_and, brw_imm_ud(0x0ff));
+      brw_pop_insn_state(p);
+
+      /* dst = send(payload, a0.0 | <descriptor>) */
+      brw_inst *insn =
+         brw_send_indirect_message(p, GEN7_SFID_DATAPORT_DATA_CACHE,
+                                   dst, header, addr);
+      brw_set_dp_write_message(p, insn,
+                               0,      /* binding table entry */
+                               BRW_DATAPORT_DWORD_SCATTERED_BLOCK_8DWORDS,
+                               GEN7_DATAPORT_DC_DWORD_SCATTERED_WRITE,
+                               inst->mlen,
+                               true,   /* header present */
+                               false,  /* not a render target write */
+                               0,      /* rlen */
+                               false,  /* eot */
+                               false); /* write commit */
+   }
+}
+
+void
 vec4_generator::generate_untyped_atomic(vec4_instruction *inst,
                                         struct brw_reg dst,
                                         struct brw_reg atomic_op,
@@ -1627,6 +1702,10 @@ vec4_generator::generate_code(const cfg_t *cfg)
       case VS_OPCODE_MERGE_SIMD4X2_VALUE:
          generate_merge_simd4x2_value(inst, dst, src[0], src[1]);
          multiple_instructions_emitted = true;
+         break;
+
+      case VS_OPCODE_SCATTERED_BUFFER_WRITE:
+         generate_scattered_buffer_write(inst, dst, src[0]);
          break;
 
       case GS_OPCODE_URB_WRITE:
