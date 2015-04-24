@@ -142,6 +142,31 @@ verify_image_parameter(YYLTYPE *loc, _mesa_glsl_parse_state *state,
    return true;
 }
 
+static bool
+verify_first_atomic_ssbo_parameter(YYLTYPE *loc, _mesa_glsl_parse_state *state,
+                                   ir_variable *var)
+{
+   if (!var || !var->is_in_shader_storage_block()) {
+      _mesa_glsl_error(loc, state, "First argument to atomic function"
+                       " must be a buffer variable");
+      return false;
+   }
+   return true;
+}
+
+static bool
+is_atomic_ssbo_function(const char *func_name)
+{
+   return !strcmp(func_name, "atomicAdd") ||
+          !strcmp(func_name, "atomicMin") ||
+          !strcmp(func_name, "atomicMax") ||
+          !strcmp(func_name, "atomicAnd") ||
+          !strcmp(func_name, "atomicOr") ||
+          !strcmp(func_name, "atomicXor") ||
+          !strcmp(func_name, "atomicExchange") ||
+          !strcmp(func_name, "atomicCompSwap");
+}
+
 /**
  * Verify that 'out' and 'inout' actual parameters are lvalues.  Also, verify
  * that 'const_in' formal parameters (an extension in our IR) correspond to
@@ -156,6 +181,10 @@ verify_parameter_modes(_mesa_glsl_parse_state *state,
    exec_node *actual_ir_node  = actual_ir_parameters.head;
    exec_node *actual_ast_node = actual_ast_parameters.head;
 
+   const char *func_name = sig->function_name();
+   bool is_atomic_ssbo = is_atomic_ssbo_function(func_name);
+
+   bool is_first_param = true;
    foreach_in_list(const ir_variable, formal, &sig->parameters) {
       /* The lists must be the same length. */
       assert(!actual_ir_node->is_tail_sentinel());
@@ -169,6 +198,13 @@ verify_parameter_modes(_mesa_glsl_parse_state *state,
        * FIXME: 0:0(0).
        */
       YYLTYPE loc = actual_ast->get_location();
+
+      /* The first parameter of atomic functions must be a buffer variable */
+      if (is_atomic_ssbo && is_first_param &&
+          !verify_first_atomic_ssbo_parameter(&loc, state,
+                                              actual->variable_referenced())) {
+         return false;
+      }
 
       /* Verify that 'const_in' parameters are ir_constants. */
       if (formal->data.mode == ir_var_const_in &&
@@ -255,6 +291,7 @@ verify_parameter_modes(_mesa_glsl_parse_state *state,
 
       actual_ir_node  = actual_ir_node->next;
       actual_ast_node = actual_ast_node->next;
+      is_first_param = false;
    }
    return true;
 }
