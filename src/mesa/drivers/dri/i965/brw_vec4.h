@@ -393,6 +393,7 @@ public:
    void dump_instruction(backend_instruction *inst, FILE *file);
 
    void visit_atomic_counter_intrinsic(ir_call *ir);
+   void visit_atomic_intrinsic(ir_call *ir);
 
 protected:
    void emit_vertex();
