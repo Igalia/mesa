@@ -1095,6 +1095,10 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_fmod:
      unreachable("not reached: should be lowered by MOD_TO_FLOOR in the compiler");
 
+   case nir_op_fsub:
+   case nir_op_isub:
+      unreachable("not reached: should be handled by ir_sub_to_add_neg");
+
    default:
       fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
       break;
