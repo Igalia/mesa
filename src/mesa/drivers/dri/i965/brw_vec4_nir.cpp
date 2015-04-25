@@ -1082,6 +1082,13 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->predicate = BRW_PREDICATE_ALIGN16_ANY4H;
       break;
 
+   case nir_op_fabs:
+   case nir_op_iabs:
+   case nir_op_fneg:
+   case nir_op_ineg:
+   case nir_op_fsat:
+      unreachable("not reached: should be lowered by lower_source mods");
+
    default:
       fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
       break;
