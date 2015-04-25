@@ -1089,6 +1089,9 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_fsat:
       unreachable("not reached: should be lowered by lower_source mods");
 
+   case nir_op_fdiv:
+     unreachable("not reached: should be lowered by DIV_TO_MUL_RCP in the compiler");
+
    default:
       fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
       break;
