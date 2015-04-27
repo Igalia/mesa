@@ -403,7 +403,7 @@ brw_untyped_atomic(struct brw_compile *p,
                    struct brw_reg dest,
                    struct brw_reg payload,
                    unsigned atomic_op,
-                   unsigned bind_table_index,
+                   struct brw_reg bind_table_index,
                    unsigned msg_length,
                    bool response_expected);
 
