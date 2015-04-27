@@ -815,6 +815,17 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_ball_iequal3:
    case nir_op_ball_fequal4:
    case nir_op_ball_iequal4:
+      /* @FIXME: if (gen <= 5) the vec4_visitor and fs_visitor call to
+       * resolve_bool_comparison for every operand. To check if we
+       * want to add it.
+       */
+      emit(CMP(dst_null_d(), op[0], op[1],
+               brw_conditional_for_nir_comparison(instr->op)));
+      emit(MOV(dst, src_reg(0)));
+      inst = emit(MOV(dst, src_reg(~0)));
+      inst->predicate = BRW_PREDICATE_ALIGN16_ALL4H;
+      break;
+
    case nir_op_bany_fnequal2:
    case nir_op_bany_inequal2:
    case nir_op_bany_fnequal3:
@@ -825,13 +836,10 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
        * resolve_bool_comparison for every operand. To check if we
        * want to add it.
        */
-
-      /* "==" or "!=" operators producing a scalar boolean. */
       emit(CMP(dst_null_d(), op[0], op[1],
                brw_conditional_for_nir_comparison(instr->op)));
-
       emit(MOV(dst, src_reg(0)));
-      inst = emit(MOV(dst, src_reg((int)ctx->Const.UniformBooleanTrue)));
+      inst = emit(MOV(dst, src_reg(~0)));
       inst->predicate = BRW_PREDICATE_ALIGN16_ANY4H;
       break;
 
