@@ -245,7 +245,7 @@ vec4_visitor::nir_emit_cf_list(exec_list *list)
    foreach_list_typed(nir_cf_node, node, node, list) {
       switch (node->type) {
       case nir_cf_node_if:
-         /* @TODO */
+         nir_emit_if(nir_cf_node_as_if(node));
          break;
 
       case nir_cf_node_loop:
@@ -260,6 +260,27 @@ vec4_visitor::nir_emit_cf_list(exec_list *list)
          unreachable("Invalid CFG node block");
       }
    }
+}
+
+void
+vec4_visitor::nir_emit_if(nir_if *if_stmt)
+{
+   /* first, put the condition into f0 */
+   vec4_instruction *inst = emit(MOV(dst_null_d(),
+                                     retype(get_nir_src(if_stmt->condition),
+                                            BRW_REGISTER_TYPE_D)));
+   inst->conditional_mod = BRW_CONDITIONAL_NZ;
+
+   emit(IF(BRW_PREDICATE_NORMAL));
+
+   nir_emit_cf_list(&if_stmt->then_list);
+
+   /* note: if the else is empty, dead CF elimination will remove it */
+   emit(BRW_OPCODE_ELSE);
+
+   nir_emit_cf_list(&if_stmt->else_list);
+
+   emit(BRW_OPCODE_ENDIF);
 }
 
 void
