@@ -304,7 +304,7 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
       break;
 
    case nir_instr_type_jump:
-      /* @TODO */
+      nir_emit_jump(nir_instr_as_jump(instr));
       break;
 
    default:
@@ -1064,6 +1064,22 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    default:
       fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
       break;
+   }
+}
+
+void
+vec4_visitor::nir_emit_jump(nir_jump_instr *instr)
+{
+   switch (instr->type) {
+   case nir_jump_break:
+      emit(BRW_OPCODE_BREAK);
+      break;
+   case nir_jump_continue:
+      emit(BRW_OPCODE_CONTINUE);
+      break;
+   case nir_jump_return:
+   default:
+      unreachable("unknown jump");
    }
 }
 
