@@ -1397,15 +1397,19 @@ vec4_generator::generate_untyped_atomic(vec4_instruction *inst,
                                         struct brw_reg surf_index)
 {
    assert(atomic_op.file == BRW_IMMEDIATE_VALUE &&
-          atomic_op.type == BRW_REGISTER_TYPE_UD &&
-          surf_index.file == BRW_IMMEDIATE_VALUE &&
-	  surf_index.type == BRW_REGISTER_TYPE_UD);
+          atomic_op.type == BRW_REGISTER_TYPE_UD);
 
    brw_untyped_atomic(p, dst, brw_message_reg(inst->base_mrf),
-                      atomic_op.dw1.ud, surf_index.dw1.ud,
+                      atomic_op.dw1.ud, surf_index,
                       inst->mlen, true);
 
-   brw_mark_surface_used(&prog_data->base, surf_index.dw1.ud);
+   /* If the surface is a constant we can mark it here as used, otherwise
+    * the visitor should mark used surfaces
+    */
+   if (surf_index.file == BRW_IMMEDIATE_VALUE) {
+      assert(surf_index.type == BRW_REGISTER_TYPE_UD);
+      brw_mark_surface_used(&prog_data->base, surf_index.dw1.ud);
+   }
 }
 
 void

@@ -3192,7 +3192,7 @@ vec4_visitor::visit(ir_ssbo_store *ir)
 }
 
 void
-vec4_visitor::emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
+vec4_visitor::emit_untyped_atomic(unsigned atomic_op, src_reg surf_index,
                                   dst_reg dst, src_reg offset,
                                   src_reg src0, src_reg src1)
 {
@@ -3218,7 +3218,7 @@ vec4_visitor::emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
     * unused channels will be masked out.
     */
    vec4_instruction *inst = emit(SHADER_OPCODE_UNTYPED_ATOMIC, dst,
-                                 src_reg(atomic_op), src_reg(surf_index));
+                                 src_reg(atomic_op), surf_index);
    inst->base_mrf = 0;
    inst->mlen = mlen;
 }
