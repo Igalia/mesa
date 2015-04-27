@@ -391,7 +391,7 @@ public:
    void emit_shader_time_end();
    fs_inst *SHADER_TIME_ADD(enum shader_time_shader_type type, fs_reg value);
 
-   void emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
+   void emit_untyped_atomic(unsigned atomic_op, fs_reg surf_index,
                             fs_reg dst, fs_reg offset, fs_reg src0,
                             fs_reg src1);
 
