@@ -1857,6 +1857,31 @@ find_value_indexed(const char *func, GLenum pname, GLuint index, union value *v)
       v->value_int = ctx->UniformBufferBindings[index].Size;
       return TYPE_INT;
 
+   /* ARB_shader_storage_buffer_object */
+   case GL_SHADER_STORAGE_BUFFER_BINDING:
+      if (index >= ctx->Const.MaxShaderStorageBufferBindings)
+         goto invalid_value;
+      if (!ctx->Extensions.ARB_shader_storage_buffer_object)
+         goto invalid_enum;
+      v->value_int = ctx->ShaderStorageBufferBindings[index].BufferObject->Name;
+      return TYPE_INT;
+
+   case GL_SHADER_STORAGE_BUFFER_START:
+      if (index >= ctx->Const.MaxShaderStorageBufferBindings)
+         goto invalid_value;
+      if (!ctx->Extensions.ARB_shader_storage_buffer_object)
+         goto invalid_enum;
+      v->value_int = ctx->ShaderStorageBufferBindings[index].Offset;
+      return TYPE_INT;
+
+   case GL_SHADER_STORAGE_BUFFER_SIZE:
+      if (index >= ctx->Const.MaxShaderStorageBufferBindings)
+         goto invalid_value;
+      if (!ctx->Extensions.ARB_shader_storage_buffer_object)
+         goto invalid_enum;
+      v->value_int = ctx->ShaderStorageBufferBindings[index].Size;
+      return TYPE_INT;
+
    /* ARB_texture_multisample / GL3.2 */
    case GL_SAMPLE_MASK_VALUE:
       if (index != 0)
