@@ -811,8 +811,15 @@ do_assignment(exec_list *instructions, struct _mesa_glsl_parse_state *state,
    }
 
    ir_variable *lhs_var = lhs->variable_referenced();
-   if (lhs_var)
+   if (lhs_var) {
+      if (lhs_var->data.image_read_only) {
+         _mesa_glsl_error(&lhs_loc, state,
+                          "assignment to read-only variable `%s'",
+                          lhs_var->name);
+         error_emitted = true;
+      }
       lhs_var->data.assigned = true;
+   }
 
    if (!error_emitted) {
       if (non_lvalue_description != NULL) {
