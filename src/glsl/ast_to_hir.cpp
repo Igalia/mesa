@@ -67,6 +67,41 @@ static void
 remove_per_vertex_blocks(exec_list *instructions,
                          _mesa_glsl_parse_state *state, ir_variable_mode mode);
 
+/**
+ * Visitor class that finds the first instance of any write-only variable that
+ * is ever read, if any
+ */
+class read_from_write_only_variable_visitor : public ir_hierarchical_visitor
+{
+public:
+   read_from_write_only_variable_visitor() : found(NULL)
+   {
+   }
+
+   virtual ir_visitor_status visit(ir_dereference_variable *ir)
+   {
+      if (this->in_assignee)
+         return visit_continue;
+
+      ir_variable *var = ir->variable_referenced();
+      if (!var)
+         return visit_continue;
+
+      if (var->data.write_only) {
+         found = var;
+         return visit_stop;
+      }
+
+      return visit_continue;
+   }
+
+   ir_variable *get_variable() {
+      return found;
+   }
+
+private:
+   ir_variable *found;
+};
 
 void
 _mesa_ast_to_hir(exec_list *instructions, struct _mesa_glsl_parse_state *state)
@@ -162,6 +197,20 @@ _mesa_ast_to_hir(exec_list *instructions, struct _mesa_glsl_parse_state *state)
     */
    remove_per_vertex_blocks(instructions, state, ir_var_shader_in);
    remove_per_vertex_blocks(instructions, state, ir_var_shader_out);
+
+   /* Check that we don't have reads from write-only variables */
+   read_from_write_only_variable_visitor v;
+   v.run(instructions);
+   ir_variable *error_var = v.get_variable();
+   if (error_var) {
+      /* It would be nice to have proper location information, but for that
+       * we would need to check this as we process each kind of AST node
+       */
+      YYLTYPE loc;
+      memset(&loc, 0, sizeof(loc));
+      _mesa_glsl_error(&loc, state, "Read from write-only variable `%s'",
+                       error_var->name);
+   }
 }
 
 
