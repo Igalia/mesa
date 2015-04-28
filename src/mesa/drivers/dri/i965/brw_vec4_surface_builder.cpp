@@ -216,8 +216,7 @@ namespace {
           * whether the target shared unit supports SIMD4x2 and SIMD16
           * vector arrangements.
           */
-         vector_layout(const vec4_builder &bld,
-                       bool has_simd4x2, bool has_simd16) :
+         vector_layout(const vec4_builder &bld, bool has_simd4x2) :
             stride(has_simd4x2 ? 1 : 4)
          {
          }
@@ -260,6 +259,235 @@ namespace {
          return swizzle(natural_reg(bld, emit_stride(bld, srcs[0],
                                                      size, 1, layout.stride)),
                         brw_swizzle_for_size(size));
+      }
+   }
+}
+
+namespace brw {
+   namespace surface_access {
+      namespace {
+         using namespace array_utils;
+
+         /**
+          * Generate a send opcode for a surface message and return the
+          * result.
+          */
+         array_reg
+         emit_send(const vec4_builder &bld, enum opcode opcode,
+                   const array_reg &payload,
+                   const src_reg &surface, const src_reg &arg,
+                   unsigned rlen, brw_predicate pred = BRW_PREDICATE_NONE)
+         {
+            const dst_reg usurface = writemask(bld.vgrf(BRW_REGISTER_TYPE_UD),
+                                               WRITEMASK_X);
+            const array_reg dst =
+               rlen ? alloc_array_reg(bld, BRW_REGISTER_TYPE_UD, rlen) :
+               array_reg(bld.null_reg_ud());
+
+            /* Reduce the dynamically uniform surface index to a single
+             * scalar.
+             */
+            bld.emit_uniformize(usurface, surface);
+
+            vec4_builder::instruction *inst =
+               bld.emit(opcode, natural_reg(bld, dst),
+                        natural_reg(bld, payload), usurface, arg);
+            inst->mlen = payload.size;
+            inst->regs_written = rlen;
+            inst->predicate = pred;
+
+            return dst;
+         }
+
+         /**
+          * Initialize the header present in some untyped surface messages.
+          */
+         array_reg
+         emit_untyped_message_header(const vec4_builder &bld)
+         {
+            return array_reg();
+         }
+      }
+
+      /**
+       * Emit an untyped surface read opcode.  \p dims determines the number
+       * of components of the address and \p size the number of components of
+       * the returned value.
+       */
+      src_reg
+      emit_untyped_read(const vec4_builder &bld,
+                        const src_reg &surface, const src_reg &addr,
+                        unsigned dims, unsigned size,
+                        brw_predicate pred)
+      {
+         const vector_layout layout(bld, true);
+         const array_reg payload = emit_insert(layout, bld, addr, dims);
+         const unsigned rlen = DIV_ROUND_UP(size * layout.stride, 4);
+         const array_reg dst =
+            emit_send(bld, SHADER_OPCODE_UNTYPED_SURFACE_READ,
+                      payload, surface, src_reg(size), rlen, pred);
+
+         return emit_extract(layout, bld, &dst, size);
+      }
+
+      /**
+       * Emit an untyped surface write opcode.  \p dims determines the number
+       * of components of the address and \p size the number of components of
+       * the argument.
+       */
+      void
+      emit_untyped_write(const vec4_builder &bld, const src_reg &surface,
+                         const src_reg &addr, const src_reg &src,
+                         unsigned dims, unsigned size,
+                         brw_predicate pred)
+      {
+         const vector_layout layout(bld, (bld.shader->devinfo->gen >= 8 ||
+                                          bld.shader->devinfo->is_haswell));
+         const array_reg payload =
+            emit_collect(bld,
+                         emit_untyped_message_header(bld),
+                         emit_insert(layout, bld, addr, dims),
+                         emit_insert(layout, bld, src, size));
+
+         emit_send(bld, SHADER_OPCODE_UNTYPED_SURFACE_WRITE,
+                   payload, surface, src_reg(size), 0, pred);
+      }
+
+      /**
+       * Emit an untyped surface atomic opcode.  \p dims determines the number
+       * of components of the address and \p rsize the number of components of
+       * the returned value (either zero or one).
+       */
+      src_reg
+      emit_untyped_atomic(const vec4_builder &bld,
+                          const src_reg &surface, const src_reg &addr,
+                          const src_reg &src0, const src_reg &src1,
+                          unsigned dims, unsigned rsize, unsigned op,
+                          brw_predicate pred)
+      {
+         const unsigned size = (src0.file != BAD_FILE) + (src1.file != BAD_FILE);
+         const vector_layout layout(bld, (bld.shader->devinfo->gen >= 8 ||
+                                          bld.shader->devinfo->is_haswell));
+         /* Zip the components of both sources, they are represented as the X
+          * and Y components of the same vector.
+          */
+         const src_reg srcs = natural_reg(bld,
+                                          emit_zip(bld, emit_flatten(bld, src0, 1),
+                                                   emit_flatten(bld, src1, 1), 1));
+         const array_reg payload =
+            emit_collect(bld,
+                         emit_untyped_message_header(bld),
+                         emit_insert(layout, bld, addr, dims),
+                         emit_insert(layout, bld, srcs, size));
+         const array_reg dst =
+            emit_send(bld, SHADER_OPCODE_UNTYPED_ATOMIC,
+                      payload, surface, src_reg(op),
+                      rsize * bld.dispatch_width() / 8, pred);
+
+         return emit_extract(layout, bld, &dst, rsize);
+      }
+
+      namespace {
+         /**
+          * Initialize the header present in typed surface messages.
+          */
+         array_reg
+         emit_typed_message_header(const vec4_builder &bld)
+         {
+            const vec4_builder ubld = bld.exec_all();
+            const dst_reg dst = bld.vgrf(BRW_REGISTER_TYPE_UD);
+
+            ubld.MOV(dst, src_reg(0));
+
+            if (bld.shader->devinfo->gen == 7 &&
+                !bld.shader->devinfo->is_haswell) {
+               /* The sample mask is used on IVB for the SIMD8 messages that
+                * have no SIMD4x2 variant.  We only use the two X channels
+                * in that case, mask everything else out.
+                */
+               ubld.MOV(writemask(dst, WRITEMASK_W), src_reg(0x11));
+            }
+
+            return array_reg(dst);
+         }
+      }
+
+      /**
+       * Emit a typed surface read opcode.  \p dims determines the number of
+       * components of the address and \p size the number of components of the
+       * returned value.
+       */
+      src_reg
+      emit_typed_read(const vec4_builder &bld, const src_reg &surface,
+                      const src_reg &addr, unsigned dims, unsigned size)
+      {
+         const vector_layout layout(bld, (bld.shader->devinfo->gen >= 8 ||
+                                          bld.shader->devinfo->is_haswell));
+         const unsigned rlen = DIV_ROUND_UP(size * layout.stride, 4);
+         const array_reg payload =
+            emit_collect(bld,
+                         emit_typed_message_header(bld),
+                         emit_insert(layout, bld, addr, dims));
+         const array_reg dst =
+            emit_send(bld, SHADER_OPCODE_TYPED_SURFACE_READ,
+                      payload, surface, src_reg(size), rlen);
+
+         return emit_extract(layout, bld, &dst, size);
+      }
+
+      /**
+       * Emit a typed surface write opcode.  \p dims determines the number of
+       * components of the address and \p size the number of components of the
+       * argument.
+       */
+      void
+      emit_typed_write(const vec4_builder &bld, const src_reg &surface,
+                       const src_reg &addr, const src_reg &src,
+                       unsigned dims, unsigned size)
+      {
+         const vector_layout layout(bld, (bld.shader->devinfo->gen >= 8 ||
+                                          bld.shader->devinfo->is_haswell));
+         const array_reg payload =
+            emit_collect(bld,
+                         emit_typed_message_header(bld),
+                         emit_insert(layout, bld, addr, dims),
+                         emit_insert(layout, bld, src, size));
+
+         emit_send(bld, SHADER_OPCODE_TYPED_SURFACE_WRITE,
+                   payload, surface, src_reg(size), 0);
+      }
+
+      /**
+       * Emit a typed surface atomic opcode.  \p dims determines the number of
+       * components of the address and \p rsize the number of components of
+       * the returned value (either zero or one).
+       */
+      src_reg
+      emit_typed_atomic(const vec4_builder &bld,
+                        const src_reg &surface, const src_reg &addr,
+                        const src_reg &src0, const src_reg &src1,
+                        unsigned dims, unsigned rsize, unsigned op,
+                        brw_predicate pred)
+      {
+         const unsigned size = (src0.file != BAD_FILE) + (src1.file != BAD_FILE);
+         const vector_layout layout(bld, (bld.shader->devinfo->gen >= 8 ||
+                                          bld.shader->devinfo->is_haswell));
+         /* Zip the components of both sources, they are represented as the X
+          * and Y components of the same vector.
+          */
+         const src_reg srcs = natural_reg(bld,
+                                          emit_zip(bld, emit_flatten(bld, src0, 1),
+                                                   emit_flatten(bld, src1, 1), 1));
+         const array_reg payload =
+            emit_collect(bld,
+                         emit_typed_message_header(bld),
+                         emit_insert(layout, bld, addr, dims),
+                         emit_insert(layout, bld, srcs, size));
+         const array_reg dst =
+            emit_send(bld, SHADER_OPCODE_TYPED_ATOMIC,
+                      payload, surface, src_reg(op), rsize, pred);
+
+         return emit_extract(layout, bld, &dst, rsize);
       }
    }
 }
