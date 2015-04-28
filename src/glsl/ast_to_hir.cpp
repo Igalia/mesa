@@ -5832,6 +5832,23 @@ ast_process_structure_or_interface_block(exec_list *instructions,
                    || fields[i].matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR);
          }
 
+         /* Image qualifiers are allowed on buffer variables, which can only
+          * be defined inside shader storage buffer objects
+          */
+         if (var_mode == ir_var_shader_storage) {
+            fields[i].image_read_only = qual->flags.q.read_only;
+            fields[i].image_write_only = qual->flags.q.write_only;
+            fields[i].image_coherent = qual->flags.q.coherent;
+            fields[i].image_volatile = qual->flags.q._volatile;
+            fields[i].image_restrict = qual->flags.q.restrict_flag;
+
+            if (fields[i].image_read_only && fields[i].image_write_only) {
+               _mesa_glsl_error(&loc, state,
+                                "buffer variable `%s' can't be "
+                                "readonly and writeonly.", fields[i].name);
+            }
+         }
+
          i++;
       }
    }
@@ -6421,6 +6438,35 @@ ast_interface_block::hir(exec_list *instructions,
          }
 
          var->data.stream = this->layout.stream;
+
+         if (var->data.mode == ir_var_shader_storage) {
+            /* For readonly and writeonly qualifiers the field definition,
+             * if set, overwrites the layout qualifier.
+             */
+            bool read_only = this->layout.flags.q.read_only;
+            bool write_only = this->layout.flags.q.write_only;
+
+            if (fields[i].image_read_only) {
+               read_only = true;
+               write_only = false;
+            } else if (fields[i].image_write_only) {
+               read_only = false;
+               write_only = true;
+            }
+
+            var->data.read_only = read_only;
+            var->data.write_only = write_only;
+
+            /* For other qualifiers, we set the flag if either the layout
+             * qualifier or the field qualifier are set
+             */
+            var->data.image_coherent = fields[i].image_coherent ||
+                                        this->layout.flags.q.coherent;
+            var->data.image_volatile = fields[i].image_volatile ||
+                                        this->layout.flags.q._volatile;
+            var->data.image_restrict = fields[i].image_restrict ||
+                                        this->layout.flags.q.restrict_flag;
+         }
 
          /* Examine var name here since var may get deleted in the next call */
          bool var_is_gl_id = is_gl_identifier(var->name);
