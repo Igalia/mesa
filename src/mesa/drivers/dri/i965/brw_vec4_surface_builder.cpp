@@ -205,5 +205,61 @@ namespace {
 
          return dst;
       }
+
+      /**
+       * Description of the layout of a vector when stored in a message
+       * payload in the form required by the recipient shared unit.
+       */
+      struct vector_layout {
+         /**
+          * Construct a vector_layout based on the current SIMD mode and
+          * whether the target shared unit supports SIMD4x2 and SIMD16
+          * vector arrangements.
+          */
+         vector_layout(const vec4_builder &bld,
+                       bool has_simd4x2, bool has_simd16) :
+            stride(has_simd4x2 ? 1 : 4)
+         {
+         }
+
+         /**
+          * Number of components to skip over in the payload for each
+          * component of the value.  It will be equal to one except for
+          * SIMD8-only messages in SIMD4x2 mode.
+          */
+         unsigned stride;
+      };
+
+      /**
+       * Convert a vector into an array of registers with the layout expected
+       * by the recipient shared unit.  \p i selects the half of the payload
+       * that will be returned.
+       */
+      array_reg
+      emit_insert(const vector_layout &layout,
+                  const vec4_builder &bld,
+                  const src_reg &src,
+                  unsigned size, unsigned i = 0)
+      {
+         assert(i == 0);
+         const array_reg tmp = emit_flatten(bld, src, size);
+         return emit_stride(bld, tmp, size, layout.stride, 1);
+      }
+
+      /**
+       * Convert an array of registers back into a vector according to the
+       * layout expected from some shared unit.  The \p srcs array should
+       * contain the halves of the payload as individual array registers.
+       */
+      src_reg
+      emit_extract(const vector_layout &layout,
+                   const vec4_builder &bld,
+                   const array_reg srcs[],
+                   unsigned size)
+      {
+         return swizzle(natural_reg(bld, emit_stride(bld, srcs[0],
+                                                     size, 1, layout.stride)),
+                        brw_swizzle_for_size(size));
+      }
    }
 }
