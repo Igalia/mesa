@@ -774,6 +774,16 @@ struct glsl_struct_field {
     * streams (as in ir_variable::stream). -1 otherwise.
     */
    int stream;
+
+   /**
+    * Image qualifiers, applicable to buffer variables defined in shader
+    * storage buffer objects (SSBOs)
+    */
+   unsigned image_read_only:1;
+   unsigned image_write_only:1;
+   unsigned image_coherent:1;
+   unsigned image_volatile:1;
+   unsigned image_restrict:1;
 };
 
 static inline unsigned int
