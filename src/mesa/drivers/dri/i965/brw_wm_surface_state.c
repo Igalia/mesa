@@ -422,12 +422,12 @@ brw_create_buffer_surface(struct brw_context *brw,
                           uint32_t *out_offset,
                           bool dword_pitch)
 {
-   uint32_t stride = dword_pitch ? 4 : 16;
-   uint32_t elements = ALIGN(size, stride) / stride;
-
+   /* Use a raw surface so we can use untyped atomic messages for atomic
+    * operations on buffer variables
+    */
    brw->vtbl.emit_buffer_surface_state(brw, out_offset, bo, offset,
-                                       BRW_SURFACEFORMAT_R32G32B32A32_FLOAT,
-                                       elements, stride, true);
+                                       BRW_SURFACEFORMAT_RAW,
+                                       size, 1, true);
 }
 
 /**
