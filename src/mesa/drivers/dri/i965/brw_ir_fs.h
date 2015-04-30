@@ -281,4 +281,26 @@ exec_all(fs_inst *inst)
    return inst;
 }
 
+/**
+ * Make the execution of \p inst dependent on the evaluation of a possibly
+ * inverted predicate.
+ */
+static inline fs_inst *
+exec_predicate_inv(enum brw_predicate pred, bool inverse,
+                   fs_inst *inst)
+{
+   inst->predicate = pred;
+   inst->predicate_inverse = inverse;
+   return inst;
+}
+
+/**
+ * Make the execution of \p inst dependent on the evaluation of a predicate.
+ */
+static inline fs_inst *
+exec_predicate(enum brw_predicate pred, fs_inst *inst)
+{
+   return exec_predicate_inv(pred, false, inst);
+}
+
 #endif
