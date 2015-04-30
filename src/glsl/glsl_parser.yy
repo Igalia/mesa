@@ -1234,7 +1234,8 @@ layout_qualifier_id:
       }
 
       /* See also interface_block_layout_qualifier. */
-      if (!$$.flags.i && state->has_uniform_buffer_objects()) {
+      if (!$$.flags.i &&
+          (state->has_uniform_buffer_objects() || state->has_shader_storage_buffer_objects())) {
          if (match_layout_qualifier($1, "std140", state) == 0) {
             $$.flags.q.std140 = 1;
          } else if (match_layout_qualifier($1, "shared", state) == 0) {
