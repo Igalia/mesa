@@ -987,6 +987,10 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
    case GL_UNIFORM_BUFFER_BINDING:
       v->value_int = ctx->UniformBuffer->Name;
       break;
+   /* GL_ARB_shader_storage_buffer_object */
+   case GL_SHADER_STORAGE_BUFFER_BINDING:
+      v->value_int = ctx->ShaderStorageBuffer->Name;
+      break;
    /* GL_ARB_timer_query */
    case GL_TIMESTAMP:
       if (ctx->Driver.GetTimestamp) {
