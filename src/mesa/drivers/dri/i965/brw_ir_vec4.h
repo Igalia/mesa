@@ -221,6 +221,17 @@ exec_predicate(enum brw_predicate pred, vec4_instruction *inst)
 {
    return exec_predicate_inv(pred, false, inst);
 }
+
+/**
+ * Write the result of evaluating the condition given by \p mod to a flag
+ * register.
+ */
+inline vec4_instruction *
+exec_condmod(enum brw_conditional_mod mod, vec4_instruction *inst)
+{
+   inst->conditional_mod = mod;
+   return inst;
+}
 } /* namespace brw */
 
 #endif
