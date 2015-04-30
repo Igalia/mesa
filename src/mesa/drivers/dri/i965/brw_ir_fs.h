@@ -314,4 +314,15 @@ exec_condmod(enum brw_conditional_mod mod, fs_inst *inst)
    return inst;
 }
 
+/**
+ * Clamp the result of \p inst to the saturation range of its destination
+ * datatype.
+ */
+static inline fs_inst *
+exec_saturate(bool saturate, fs_inst *inst)
+{
+   inst->saturate = saturate;
+   return inst;
+}
+
 #endif
