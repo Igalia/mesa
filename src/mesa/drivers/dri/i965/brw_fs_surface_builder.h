@@ -28,4 +28,42 @@
 #include "brw_fs_builder.h"
 #include "brw_context.h"
 
+namespace brw {
+   namespace surface_access {
+      fs_reg
+      emit_untyped_read(const fs_builder &bld,
+                        const fs_reg &surface, const fs_reg &addr,
+                        unsigned dims, unsigned size,
+                        brw_predicate pred = BRW_PREDICATE_NONE);
+
+      void
+      emit_untyped_write(const fs_builder &bld, const fs_reg &surface,
+                         const fs_reg &addr, const fs_reg &src,
+                         unsigned dims, unsigned size,
+                         brw_predicate pred = BRW_PREDICATE_NONE);
+
+      fs_reg
+      emit_untyped_atomic(const fs_builder &bld,
+                          const fs_reg &surface, const fs_reg &addr,
+                          const fs_reg &src0, const fs_reg &src1,
+                          unsigned dims, unsigned rsize, unsigned op,
+                          brw_predicate pred = BRW_PREDICATE_NONE);
+
+      fs_reg
+      emit_typed_read(const fs_builder &bld, const fs_reg &surface,
+                      const fs_reg &addr, unsigned dims, unsigned size);
+
+      void
+      emit_typed_write(const fs_builder &bld, const fs_reg &surface,
+                       const fs_reg &addr, const fs_reg &src,
+                       unsigned dims, unsigned size);
+
+      fs_reg
+      emit_typed_atomic(const fs_builder &bld, const fs_reg &surface,
+                        const fs_reg &addr,
+                        const fs_reg &src0, const fs_reg &src1,
+                        unsigned dims, unsigned rsize, unsigned op,
+                        brw_predicate pred = BRW_PREDICATE_NONE);
+   }
+}
 #endif

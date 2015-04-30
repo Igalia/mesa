@@ -279,3 +279,222 @@ namespace {
       }
    }
 }
+
+namespace brw {
+   namespace surface_access {
+      namespace {
+         using namespace array_utils;
+
+         /**
+          * Generate a send opcode for a surface message and return the
+          * result.
+          */
+         array_reg
+         emit_send(const fs_builder &bld, enum opcode opcode,
+                   const array_reg &payload,
+                   const fs_reg &surface, const fs_reg &arg,
+                   unsigned rlen, brw_predicate pred = BRW_PREDICATE_NONE)
+         {
+            const fs_reg usurface = bld.vgrf(BRW_REGISTER_TYPE_UD);
+            const array_reg dst =
+               rlen ? alloc_array_reg(bld, BRW_REGISTER_TYPE_UD, rlen) :
+               array_reg(bld.null_reg_ud());
+
+            /* Reduce the dynamically uniform surface index to a single
+             * scalar.
+             */
+            bld.emit_uniformize(usurface, surface);
+
+            fs_builder::instruction *inst =
+               bld.emit(opcode, natural_reg(bld, dst),
+                        natural_reg(bld, payload), usurface, arg);
+            inst->mlen = payload.size;
+            inst->regs_written = rlen;
+            inst->predicate = pred;
+
+            return dst;
+         }
+
+         /**
+          * Initialize the header present in some typed and untyped surface
+          * messages.
+          */
+         array_reg
+         emit_header(const fs_builder &bld, const fs_reg &sample_mask)
+         {
+            fs_builder ubld = bld.half(0).exec_all();
+            const fs_reg dst = ubld.vgrf(BRW_REGISTER_TYPE_UD);
+            ubld.MOV(dst, fs_reg(0));
+            ubld.MOV(component(dst, 7), sample_mask);
+            return array_reg(dst);
+         }
+      }
+
+      /**
+       * Emit an untyped surface read opcode.  \p dims determines the number
+       * of components of the address and \p size the number of components of
+       * the returned value.
+       */
+      fs_reg
+      emit_untyped_read(const fs_builder &bld,
+                        const fs_reg &surface, const fs_reg &addr,
+                        unsigned dims, unsigned size,
+                        brw_predicate pred)
+      {
+         const vector_layout layout(bld, true);
+         const array_reg payload = emit_insert(layout, bld, addr, dims);
+         const unsigned rlen = size * bld.dispatch_width() / 8;
+         const array_reg dst =
+            emit_send(bld, SHADER_OPCODE_UNTYPED_SURFACE_READ,
+                      payload, surface, fs_reg(size), rlen, pred);
+
+         return emit_extract(layout, bld, &dst, size);
+      }
+
+      /**
+       * Emit an untyped surface write opcode.  \p dims determines the number
+       * of components of the address and \p size the number of components of
+       * the argument.
+       */
+      void
+      emit_untyped_write(const fs_builder &bld, const fs_reg &surface,
+                         const fs_reg &addr, const fs_reg &src,
+                         unsigned dims, unsigned size,
+                         brw_predicate pred)
+      {
+         const vector_layout layout(bld, true);
+         const array_reg payload =
+            emit_collect(bld,
+                         emit_header(bld, bld.sample_mask_reg()),
+                         emit_insert(layout, bld, addr, dims),
+                         emit_insert(layout, bld, src, size));
+
+         emit_send(bld, SHADER_OPCODE_UNTYPED_SURFACE_WRITE,
+                   payload, surface, fs_reg(size), 0, pred);
+      }
+
+      /**
+       * Emit an untyped surface atomic opcode.  \p dims determines the number
+       * of components of the address and \p rsize the number of components of
+       * the returned value (either zero or one).
+       */
+      fs_reg
+      emit_untyped_atomic(const fs_builder &bld,
+                          const fs_reg &surface, const fs_reg &addr,
+                          const fs_reg &src0, const fs_reg &src1,
+                          unsigned dims, unsigned rsize, unsigned op,
+                          brw_predicate pred)
+      {
+         const unsigned size = (src0.file != BAD_FILE) + (src1.file != BAD_FILE);
+         const vector_layout layout(bld, true);
+         /* Zip the components of both sources, they are represented as the X
+          * and Y components of the same vector.
+          */
+         const fs_reg srcs = natural_reg(bld,
+                                         emit_zip(bld, emit_flatten(bld, src0, 1),
+                                                  emit_flatten(bld, src1, 1), 1));
+         const array_reg payload =
+            emit_collect(bld,
+                         emit_header(bld, bld.sample_mask_reg()),
+                         emit_insert(layout, bld, addr, dims),
+                         emit_insert(layout, bld, srcs, size));
+         const array_reg dst =
+            emit_send(bld, SHADER_OPCODE_UNTYPED_ATOMIC,
+                      payload, surface, fs_reg(op),
+                      rsize * bld.dispatch_width() / 8, pred);
+
+         return emit_extract(layout, bld, &dst, rsize);
+      }
+
+      /**
+       * Emit a typed surface read opcode.  \p dims determines the number of
+       * components of the address and \p size the number of components of the
+       * returned value.
+       */
+      fs_reg
+      emit_typed_read(const fs_builder &bld, const fs_reg &surface,
+                      const fs_reg &addr, unsigned dims, unsigned size)
+      {
+         const vector_layout layout(bld, false);
+         array_reg dsts[2];
+
+         for (unsigned i = 0; i < layout.halves; ++i) {
+            /* Get a half builder for this half if required. */
+            const fs_builder ubld = (layout.halves > 1 ? bld.half(i) : bld);
+            const array_reg payload =
+               emit_collect(ubld,
+                            emit_header(bld, fs_reg(0xffff)),
+                            emit_insert(layout, bld, addr, dims, i));
+
+            dsts[i] = emit_send(ubld, SHADER_OPCODE_TYPED_SURFACE_READ,
+                                payload, surface, fs_reg(size), size);
+         }
+
+         return emit_extract(layout, bld, dsts, size);
+      }
+
+      /**
+       * Emit a typed surface write opcode.  \p dims determines the number of
+       * components of the address and \p size the number of components of the
+       * argument.
+       */
+      void
+      emit_typed_write(const fs_builder &bld, const fs_reg &surface,
+                       const fs_reg &addr, const fs_reg &src,
+                       unsigned dims, unsigned size)
+      {
+         const vector_layout layout(bld, false);
+
+         for (unsigned i = 0; i < layout.halves; ++i) {
+            /* Get a half builder for this half if required. */
+            const fs_builder ubld = (layout.halves > 1 ? bld.half(i) : bld);
+            const array_reg payload =
+               emit_collect(ubld,
+                            emit_header(bld, bld.sample_mask_reg()),
+                            emit_insert(layout, bld, addr, dims, i),
+                            emit_insert(layout, bld, src, size, i));
+
+            emit_send(ubld, SHADER_OPCODE_TYPED_SURFACE_WRITE,
+                      payload, surface, fs_reg(size), 0);
+         }
+      }
+
+      /**
+       * Emit a typed surface atomic opcode.  \p dims determines the number of
+       * components of the address and \p rsize the number of components of
+       * the returned value (either zero or one).
+       */
+      fs_reg
+      emit_typed_atomic(const fs_builder &bld, const fs_reg &surface,
+                        const fs_reg &addr,
+                        const fs_reg &src0, const fs_reg &src1,
+                        unsigned dims, unsigned rsize, unsigned op,
+                        brw_predicate pred)
+      {
+         const unsigned size = (src0.file != BAD_FILE) + (src1.file != BAD_FILE);
+         const vector_layout layout(bld, false);
+         /* Zip the components of both sources, they are represented as the X
+          * and Y components of the same vector.
+          */
+         const fs_reg srcs = natural_reg(
+            bld, emit_zip(bld, emit_flatten(bld, src0, 1),
+                          emit_flatten(bld, src1, 1), 1));
+         array_reg dsts[2];
+
+         for (unsigned i = 0; i < layout.halves; ++i) {
+            /* Get a half builder for this half if required. */
+            const fs_builder ubld = (layout.halves > 1 ? bld.half(i) : bld);
+            const array_reg payload =
+               emit_collect(ubld,
+                            emit_header(bld, bld.sample_mask_reg()),
+                            emit_insert(layout, bld, addr, dims, i),
+                            emit_insert(layout, bld, srcs, size, i));
+
+            dsts[i] = emit_send(ubld, SHADER_OPCODE_TYPED_ATOMIC,
+                                payload, surface, fs_reg(op), rsize, pred);
+         }
+
+         return emit_extract(layout, bld, dsts, rsize);
+      }
+   }
+}
