@@ -213,5 +213,67 @@ namespace {
          delete[] components;
          return dst;
       }
+
+      /**
+       * Description of the layout of a vector when stored in a message
+       * payload in the form required by the recipient shared unit.
+       */
+      struct vector_layout {
+         /**
+          * Construct a vector_layout based on the current SIMD mode and
+          * whether the target shared unit supports SIMD16 messages.
+          */
+         vector_layout(const fs_builder &bld, bool has_simd16) :
+            halves(!has_simd16 && bld.dispatch_width() == 16 ? 2 : 1)
+         {
+         }
+
+         /**
+          * Number of reduced SIMD width vectors the original vector has to be
+          * divided into.  It will be equal to one if the execution dispatch
+          * width is natively supported by the shared unit.
+          */
+         unsigned halves;
+      };
+
+      /**
+       * Convert a vector into an array of registers with the layout expected
+       * by the recipient shared unit.  \p i selects the half of the payload
+       * that will be returned.
+       */
+      array_reg
+      emit_insert(const vector_layout &layout,
+                  const fs_builder &bld,
+                  const fs_reg &src,
+                  unsigned size, unsigned i = 0)
+      {
+         assert(i < layout.halves);
+         const array_reg tmp = emit_flatten(bld, src, size);
+
+         if (layout.halves > 1 && tmp.file != BAD_FILE)
+            return emit_stride(bld.half(i), offset(tmp, i),
+                               size, 1, layout.halves);
+         else
+            return tmp;
+      }
+
+      /**
+       * Convert an array of registers back into a vector according to the
+       * layout expected from some shared unit.  The \p srcs array should
+       * contain the halves of the payload as individual array registers.
+       */
+      fs_reg
+      emit_extract(const vector_layout &layout,
+                   const fs_builder &bld,
+                   const array_reg srcs[],
+                   unsigned size)
+      {
+         if (layout.halves > 1 &&
+             srcs[0].file != BAD_FILE && srcs[1].file != BAD_FILE)
+            return natural_reg(bld,
+                               emit_zip(bld.half(0), srcs[0], srcs[1], size));
+         else
+            return natural_reg(bld, srcs[0]);
+      }
    }
 }
