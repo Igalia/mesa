@@ -271,4 +271,14 @@ set_sechalf(fs_inst *inst)
    return inst;
 }
 
+/**
+ * Disable per-channel control flow execution masking on \p inst.
+ */
+static inline fs_inst *
+exec_all(fs_inst *inst)
+{
+   inst->force_writemask_all = true;
+   return inst;
+}
+
 #endif
