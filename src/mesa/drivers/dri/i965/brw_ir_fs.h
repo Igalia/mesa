@@ -261,4 +261,14 @@ public:
    bool pi_noperspective:1;   /**< Pixel interpolator noperspective flag */
 };
 
+/**
+ * Disable per-channel control flow execution masking on \p inst.
+ */
+static inline fs_inst *
+exec_all(fs_inst *inst)
+{
+   inst->force_writemask_all = true;
+   return inst;
+}
+
 #endif
