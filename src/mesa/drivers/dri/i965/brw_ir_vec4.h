@@ -232,6 +232,17 @@ exec_condmod(enum brw_conditional_mod mod, vec4_instruction *inst)
    inst->conditional_mod = mod;
    return inst;
 }
+
+/**
+ * Clamp the result of \p inst to the saturation range of its destination
+ * datatype.
+ */
+inline vec4_instruction *
+exec_saturate(bool saturate, vec4_instruction *inst)
+{
+   inst->saturate = saturate;
+   return inst;
+}
 } /* namespace brw */
 
 #endif
