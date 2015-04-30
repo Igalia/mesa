@@ -190,6 +190,15 @@ public:
    }
 };
 
+/**
+ * Disable per-channel control flow execution masking on \p inst.
+ */
+inline vec4_instruction *
+exec_all(vec4_instruction *inst)
+{
+   inst->force_writemask_all = true;
+   return inst;
+}
 } /* namespace brw */
 
 #endif
