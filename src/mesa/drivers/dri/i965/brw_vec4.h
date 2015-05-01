@@ -418,6 +418,7 @@ public:
    src_reg *nir_inputs;
    int *nir_outputs;
    dst_reg *nir_system_values;
+   int *nir_uniform_offsets;
 
    virtual dst_reg *make_reg_for_system_value(int location,
                                               const glsl_type *type) = 0;

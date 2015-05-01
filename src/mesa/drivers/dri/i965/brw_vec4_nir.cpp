@@ -146,6 +146,15 @@ vec4_visitor::nir_setup_outputs(nir_shader *shader)
 void
 vec4_visitor::nir_setup_uniforms(nir_shader *shader)
 {
+   uniforms = 0;
+   this->uniform_array_size = shader->num_uniforms;
+
+   this->uniform_size = rzalloc_array(mem_ctx, int, this->uniform_array_size);
+   this->uniform_vector_size =
+     rzalloc_array(mem_ctx, int, this->uniform_array_size);
+
+   nir_uniform_offsets = rzalloc_array(mem_ctx, int, this->uniform_array_size);
+
    if (shader_prog) {
       foreach_list_typed(nir_variable, var, node, &shader->uniforms) {
          /* UBO's and atomics don't take up space in the uniform file */
@@ -176,6 +185,8 @@ void
 vec4_visitor::nir_setup_uniform(nir_variable *var)
 {
    int namelen = strlen(var->name);
+
+   nir_uniform_offsets[var->data.driver_location] = uniforms * 4;
 
    /* The data for our (non-builtin) uniforms is stored in a series of
     * gl_uniform_driver_storage structs for each subcomponent that
@@ -221,6 +232,7 @@ void
 vec4_visitor::nir_setup_builtin_uniform(nir_variable *var)
 {
    /* @TODO */
+   fprintf(stderr, "Built-in uniforms not yet supported\n");
 }
 
 void
@@ -469,24 +481,26 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       has_indirect = true;
       /* fallthrough */
    case nir_intrinsic_load_uniform: {
-      unsigned offset = instr->const_index[0];
+      unsigned index = instr->const_index[0];
+      unsigned offset = nir_uniform_offsets[index];
 
       dest = get_nir_dest(instr->dest);
-      src = src_reg(dst_reg(UNIFORM, 0));
+      src = src_reg(dst_reg(UNIFORM, offset));
 
       dest.writemask = 0;
       src.swizzle = 0;
+      unsigned k = 0;
       for (int i = 0; i < instr->const_index[1]; i++) {
          for (unsigned j = 0; j < instr->num_components; j++) {
-           dest.writemask |= (1 << offset);
-           src.swizzle |= offset << (offset * 2);
-           offset++;
+           dest.writemask |= (1 << k);
+           src.swizzle |= k << (k * 2);
+           k++;
          }
       }
 
       /* @FIXME: this has not been tested yet, just copied from fs_nir */
       if (has_indirect)
-        src.reladdr = new(mem_ctx) src_reg(get_nir_src(instr->src[0]));
+         src.reladdr = new(mem_ctx) src_reg(get_nir_src(instr->src[0]));
 
       emit(MOV(dest, src));
       break;
