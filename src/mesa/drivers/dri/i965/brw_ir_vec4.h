@@ -46,6 +46,7 @@ public:
    src_reg(int32_t i);
    src_reg(uint8_t vf[4]);
    src_reg(uint8_t vf0, uint8_t vf1, uint8_t vf2, uint8_t vf3);
+   src_reg(const backend_reg &reg, unsigned swizzle);
    src_reg(struct brw_reg reg);
 
    bool equals(const src_reg &r) const;
@@ -113,6 +114,7 @@ public:
    dst_reg(register_file file, int reg);
    dst_reg(register_file file, int reg, const glsl_type *type,
            unsigned writemask);
+   dst_reg(const backend_reg &reg, unsigned writemask);
    dst_reg(struct brw_reg reg);
    dst_reg(class vec4_visitor *v, const struct glsl_type *type);
 
