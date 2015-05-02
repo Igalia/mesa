@@ -404,6 +404,12 @@ fs_reg::fs_reg(uint8_t vf0, uint8_t vf1, uint8_t vf2, uint8_t vf3)
                                (vf3 << 24);
 }
 
+fs_reg::fs_reg(const backend_reg &reg) :
+   backend_reg(reg), subreg_offset(0), reladdr(NULL),
+   stride(1)
+{
+}
+
 /** Fixed brw_reg. */
 fs_reg::fs_reg(struct brw_reg fixed_hw_reg)
 {
