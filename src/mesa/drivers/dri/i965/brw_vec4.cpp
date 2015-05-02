@@ -138,6 +138,11 @@ src_reg::src_reg(const dst_reg &reg)
    this->swizzle = brw_swizzle_for_mask(reg.writemask);
 }
 
+src_reg::src_reg(const backend_reg &reg, unsigned swizzle) :
+   backend_reg(reg), swizzle(swizzle), reladdr(NULL)
+{
+}
+
 void
 dst_reg::init()
 {
@@ -168,6 +173,11 @@ dst_reg::dst_reg(register_file file, int reg, const glsl_type *type,
    this->reg = reg;
    this->type = brw_type_for_base_type(type);
    this->writemask = writemask;
+}
+
+dst_reg::dst_reg(const backend_reg &reg, unsigned writemask) :
+   backend_reg(reg), writemask(writemask), reladdr(NULL)
+{
 }
 
 dst_reg::dst_reg(struct brw_reg reg)
