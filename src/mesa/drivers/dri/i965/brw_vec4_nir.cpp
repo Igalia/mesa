@@ -36,10 +36,10 @@ vec4_visitor::emit_nir_code()
 {
    nir_shader *nir = prog->nir;
 
-   nir_inputs = reralloc(mem_ctx, nir_inputs, src_reg, nir->num_inputs);
+   nir_inputs = ralloc_array(mem_ctx, src_reg, nir->num_inputs);
    nir_setup_inputs(nir);
 
-   nir_outputs = reralloc(mem_ctx, nir_outputs, int, nir->num_outputs);
+   nir_outputs = ralloc_array(mem_ctx, int, nir->num_outputs);
    nir_setup_outputs(nir);
 
    nir_emit_system_values(nir);
@@ -238,7 +238,7 @@ vec4_visitor::nir_setup_builtin_uniform(nir_variable *var)
 void
 vec4_visitor::nir_emit_impl(nir_function_impl *impl)
 {
-   nir_locals = reralloc(mem_ctx, nir_locals, dst_reg, impl->reg_alloc);
+   nir_locals = ralloc_array(mem_ctx, dst_reg, impl->reg_alloc);
    foreach_list_typed(nir_register, reg, node, &impl->registers) {
       unsigned array_elems =
          reg->num_array_elems == 0 ? 1 : reg->num_array_elems;
