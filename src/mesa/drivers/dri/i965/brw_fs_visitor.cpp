@@ -3597,6 +3597,7 @@ fs_visitor::emit_untyped_atomic(unsigned atomic_op, fs_reg surf_index,
       ->force_writemask_all = true;
 
    if (stage == MESA_SHADER_FRAGMENT) {
+#if 0
       if (((brw_wm_prog_data*)this->prog_data)->uses_kill) {
          emit(MOV(component(sources[0], 7), brw_flag_reg(0, 1)))
             ->force_writemask_all = true;
@@ -3605,6 +3606,10 @@ fs_visitor::emit_untyped_atomic(unsigned atomic_op, fs_reg surf_index,
                   retype(brw_vec1_grf(1, 7), BRW_REGISTER_TYPE_UD)))
             ->force_writemask_all = true;
       }
+#else
+      emit(MOV(component(sources[0], 7),
+               fs_reg(0xffffu)))->force_writemask_all = true;
+#endif
    } else {
       /* The execution mask is part of the side-band information sent together with
        * the message payload to the data port. It's implicitly ANDed with the sample
