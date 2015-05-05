@@ -233,8 +233,36 @@ vec4_visitor::nir_setup_uniform(nir_variable *var)
 void
 vec4_visitor::nir_setup_builtin_uniform(nir_variable *var)
 {
-   /* @TODO */
-   fprintf(stderr, "Built-in uniforms not yet supported\n");
+   const nir_state_slot *const slots = var->state_slots;
+   assert(var->state_slots != NULL);
+
+   unsigned offset = 0;
+   for (unsigned int i = 0; i < var->num_state_slots; i++) {
+      /* This state reference has already been setup by ir_to_mesa,
+       * but we'll get the same index back here.  We can reference
+       * ParameterValues directly, since unlike brw_fs.cpp, we never
+       * add new state references during compile.
+       */
+      int index = _mesa_add_state_reference(this->prog->Parameters,
+					    (gl_state_index *)slots[i].tokens);
+      gl_constant_value *values =
+         &this->prog->Parameters->ParameterValues[index][0];
+
+      assert(this->uniforms < uniform_array_size);
+
+      for (unsigned j = 0; j < 4; j++)
+	 stage_prog_data->param[this->uniforms * 4 + j] =
+            &values[GET_SWZ(slots[i].swizzle, j)];
+
+      this->uniform_vector_size[this->uniforms] =
+         (var->type->is_scalar() || var->type->is_vector() ||
+          var->type->is_matrix() ? var->type->vector_elements : 4);
+
+      nir_uniform_offsets[var->data.driver_location + offset * 4] = uniforms;
+      offset++;
+
+      this->uniforms++;
+   }
 }
 
 void
