@@ -3249,9 +3249,57 @@ fs_visitor::visit(ir_end_primitive *)
 }
 
 void
-fs_visitor::visit(ir_ssbo_store *)
+fs_visitor::visit(ir_ssbo_store *ir)
 {
-   unreachable("not implemented yet");
+   fs_reg surf_index;
+   ir_constant *const_uniform_block = ir->block->as_constant();
+   if (const_uniform_block) {
+      unsigned index = stage_prog_data->binding_table.ubo_start +
+                          const_uniform_block->value.u[0];
+      surf_index = fs_reg(index);
+
+      brw_mark_surface_used(prog_data, index);
+   } else {
+      ir->block->accept(this);
+      fs_reg block_reg = this->result;
+      surf_index = vgrf(glsl_type::uint_type);
+      emit(ADD(surf_index, block_reg,
+               fs_reg(stage_prog_data->binding_table.ubo_start)))
+         ->force_writemask_all = true;
+
+      brw_mark_surface_used(prog_data,
+                            stage_prog_data->binding_table.ubo_start +
+                            shader_prog->NumUniformBlocks - 1);
+   }
+
+   unsigned const_offset_bytes;
+   ir_constant *const_offset_ir = ir->offset->as_constant();
+   const_offset_bytes = const_offset_ir ? const_offset_ir->value.u[0] : 0;
+
+   fs_reg offset_reg = vgrf(glsl_type::uint_type);
+   ir->offset->accept(this);
+   emit(MOV(offset_reg, this->result));
+
+   ir->val->accept(this);
+   fs_reg val_reg = this->result;
+
+   unsigned skipped_channels = 0;
+   for (int i = 0; i < ir->val->type->vector_elements; i++) {
+      int component_mask = 1 << i;
+      if (ir->write_mask & component_mask) {
+         if (const_offset_ir) {
+            const_offset_bytes += 4 * skipped_channels;
+            emit(MOV(offset_reg, fs_reg(const_offset_bytes)));
+         } else {
+            emit(ADD(offset_reg, offset_reg, brw_imm_ud(4 * skipped_channels)));
+         }
+
+         emit_untyped_surface_write(surf_index, offset_reg, offset(val_reg, i));
+         skipped_channels = 0;
+      }
+
+      skipped_channels++;
+   }
 }
 
 void
@@ -3365,6 +3413,60 @@ fs_visitor::emit_untyped_surface_read(unsigned surf_index, fs_reg dst,
    inst = emit(SHADER_OPCODE_UNTYPED_SURFACE_READ, dst, src_payload,
                fs_reg(surf_index), fs_reg(1));
    inst->mlen = mlen;
+}
+
+void
+fs_visitor::emit_untyped_surface_write(fs_reg surf_index, fs_reg offset,
+                                       fs_reg data)
+{
+   int reg_width = dispatch_width / 8;
+
+   fs_reg *sources = ralloc_array(mem_ctx, fs_reg, 3);
+
+   sources[0] = fs_reg(GRF, alloc.allocate(1), BRW_REGISTER_TYPE_UD);
+   /* Initialize the sample mask in the message header. */
+   emit(MOV(sources[0], fs_reg(0u)))
+      ->force_writemask_all = true;
+   if (stage == MESA_SHADER_FRAGMENT) {
+      if (((brw_wm_prog_data*)this->prog_data)->uses_kill) {
+         emit(MOV(component(sources[0], 7), brw_flag_reg(0, 1)))
+            ->force_writemask_all = true;
+      } else {
+         emit(MOV(component(sources[0], 7),
+                  retype(brw_vec1_grf(1, 7), BRW_REGISTER_TYPE_UD)))
+            ->force_writemask_all = true;
+      }
+   } else {
+      /* The execution mask is part of the side-band information sent together with
+       * the message payload to the data port. It's implicitly ANDed with the sample
+       * mask sent in the header to compute the actual set of channels that execute
+       * the atomic operation.
+       */
+      assert(stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_COMPUTE);
+      emit(MOV(component(sources[0], 7),
+               fs_reg(0xffffu)))->force_writemask_all = true;
+   }
+
+   /* Set the surface write offset */
+   sources[1] = vgrf(glsl_type::uint_type);
+   emit(MOV(sources[1], offset))->force_writemask_all = true;
+
+   /* Set the data to write */
+   sources[2] = vgrf(glsl_type::uint_type);
+   sources[2].type = data.type;
+   emit(MOV(sources[2], data))->force_writemask_all = true;
+
+   int mlen = 1 + 2 * reg_width;
+   fs_reg src_payload = fs_reg(GRF, alloc.allocate(mlen),
+                               BRW_REGISTER_TYPE_UD);
+   fs_inst *inst = emit(LOAD_PAYLOAD(src_payload, sources, 3));
+
+   /* Emit the instruction */
+   inst = new(mem_ctx)
+      fs_inst(SHADER_OPCODE_UNTYPED_SURFACE_WRITE, dispatch_width,
+              fs_reg(), src_payload, fs_reg(surf_index), fs_reg(1));
+   inst->mlen = mlen;
+   emit(inst);
 }
 
 fs_inst *
