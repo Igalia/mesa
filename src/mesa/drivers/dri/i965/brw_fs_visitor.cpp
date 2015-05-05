@@ -3516,13 +3516,14 @@ fs_visitor::visit(ir_end_primitive *)
 void
 fs_visitor::visit(ir_ssbo_store *ir)
 {
-   ir_constant *const_uniform_block = ir->block->as_constant();
-   ir_constant *const_offset_ir = ir->offset->as_constant();
-
    fs_reg surf_index;
+   ir_constant *const_uniform_block = ir->block->as_constant();
    if (const_uniform_block) {
-      surf_index = fs_reg(stage_prog_data->binding_table.ubo_start +
-                              const_uniform_block->value.u[0]);
+      unsigned index = stage_prog_data->binding_table.ubo_start +
+                          const_uniform_block->value.u[0];
+      surf_index = fs_reg(index);
+
+      brw_mark_surface_used(prog_data, index);
    } else {
       ir->block->accept(this);
       fs_reg block_reg = this->result;
@@ -3536,61 +3537,28 @@ fs_visitor::visit(ir_ssbo_store *ir)
                             shader_prog->NumUniformBlocks - 1);
    }
 
+   unsigned const_offset_bytes;
+   ir_constant *const_offset_ir = ir->offset->as_constant();
+   const_offset_bytes = const_offset_ir ? const_offset_ir->value.u[0] : 0;
+
+   fs_reg offset_reg = vgrf(glsl_type::uint_type);
+   ir->offset->accept(this);
+   emit(MOV(offset_reg, this->result));
+
    ir->val->accept(this);
    fs_reg val_reg = this->result;
 
-   /* We need the offsets in units of dword */
-   fs_reg offset_reg;
-   unsigned const_offset_dwords;
-   if (const_offset_ir) {
-      const_offset_dwords = const_offset_ir->value.u[0] / 4;
-      offset_reg = vgrf(glsl_type::uint_type);
-      emit(MOV(offset_reg, fs_reg(const_offset_dwords)));
-   } else {
-      ir->offset->accept(this);
-      fs_reg offset_reg_orig = this->result;
-      offset_reg = vgrf(glsl_type::uint_type);
-      emit(SHR(offset_reg, offset_reg_orig, fs_reg(2)));
-   }
-
-   /* Write each vector element present in the writemask */
    for (int i = 0; i < ir->val->type->vector_elements; i++) {
       int component_mask = 1 << i;
-      if (ir->write_mask & component_mask) {
-         fs_reg push_dst = fs_reg(brw_vec8_grf(0, 0));
-         fs_inst *inst =
-            new(mem_ctx) fs_inst(SHADER_OPCODE_SCATTERED_BUFFER_STORE,
-                                 dispatch_width, push_dst, surf_index);
-
-         /* SIMD8:  M1 offset,    M2 data
-          * SIMD16: M1:M2 offset, M2:M3 data
-          */
-         int data_mrf;
-         inst->base_mrf = 1;
-         if (dispatch_width == 8) {
-            inst->mlen = 3;
-            data_mrf = inst->base_mrf + 2;
-         } else {
-            inst->mlen = 5;
-            data_mrf = inst->base_mrf + 3;
-         }
-
-         /* Offset payload */
-         fs_reg mrf = fs_reg(MRF, inst->base_mrf + 1, BRW_REGISTER_TYPE_UD);
-         emit(MOV(mrf, offset_reg));
-
-         /* Data payload */
-         mrf = fs_reg(MRF, data_mrf, val_reg.type);
-         emit(MOV(mrf, offset(val_reg, i)));
-
-         emit(inst);
-      }
+      if (ir->write_mask & component_mask)
+         emit_untyped_surface_write(surf_index, offset_reg, offset(val_reg, i));
 
       /* Vector components are stored contiguous in memory */
       if (const_offset_ir) {
-         emit(MOV(offset_reg, fs_reg(++const_offset_dwords)));
+         const_offset_bytes += 4;
+         emit(MOV(offset_reg, fs_reg(const_offset_bytes)));
       } else {
-         emit(ADD(offset_reg, offset_reg, brw_imm_ud(1)));
+         emit(ADD(offset_reg, offset_reg, brw_imm_ud(4)));
       }
    }
 }
@@ -3706,6 +3674,60 @@ fs_visitor::emit_untyped_surface_read(unsigned surf_index, fs_reg dst,
    inst = emit(SHADER_OPCODE_UNTYPED_SURFACE_READ, dst, src_payload,
                fs_reg(surf_index), fs_reg(1));
    inst->mlen = mlen;
+}
+
+void
+fs_visitor::emit_untyped_surface_write(fs_reg surf_index, fs_reg offset,
+                                       fs_reg data)
+{
+   int reg_width = dispatch_width / 8;
+
+   fs_reg *sources = ralloc_array(mem_ctx, fs_reg, 3);
+
+   sources[0] = fs_reg(GRF, alloc.allocate(1), BRW_REGISTER_TYPE_UD);
+   /* Initialize the sample mask in the message header. */
+   emit(MOV(sources[0], fs_reg(0u)))
+      ->force_writemask_all = true;
+   if (stage == MESA_SHADER_FRAGMENT) {
+      if (((brw_wm_prog_data*)this->prog_data)->uses_kill) {
+         emit(MOV(component(sources[0], 7), brw_flag_reg(0, 1)))
+            ->force_writemask_all = true;
+      } else {
+         emit(MOV(component(sources[0], 7),
+                  retype(brw_vec1_grf(1, 7), BRW_REGISTER_TYPE_UD)))
+            ->force_writemask_all = true;
+      }
+   } else {
+      /* The execution mask is part of the side-band information sent together with
+       * the message payload to the data port. It's implicitly ANDed with the sample
+       * mask sent in the header to compute the actual set of channels that execute
+       * the atomic operation.
+       */
+      assert(stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_COMPUTE);
+      emit(MOV(component(sources[0], 7),
+               fs_reg(0xffffu)))->force_writemask_all = true;
+   }
+
+   /* Set the surface write offset */
+   sources[1] = vgrf(glsl_type::uint_type);
+   emit(MOV(sources[1], offset))->force_writemask_all = true;
+
+   /* Set the data to write */
+   sources[2] = vgrf(glsl_type::uint_type);
+   sources[2].type = data.type;
+   emit(MOV(sources[2], data))->force_writemask_all = true;
+
+   int mlen = 1 + 2 * reg_width;
+   fs_reg src_payload = fs_reg(GRF, alloc.allocate(mlen),
+                               BRW_REGISTER_TYPE_UD);
+   fs_inst *inst = emit(LOAD_PAYLOAD(src_payload, sources, 3));
+
+   /* Emit the instruction */
+   inst = new(mem_ctx)
+      fs_inst(SHADER_OPCODE_UNTYPED_SURFACE_WRITE, dispatch_width,
+              fs_reg(), src_payload, fs_reg(surf_index), fs_reg(1));
+   inst->mlen = mlen;
+   emit(inst);
 }
 
 fs_inst *
