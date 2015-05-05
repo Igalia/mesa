@@ -1294,11 +1294,11 @@ fs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
       switch (instr->intrinsic) {
          case nir_intrinsic_atomic_counter_inc:
-            emit_untyped_atomic(BRW_AOP_INC, surf_index, dest, offset,
+            emit_untyped_atomic(BRW_AOP_INC, fs_reg(surf_index), dest, offset,
                                 fs_reg(), fs_reg());
             break;
          case nir_intrinsic_atomic_counter_dec:
-            emit_untyped_atomic(BRW_AOP_PREDEC, surf_index, dest, offset,
+            emit_untyped_atomic(BRW_AOP_PREDEC, fs_reg(surf_index), dest, offset,
                                 fs_reg(), fs_reg());
             break;
          case nir_intrinsic_atomic_counter_read:
