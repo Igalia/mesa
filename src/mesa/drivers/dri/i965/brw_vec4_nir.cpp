@@ -147,7 +147,7 @@ void
 vec4_visitor::nir_setup_uniforms(nir_shader *shader)
 {
    uniforms = 0;
-   this->uniform_array_size = shader->num_uniforms;
+   this->uniform_array_size = shader->num_uniforms * 4;
 
    this->uniform_size = rzalloc_array(mem_ctx, int, this->uniform_array_size);
    this->uniform_vector_size =
@@ -161,9 +161,9 @@ vec4_visitor::nir_setup_uniforms(nir_shader *shader)
          if (var->interface_type != NULL || var->type->contains_atomic())
             continue;
 
-         if (strncmp(var->name, "gl_", 3) == 0) {
+         if (strncmp(var->name, "gl_", 3) == 0)
             nir_setup_builtin_uniform(var);
-         } else
+         else
             nir_setup_uniform(var);
       }
    } else {
@@ -186,8 +186,6 @@ vec4_visitor::nir_setup_uniform(nir_variable *var)
 {
    int namelen = strlen(var->name);
 
-   nir_uniform_offsets[var->data.driver_location] = uniforms * 4;
-
    /* The data for our (non-builtin) uniforms is stored in a series of
     * gl_uniform_driver_storage structs for each subcomponent that
     * glGetUniformLocation() could name.  We know it's been set up in the same
@@ -195,6 +193,7 @@ vec4_visitor::nir_setup_uniform(nir_variable *var)
     * with our name, or the prefix of a component that starts with our name.
     */
 
+    unsigned offset = 0;
     for (unsigned u = 0; u < shader_prog->NumUserUniformStorage; u++) {
        struct gl_uniform_storage *storage = &shader_prog->UniformStorage[u];
 
@@ -222,6 +221,9 @@ vec4_visitor::nir_setup_uniform(nir_variable *var)
              static gl_constant_value zero = { 0.0 };
              stage_prog_data->param[uniforms * 4 + i] = &zero;
           }
+
+          nir_uniform_offsets[var->data.driver_location + offset * 4] = uniforms;
+          offset++;
 
           uniforms++;
        }
@@ -486,17 +488,6 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
       dest = get_nir_dest(instr->dest);
       src = src_reg(dst_reg(UNIFORM, offset));
-
-      dest.writemask = 0;
-      src.swizzle = 0;
-      unsigned k = 0;
-      for (int i = 0; i < instr->const_index[1]; i++) {
-         for (unsigned j = 0; j < instr->num_components; j++) {
-           dest.writemask |= (1 << k);
-           src.swizzle |= k << (k * 2);
-           k++;
-         }
-      }
 
       /* @FIXME: this has not been tested yet, just copied from fs_nir */
       if (has_indirect)
