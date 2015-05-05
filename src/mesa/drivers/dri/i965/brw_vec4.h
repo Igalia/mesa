@@ -409,6 +409,7 @@ public:
    virtual void nir_emit_instr(nir_instr *instr);
    virtual void nir_emit_alu(nir_alu_instr *instr);
    virtual void nir_emit_jump(nir_jump_instr *instr);
+   virtual void nir_emit_texture(nir_tex_instr *instr);
 
    dst_reg get_nir_dest(nir_dest dest);
    src_reg get_nir_src(nir_src src, nir_alu_type type);

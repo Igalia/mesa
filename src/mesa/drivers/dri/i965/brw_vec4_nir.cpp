@@ -450,6 +450,10 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
       nir_emit_jump(nir_instr_as_jump(instr));
       break;
 
+   case nir_instr_type_tex:
+      nir_emit_texture(nir_instr_as_tex(instr));
+      break;
+
    default:
       fprintf(stderr, "VS instruction not yet implemented by NIR->vec4\n");
       break;
@@ -1397,6 +1401,170 @@ vec4_visitor::nir_emit_jump(nir_jump_instr *instr)
    default:
       unreachable("unknown jump");
    }
+}
+
+
+void
+vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
+{
+   unsigned sampler = instr->sampler_index;
+   src_reg sampler_reg = src_reg(sampler);
+   src_reg coordinate;
+   const glsl_type *coordinate_type = glsl_type::float_type;
+
+   /* Get the parameters */
+   for (unsigned i = 0; i < instr->num_srcs; i++) {
+      src_reg src = get_nir_src(instr->src[i].src);
+      switch (instr->src[i].src_type) {
+      case nir_tex_src_comparitor:
+         fprintf(stderr, "WIP: nir_tex_src_comparitor\n");
+         break;
+      case nir_tex_src_coord:
+         switch (instr->op) {
+         case nir_texop_txf:
+            fprintf(stderr, "WIP: \tnir_texop_txf\n");
+         case nir_texop_txf_ms:
+            fprintf(stderr, "\tnir_texop_txf_ms\n");
+            coordinate = retype(src, BRW_REGISTER_TYPE_D);
+            coordinate_type = glsl_type::double_type;
+            break;
+         default:
+            coordinate = retype(src, BRW_REGISTER_TYPE_F);
+            coordinate_type = glsl_type::float_type;
+            break;
+         }
+         break;
+      case nir_tex_src_ddx:
+         fprintf(stderr, "WIP: nir_tex_src_ddx\n");
+         break;
+      case nir_tex_src_ddy:
+         fprintf(stderr, "WIP: nir_tex_src_ddy\n");
+         break;
+      case nir_tex_src_lod:
+         fprintf(stderr, "WIP: nir_tex_src_lod.\n");
+         switch (instr->op) {
+         case nir_texop_txs:
+            fprintf(stderr, "\tnir_texop_txs\n");
+            break;
+         case nir_texop_txf:
+            fprintf(stderr, "\tnir_texop_txf\n");
+            break;
+         default:
+            break;
+         }
+         break;
+      case nir_tex_src_ms_index:
+         fprintf(stderr, "WIP: nir_tex_src_ms_index\n");
+         break;
+      case nir_tex_src_offset:
+         fprintf(stderr, "WIP: nir_tex_src_offset\n");
+         break;
+      case nir_tex_src_projector:
+         fprintf(stderr, "WIP: nir_tex_src_projector\n");
+         unreachable("should be lowered");
+      case nir_tex_src_sampler_offset:
+         fprintf(stderr, "WIP: nir_tex_src_sampler_offset\n");
+      case nir_tex_src_bias:
+         unreachable("LOD bias is not valid for vertex shaders.\n");
+         break;
+      default:
+         unreachable("unknown texture source");
+      }
+   }
+
+   /* Get the texture operation */
+   /*@FIME (comment to be removed) On brw_fs_visitor this switch makes a
+    * nir_texop=>ir_texop conversion, as it relies on brw_fs_visitor ir-based
+    * emit_texture (that relies on different gen versions). For now we are
+    * being "nir-pure" so we can do a direct shader opcode conversion */
+   const glsl_type *lod_type = NULL;
+   src_reg lod;
+   enum opcode opcode;
+   switch (instr->op) {
+   case nir_texop_query_levels: opcode = SHADER_OPCODE_TXS; break;
+   case nir_texop_tex:
+      lod = src_reg(0.0f);
+      lod_type = glsl_type::float_type;
+      opcode = SHADER_OPCODE_TXL;
+      break;
+      /* @FIXME: for tg4 we need to check if has a non constant offset */
+   case nir_texop_tg4: opcode = SHADER_OPCODE_TG4; break;
+   case nir_texop_txd: opcode = SHADER_OPCODE_TXD; break;
+   case nir_texop_txf: opcode = SHADER_OPCODE_TXF; break;
+   case nir_texop_txf_ms: opcode = SHADER_OPCODE_TXF_CMS; break;
+   case nir_texop_txl: opcode = SHADER_OPCODE_TXL; break;
+   case nir_texop_txs: opcode = SHADER_OPCODE_TXS; break;
+   case nir_texop_txb:
+      unreachable("TXB (ie: texture() with bias on glsl) is not valid for vertex shaders.\n");
+   case nir_texop_lod:
+      unreachable("LOD (ie: textureQueryLOD on glsl) is not valid for vertex shaders.\n");
+      break;
+   default:
+      unreachable("unknown texture opcode");
+   }
+
+   enum glsl_base_type dest_base_type;
+   switch (instr->dest_type) {
+   case nir_type_float:
+      dest_base_type = GLSL_TYPE_FLOAT;
+      break;
+   case nir_type_int:
+      dest_base_type = GLSL_TYPE_INT;
+      break;
+   case nir_type_unsigned:
+      dest_base_type = GLSL_TYPE_UINT;
+      break;
+   default:
+      unreachable("bad type");
+   }
+
+   const glsl_type *dest_type =
+      glsl_type::get_instance(dest_base_type, nir_tex_instr_dest_size(instr), 1);
+
+   vec4_instruction *inst = new(mem_ctx)
+      vec4_instruction(opcode, dst_reg(this, dest_type));
+
+   /* @FIXME: wip consider all cases for header_size (see brw_vec4_visitor) */
+   inst->header_size = 0;
+   inst->base_mrf = 2;
+   inst->mlen = inst->header_size + 1;
+   inst->dst.writemask = WRITEMASK_XYZW;
+
+   /* @FIXME: wip shadow_compare */
+   inst->shadow_compare = false;
+
+   inst->src[1] = sampler_reg;
+
+   /* Load the coordinate */
+   int param_base = inst->base_mrf + inst->header_size;
+   int coord_mask = (1 << instr->coord_components) - 1;
+   int zero_mask = 0xf & ~coord_mask;
+
+   emit(MOV(dst_reg(MRF, param_base, coordinate_type, coord_mask), coordinate));
+
+   if (zero_mask != 0) {
+      emit(MOV(dst_reg(MRF, param_base, coordinate_type, zero_mask), src_reg(0)));
+   }
+
+   /* Load the LOD info, @FIXME: only handling current scenario */
+   int mrf, writemask;
+
+   mrf = param_base + 1; /* @FIXME: asumming devinfo->gen >= 5 */
+   writemask = WRITEMASK_X; /* @FIXME: assuming no shadow_comparitor */
+   inst->mlen++; /* @FIXME: assuming no shadow_comparitor */
+   emit(MOV(dst_reg(MRF, mrf, lod_type, writemask), lod));
+
+   emit(inst);
+
+   dst_reg dest = get_nir_dest(instr->dest);
+   /* @FIXME: get_nir_dest calls dst_reg_for_nir_reg that sets a hardcoded
+    * type. It is needed to set the proper type to get things working. */
+   dest.type = brw_type_for_base_type (dest_type);
+
+   /* @FIXME: here brw_vec4_visitor call swizzle_result, that does a swizzle
+    * on the source and/or the destination if needed, and then it emit the
+    * src->dest mov. swizzle not supported yet, so just doing a direct mov */
+   emit(MOV(dest, src_reg(inst->dst)));
 }
 
 }
