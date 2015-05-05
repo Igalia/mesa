@@ -348,7 +348,7 @@ public:
    void emit_shader_time_write(enum shader_time_shader_type type,
                                src_reg value);
 
-   void emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
+   void emit_untyped_atomic(unsigned atomic_op, src_reg surf_index,
                             dst_reg dst, src_reg offset, src_reg src0,
                             src_reg src1);
 
