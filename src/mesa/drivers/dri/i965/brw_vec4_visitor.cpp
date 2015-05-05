@@ -2535,11 +2535,11 @@ vec4_visitor::visit_atomic_counter_intrinsic(ir_call *ir)
       emit_untyped_surface_read(src_reg(surf_index), dst, offset, 1);
 
    } else if (!strcmp("__intrinsic_atomic_increment", callee)) {
-      emit_untyped_atomic(BRW_AOP_INC, surf_index, dst, offset,
+      emit_untyped_atomic(BRW_AOP_INC, src_reg(surf_index), dst, offset,
                           src_reg(), src_reg());
 
    } else if (!strcmp("__intrinsic_atomic_predecrement", callee)) {
-      emit_untyped_atomic(BRW_AOP_PREDEC, surf_index, dst, offset,
+      emit_untyped_atomic(BRW_AOP_PREDEC, src_reg(surf_index), dst, offset,
                           src_reg(), src_reg());
    }
 }
@@ -3131,7 +3131,7 @@ vec4_visitor::visit(ir_ssbo_store *ir)
 }
 
 void
-vec4_visitor::emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
+vec4_visitor::emit_untyped_atomic(unsigned atomic_op, src_reg surf_index,
                                   dst_reg dst, src_reg offset,
                                   src_reg src0, src_reg src1)
 {
@@ -3158,7 +3158,7 @@ vec4_visitor::emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
     */
    vec4_instruction *inst = emit(SHADER_OPCODE_UNTYPED_ATOMIC, dst,
                                  brw_message_reg(0),
-                                 src_reg(surf_index), src_reg(atomic_op));
+                                 surf_index, src_reg(atomic_op));
    inst->mlen = mlen;
 }
 
