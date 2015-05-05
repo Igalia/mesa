@@ -412,7 +412,7 @@ public:
                             fs_reg dst, fs_reg offset, fs_reg src0,
                             fs_reg src1);
 
-   void emit_untyped_surface_read(unsigned surf_index, fs_reg dst,
+   void emit_untyped_surface_read(fs_reg surf_index, fs_reg dst,
                                   fs_reg offset);
 
    void emit_untyped_surface_write(fs_reg surf_index, fs_reg offset,

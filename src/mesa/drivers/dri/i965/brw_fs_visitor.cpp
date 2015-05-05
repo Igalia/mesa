@@ -1196,24 +1196,16 @@ fs_visitor::visit(ir_expression *ir)
    case ir_binop_ssbo_load: {
       assert(brw->gen >= 7);
 
-      /* This IR node takes a constant uniform block and a constant or
-       * variable byte offset within the block and loads a vector from that.
-       */
       ir_constant *const_uniform_block = ir->operands[0]->as_constant();
       ir_constant *const_offset = ir->operands[1]->as_constant();
-      fs_reg surf_index;
 
+      fs_reg surf_index;
       if (const_uniform_block) {
-         /* The block index is a constant, so just emit the binding table entry
-          * as an immediate.
-          */
-         surf_index = fs_reg(stage_prog_data->binding_table.ubo_start +
-                                 const_uniform_block->value.u[0]);
+         unsigned index = stage_prog_data->binding_table.ubo_start +
+                          const_uniform_block->value.u[0];
+         surf_index = fs_reg(index);
+         brw_mark_surface_used(prog_data, index);
       } else {
-         /* The block index is not a constant. Evaluate the index expression
-          * per-channel and add the base UBO index; the generator will select
-          * a value from any live channel.
-          */
          surf_index = vgrf(glsl_type::uint_type);
          emit(ADD(surf_index, op[0],
                   fs_reg(stage_prog_data->binding_table.ubo_start)))
@@ -1227,31 +1219,19 @@ fs_visitor::visit(ir_expression *ir)
                                shader_prog->NumUniformBlocks - 1);
       }
 
-      /* For scattered read message we want offset in units of dword */
-      unsigned const_offset_dwords;
+      /* Get the offset to read from */
+      unsigned const_offset_bytes = 0;
+      if (const_offset)
+         const_offset_bytes = const_offset->value.u[0];
       fs_reg offset_reg = vgrf(glsl_type::uint_type);
-      if (const_offset) {
-         const_offset_dwords = const_offset->value.u[0] / 4;
-         emit(MOV(offset_reg, fs_reg(const_offset_dwords)));
-      } else {
-         emit(SHR(offset_reg, op[1], fs_reg(2)));
-      }
+      emit(MOV(offset_reg, op[1]));
 
-      /* Use dword scattered read messages to load each vector component */
-      int base_mrf = 1;
-      fs_reg offset_mrf = fs_reg(MRF, base_mrf + 1, BRW_REGISTER_TYPE_UD);
-      int mlen = (dispatch_width == 8) ? 2 : 3;
-
+      /* Read the vector */
       fs_reg read_result = vgrf(glsl_type::float_type);
       read_result.type = result.type;
       read_result.width = dispatch_width;
       for (int i = 0; i < ir->type->vector_elements; i++) {
-         fs_inst *inst = new(mem_ctx) fs_inst(SHADER_OPCODE_SCATTERED_BUFFER_LOAD,
-                                              read_result, surf_index);
-         inst->mlen = mlen;
-         inst->base_mrf = base_mrf;
-         emit(MOV(offset_mrf, offset_reg));
-         emit(inst);
+         emit_untyped_surface_read(surf_index, read_result, offset_reg);
 
          if (ir->type->base_type == GLSL_TYPE_BOOL) {
             emit(CMP(result, read_result, fs_reg(0u), BRW_CONDITIONAL_NZ));
@@ -1264,9 +1244,10 @@ fs_visitor::visit(ir_expression *ir)
          /* Vector components are stored contiguous in memory */
          if (i < ir->type->vector_elements) {
             if (const_offset) {
-               emit(MOV(offset_reg, fs_reg(++const_offset_dwords)));
+               const_offset_bytes += 4;
+               emit(MOV(offset_reg, fs_reg(const_offset_bytes)));
             } else {
-               emit(ADD(offset_reg, offset_reg, brw_imm_ud(1)));
+               emit(ADD(offset_reg, offset_reg, brw_imm_ud(4)));
             }
          }
       }
@@ -3319,7 +3300,7 @@ fs_visitor::visit_atomic_counter_intrinsic(ir_call *ir)
    fs_reg dst = this->result;
 
    if (!strcmp("__intrinsic_atomic_read", callee)) {
-      emit_untyped_surface_read(surf_index, dst, offset);
+      emit_untyped_surface_read(fs_reg(surf_index), dst, offset);
 
    } else if (!strcmp("__intrinsic_atomic_increment", callee)) {
       emit_untyped_atomic(BRW_AOP_INC, fs_reg(surf_index), dst, offset,
@@ -3629,7 +3610,7 @@ fs_visitor::emit_untyped_atomic(unsigned atomic_op, fs_reg surf_index,
 }
 
 void
-fs_visitor::emit_untyped_surface_read(unsigned surf_index, fs_reg dst,
+fs_visitor::emit_untyped_surface_read(fs_reg surf_index, fs_reg dst,
                                       fs_reg offset)
 {
    int reg_width = dispatch_width / 8;
@@ -3672,7 +3653,7 @@ fs_visitor::emit_untyped_surface_read(unsigned surf_index, fs_reg dst,
 
    /* Emit the instruction. */
    inst = emit(SHADER_OPCODE_UNTYPED_SURFACE_READ, dst, src_payload,
-               fs_reg(surf_index), fs_reg(1));
+               surf_index, fs_reg(1));
    inst->mlen = mlen;
 }
 
