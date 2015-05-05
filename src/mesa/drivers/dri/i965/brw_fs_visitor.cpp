@@ -42,11 +42,15 @@
 #include "brw_cs.h"
 #include "brw_vec4.h"
 #include "brw_fs.h"
+#include "brw_fs_builder.h"
+#include "brw_fs_surface_builder.h"
 #include "main/uniforms.h"
 #include "glsl/glsl_types.h"
 #include "glsl/ir_optimization.h"
 #include "program/sampler.h"
 
+using namespace brw;
+using namespace brw::surface_access;
 
 fs_reg *
 fs_visitor::emit_vs_system_value(int location)
@@ -3303,9 +3307,70 @@ fs_visitor::visit(ir_end_primitive *)
 }
 
 void
-fs_visitor::visit(ir_ssbo_store *)
+fs_visitor::visit(ir_ssbo_store *ir)
 {
-   unreachable("not implemented yet");
+   fs_reg surf_index;
+   ir_constant *const_uniform_block = ir->block->as_constant();
+   if (const_uniform_block) {
+      unsigned index = stage_prog_data->binding_table.ubo_start +
+                          const_uniform_block->value.u[0];
+      surf_index = fs_reg(index);
+
+      brw_mark_surface_used(prog_data, index);
+   } else {
+      ir->block->accept(this);
+      fs_reg block_reg = this->result;
+      surf_index = vgrf(glsl_type::uint_type);
+      emit(ADD(surf_index, block_reg,
+               fs_reg(stage_prog_data->binding_table.ubo_start)))
+         ->force_writemask_all = true;
+
+      brw_mark_surface_used(prog_data,
+                            stage_prog_data->binding_table.ubo_start +
+                            shader_prog->NumUniformBlocks - 1);
+   }
+
+   unsigned const_offset_bytes;
+   ir_constant *const_offset_ir = ir->offset->as_constant();
+   const_offset_bytes = const_offset_ir ? const_offset_ir->value.u[0] : 0;
+
+   fs_reg offset_reg = vgrf(glsl_type::uint_type);
+   ir->offset->accept(this);
+   emit(MOV(offset_reg, this->result));
+
+   ir->val->accept(this);
+   fs_reg val_reg = this->result;
+
+   const bool uses_kill = (stage == MESA_SHADER_FRAGMENT &&
+                           ((brw_wm_prog_data *)prog_data)->uses_kill);
+   fs_builder bld(devinfo, mem_ctx, alloc, instructions, dispatch_width,
+                  stage, uses_kill);
+
+   bld.set_annotation(current_annotation);
+   bld.set_base_ir(base_ir);
+
+   unsigned skipped_channels = 0;
+   for (int i = 0; i < ir->val->type->vector_elements; i++) {
+      int component_mask = 1 << i;
+      if (ir->write_mask & component_mask) {
+         if (skipped_channels) {
+            if (const_offset_ir) {
+               const_offset_bytes += 4 * skipped_channels;
+               emit(MOV(offset_reg, fs_reg(const_offset_bytes)));
+            } else {
+               emit(ADD(offset_reg, offset_reg,
+                        brw_imm_ud(4 * skipped_channels)));
+            }
+            skipped_channels = 0;
+         }
+
+         emit_untyped_write(bld, surf_index, offset_reg, offset(val_reg, i),
+                            1 /* dims */, 1 /* size */,
+                            BRW_PREDICATE_NONE);
+      }
+
+      skipped_channels++;
+   }
 }
 
 void
