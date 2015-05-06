@@ -181,6 +181,11 @@ struct gl_uniform_storage {
     * via the API.
     */
    bool hidden;
+
+   /**
+    * This is a buffer variable, not an uniform.
+    */
+   bool is_buffer;
 };
 
 #ifdef __cplusplus
