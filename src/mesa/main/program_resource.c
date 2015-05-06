@@ -40,6 +40,8 @@ supported_interface_enum(GLenum iface)
    case GL_PROGRAM_OUTPUT:
    case GL_TRANSFORM_FEEDBACK_VARYING:
    case GL_ATOMIC_COUNTER_BUFFER:
+   case GL_BUFFER_VARIABLE:
+   case GL_SHADER_STORAGE_BLOCK:
       return true;
    case GL_VERTEX_SUBROUTINE:
    case GL_TESS_CONTROL_SUBROUTINE:
@@ -53,8 +55,6 @@ supported_interface_enum(GLenum iface)
    case GL_GEOMETRY_SUBROUTINE_UNIFORM:
    case GL_FRAGMENT_SUBROUTINE_UNIFORM:
    case GL_COMPUTE_SUBROUTINE_UNIFORM:
-   case GL_BUFFER_VARIABLE:
-   case GL_SHADER_STORAGE_BLOCK:
    default:
       return false;
    }
@@ -116,6 +116,7 @@ _mesa_GetProgramInterfaceiv(GLuint program, GLenum programInterface,
    case GL_MAX_NUM_ACTIVE_VARIABLES:
       switch (programInterface) {
       case GL_UNIFORM_BLOCK:
+      case GL_SHADER_STORAGE_BLOCK:
          for (i = 0, *params = 0; i < shProg->NumProgramResourceList; i++) {
             if (shProg->ProgramResourceList[i].Type == programInterface) {
                struct gl_uniform_block *block =
@@ -220,12 +221,14 @@ _mesa_GetProgramResourceIndex(GLuint program, GLenum programInterface,
    case GL_PROGRAM_INPUT:
    case GL_PROGRAM_OUTPUT:
    case GL_UNIFORM:
+   case GL_BUFFER_VARIABLE:
    case GL_TRANSFORM_FEEDBACK_VARYING:
       /* Validate name syntax for array variables */
       if (!valid_program_resource_index_name(name))
          return GL_INVALID_INDEX;
       /* fall-through */
    case GL_UNIFORM_BLOCK:
+   case GL_SHADER_STORAGE_BLOCK:
       res = _mesa_program_resource_find_name(shProg, programInterface, name);
       if (!res)
          return GL_INVALID_INDEX;
