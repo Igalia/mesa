@@ -44,7 +44,8 @@ vec4_visitor::emit_nir_code()
 
    nir_emit_system_values(nir);
 
-   nir_setup_uniforms(nir);
+   if (nir->num_uniforms > 0)
+      nir_setup_uniforms(nir);
 
    /* get the main function and emit it */
    nir_foreach_overload(nir, overload) {
