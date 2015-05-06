@@ -629,6 +629,8 @@ private:
       this->uniforms[id].atomic_buffer_index = -1;
       this->uniforms[id].hidden =
          current_var->data.how_declared == ir_var_hidden;
+      this->uniforms[id].is_buffer =
+         current_var->is_in_shader_storage_block();
       if (this->ubo_block_index != -1) {
 	 this->uniforms[id].block_index = this->ubo_block_index;
 
@@ -638,8 +640,12 @@ private:
 	 this->ubo_byte_offset += type->std140_size(row_major);
 
 	 if (type->is_array()) {
-	    this->uniforms[id].array_stride =
-	       glsl_align(type->fields.array->std140_size(row_major), 16);
+	    if (type->interface_packing == GLSL_INTERFACE_PACKING_STD430)
+	       this->uniforms[id].array_stride =
+		  type->fields.array->std430_size(row_major);
+	    else
+	       this->uniforms[id].array_stride =
+		  glsl_align(type->fields.array->std140_size(row_major), 16);
 	 } else {
 	    this->uniforms[id].array_stride = 0;
 	 }

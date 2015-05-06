@@ -2770,14 +2770,18 @@ build_program_resource_list(struct gl_context *ctx,
 
       uint8_t stageref =
          build_stageref(shProg, shProg->UniformStorage[i].name);
-      if (!add_program_resource(shProg, GL_UNIFORM,
+      bool is_buffer =  shProg->UniformStorage[i].is_buffer;
+      GLenum type = is_buffer ? GL_BUFFER_VARIABLE : GL_UNIFORM;
+      if (!add_program_resource(shProg, type,
                                 &shProg->UniformStorage[i], stageref))
          return;
    }
 
-   /* Add program uniform blocks. */
+   /* Add program uniform blocks and shader storage blocks. */
    for (unsigned i = 0; i < shProg->NumUniformBlocks; i++) {
-      if (!add_program_resource(shProg, GL_UNIFORM_BLOCK,
+      bool is_buffer = shProg->UniformBlocks[i].IsBuffer;
+      GLenum type = is_buffer ? GL_SHADER_STORAGE_BLOCK : GL_UNIFORM_BLOCK;
+      if (!add_program_resource(shProg, type,
           &shProg->UniformBlocks[i], 0))
          return;
    }
