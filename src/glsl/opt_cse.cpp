@@ -253,8 +253,14 @@ expression_contains_ssbo_load(ir_expression *expr)
    for (unsigned i = 0; i < expr->get_num_operands(); i++) {
       ir_rvalue *op = expr->operands[i];
       if (op->ir_type == ir_type_expression &&
-          expression_contains_ssbo_load(op->as_expression()))
+          expression_contains_ssbo_load(op->as_expression())) {
          return true;
+      } else if (op->ir_type == ir_type_swizzle) {
+         ir_swizzle *swizzle = op->as_swizzle();
+         ir_expression *val = swizzle->val->as_expression();
+         if (val && expression_contains_ssbo_load(val))
+            return true;
+      }
    }
 
    return false;
