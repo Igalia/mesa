@@ -154,6 +154,7 @@ vec4_visitor::nir_setup_uniforms(nir_shader *shader)
      rzalloc_array(mem_ctx, int, this->uniform_array_size);
 
    nir_uniform_offsets = rzalloc_array(mem_ctx, int, this->uniform_array_size);
+   memset(nir_uniform_offsets, 0, this->uniform_array_size * sizeof(int));
 
    if (shader_prog) {
       foreach_list_typed(nir_variable, var, node, &shader->uniforms) {
@@ -168,15 +169,14 @@ vec4_visitor::nir_setup_uniforms(nir_shader *shader)
       }
    } else {
       /* prog_to_nir doesn't create uniform variables; set param up directly. */
-
-      /* @FIXME: this block has not been tested yet, just copied here
-       * from fs_nir.
-       */
       for (unsigned p = 0; p < prog->Parameters->NumParameters; p++) {
          for (unsigned int i = 0; i < 4; i++) {
             stage_prog_data->param[4 * p + i] =
                &prog->Parameters->ParameterValues[p][i];
          }
+
+         nir_uniform_offsets[p * 4] = uniforms;
+         uniforms++;
       }
    }
 }
