@@ -1302,7 +1302,7 @@ fs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
                                 fs_reg(), fs_reg());
             break;
          case nir_intrinsic_atomic_counter_read:
-            emit_untyped_surface_read(surf_index, dest, offset);
+            emit_untyped_surface_read(fs_reg(surf_index), dest, offset);
             break;
          default:
             unreachable("Unreachable");

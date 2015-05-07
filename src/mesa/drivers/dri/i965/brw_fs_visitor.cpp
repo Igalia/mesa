@@ -3177,7 +3177,7 @@ fs_visitor::visit_atomic_counter_intrinsic(ir_call *ir)
    fs_reg dst = this->result;
 
    if (!strcmp("__intrinsic_atomic_read", callee)) {
-      emit_untyped_surface_read(surf_index, dst, offset);
+      emit_untyped_surface_read(fs_reg(surf_index), dst, offset);
 
    } else if (!strcmp("__intrinsic_atomic_increment", callee)) {
       emit_untyped_atomic(BRW_AOP_INC, surf_index, dst, offset,
@@ -3368,7 +3368,7 @@ fs_visitor::emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
 }
 
 void
-fs_visitor::emit_untyped_surface_read(unsigned surf_index, fs_reg dst,
+fs_visitor::emit_untyped_surface_read(fs_reg surf_index, fs_reg dst,
                                       fs_reg offset)
 {
    int reg_width = dispatch_width / 8;
@@ -3385,7 +3385,7 @@ fs_visitor::emit_untyped_surface_read(unsigned surf_index, fs_reg dst,
 
    /* Emit the instruction. */
    inst = emit(SHADER_OPCODE_UNTYPED_SURFACE_READ, dst, src_payload,
-               fs_reg(surf_index), fs_reg(1));
+               surf_index, fs_reg(1));
    inst->mlen = mlen;
 }
 
