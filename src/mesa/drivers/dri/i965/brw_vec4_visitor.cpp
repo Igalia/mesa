@@ -2431,7 +2431,7 @@ vec4_visitor::visit_atomic_counter_intrinsic(ir_call *ir)
    dst_reg dst = get_assignment_lhs(ir->return_deref, this);
 
    if (!strcmp("__intrinsic_atomic_read", callee)) {
-      emit_untyped_surface_read(surf_index, dst, offset);
+      emit_untyped_surface_read(src_reg(surf_index), dst, offset, 1);
 
    } else if (!strcmp("__intrinsic_atomic_increment", callee)) {
       emit_untyped_atomic(BRW_AOP_INC, surf_index, dst, offset,
@@ -3069,8 +3069,8 @@ vec4_visitor::emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
 }
 
 void
-vec4_visitor::emit_untyped_surface_read(unsigned surf_index, dst_reg dst,
-                                        src_reg offset)
+vec4_visitor::emit_untyped_surface_read(src_reg surf_index, dst_reg dst,
+                                        src_reg offset, unsigned channels)
 {
    /* Set the surface read offset. */
    emit(MOV(brw_writemask(brw_uvec_mrf(8, 0, 0), WRITEMASK_X), offset));
@@ -3081,7 +3081,7 @@ vec4_visitor::emit_untyped_surface_read(unsigned surf_index, dst_reg dst,
     */
    vec4_instruction *inst = emit(SHADER_OPCODE_UNTYPED_SURFACE_READ, dst,
                                  brw_message_reg(0),
-                                 src_reg(surf_index), src_reg(1));
+                                 surf_index, src_reg(channels));
    inst->mlen = 1;
 }
 

@@ -352,8 +352,8 @@ public:
                             dst_reg dst, src_reg offset, src_reg src0,
                             src_reg src1);
 
-   void emit_untyped_surface_read(unsigned surf_index, dst_reg dst,
-                                  src_reg offset);
+   void emit_untyped_surface_read(src_reg surf_index, dst_reg dst,
+                                  src_reg offset, unsigned channels);
 
    void emit_untyped_surface_write(src_reg surf_index, src_reg offset,
                                    src_reg data, unsigned writemask);
