@@ -2924,6 +2924,7 @@ brw_set_dp_untyped_surface_write_message(struct brw_codegen *p,
 
 void
 brw_untyped_surface_write(struct brw_codegen *p,
+                          struct brw_reg dst,
                           struct brw_reg payload,
                           struct brw_reg surface,
                           unsigned msg_length,
@@ -2934,12 +2935,9 @@ brw_untyped_surface_write(struct brw_codegen *p,
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
                           GEN7_SFID_DATAPORT_DATA_CACHE);
    const bool align1 = brw_inst_access_mode(devinfo, p->current) == BRW_ALIGN_1;
-   /* Mask out unused components -- See comment in brw_untyped_atomic(). */
-   const unsigned mask = devinfo->gen == 7 && !devinfo->is_haswell && !align1 ?
-                          WRITEMASK_X : WRITEMASK_XYZW;
+
    struct brw_inst *insn = brw_send_indirect_surface_message(
-      p, sfid, brw_writemask(brw_null_reg(), mask),
-      payload, surface, msg_length, 0, align1);
+      p, sfid, dst, payload, surface, msg_length, 0, align1);
 
    brw_set_dp_untyped_surface_write_message(
       p, insn, num_channels);

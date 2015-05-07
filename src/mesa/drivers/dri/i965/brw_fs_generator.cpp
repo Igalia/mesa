@@ -2032,7 +2032,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
 
       case SHADER_OPCODE_UNTYPED_SURFACE_WRITE:
          assert(src[2].file == BRW_IMMEDIATE_VALUE);
-         brw_untyped_surface_write(p, src[0], src[1],
+         brw_untyped_surface_write(p, brw_null_reg(), src[0], src[1],
                                    inst->mlen, src[2].dw1.ud);
          break;
 

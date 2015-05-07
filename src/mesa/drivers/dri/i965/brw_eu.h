@@ -418,6 +418,7 @@ brw_untyped_surface_read(struct brw_codegen *p,
 
 void
 brw_untyped_surface_write(struct brw_codegen *p,
+                          struct brw_reg dst,
                           struct brw_reg payload,
                           struct brw_reg surface,
                           unsigned msg_length,
