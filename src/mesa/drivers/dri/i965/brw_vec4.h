@@ -355,6 +355,9 @@ public:
    void emit_untyped_surface_read(unsigned surf_index, dst_reg dst,
                                   src_reg offset);
 
+   void emit_untyped_surface_write(src_reg surf_index, src_reg offset,
+                                   src_reg data, unsigned writemask);
+
    src_reg get_scratch_offset(bblock_t *block, vec4_instruction *inst,
 			      src_reg *reladdr, int reg_offset);
    src_reg get_pull_constant_offset(bblock_t *block, vec4_instruction *inst,

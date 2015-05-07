@@ -2952,9 +2952,88 @@ vec4_visitor::visit(ir_end_primitive *)
 }
 
 void
-vec4_visitor::visit(ir_ssbo_store *)
+vec4_visitor::visit(ir_ssbo_store *ir)
 {
-   unreachable("not implemented yet");
+   ir_constant *const_uniform_block = ir->block->as_constant();
+   ir_constant *const_offset_ir = ir->offset->as_constant();
+
+   src_reg surf_index;
+   if (const_uniform_block) {
+      unsigned index = prog_data->base.binding_table.ubo_start +
+                       const_uniform_block->value.u[0];
+      surf_index = src_reg(index);
+
+      brw_mark_surface_used(&prog_data->base, index);
+   } else {
+      ir->block->accept(this);
+      src_reg block_reg = this->result;
+      surf_index = src_reg(this, glsl_type::uint_type);
+      emit(ADD(dst_reg(surf_index), block_reg,
+               src_reg(prog_data->base.binding_table.ubo_start)));
+
+      brw_mark_surface_used(&prog_data->base,
+                            prog_data->base.binding_table.ubo_start +
+                            shader_prog->NumUniformBlocks - 1);
+   }
+
+   unsigned const_offset_bytes =
+      const_offset_ir ? const_offset_ir->value.u[0] : 0;
+
+   src_reg offset = src_reg(this, glsl_type::uint_type);
+   ir->offset->accept(this);
+   emit(MOV(dst_reg(offset), this->result));
+
+   src_reg val_reg = src_reg(this, glsl_type::vec4_type);
+   ir->val->accept(this);
+   val_reg.type = this->result.type;
+   emit(MOV(dst_reg(val_reg), this->result));
+
+   /* IvyBridge does not have native SIMD4x2 untyped write messages,
+    * so we need to use SIMD8 instead. In this mode, we will use 8 offsets,
+    * one in each subregister of M1. In SIMD4x2 M1.0 to M1.3 will hold offsets
+    * for up to 4 dwords (4 vector elements) of the first vertex and
+    * M1.4 to M1.7 will hold the offsets for the second vertex. So, we
+    * compute the offsets for each vector component we want to write and store
+    * them in the appropriate subregisters by using the writemask (WRITEMASK_X
+    * will select offsets 0 and 4, WRITEMASK_Y selects offsets 1 and 5, etc).
+    * Since untyped write messages use byte offsets and each vector component
+    * is 4 bytes, the offset distance between vector components is 4 bytes too.
+    * If there are channels in the payload carrying data we don't want to write
+    * (because we are not writing all components of the vectors), we will
+    * discard them by using the writemask on the untyped write message.
+    *
+    * TODO: Implement support for haswell+ that use native SIMD4x2 messages.
+    */
+   assert(brw->gen == 7 && !brw->is_haswell);
+   unsigned skipped_channels = 0;
+   dst_reg offset_payload = dst_reg(this, glsl_type::uvec4_type);
+   for (int i = 0; i < ir->val->type->vector_elements; i++) {
+      int component_mask = 1 << i;
+      if (ir->write_mask & component_mask) {
+         offset_payload.writemask = component_mask;
+
+         if (skipped_channels) {
+            if (const_offset_ir) {
+               const_offset_bytes += 4 * skipped_channels;
+               offset = src_reg(const_offset_bytes);
+            } else {
+               emit(ADD(dst_reg(offset), offset,
+                        brw_imm_ud(4 * skipped_channels)));
+            }
+            skipped_channels = 0;
+         }
+
+         emit(MOV(offset_payload, offset));
+      }
+
+      skipped_channels++;
+   }
+
+   /* Set the writemask to select all the channels we want to write */
+   offset_payload.writemask = ir->write_mask;
+
+   emit_untyped_surface_write(surf_index, src_reg(offset_payload),
+                              val_reg, ir->write_mask);
 }
 
 void
@@ -3004,6 +3083,29 @@ vec4_visitor::emit_untyped_surface_read(unsigned surf_index, dst_reg dst,
                                  brw_message_reg(0),
                                  src_reg(surf_index), src_reg(1));
    inst->mlen = 1;
+}
+
+void
+vec4_visitor::emit_untyped_surface_write(src_reg surf_index, src_reg offset,
+                                         src_reg data, unsigned writemask)
+{
+   /* Set the surface write offset. */
+   emit(MOV(brw_writemask(brw_uvec_mrf(8, 0, 0), writemask), offset));
+
+   /* Set the data to write. */
+   struct brw_reg mrf =
+      brw_writemask(brw_vecn_reg(8, BRW_MESSAGE_REGISTER_FILE, 1, 0),
+                    writemask);
+   emit(MOV(retype(mrf, data.type), data));
+
+   /* Emit the instruction.  Note that this maps to the normal SIMD8
+    * untyped surface write message, but we use the writemask to select
+    * the channels that will be written to memory.
+    */
+   vec4_instruction *inst = emit(SHADER_OPCODE_UNTYPED_SURFACE_WRITE,
+                                 brw_writemask(brw_null_reg(), writemask),
+                                 brw_message_reg(0), surf_index, src_reg(1));
+   inst->mlen = 2;
 }
 
 void
