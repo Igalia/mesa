@@ -3052,35 +3052,42 @@ vec4_visitor::visit(ir_ssbo_store *ir)
     * (because we are not writing all components of the vectors), we will
     * discard them by using the writemask on the untyped write message.
     *
-    * TODO: Implement support for haswell+ that use native SIMD4x2 messages.
+    * Haswell and later that have native SIMD4x2 mode. These message takes
+    * a single offset for each vector in M1.0 and M1.4. Then we write the
+    * data payload to M2 (like in SIMD8). Notice that in this mode, unlike
+    * SIMD8, each vector component uses a different channel in the message
+    * payload, so we use the writemask to select the channels to enable.
     */
-   assert(brw->gen == 7 && !brw->is_haswell);
-   unsigned skipped_channels = 0;
    dst_reg offset_payload = dst_reg(this, glsl_type::uvec4_type);
-   for (int i = 0; i < ir->val->type->vector_elements; i++) {
-      int component_mask = 1 << i;
-      if (ir->write_mask & component_mask) {
-         offset_payload.writemask = component_mask;
+   if (brw->gen == 7 && !brw->is_haswell) {
+      unsigned skipped_channels = 0;
+      for (int i = 0; i < ir->val->type->vector_elements; i++) {
+         int component_mask = 1 << i;
+         if (ir->write_mask & component_mask) {
+            offset_payload.writemask = component_mask;
 
-         if (skipped_channels) {
-            if (const_offset_ir) {
-               const_offset_bytes += 4 * skipped_channels;
-               offset = src_reg(const_offset_bytes);
-            } else {
-               emit(ADD(dst_reg(offset), offset,
-                        brw_imm_ud(4 * skipped_channels)));
+            if (skipped_channels) {
+               if (const_offset_ir) {
+                  const_offset_bytes += 4 * skipped_channels;
+                  offset = src_reg(const_offset_bytes);
+               } else {
+                  emit(ADD(dst_reg(offset), offset,
+                           brw_imm_ud(4 * skipped_channels)));
+               }
+               skipped_channels = 0;
             }
-            skipped_channels = 0;
+
+            emit(MOV(offset_payload, offset));
          }
 
-         emit(MOV(offset_payload, offset));
+         skipped_channels++;
       }
 
-      skipped_channels++;
+      /* Set the writemask to select all the channels we want to write */
+      offset_payload.writemask = ir->write_mask;
+   } else {
+      emit(MOV(offset_payload, offset));
    }
-
-   /* Set the writemask to select all the channels we want to write */
-   offset_payload.writemask = ir->write_mask;
 
    emit_untyped_surface_write(surf_index, src_reg(offset_payload),
                               val_reg, ir->write_mask);
@@ -3140,7 +3147,10 @@ vec4_visitor::emit_untyped_surface_write(src_reg surf_index, src_reg offset,
                                          src_reg data, unsigned writemask)
 {
    /* Set the surface write offset. */
-   emit(MOV(brw_writemask(brw_uvec_mrf(8, 0, 0), writemask), offset));
+   if (brw->gen == 7 && !brw->is_haswell)
+      emit(MOV(brw_writemask(brw_uvec_mrf(8, 0, 0), writemask), offset));
+   else
+      emit(MOV(brw_writemask(brw_uvec_mrf(8, 0, 0), WRITEMASK_X), offset));
 
    /* Set the data to write. */
    struct brw_reg mrf =
@@ -3151,10 +3161,17 @@ vec4_visitor::emit_untyped_surface_write(src_reg surf_index, src_reg offset,
    /* Emit the instruction.  Note that this maps to the normal SIMD8
     * untyped surface write message, but we use the writemask to select
     * the channels that will be written to memory.
+    *
+    * Haswell and later map this to SIMD4x2 messages and the writemask
+    * tells the channels that carry valid data in the payload.
     */
+   unsigned channel_mask = writemask;
+   if (brw->gen == 7 && !brw->is_haswell)
+      channel_mask = 0x1;
    vec4_instruction *inst = emit(SHADER_OPCODE_UNTYPED_SURFACE_WRITE,
                                  brw_writemask(brw_null_reg(), writemask),
-                                 brw_message_reg(0), surf_index, src_reg(0x1));
+                                 brw_message_reg(0), surf_index,
+                                 src_reg(channel_mask));
    inst->mlen = 2;
 }
 
