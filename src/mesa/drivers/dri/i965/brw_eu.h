@@ -414,7 +414,7 @@ brw_untyped_surface_read(struct brw_codegen *p,
                          struct brw_reg payload,
                          struct brw_reg surface,
                          unsigned msg_length,
-                         unsigned num_channels);
+                         unsigned channel_mask);
 
 void
 brw_untyped_surface_write(struct brw_codegen *p,
@@ -422,7 +422,7 @@ brw_untyped_surface_write(struct brw_codegen *p,
                           struct brw_reg payload,
                           struct brw_reg surface,
                           unsigned msg_length,
-                          unsigned num_channels);
+                          unsigned channel_mask);
 
 void
 brw_typed_atomic(struct brw_codegen *p,

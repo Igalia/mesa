@@ -2852,11 +2852,11 @@ brw_untyped_atomic(struct brw_codegen *p,
 static void
 brw_set_dp_untyped_surface_read_message(struct brw_codegen *p,
                                         struct brw_inst *insn,
-                                        unsigned num_channels)
+                                        unsigned channel_mask)
 {
    const struct brw_device_info *devinfo = p->devinfo;
    /* Set mask of 32-bit channels to drop. */
-   unsigned msg_control = 0xf & (0xf << num_channels);
+   unsigned msg_control = 0xf & (~channel_mask);
 
    if (brw_inst_access_mode(devinfo, p->current) == BRW_ALIGN_1) {
       if (p->compressed)
@@ -2878,8 +2878,14 @@ brw_untyped_surface_read(struct brw_codegen *p,
                          struct brw_reg payload,
                          struct brw_reg surface,
                          unsigned msg_length,
-                         unsigned num_channels)
+                         unsigned channel_mask)
 {
+   unsigned num_channels = 0;
+   for (int i = 0; i < 4; i++) {
+      if (channel_mask & (1 << i))
+         num_channels++;
+   }
+
    const struct brw_device_info *devinfo = p->devinfo;
    const unsigned sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
@@ -2889,18 +2895,17 @@ brw_untyped_surface_read(struct brw_codegen *p,
       brw_surface_payload_size(p, num_channels, true, true),
       false);
 
-   brw_set_dp_untyped_surface_read_message(
-      p, insn, num_channels);
+   brw_set_dp_untyped_surface_read_message(p, insn, channel_mask);
 }
 
 static void
 brw_set_dp_untyped_surface_write_message(struct brw_codegen *p,
                                          struct brw_inst *insn,
-                                         unsigned num_channels)
+                                         unsigned channel_mask)
 {
    const struct brw_device_info *devinfo = p->devinfo;
    /* Set mask of 32-bit channels to drop. */
-   unsigned msg_control = 0xf & (0xf << num_channels);
+   unsigned msg_control = 0xf & (~channel_mask);
 
    if (brw_inst_access_mode(devinfo, p->current) == BRW_ALIGN_1) {
       if (p->compressed)
@@ -2927,7 +2932,7 @@ brw_untyped_surface_write(struct brw_codegen *p,
                           struct brw_reg payload,
                           struct brw_reg surface,
                           unsigned msg_length,
-                          unsigned num_channels)
+                          unsigned channel_mask)
 {
    const struct brw_device_info *devinfo = p->devinfo;
    const unsigned sfid = (devinfo->gen >= 8 || devinfo->is_haswell ?
@@ -2939,7 +2944,7 @@ brw_untyped_surface_write(struct brw_codegen *p,
       p, sfid, dst, payload, surface, msg_length, 0, align1);
 
    brw_set_dp_untyped_surface_write_message(
-      p, insn, num_channels);
+      p, insn, channel_mask);
 }
 
 static void

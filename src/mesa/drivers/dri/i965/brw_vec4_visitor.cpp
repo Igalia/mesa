@@ -1852,7 +1852,7 @@ vec4_visitor::visit(ir_expression *ir)
       /* Read the vector */
       src_reg read_result = src_reg(this, glsl_type::vec4_type);
       read_result.type = result.type;
-      emit_untyped_surface_read(surf_index, dst_reg(read_result), offset, 4);
+      emit_untyped_surface_read(surf_index, dst_reg(read_result), offset, 0xf);
       read_result.swizzle = brw_swizzle_for_size(ir->type->vector_elements);
 
       /* UBO bools are any nonzero int.  We need to convert them to 0/~0. */
@@ -2481,7 +2481,7 @@ vec4_visitor::visit_atomic_counter_intrinsic(ir_call *ir)
    dst_reg dst = get_assignment_lhs(ir->return_deref, this);
 
    if (!strcmp("__intrinsic_atomic_read", callee)) {
-      emit_untyped_surface_read(src_reg(surf_index), dst, offset, 1);
+      emit_untyped_surface_read(src_reg(surf_index), dst, offset, 0x1);
 
    } else if (!strcmp("__intrinsic_atomic_increment", callee)) {
       emit_untyped_atomic(BRW_AOP_INC, surf_index, dst, offset,
@@ -3120,7 +3120,7 @@ vec4_visitor::emit_untyped_atomic(unsigned atomic_op, unsigned surf_index,
 
 void
 vec4_visitor::emit_untyped_surface_read(src_reg surf_index, dst_reg dst,
-                                        src_reg offset, unsigned channels)
+                                        src_reg offset, unsigned channel_mask)
 {
    /* Set the surface read offset. */
    emit(MOV(brw_writemask(brw_uvec_mrf(8, 0, 0), WRITEMASK_X), offset));
@@ -3131,7 +3131,7 @@ vec4_visitor::emit_untyped_surface_read(src_reg surf_index, dst_reg dst,
     */
    vec4_instruction *inst = emit(SHADER_OPCODE_UNTYPED_SURFACE_READ, dst,
                                  brw_message_reg(0),
-                                 surf_index, src_reg(channels));
+                                 surf_index, src_reg(channel_mask));
    inst->mlen = 1;
 }
 
@@ -3154,7 +3154,7 @@ vec4_visitor::emit_untyped_surface_write(src_reg surf_index, src_reg offset,
     */
    vec4_instruction *inst = emit(SHADER_OPCODE_UNTYPED_SURFACE_WRITE,
                                  brw_writemask(brw_null_reg(), writemask),
-                                 brw_message_reg(0), surf_index, src_reg(1));
+                                 brw_message_reg(0), surf_index, src_reg(0x1));
    inst->mlen = 2;
 }
 
