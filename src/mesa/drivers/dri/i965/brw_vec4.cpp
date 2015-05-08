@@ -1733,7 +1733,8 @@ vec4_visitor::run()
 
    emit_prolog();
 
-   if (use_nir) {
+   if (use_nir && stage == MESA_SHADER_VERTEX) {
+      assert(prog->nir != NULL);
       emit_nir_code();
       if (failed)
          return false;
