@@ -1278,6 +1278,26 @@ layout_qualifier_id:
          }
       }
 
+      /* See also interface_block_layout_qualifier. */
+      if (!$$.flags.i && state->has_shader_storage_buffer_objects()) {
+         /* Memory qualifiers are reserved words. Its token is parsed
+          * below in the interface_block_layout_qualifier rule. This takes
+          * care of alternate capitalizations (which is necessary because
+          * layout qualifiers are case-insensitive in desktop GLSL).
+          */
+         if (match_layout_qualifier($1, "volatile", state) == 0) {
+            $$.flags.q._volatile = 1;
+         } else if (match_layout_qualifier($1, "restrict", state) == 0) {
+            $$.flags.q.restrict_flag = 1;
+         } else if (match_layout_qualifier($1, "coherent", state) == 0) {
+            $$.flags.q.coherent = 1;
+         } else if (match_layout_qualifier($1, "readonly", state) == 0) {
+            $$.flags.q.read_only = 1;
+         } else if (match_layout_qualifier($1, "writeonly", state) == 0) {
+            $$.flags.q.write_only = 1;
+         }
+      }
+
       /* Layout qualifiers for GLSL 1.50 geometry shaders. */
       if (!$$.flags.i) {
          static const struct {
@@ -1568,6 +1588,61 @@ interface_block_layout_qualifier:
    {
       memset(& $$, 0, sizeof($$));
       $$.flags.q.packed = 1;
+   }
+   | VOLATILE
+   {
+      memset(& $$, 0, sizeof($$));
+      if (state->has_shader_storage_buffer_objects()) {
+         $$.flags.q._volatile = 1;
+      } else {
+         _mesa_glsl_error(& @1, state,
+                          "Layout qualifier `volatile' is only "
+                          "allowed with shader storage buffer objects");
+      }
+   }
+   | COHERENT
+   {
+      memset(& $$, 0, sizeof($$));
+      if (state->has_shader_storage_buffer_objects()) {
+         $$.flags.q.coherent = 1;
+      } else {
+         _mesa_glsl_error(& @1, state,
+                          "Layout qualifier `coherent' is only "
+                          "allowed with shader storage buffer objects");
+      }
+   }
+   | RESTRICT
+   {
+      memset(& $$, 0, sizeof($$));
+      if (state->has_shader_storage_buffer_objects()) {
+         $$.flags.q.restrict_flag = 1;
+      } else {
+         _mesa_glsl_error(& @1, state,
+                          "Layout qualifier `restrict' is only "
+                          "allowed with shader storage buffer objects");
+      }
+   }
+   | READONLY
+   {
+      memset(& $$, 0, sizeof($$));
+      if (state->has_shader_storage_buffer_objects()) {
+         $$.flags.q.read_only = 1;
+      } else {
+         _mesa_glsl_error(& @1, state,
+                          "Layout qualifier `readonly' is only "
+                          "allowed with shader storage buffer objects");
+      }
+   }
+   | WRITEONLY
+   {
+      memset(& $$, 0, sizeof($$));
+      if (state->has_shader_storage_buffer_objects()) {
+         $$.flags.q.write_only = 1;
+      } else {
+         _mesa_glsl_error(& @1, state,
+                          "Layout qualifier `writeonly' is only "
+                          "allowed with shader storage buffer objects");
+      }
    }
    ;
 
