@@ -1303,6 +1303,9 @@ fs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
          default:
             unreachable("Unreachable");
       }
+
+      /* Mark the surface as used. */
+      brw_mark_surface_used(stage_prog_data, surf_index);
       break;
    }
 
