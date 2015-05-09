@@ -3252,6 +3252,8 @@ fs_visitor::visit_atomic_counter_intrinsic(ir_call *ir)
       emit_untyped_atomic(BRW_AOP_PREDEC, surf_index, dst, offset,
                           fs_reg(), fs_reg());
    }
+
+   brw_mark_surface_used(stage_prog_data, surf_index);
 }
 
 void
