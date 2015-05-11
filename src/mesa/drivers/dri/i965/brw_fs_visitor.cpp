@@ -3269,11 +3269,13 @@ fs_visitor::visit_atomic_intrinsic(ir_call *ir)
    ir_constant *const_uniform_block = ssbo_expr->operands[0]->as_constant();
 
    fs_reg surface;
+   unsigned surf_index = 0;
    if (const_uniform_block) {
-      unsigned surf_index = stage_prog_data->binding_table.ubo_start +
-                            const_uniform_block->value.u[0];
+      surf_index = stage_prog_data->binding_table.ubo_start +
+                   const_uniform_block->value.u[0];
       surface = fs_reg(surf_index);
    } else {
+      assert(!"Not supported yet");
       ssbo_expr->operands[0]->accept(this);
       surface = this->result;
       emit(ADD(surface, surface,
@@ -3304,35 +3306,35 @@ fs_visitor::visit_atomic_intrinsic(ir_call *ir)
    ir->return_deref->accept(this);
    fs_reg dst = this->result;
    if (!strcmp("__intrinsic_atomic_add", callee)) {
-      emit_untyped_atomic(BRW_AOP_ADD, surface, dst, offset,
+      emit_untyped_atomic(BRW_AOP_ADD, surf_index, dst, offset,
                           data1, fs_reg());
       return;
    }
 
    if (!strcmp("__intrinsic_atomic_and", callee)) {
-      emit_untyped_atomic(BRW_AOP_AND, surface, dst, offset,
+      emit_untyped_atomic(BRW_AOP_AND, surf_index, dst, offset,
                           data1, fs_reg());
       return;
    }
 
    if (!strcmp("__intrinsic_atomic_or", callee)) {
-      emit_untyped_atomic(BRW_AOP_OR, surface, dst, offset,
+      emit_untyped_atomic(BRW_AOP_OR, surf_index, dst, offset,
                           data1, fs_reg());
       return;
    }
 
    if (!strcmp("__intrinsic_atomic_xor", callee)) {
-      emit_untyped_atomic(BRW_AOP_XOR, surface, dst, offset,
+      emit_untyped_atomic(BRW_AOP_XOR, surf_index, dst, offset,
                           data1, fs_reg());
       return;
    }
 
    if (!strcmp("__intrinsic_atomic_min", callee)) {
       if (dst.type == BRW_REGISTER_TYPE_D) {
-         emit_untyped_atomic(BRW_AOP_IMIN, surface, dst, offset,
+         emit_untyped_atomic(BRW_AOP_IMIN, surf_index, dst, offset,
                              data1, fs_reg());
       } else {
-         emit_untyped_atomic(BRW_AOP_UMIN, surface, dst, offset,
+         emit_untyped_atomic(BRW_AOP_UMIN, surf_index, dst, offset,
                              data1, fs_reg());
       }
       return;
@@ -3340,17 +3342,17 @@ fs_visitor::visit_atomic_intrinsic(ir_call *ir)
 
    if (!strcmp("__intrinsic_atomic_max", callee)) {
       if (dst.type == BRW_REGISTER_TYPE_D) {
-         emit_untyped_atomic(BRW_AOP_IMAX, surface, dst, offset,
+         emit_untyped_atomic(BRW_AOP_IMAX, surf_index, dst, offset,
                              data1, fs_reg());
       } else {
-         emit_untyped_atomic(BRW_AOP_UMAX, surface, dst, offset,
+         emit_untyped_atomic(BRW_AOP_UMAX, surf_index, dst, offset,
                              data1, fs_reg());
       }
       return;
    }
 
    if (!strcmp("__intrinsic_atomic_exchange", callee)) {
-      emit_untyped_atomic(BRW_AOP_MOV, surface, dst, offset,
+      emit_untyped_atomic(BRW_AOP_MOV, surf_index, dst, offset,
                           data1, fs_reg());
       return;
    }
@@ -3360,7 +3362,7 @@ fs_visitor::visit_atomic_intrinsic(ir_call *ir)
       assert(param);
       param->accept(this);
       fs_reg data2 = this->result;
-      emit_untyped_atomic(BRW_AOP_CMPWR, surface, dst, offset,
+      emit_untyped_atomic(BRW_AOP_CMPWR, surf_index, dst, offset,
                           data1, data2);
       return;
    }
