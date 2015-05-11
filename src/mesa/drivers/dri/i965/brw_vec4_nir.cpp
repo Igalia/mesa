@@ -129,7 +129,7 @@ vec4_visitor::nir_setup_inputs(nir_shader *shader)
 {
    foreach_list_typed(nir_variable, var, node, &shader->inputs) {
       src_reg src = src_reg(ATTR, var->data.location, var->type);
-
+      src = retype(src, brw_type_for_base_type(var->type));
       int offset = var->data.driver_location;
       nir_inputs[offset] = src;
    }
