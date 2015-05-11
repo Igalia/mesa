@@ -1051,7 +1051,7 @@ vec4_generator::generate_unsized_array_length(vec4_instruction *inst,
               GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO,
               1, /* response length */
               inst->mlen,
-              inst->header_present,
+              inst->header_size > 0,
               BRW_SAMPLER_SIMD_MODE_SIMD4X2,
               BRW_SAMPLER_RETURN_FORMAT_SINT32);
 

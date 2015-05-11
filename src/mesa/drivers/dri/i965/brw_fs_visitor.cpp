@@ -1385,14 +1385,14 @@ fs_visitor::visit(ir_expression *ir)
 
       fs_reg src_payload = fs_reg(GRF, alloc.allocate(mlen),
                                    BRW_REGISTER_TYPE_F);
-      emit(LOAD_PAYLOAD(src_payload, &source, length));
+      emit(LOAD_PAYLOAD(src_payload, &source, length, 0));
 
       fs_reg surf_index = fs_reg(prog_data->binding_table.ubo_start + ubo_index);
       fs_reg buffer_size = vgrf(glsl_type::int_type);
 
       fs_inst *inst = emit(FS_OPCODE_UNSIZED_ARRAY_LENGTH, buffer_size,
                            src_payload, surf_index);
-      inst->header_present = false;
+      inst->header_size = 0;
       inst->base_mrf = -1;
       inst->mlen = mlen;
       inst->regs_written = 4 * reg_width;
