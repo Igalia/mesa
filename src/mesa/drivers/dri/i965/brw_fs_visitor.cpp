@@ -3510,41 +3510,16 @@ fs_visitor::emit_untyped_surface_read(unsigned surf_index, fs_reg dst,
 {
    int reg_width = dispatch_width / 8;
 
-   fs_reg *sources = ralloc_array(mem_ctx, fs_reg, 2);
-
-   sources[0] = fs_reg(GRF, alloc.allocate(1), BRW_REGISTER_TYPE_UD);
-   /* Initialize the sample mask in the message header. */
-   emit(MOV(sources[0], fs_reg(0u)))
-      ->force_writemask_all = true;
-
-   if (stage == MESA_SHADER_FRAGMENT) {
-      if (((brw_wm_prog_data*)this->prog_data)->uses_kill) {
-         emit(MOV(component(sources[0], 7), brw_flag_reg(0, 1)))
-            ->force_writemask_all = true;
-      } else {
-         emit(MOV(component(sources[0], 7),
-                  retype(brw_vec1_grf(1, 7), BRW_REGISTER_TYPE_UD)))
-            ->force_writemask_all = true;
-      }
-   } else {
-      /* The execution mask is part of the side-band information sent together with
-       * the message payload to the data port. It's implicitly ANDed with the sample
-       * mask sent in the header to compute the actual set of channels that execute
-       * the atomic operation.
-       */
-      assert(stage == MESA_SHADER_VERTEX || stage == MESA_SHADER_COMPUTE);
-      emit(MOV(component(sources[0], 7),
-               fs_reg(0xffffu)))->force_writemask_all = true;
-   }
+   fs_reg *sources = ralloc_array(mem_ctx, fs_reg, 1);
 
    /* Set the surface read offset. */
-   sources[1] = vgrf(glsl_type::uint_type);
-   emit(MOV(sources[1], offset));
+   sources[0] = vgrf(glsl_type::uint_type);
+   emit(MOV(sources[0], offset));
 
-   int mlen = 1 + reg_width;
+   int mlen = reg_width;
    fs_reg src_payload = fs_reg(GRF, alloc.allocate(mlen),
                                BRW_REGISTER_TYPE_UD, dispatch_width);
-   fs_inst *inst = emit(LOAD_PAYLOAD(src_payload, sources, 2, 1));
+   fs_inst *inst = emit(LOAD_PAYLOAD(src_payload, sources, 1, 0));
 
    /* Emit the instruction. */
    inst = emit(SHADER_OPCODE_UNTYPED_SURFACE_READ, dst, src_payload,
