@@ -2770,6 +2770,16 @@ build_program_resource_list(struct gl_context *ctx,
 
       uint8_t stageref =
          build_stageref(shProg, shProg->UniformStorage[i].name);
+
+      /* Add stagereferences for uniforms in a uniform block. */
+      int block_index = shProg->UniformStorage[i].block_index;
+      if (block_index != -1) {
+         for (unsigned j = 0; j < MESA_SHADER_STAGES; j++) {
+             if (shProg->UniformBlockStageIndex[j][block_index] != -1)
+                stageref |= (1 << j);
+         }
+      }
+
       bool is_buffer =  shProg->UniformStorage[i].is_buffer;
       GLenum type = is_buffer ? GL_BUFFER_VARIABLE : GL_UNIFORM;
       if (!add_program_resource(shProg, type,
