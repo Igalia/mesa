@@ -566,7 +566,7 @@ fs_generator::generate_unsized_array_length(fs_inst *inst,
               GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO,
               rlen, /* response length */
               inst->mlen,
-              inst->header_present,
+              inst->header_size > 0,
               simd_mode,
               BRW_SAMPLER_RETURN_FORMAT_SINT32);
 

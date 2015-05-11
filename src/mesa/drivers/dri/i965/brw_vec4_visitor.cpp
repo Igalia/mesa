@@ -1947,14 +1947,13 @@ vec4_visitor::visit(ir_expression *ir)
       vec4_instruction *inst = new(mem_ctx) vec4_instruction(
          VS_OPCODE_UNSIZED_ARRAY_LENGTH, buffer_size);
 
-      inst->header_present = false;
       inst->base_mrf = 2;
-      inst->mlen = inst->header_present + 1; /* always at least one */
+      inst->mlen = 1; /* always at least one */
       inst->src[1] = src_reg(surf_index);
 
       /* MRF for the first parameter */
       src_reg lod = src_reg(0);
-      int param_base = inst->base_mrf + inst->header_present;
+      int param_base = inst->base_mrf;
       int writemask = WRITEMASK_X;
       emit(MOV(dst_reg(MRF, param_base, glsl_type::int_type, writemask), lod));
 
