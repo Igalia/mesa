@@ -915,35 +915,54 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_ball_fequal3:
    case nir_op_ball_iequal3:
    case nir_op_ball_fequal4:
-   case nir_op_ball_iequal4:
+   case nir_op_ball_iequal4: {
       /* @FIXME: if (gen <= 5) the vec4_visitor and fs_visitor call to
        * resolve_bool_comparison for every operand. To check if we
        * want to add it.
        */
+
+      /* Update the swizzle to take into account the size of the operand */
+      /* @FIXME: Probably we want to move this to glsl_to_nir */
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[0].swizzle);
+      op[1].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[1].swizzle);
+
       emit(CMP(dst_null_d(), op[0], op[1],
                brw_conditional_for_nir_comparison(instr->op)));
       emit(MOV(dst, src_reg(0)));
       inst = emit(MOV(dst, src_reg(~0)));
       inst->predicate = BRW_PREDICATE_ALIGN16_ALL4H;
       break;
+   }
 
    case nir_op_bany_fnequal2:
    case nir_op_bany_inequal2:
    case nir_op_bany_fnequal3:
    case nir_op_bany_inequal3:
    case nir_op_bany_fnequal4:
-   case nir_op_bany_inequal4:
+   case nir_op_bany_inequal4: {
       /* @FIXME: if (gen <= 5) the vec4_visitor and fs_visitor call to
        * resolve_bool_comparison for every operand. To check if we
        * want to add it.
        */
+
+      /* Update the swizzle to take into account the size of the operand */
+      /* @FIXME: Probably we want to move this to glsl_to_nir */
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[0].swizzle);
+      op[1].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[1].swizzle);
+
       emit(CMP(dst_null_d(), op[0], op[1],
                brw_conditional_for_nir_comparison(instr->op)));
       emit(MOV(dst, src_reg(0)));
       inst = emit(MOV(dst, src_reg(~0)));
       inst->predicate = BRW_PREDICATE_ALIGN16_ANY4H;
       break;
-
+   }
       /* @FIXME: for the following logical operations: inot, ixor, ior, iand,
        * brw_fs_nir calls to resolve_source_modifiers for every operand
        * if (gen > =8). This call and check is not present in the fs and vec4
