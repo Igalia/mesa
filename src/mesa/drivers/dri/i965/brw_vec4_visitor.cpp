@@ -1819,9 +1819,61 @@ vec4_visitor::visit(ir_expression *ir)
       emit(BFI1(result_dst, op[0], op[1]));
       break;
 
-   case ir_binop_ssbo_load:
-      assert(!"Not implemented");
+   case ir_binop_ssbo_load: {
+      assert(brw->gen >= 7);
+      assert(ir->type->is_vector() || ir->type->is_scalar());
+
+      src_reg surf_index;
+      ir_constant *const_uniform_block = ir->operands[0]->as_constant();
+      if (const_uniform_block) {
+         /* The block index is a constant, so just emit the binding table entry
+          * as an immediate.
+          */
+         unsigned index = prog_data->base.binding_table.ubo_start +
+                          const_uniform_block->value.u[0];
+         surf_index = src_reg(index);
+
+         brw_mark_surface_used(&prog_data->base, index);
+      } else {
+         /* The block index is not a constant. Evaluate the index expression
+          * per-channel and add the base UBO index; we have to select a value
+          * from any live channel.
+          */
+         surf_index = src_reg(this, glsl_type::uint_type);
+         emit(ADD(dst_reg(surf_index), op[0],
+                  src_reg(prog_data->base.binding_table.ubo_start)));
+         emit_uniformize(dst_reg(surf_index), surf_index);
+
+         /* Assume this may touch any UBO. It would be nice to provide
+          * a tighter bound, but the array information is already lowered away.
+          */
+         brw_mark_surface_used(&prog_data->base,
+                               prog_data->base.binding_table.ubo_start +
+                               shader_prog->NumUniformBlocks - 1);
+      }
+
+      src_reg offset = src_reg(this, glsl_type::uint_type);
+      emit(MOV(dst_reg(offset), op[1]));
+
+      /* Read the vector */
+      vec4_builder bld(devinfo, mem_ctx, alloc, instructions);
+      bld.set_annotation(current_annotation);
+      bld.set_base_ir(base_ir);
+
+      src_reg read_result = emit_untyped_read(bld, surf_index, offset,
+                                              1 /* dims */, 4 /* size*/,
+                                              BRW_PREDICATE_NONE);
+      read_result.type = result.type;
+      read_result.swizzle = brw_swizzle_for_size(ir->type->vector_elements);
+
+      /* UBO bools are any nonzero int.  We need to convert them to 0/~0. */
+      if (ir->type->base_type == GLSL_TYPE_BOOL) {
+         emit(CMP(result_dst, read_result, src_reg(0u), BRW_CONDITIONAL_NZ));
+      } else {
+         emit(MOV(result_dst, read_result));
+      }
       break;
+   };
 
    case ir_binop_ubo_load: {
       ir_constant *const_uniform_block = ir->operands[0]->as_constant();
