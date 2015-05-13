@@ -461,6 +461,9 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
    switch (instr->intrinsic) {
 
+   case nir_intrinsic_load_input_indirect:
+      has_indirect = true;
+      /* fallthrough */
    case nir_intrinsic_load_input: {
       dest = get_nir_dest(instr->dest);
 
@@ -470,6 +473,9 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
       int offset = instr->const_index[0];
       src = nir_inputs[offset];
+
+      if (has_indirect)
+         src.reladdr = new(mem_ctx) src_reg(get_nir_src(instr->src[0]));
 
       dest = retype(dest, src.type);
       emit(MOV(dest, src));
