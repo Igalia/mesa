@@ -1813,6 +1813,10 @@ vec4_visitor::visit(ir_expression *ir)
       emit(BFI1(result_dst, op[0], op[1]));
       break;
 
+   case ir_binop_ssbo_load:
+      assert(!"Not implemented");
+      break;
+
    case ir_binop_ubo_load: {
       ir_constant *const_uniform_block = ir->operands[0]->as_constant();
       ir_constant *const_offset_ir = ir->operands[1]->as_constant();

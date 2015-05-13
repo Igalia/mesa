@@ -1341,6 +1341,7 @@ ir_to_mesa_visitor::visit(ir_expression *ir)
    case ir_unop_dFdx_fine:
    case ir_unop_dFdy_coarse:
    case ir_unop_dFdy_fine:
+   case ir_binop_ssbo_load:
       assert(!"not supported");
       break;
 
