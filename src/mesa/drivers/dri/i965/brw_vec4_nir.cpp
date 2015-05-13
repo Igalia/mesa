@@ -377,15 +377,32 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
    }
 }
 
-dst_reg
-vec4_visitor::get_nir_dest(nir_dest dest)
+static dst_reg
+dst_reg_for_nir_reg(vec4_visitor *v, nir_register *nir_reg,
+                    unsigned base_offset, nir_src *indirect)
 {
    dst_reg reg;
 
-   reg = nir_locals[dest.reg.reg->index];
-   reg = offset(reg, dest.reg.base_offset);
+   reg = v->nir_locals[nir_reg->index];
+
+   reg = offset(reg, base_offset * nir_reg->num_components);
+   if (indirect) {
+      int multiplier = nir_reg->num_components;
+
+      reg.reladdr = new(v->mem_ctx) src_reg(dst_reg(GRF, v->alloc.allocate(1)));
+      v->emit(v->MUL(dst_reg(*reg.reladdr),
+                     retype(v->get_nir_src(*indirect), BRW_REGISTER_TYPE_D),
+                     src_reg(multiplier)));
+   }
 
    return reg;
+}
+
+dst_reg
+vec4_visitor::get_nir_dest(nir_dest dest)
+{
+   return dst_reg_for_nir_reg (this, dest.reg.reg, dest.reg.base_offset,
+                               dest.reg.indirect);
 }
 
 src_reg
@@ -419,9 +436,9 @@ vec4_visitor::get_nir_src(nir_src src, nir_alu_type type)
       }
    }
    else {
-      reg = nir_locals[src.reg.reg->index];
-      reg = offset(reg, src.reg.base_offset);
-      reg = retype(reg, brw_type_for_nir_type(type));
+     reg = dst_reg_for_nir_reg(this, src.reg.reg, src.reg.base_offset,
+                               src.reg.indirect);
+     reg = retype(reg, brw_type_for_nir_type(type));
    }
 
    return src_reg(reg);
