@@ -323,6 +323,7 @@ protected:
 enum ir_variable_mode {
    ir_var_auto = 0,     /**< Function local variables and globals. */
    ir_var_uniform,      /**< Variable declared as a uniform. */
+   ir_var_buffer,       /**< Variable declared as an ssbo. */
    ir_var_shader_in,
    ir_var_shader_out,
    ir_var_function_in,
@@ -444,7 +445,8 @@ public:
     */
    inline bool is_in_uniform_block() const
    {
-      return this->data.mode == ir_var_uniform && this->interface_type != NULL;
+      return (this->data.mode == ir_var_uniform ||
+              this->data.mode == ir_var_buffer) && this->interface_type != NULL;
    }
 
    /**
