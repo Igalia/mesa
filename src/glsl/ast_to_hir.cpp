@@ -2502,6 +2502,8 @@ apply_type_qualifier_to_variable(const struct ast_type_qualifier *qual,
       var->data.mode = ir_var_shader_out;
    else if (qual->flags.q.uniform)
       var->data.mode = ir_var_uniform;
+   else if (qual->flags.q.buffer)
+      var->data.mode = ir_var_buffer;
 
    if (!is_parameter && is_varying_var(var, state->stage)) {
       /* User-defined ins/outs are not permitted in compute shaders. */
@@ -5174,8 +5176,9 @@ ast_type_specifier::hir(exec_list *instructions,
  * \c glsl_struct_field to describe the members.
  *
  * If we're processing an interface block, var_mode should be the type of the
- * interface block (ir_var_shader_in, ir_var_shader_out, or ir_var_uniform).
- * If we're processing a structure, var_mode should be ir_var_auto.
+ * interface block (ir_var_shader_in, ir_var_shader_out, ir_var_uniform or
+ * ir_var_buffer).  If we're processing a structure, var_mode should be
+ * ir_var_auto.
  *
  * \return
  * The number of fields processed.  A pointer to the array structure fields is
@@ -5305,10 +5308,10 @@ ast_process_structure_or_interface_block(exec_list *instructions,
          fields[i].stream = qual->flags.q.explicit_stream ? qual->stream : -1;
 
          if (qual->flags.q.row_major || qual->flags.q.column_major) {
-            if (!qual->flags.q.uniform) {
+            if (!qual->flags.q.uniform && !qual->flags.q.buffer) {
                _mesa_glsl_error(&loc, state,
                                 "row_major and column_major can only be "
-                                "applied to uniform interface blocks");
+                                "applied to interface blocks");
             } else
                validate_matrix_layout_for_type(state, &loc, field_type, NULL);
          }
@@ -5505,6 +5508,9 @@ ast_interface_block::hir(exec_list *instructions,
    } else if (this->layout.flags.q.uniform) {
       var_mode = ir_var_uniform;
       iface_type_name = "uniform";
+   } else if (this->layout.flags.q.buffer) {
+      var_mode = ir_var_buffer;
+      iface_type_name = "buffer";
    } else {
       var_mode = ir_var_auto;
       iface_type_name = "UNKNOWN";
