@@ -1191,6 +1191,12 @@ fs_visitor::visit(ir_expression *ir)
    case ir_binop_pack_half_2x16_split:
       emit(FS_OPCODE_PACK_HALF_2x16_SPLIT, this->result, op[0], op[1]);
       break;
+
+   case ir_binop_ssbo_load:
+      assert(brw->gen >= 7);
+      assert(!"Not implemented");
+      break;
+
    case ir_binop_ubo_load: {
       /* This IR node takes a constant uniform block and a constant or
        * variable byte offset within the block and loads a vector from that.
