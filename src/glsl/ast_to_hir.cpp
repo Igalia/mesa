@@ -2765,7 +2765,7 @@ apply_type_qualifier_to_variable(const struct ast_type_qualifier *qual,
    }
 
    if (var->type->contains_atomic()) {
-      if (var->data.mode == ir_var_uniform) {
+      if (var->data.mode == ir_var_uniform || var->data.mode == ir_var_buffer) {
          if (var->data.explicit_binding) {
             unsigned *offset =
                &state->atomic_counter_offsets[var->data.binding];
@@ -2783,8 +2783,8 @@ apply_type_qualifier_to_variable(const struct ast_type_qualifier *qual,
          }
       } else if (var->data.mode != ir_var_function_in) {
          _mesa_glsl_error(loc, state, "atomic counters may only be declared as "
-                          "function parameters or uniform-qualified "
-                          "global variables");
+                          "function parameters, uniform-qualified or "
+                          "buffer-qualified global variables");
       }
    }
 
