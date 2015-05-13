@@ -482,6 +482,9 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       break;
    }
 
+   case nir_intrinsic_store_output_indirect:
+      has_indirect = true;
+      /* fallthrough */
    case nir_intrinsic_store_output: {
       src = get_nir_src(instr->src[0]);
       dest = dst_reg(src);
@@ -494,6 +497,10 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
       int offset = instr->const_index[0];
       int output = nir_outputs[offset];
+
+      if (has_indirect)
+         dest.reladdr = new(mem_ctx) src_reg(get_nir_src(instr->src[1]));
+
       output_reg[output] = dest;
       break;
    }
