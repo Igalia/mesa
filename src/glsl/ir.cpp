@@ -600,6 +600,7 @@ static const char *const operator_strs[] = {
    "packHalf2x16_split",
    "bfm",
    "ubo_load",
+   "ssbo_load",
    "ldexp",
    "vector_extract",
    "interpolate_at_offset",
