@@ -140,7 +140,13 @@ vec4_visitor::nir_setup_outputs(nir_shader *shader)
 {
    foreach_list_typed(nir_variable, var, node, &shader->outputs) {
       int offset = var->data.driver_location;
-      nir_outputs[offset] = var->data.location;
+      int vector_elements =
+         var->type->is_array() ? var->type->fields.array->vector_elements
+                                 : var->type->vector_elements;
+      unsigned size = MAX2(ALIGN(var->type->length * vector_elements, 4) / 4, 1);
+
+      for (unsigned i = 0; i < size; i++)
+         nir_outputs[offset + i * 4] = var->data.location + i;
    }
 }
 
