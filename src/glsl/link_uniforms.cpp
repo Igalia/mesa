@@ -304,7 +304,7 @@ public:
       : num_active_uniforms(0), num_values(0), num_shader_samplers(0),
         num_shader_images(0), num_shader_uniform_components(0),
         num_shader_subroutines(0),
-        is_ubo_var(false), map(map)
+        is_ubo_var(false), is_shader_storage(false), map(map)
    {
       /* empty */
    }
@@ -320,6 +320,7 @@ public:
    void process(ir_variable *var)
    {
       this->is_ubo_var = var->is_in_buffer_block();
+      this->is_shader_storage = var->is_in_shader_storage_block();
       if (var->is_interface_instance())
          program_resource_visitor::process(var->get_interface_type(),
                                            var->get_interface_type()->name);
@@ -358,6 +359,7 @@ public:
    unsigned num_shader_subroutines;
 
    bool is_ubo_var;
+   bool is_shader_storage;
 
 private:
    virtual void visit_field(const glsl_type *type, const char *name,
@@ -386,13 +388,14 @@ private:
           * components in the default block.  The spec allows image
           * uniforms to use up no more than one scalar slot.
           */
-         this->num_shader_uniform_components += values;
+         if(!is_shader_storage)
+            this->num_shader_uniform_components += values;
       } else {
 	 /* Accumulate the total number of uniform slots used by this shader.
 	  * Note that samplers do not count against this limit because they
 	  * don't use any storage on current hardware.
 	  */
-	 if (!is_ubo_var)
+	 if (!is_ubo_var && !is_shader_storage)
 	    this->num_shader_uniform_components += values;
       }
 
@@ -1028,8 +1031,10 @@ link_assign_uniform_locations(struct gl_shader_program *prog,
       sh->num_combined_uniform_components = sh->num_uniform_components;
 
       for (unsigned i = 0; i < sh->NumUniformBlocks; i++) {
-	 sh->num_combined_uniform_components +=
-	    sh->UniformBlocks[i].UniformBufferSize / 4;
+         if (!sh->UniformBlocks[i].IsShaderStorage) {
+	    sh->num_combined_uniform_components +=
+	       sh->UniformBlocks[i].UniformBufferSize / 4;
+         }
       }
    }
 
