@@ -605,8 +605,23 @@ typedef enum {
    nir_type_float,
    nir_type_int,
    nir_type_uint,
-   nir_type_bool
+   nir_type_bool,
+   nir_type_bool32 =    32 | nir_type_bool,
+   nir_type_int8 =      8  | nir_type_int,
+   nir_type_int16 =     16 | nir_type_int,
+   nir_type_int32 =     32 | nir_type_int,
+   nir_type_int64 =     64 | nir_type_int,
+   nir_type_uint8 =     8  | nir_type_uint,
+   nir_type_uint16 =    16 | nir_type_uint,
+   nir_type_uint32 =    32 | nir_type_uint,
+   nir_type_uint64 =    64 | nir_type_uint,
+   nir_type_float16 =   16 | nir_type_float,
+   nir_type_float32 =   32 | nir_type_float,
+   nir_type_float64 =   64 | nir_type_float,
 } nir_alu_type;
+
+#define NIR_ALU_TYPE_SIZE_MASK 0xfffffff8
+#define NIR_ALU_TYPE_BASE_TYPE_MASK 0x00000007
 
 typedef enum {
    NIR_OP_IS_COMMUTATIVE = (1 << 0),
