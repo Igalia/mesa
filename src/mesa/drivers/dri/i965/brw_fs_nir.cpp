@@ -27,6 +27,11 @@
 #include "program/prog_to_nir.h"
 #include "brw_fs.h"
 #include "brw_nir.h"
+#include "brw_fs_builder.h"
+#include "brw_fs_surface_builder.h"
+
+using namespace brw;
+using namespace brw::surface_access;
 
 void
 fs_visitor::emit_nir_code()
@@ -1453,6 +1458,75 @@ fs_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
             dest = offset(dest, 1);
          }
       }
+      break;
+   }
+
+   case nir_intrinsic_load_ssbo_indirect:
+      has_indirect = true;
+      /* fallthrough */
+   case nir_intrinsic_load_ssbo: {
+      assert(brw->gen >= 7);
+
+      nir_const_value *const_uniform_block = nir_src_as_const_value(instr->src[0]);
+      fs_reg surf_index;
+
+      if (const_uniform_block) {
+         unsigned index = stage_prog_data->binding_table.ubo_start +
+                          const_uniform_block->u[0];
+         surf_index = fs_reg(index);
+         brw_mark_surface_used(prog_data, index);
+      } else {
+         surf_index = vgrf(glsl_type::uint_type);
+         emit(ADD(surf_index, get_nir_src(instr->src[0]),
+                  fs_reg(stage_prog_data->binding_table.ubo_start)));
+         emit_uniformize(surf_index, surf_index);
+
+         /* Assume this may touch any UBO. It would be nice to provide
+          * a tighter bound, but the array information is already lowered away.
+          */
+         brw_mark_surface_used(prog_data,
+                               stage_prog_data->binding_table.ubo_start +
+                               shader_prog->NumUniformBlocks - 1);
+      }
+
+      /* Get the offset to read from */
+      fs_reg offset_reg = vgrf(glsl_type::uint_type);
+      unsigned const_offset_bytes = 0;
+      if (has_indirect) {
+         emit(MOV(offset_reg, get_nir_src(instr->src[1])));
+      } else {
+         const_offset_bytes = instr->const_index[0];
+         emit(MOV(offset_reg, fs_reg(const_offset_bytes)));
+      }
+
+      /* Read the vector */
+      const bool uses_kill = (stage == MESA_SHADER_FRAGMENT &&
+                              ((brw_wm_prog_data *)prog_data)->uses_kill);
+      fs_builder bld(devinfo, mem_ctx, alloc, instructions, dispatch_width,
+                     stage, uses_kill);
+
+      bld.set_annotation(current_annotation);
+      bld.set_base_ir(base_ir);
+
+      for (int i = 0; i < instr->num_components; i++) {
+         fs_reg read_result = emit_untyped_read(bld, surf_index, offset_reg,
+                                                1 /* dims */, 1 /* size */,
+                                                BRW_PREDICATE_NONE);
+         read_result.type = dest.type;
+         emit(MOV(dest, read_result));
+         dest = offset(dest, 1);
+
+         /* Vector components are stored contiguous in memory */
+         if (i < instr->num_components) {
+            if (!has_indirect) {
+               const_offset_bytes += 4;
+               emit(MOV(offset_reg, fs_reg(const_offset_bytes)));
+            } else {
+               emit(ADD(offset_reg, offset_reg, brw_imm_ud(4)));
+            }
+         }
+      }
+
       break;
    }
 
