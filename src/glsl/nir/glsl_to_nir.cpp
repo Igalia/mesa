@@ -663,6 +663,22 @@ nir_visitor::visit(ir_call *ir)
          op = nir_intrinsic_image_atomic_comp_swap;
       } else if (strcmp(ir->callee_name(), "__intrinsic_memory_barrier") == 0) {
          op = nir_intrinsic_memory_barrier;
+      } else if (strcmp(ir->callee_name(), "__intrinsic_atomic_add") == 0) {
+         op = nir_intrinsic_ssbo_atomic_add;
+      } else if (strcmp(ir->callee_name(), "__intrinsic_atomic_and") == 0) {
+         op = nir_intrinsic_ssbo_atomic_and;
+      } else if (strcmp(ir->callee_name(), "__intrinsic_atomic_or") == 0) {
+         op = nir_intrinsic_ssbo_atomic_or;
+      } else if (strcmp(ir->callee_name(), "__intrinsic_atomic_xor") == 0) {
+         op = nir_intrinsic_ssbo_atomic_xor;
+      } else if (strcmp(ir->callee_name(), "__intrinsic_atomic_min") == 0) {
+         op = nir_intrinsic_ssbo_atomic_min;
+      } else if (strcmp(ir->callee_name(), "__intrinsic_atomic_max") == 0) {
+         op = nir_intrinsic_ssbo_atomic_max;
+      } else if (strcmp(ir->callee_name(), "__intrinsic_atomic_exchange") == 0) {
+         op = nir_intrinsic_ssbo_atomic_exchange;
+      } else if (strcmp(ir->callee_name(), "__intrinsic_atomic_comp_swap") == 0) {
+         op = nir_intrinsic_ssbo_atomic_comp_swap;
       } else {
          unreachable("not reached");
       }
@@ -752,6 +768,48 @@ nir_visitor::visit(ir_call *ir)
       }
       case nir_intrinsic_memory_barrier:
          break;
+      case nir_intrinsic_ssbo_atomic_add:
+      case nir_intrinsic_ssbo_atomic_min:
+      case nir_intrinsic_ssbo_atomic_max:
+      case nir_intrinsic_ssbo_atomic_and:
+      case nir_intrinsic_ssbo_atomic_or:
+      case nir_intrinsic_ssbo_atomic_xor:
+      case nir_intrinsic_ssbo_atomic_exchange:
+      case nir_intrinsic_ssbo_atomic_comp_swap: {
+         /* The first argument to an atomic operation can only be a buffer
+          * variable which at this point must have been lowered by
+          * lower_ubo_reference to a ir_binop_ssbo_load expression. The
+          * ir_binop_ssbo_load expression contains the surface index and offset
+          * data we need.
+          */
+         exec_node *param = ir->actual_parameters.get_head();
+         ir_instruction *ssbo_load = (ir_instruction *) param;
+         ir_expression *ssbo_expr = ssbo_load->as_expression();
+         assert(ssbo_expr);
+
+         /* surface, offset */
+         instr->src[0] = evaluate_rvalue(ssbo_expr->operands[0]);
+         instr->src[1] = evaluate_rvalue(ssbo_expr->operands[1]);
+
+         int param_count = ir->actual_parameters.length();
+         assert(param_count == 2 || param_count == 3);
+
+         /* data1 parameter (this is always present) */
+         param = param->get_next();
+         instr->src[2] = evaluate_rvalue((ir_rvalue *) param);
+
+         /* data2 parameter (only with atomic_comp_swap) */
+         if (param_count == 3) {
+            assert(op == nir_intrinsic_ssbo_atomic_comp_swap);
+            param = param->get_next();
+            instr->src[3] = evaluate_rvalue((ir_rvalue *) param);
+         }
+
+         if (ir->return_deref)
+            nir_ssa_dest_init(&instr->instr, &instr->dest,
+                              ir->return_deref->type->vector_elements, NULL);
+         break;
+      }
       default:
          unreachable("not reached");
       }
