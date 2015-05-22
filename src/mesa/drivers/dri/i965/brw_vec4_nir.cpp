@@ -1410,14 +1410,24 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    unsigned sampler = instr->sampler_index;
    src_reg sampler_reg = src_reg(sampler);
    src_reg coordinate;
+   src_reg shadow_comparitor;
    const glsl_type *coordinate_type = glsl_type::float_type;
+   const glsl_type *shadow_type;
+   int shadow_compare = 0;
 
    /* Get the parameters */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       src_reg src = get_nir_src(instr->src[i].src);
       switch (instr->src[i].src_type) {
       case nir_tex_src_comparitor:
-         fprintf(stderr, "WIP: nir_tex_src_comparitor\n");
+         shadow_comparitor = retype (src, BRW_REGISTER_TYPE_F);
+         shadow_type = glsl_type::float_type; /* @FIXME: we should use a
+                                               * method similar to
+                                               * brw_type_for_base_type (but
+                                               * in the other direction) or
+                                               * get the base type from the
+                                               * nir instruction */
+         shadow_compare = 1;
          break;
       case nir_tex_src_coord:
          switch (instr->op) {
@@ -1529,9 +1539,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    inst->base_mrf = 2;
    inst->mlen = inst->header_size + 1;
    inst->dst.writemask = WRITEMASK_XYZW;
-
-   /* @FIXME: wip shadow_compare */
-   inst->shadow_compare = false;
+   inst->shadow_compare = shadow_compare;
 
    inst->src[1] = sampler_reg;
 
@@ -1546,12 +1554,23 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       emit(MOV(dst_reg(MRF, param_base, coordinate_type, zero_mask), src_reg(0)));
    }
 
+   /* Load the shadow comparitor */
+   if (shadow_compare) { /*@FIXME: this conditional is assuming only tex op support */
+      emit(MOV(dst_reg(MRF, param_base + 1, shadow_type, WRITEMASK_X),
+               shadow_comparitor));
+      inst->mlen++;
+   }
    /* Load the LOD info, @FIXME: only handling current scenario */
    int mrf, writemask;
 
    mrf = param_base + 1; /* @FIXME: asumming devinfo->gen >= 5 */
-   writemask = WRITEMASK_X; /* @FIXME: assuming no shadow_comparitor */
-   inst->mlen++; /* @FIXME: assuming no shadow_comparitor */
+   if (shadow_compare) {
+      writemask = WRITEMASK_Y;
+      /* mlen already incremented on shadow comparitor loading */
+   } else {
+      writemask = WRITEMASK_X;
+      inst->mlen++;
+   }
    emit(MOV(dst_reg(MRF, mrf, lod_type, writemask), lod));
 
    emit(inst);
