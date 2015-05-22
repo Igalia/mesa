@@ -698,40 +698,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
-   {
-      /* @TODO: Improve the quality of the algorithm to avoid repeating code.
-       */
-      bool used[4] = {};
-      for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-         if (!(instr->dest.write_mask & (1 << i)))
-            continue;
-
-         if (used[i])
-            continue;
-
-         dst.writemask = 1 << i;
-         op[i].swizzle = instr->src[i].swizzle[0] << (i * 2);
-         used[i] = true;
-
-         for (unsigned j=i+1; j < nir_op_infos[instr->op].num_inputs; j++) {
-            if (!(instr->dest.write_mask & (1 << j)))
-               continue;
-
-            if (used[j])
-               continue;
-
-            if (nir_srcs_equal(instr->src[i].src, instr->src[j].src)) {
-               dst.writemask |= 1 << j;
-               op[i].swizzle |= instr->src[j].swizzle[0] << (j* 2);
-               used[j] = true;
-            }
-         }
-
-         inst = emit(MOV(dst, retype(op[i], dst.type)));
-         inst->saturate = instr->dest.saturate;
-      }
-      break;
-   }
+         unreachable("not reached: should be handled by lower_vec_to_movs()");
 
    case nir_op_i2f:
    case nir_op_u2f:
