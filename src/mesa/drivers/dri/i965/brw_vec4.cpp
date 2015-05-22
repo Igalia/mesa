@@ -1722,7 +1722,7 @@ vec4_visitor::run()
 
    /* @FIXME: temporary condition for debugging purposes */
    bool disable_vec4_optimizations =
-      brw_env_var_as_boolean("INTEL_DISABLE_VEC4_OPTIMIZATIONS", true);
+      brw_env_var_as_boolean("INTEL_DISABLE_VEC4_OPTIMIZATIONS", false);
 
    sanity_param_count = prog->Parameters->NumParameters;
 
