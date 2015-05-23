@@ -1411,8 +1411,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    src_reg sampler_reg = src_reg(sampler);
    src_reg coordinate;
    src_reg shadow_comparitor;
-   const glsl_type *coordinate_type = glsl_type::float_type;
-   const glsl_type *shadow_type;
    int shadow_compare = 0;
 
    /* Get the parameters */
@@ -1421,12 +1419,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       switch (instr->src[i].src_type) {
       case nir_tex_src_comparitor:
          shadow_comparitor = retype (src, BRW_REGISTER_TYPE_F);
-         shadow_type = glsl_type::float_type; /* @FIXME: we should use a
-                                               * method similar to
-                                               * brw_type_for_base_type (but
-                                               * in the other direction) or
-                                               * get the base type from the
-                                               * nir instruction */
          shadow_compare = 1;
          break;
       case nir_tex_src_coord:
@@ -1436,11 +1428,9 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          case nir_texop_txf_ms:
             fprintf(stderr, "\tnir_texop_txf_ms\n");
             coordinate = retype(src, BRW_REGISTER_TYPE_D);
-            coordinate_type = glsl_type::double_type;
             break;
          default:
             coordinate = retype(src, BRW_REGISTER_TYPE_F);
-            coordinate_type = glsl_type::float_type;
             break;
          }
          break;
@@ -1548,15 +1538,15 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    int coord_mask = (1 << instr->coord_components) - 1;
    int zero_mask = 0xf & ~coord_mask;
 
-   emit(MOV(dst_reg(MRF, param_base, coordinate_type, coord_mask), coordinate));
+   emit(MOV(dst_reg(MRF, param_base, coordinate.type, coord_mask), coordinate));
 
    if (zero_mask != 0) {
-      emit(MOV(dst_reg(MRF, param_base, coordinate_type, zero_mask), src_reg(0)));
+      emit(MOV(dst_reg(MRF, param_base, coordinate.type, zero_mask), src_reg(0)));
    }
 
    /* Load the shadow comparitor */
    if (shadow_compare) { /*@FIXME: this conditional is assuming only tex op support */
-      emit(MOV(dst_reg(MRF, param_base + 1, shadow_type, WRITEMASK_X),
+      emit(MOV(dst_reg(MRF, param_base + 1, shadow_comparitor.type, WRITEMASK_X),
                shadow_comparitor));
       inst->mlen++;
    }
