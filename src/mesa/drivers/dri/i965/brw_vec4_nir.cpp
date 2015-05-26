@@ -1412,6 +1412,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    src_reg coordinate;
    src_reg shadow_comparitor;
    int shadow_compare = 0;
+   int offset_components = 0;
+   src_reg tex_offset;
 
    /* Get the parameters */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
@@ -1472,6 +1474,16 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       }
    }
 
+   for (unsigned i = 0; i < 3; i++) {
+      if (instr->const_offset[i] != 0) {
+         /* @FIXME: right now offset_components will be always 0,
+            as nir_tex_src_offset is not supported yet */
+         assert(offset_components == 0);
+         tex_offset = src_reg(brw_texture_offset(instr->const_offset, 3));
+         break;
+      }
+   }
+
    /* Get the texture operation */
    /*@FIME (comment to be removed) On brw_fs_visitor this switch makes a
     * nir_texop=>ir_texop conversion, as it relies on brw_fs_visitor ir-based
@@ -1524,8 +1536,11 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    vec4_instruction *inst = new(mem_ctx)
       vec4_instruction(opcode, dst_reg(this, dest_type));
 
+   if (tex_offset.file == IMM)
+      inst->offset = tex_offset.fixed_hw_reg.dw1.ud;
+
    /* @FIXME: wip consider all cases for header_size (see brw_vec4_visitor) */
-   inst->header_size = 0;
+   inst->header_size = (inst->offset != 0) ? 1 : 0;
    inst->base_mrf = 2;
    inst->mlen = inst->header_size + 1;
    inst->dst.writemask = WRITEMASK_XYZW;
