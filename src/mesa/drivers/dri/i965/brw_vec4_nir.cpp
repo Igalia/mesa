@@ -1410,7 +1410,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    int offset_components = 0;
    src_reg tex_offset;
    src_reg lod;
-   const glsl_type *lod_type = NULL;
 
    /* Get the parameters */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
@@ -1449,7 +1448,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
             break;
          default:
             lod = retype(src, BRW_REGISTER_TYPE_F);
-            lod_type = glsl_type::float_type;
             break;
          }
          break;
@@ -1492,7 +1490,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    case nir_texop_query_levels: opcode = SHADER_OPCODE_TXS; break;
    case nir_texop_tex:
       lod = src_reg(0.0f);
-      lod_type = glsl_type::float_type;
       opcode = SHADER_OPCODE_TXL;
       break;
       /* @FIXME: for tg4 we need to check if has a non constant offset */
@@ -1572,7 +1569,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       writemask = WRITEMASK_X;
       inst->mlen++;
    }
-   emit(MOV(dst_reg(MRF, mrf, lod_type, writemask), lod));
+   emit(MOV(dst_reg(MRF, mrf, lod.type, writemask), lod));
 
    emit(inst);
 
