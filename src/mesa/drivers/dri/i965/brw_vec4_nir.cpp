@@ -1414,6 +1414,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    int shadow_compare = 0;
    int offset_components = 0;
    src_reg tex_offset;
+   src_reg lod;
+   const glsl_type *lod_type = NULL;
 
    /* Get the parameters */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
@@ -1443,15 +1445,16 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          fprintf(stderr, "WIP: nir_tex_src_ddy\n");
          break;
       case nir_tex_src_lod:
-         fprintf(stderr, "WIP: nir_tex_src_lod.\n");
          switch (instr->op) {
          case nir_texop_txs:
-            fprintf(stderr, "\tnir_texop_txs\n");
+            fprintf(stderr, "\t WIP: nir_tex_src_lod:nir_texop_txs\n");
             break;
          case nir_texop_txf:
-            fprintf(stderr, "\tnir_texop_txf\n");
+            fprintf(stderr, "\t WIP: nir_tex_src_lod:nir_texop_txf\n");
             break;
          default:
+            lod = retype(src, BRW_REGISTER_TYPE_F);
+            lod_type = glsl_type::float_type;
             break;
          }
          break;
@@ -1489,8 +1492,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
     * nir_texop=>ir_texop conversion, as it relies on brw_fs_visitor ir-based
     * emit_texture (that relies on different gen versions). For now we are
     * being "nir-pure" so we can do a direct shader opcode conversion */
-   const glsl_type *lod_type = NULL;
-   src_reg lod;
    enum opcode opcode;
    switch (instr->op) {
    case nir_texop_query_levels: opcode = SHADER_OPCODE_TXS; break;
