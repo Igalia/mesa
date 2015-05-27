@@ -1733,20 +1733,17 @@ vec4_visitor::run()
 
    emit_prolog();
 
-   if (use_nir && stage == MESA_SHADER_VERTEX) {
-      assert(prog->nir != NULL);
-      emit_nir_code();
-      if (failed)
-         return false;
-   } else {
-      /* Generate VS IR for main().  (the visitor only descends into
-       * functions called "main").
-       */
-      if (shader) {
-        visit_instructions(shader->base.ir);
+   if (shader) {
+      if (use_nir && stage == MESA_SHADER_VERTEX) {
+         assert(prog->nir != NULL);
+         emit_nir_code();
+         if (failed)
+            return false;
       } else {
-        emit_program_code();
+        visit_instructions(shader->base.ir);
       }
+   } else {
+      emit_program_code();
    }
 
    base_ir = NULL;
