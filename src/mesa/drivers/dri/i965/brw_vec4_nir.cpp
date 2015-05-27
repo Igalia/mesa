@@ -1563,18 +1563,22 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
                shadow_comparitor));
       inst->mlen++;
    }
-   /* Load the LOD info, @FIXME: only handling current scenario */
-   int mrf, writemask;
-
-   mrf = param_base + 1; /* @FIXME: asumming devinfo->gen >= 5 */
-   if (shadow_compare) {
-      writemask = WRITEMASK_Y;
-      /* mlen already incremented on shadow comparitor loading */
+   /* Load the LOD info */
+   if (instr->op == nir_texop_tex || instr->op == nir_texop_txl) {
+      int mrf, writemask;
+      mrf = param_base + 1; /* @FIXME: asumming devinfo->gen >= 5 */
+      if (shadow_compare) {
+         writemask = WRITEMASK_Y;
+         /* mlen already incremented on shadow comparitor loading */
+      } else {
+         writemask = WRITEMASK_X;
+         inst->mlen++;
+      }
+      emit(MOV(dst_reg(MRF, mrf, lod.type, writemask), lod));
    } else {
-      writemask = WRITEMASK_X;
-      inst->mlen++;
+      /* @FIXME: WIP */
+      fprintf(stderr, "WIP: lod only supported for tex or txl texop\n");
    }
-   emit(MOV(dst_reg(MRF, mrf, lod.type, writemask), lod));
 
    emit(inst);
 
