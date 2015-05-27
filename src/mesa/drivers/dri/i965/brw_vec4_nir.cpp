@@ -154,14 +154,9 @@ void
 vec4_visitor::nir_setup_uniforms(nir_shader *shader)
 {
    uniforms = 0;
-   this->uniform_array_size = shader->num_uniforms * 4;
 
-   this->uniform_size = rzalloc_array(mem_ctx, int, this->uniform_array_size);
-   this->uniform_vector_size =
-     rzalloc_array(mem_ctx, int, this->uniform_array_size);
-
-   nir_uniform_offsets = rzalloc_array(mem_ctx, int, this->uniform_array_size);
-   memset(nir_uniform_offsets, 0, this->uniform_array_size * sizeof(int));
+   nir_uniform_offsets = rzalloc_array(mem_ctx, int, this->uniform_array_size * 4);
+   memset(nir_uniform_offsets, 0, this->uniform_array_size * 4 * sizeof(int));
 
    if (shader_prog) {
       foreach_list_typed(nir_variable, var, node, &shader->uniforms) {
