@@ -1647,7 +1647,7 @@ void nir_assign_var_locations_scalar_direct_first(nir_shader *shader,
                                                   unsigned *direct_size,
                                                   unsigned *size);
 
-void nir_lower_io(nir_shader *shader);
+void nir_lower_io(nir_shader *shader, int stage);
 
 void nir_lower_vars_to_ssa(nir_shader *shader);
 

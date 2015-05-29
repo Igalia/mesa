@@ -38,6 +38,7 @@
 
 struct lower_io_state {
    void *mem_ctx;
+   int stage;
 };
 
 static unsigned
@@ -202,7 +203,14 @@ get_io_offset(nir_deref_var *deref, nir_instr *instr, nir_src *indirect,
          if (deref_array->deref_array_type == nir_deref_array_type_indirect) {
             nir_load_const_instr *load_const =
                nir_load_const_instr_create(state->mem_ctx, 1);
+
             load_const->value.u[0] = size;
+            if (state->stage != MESA_SHADER_FRAGMENT) {
+               int vector_elements = glsl_get_vector_elements(tail->type);
+               if (vector_elements)
+                  load_const->value.u[0] = size / vector_elements;
+            }
+
             nir_instr_insert_before(instr, &load_const->instr);
 
             nir_alu_instr *mul = nir_alu_instr_create(state->mem_ctx,
@@ -350,11 +358,12 @@ nir_lower_io_block(nir_block *block, void *void_state)
 }
 
 static void
-nir_lower_io_impl(nir_function_impl *impl)
+nir_lower_io_impl(nir_function_impl *impl, int stage)
 {
    struct lower_io_state state;
 
    state.mem_ctx = ralloc_parent(impl);
+   state.stage = stage;
 
    nir_foreach_block(impl, nir_lower_io_block, &state);
 
@@ -363,10 +372,10 @@ nir_lower_io_impl(nir_function_impl *impl)
 }
 
 void
-nir_lower_io(nir_shader *shader)
+nir_lower_io(nir_shader *shader, int stage)
 {
    nir_foreach_overload(shader, overload) {
       if (overload->impl)
-         nir_lower_io_impl(overload->impl);
+         nir_lower_io_impl(overload->impl, stage);
    }
 }
