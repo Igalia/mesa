@@ -135,6 +135,55 @@ vec4_visitor::nir_setup_inputs(nir_shader *shader)
    }
 }
 
+static int
+type_size(const struct glsl_type *type)
+{
+   unsigned int i;
+   int size;
+
+   switch (type->base_type) {
+   case GLSL_TYPE_UINT:
+   case GLSL_TYPE_INT:
+   case GLSL_TYPE_FLOAT:
+   case GLSL_TYPE_BOOL:
+      if (type->is_matrix()) {
+	 return type->matrix_columns;
+      } else {
+	 /* Regardless of size of vector, it gets a vec4. This is bad
+	  * packing for things like floats, but otherwise arrays become a
+	  * mess.  Hopefully a later pass over the code can pack scalars
+	  * down if appropriate.
+	  */
+	 return 1;
+      }
+   case GLSL_TYPE_ARRAY:
+      assert(type->length > 0);
+      return type_size(type->fields.array) * type->length;
+   case GLSL_TYPE_STRUCT:
+      size = 0;
+      for (i = 0; i < type->length; i++) {
+	 size += type_size(type->fields.structure[i].type);
+      }
+      return size;
+   case GLSL_TYPE_SAMPLER:
+      /* Samplers take up no register space, since they're baked in at
+       * link time.
+       */
+      return 0;
+   case GLSL_TYPE_ATOMIC_UINT:
+      return 0;
+   case GLSL_TYPE_IMAGE:
+   case GLSL_TYPE_VOID:
+   case GLSL_TYPE_DOUBLE:
+   case GLSL_TYPE_ERROR:
+   case GLSL_TYPE_INTERFACE:
+      unreachable("not reached");
+   }
+
+   return 0;
+}
+
+
 void
 vec4_visitor::nir_setup_outputs(nir_shader *shader)
 {
@@ -165,6 +214,9 @@ vec4_visitor::nir_setup_uniforms(nir_shader *shader)
          /* UBO's and atomics don't take up space in the uniform file */
          if (var->interface_type != NULL || var->type->contains_atomic())
             continue;
+
+         assert(uniforms < uniform_array_size);
+         this->uniform_size[uniforms] = type_size(var->type);
 
          if (strncmp(var->name, "gl_", 3) == 0)
             nir_setup_builtin_uniform(var);
