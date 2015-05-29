@@ -149,7 +149,7 @@ brw_create_nir(struct brw_context *brw,
    nir_assign_var_locations_scalar(&nir->inputs, &nir->num_inputs);
    nir_assign_var_locations_scalar(&nir->outputs, &nir->num_outputs);
 
-   nir_lower_io(nir);
+   nir_lower_io(nir, stage);
    nir_validate_shader(nir);
 
    nir_remove_dead_variables(nir);
