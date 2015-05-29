@@ -602,9 +602,10 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       src = src_reg(dst_reg(UNIFORM, offset));
 
       /* @FIXME: this has not been tested yet, just copied from fs_nir */
-      if (has_indirect)
-         src.reladdr = new(mem_ctx) src_reg(get_nir_src(instr->src[0]));
-
+      if (has_indirect) {
+         src_reg tmp = retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_D);
+         src.reladdr = new(mem_ctx) src_reg(tmp);
+      }
       emit(MOV(dest, src));
       break;
    }
