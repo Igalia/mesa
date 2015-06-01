@@ -62,6 +62,15 @@ INTRINSIC(interp_var_at_offset, 1, ARR(2), true, 0, 1, 0,
           NIR_INTRINSIC_CAN_ELIMINATE | NIR_INTRINSIC_CAN_REORDER)
 
 /*
+ * Shared storage buffer's unsized array length calculation. It takes the
+ * SSBO index, unsized array offset inside the shader storage block interface
+ * and stride of unsized array.
+ */
+
+INTRINSIC(ssbo_unsized_array_length, 3, ARR(1), true, 1, 0, 0,
+          NIR_INTRINSIC_CAN_ELIMINATE | NIR_INTRINSIC_CAN_REORDER)
+
+/*
  * a barrier is an intrinsic with no inputs/outputs but which can't be moved
  * around/optimized in general
  */
