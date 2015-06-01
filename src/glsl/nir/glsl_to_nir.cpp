@@ -577,7 +577,23 @@ nir_visitor::visit(ir_end_primitive *ir)
 void
 nir_visitor::visit(ir_ssbo_store *ir)
 {
-   assert("Not implemented yet");
+   nir_intrinsic_op op;
+   ir_constant *const_offset = ir->offset->as_constant();
+   if (const_offset) {
+      op = nir_intrinsic_store_ssbo;
+   } else {
+      op = nir_intrinsic_store_ssbo_indirect;
+   }
+
+   nir_intrinsic_instr *store = nir_intrinsic_instr_create(this->shader, op);
+   store->num_components = ir->val->type->vector_elements;
+   store->const_index[0] = const_offset ? const_offset->value.u[0] : 0;
+   store->const_index[1] = ir->write_mask;
+   store->src[0] = evaluate_rvalue(ir->val);
+   store->src[1] = evaluate_rvalue(ir->block);
+   if (!const_offset)
+      store->src[2] = evaluate_rvalue(ir->offset);
+   add_instr(&store->instr, ir->val->type->vector_elements);
 }
 
 void
