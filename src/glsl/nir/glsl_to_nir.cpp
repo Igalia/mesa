@@ -1003,14 +1003,17 @@ nir_visitor::visit(ir_expression *ir)
 {
    /* Some special cases */
    switch (ir->operation) {
+   case ir_binop_ssbo_load:
    case ir_binop_ubo_load: {
       ir_constant *const_index = ir->operands[1]->as_constant();
 
       nir_intrinsic_op op;
       if (const_index) {
-         op = nir_intrinsic_load_ubo;
+         op = ir->operation == ir_binop_ubo_load ?
+            nir_intrinsic_load_ubo : nir_intrinsic_load_ssbo;
       } else {
-         op = nir_intrinsic_load_ubo_indirect;
+         op = ir->operation == ir_binop_ubo_load ?
+            nir_intrinsic_load_ubo_indirect : nir_intrinsic_load_ssbo_indirect;
       }
       nir_intrinsic_instr *load = nir_intrinsic_instr_create(this->shader, op);
       load->num_components = ir->type->vector_elements;
