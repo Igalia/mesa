@@ -133,6 +133,18 @@ INTRINSIC(image_atomic_xor, 3, ARR(4, 1, 1), true, 1, 1, 0, 0)
 INTRINSIC(image_atomic_exchange, 3, ARR(4, 1, 1), true, 1, 1, 0, 0)
 INTRINSIC(image_atomic_comp_swap, 4, ARR(4, 1, 1, 1), true, 1, 1, 0, 0)
 
+/*
+ * SSBO atomic intrinsics
+ */
+INTRINSIC(ssbo_atomic_add, 3, ARR(1, 1, 1), true, 1, 0, 0, 0)
+INTRINSIC(ssbo_atomic_min, 3, ARR(1, 1, 1), true, 1, 0, 0, 0)
+INTRINSIC(ssbo_atomic_max, 3, ARR(1, 1, 1), true, 1, 0, 0, 0)
+INTRINSIC(ssbo_atomic_and, 3, ARR(1, 1, 1), true, 1, 0, 0, 0)
+INTRINSIC(ssbo_atomic_or, 3, ARR(1, 1, 1), true, 1, 0, 0, 0)
+INTRINSIC(ssbo_atomic_xor, 3, ARR(1, 1, 1), true, 1, 0, 0, 0)
+INTRINSIC(ssbo_atomic_exchange, 3, ARR(1, 1, 1), true, 1, 0, 0, 0)
+INTRINSIC(ssbo_atomic_comp_swap, 4, ARR(1, 1, 1, 1), true, 1, 0, 0, 0)
+
 #define SYSTEM_VALUE(name, components) \
    INTRINSIC(load_##name, 0, ARR(), true, components, 0, 0, \
    NIR_INTRINSIC_CAN_ELIMINATE | NIR_INTRINSIC_CAN_REORDER)
