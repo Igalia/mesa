@@ -2556,6 +2556,100 @@ vec4_visitor::visit_atomic_counter_intrinsic(ir_call *ir)
 }
 
 void
+vec4_visitor::visit_atomic_intrinsic(ir_call *ir)
+{
+   /* The first argument to an atomic operation can only be a buffer variable
+    * which at this point must have been lowered by lower_ubo_reference to
+    * a ir_binop_ssbo_load expression. The ir_binop_ssbo_load expression
+    * contains the surface index and offset data we need.
+    */
+   ir_instruction *inst = (ir_instruction *) ir->actual_parameters.get_head();
+   ir_expression *ssbo_expr = inst->as_expression();
+   assert(ssbo_expr);
+
+   ir_constant *const_uniform_block = ssbo_expr->operands[0]->as_constant();
+   src_reg surface;
+   if (const_uniform_block) {
+      unsigned surf_index = prog_data->base.binding_table.ubo_start +
+                            const_uniform_block->value.u[0];
+      surface = src_reg(surf_index);
+      brw_mark_surface_used(&prog_data->base, surf_index);
+   } else {
+      ssbo_expr->operands[0]->accept(this);
+      surface = this->result;
+      emit(ADD(dst_reg(surface), surface,
+               src_reg(prog_data->base.binding_table.ubo_start)));
+
+      /* Assume this may touch any UBO. This is the same we do for other
+       * UBO/SSBO accesses with non-constant surface.
+       */
+      brw_mark_surface_used(&prog_data->base,
+                            prog_data->base.binding_table.ubo_start +
+                            shader_prog->NumUniformBlocks - 1);
+   }
+
+   ssbo_expr->operands[1]->accept(this);
+   src_reg offset = this->result;
+
+   int param_count = ir->actual_parameters.length();
+   assert(param_count == 2 || param_count == 3);
+
+   /* Get data1 parameter (this is always present) */
+   ir_instruction *param = (ir_instruction *) ((exec_node *)inst)->next;
+   assert(param);
+   param->accept(this);
+   src_reg data1 = this->result;
+   src_reg data2;
+
+   /* Emit the actual atomic operation operation */
+   const char *callee = ir->callee->function_name();
+   dst_reg dst = get_assignment_lhs(ir->return_deref, this);
+
+   vec4_builder bld(devinfo, mem_ctx, alloc, instructions);
+   bld.set_annotation(current_annotation);
+   bld.set_base_ir(base_ir);
+
+   unsigned atomic_op;
+   if (!strcmp("__intrinsic_atomic_add", callee)) {
+      atomic_op = BRW_AOP_ADD;
+   } else if (!strcmp("__intrinsic_atomic_and", callee)) {
+      atomic_op = BRW_AOP_AND;
+   } else if (!strcmp("__intrinsic_atomic_or", callee)) {
+      atomic_op = BRW_AOP_OR;
+   } else if (!strcmp("__intrinsic_atomic_xor", callee)) {
+      atomic_op = BRW_AOP_XOR;
+   } else if (!strcmp("__intrinsic_atomic_min", callee)) {
+      if (dst.type == BRW_REGISTER_TYPE_D)
+         atomic_op = BRW_AOP_IMIN;
+      else
+         atomic_op = BRW_AOP_UMIN;
+   } else if (!strcmp("__intrinsic_atomic_max", callee)) {
+      if (dst.type == BRW_REGISTER_TYPE_D)
+         atomic_op = BRW_AOP_IMAX;
+      else
+         atomic_op = BRW_AOP_UMAX;
+   } else if (!strcmp("__intrinsic_atomic_exchange", callee)) {
+      atomic_op = BRW_AOP_MOV;
+   } else if (!strcmp("__intrinsic_atomic_comp_swap", callee)) {
+      param = (ir_instruction *) ((exec_node *)inst)->next->next;
+      assert(param);
+      param->accept(this);
+      data2 = this->result;
+      atomic_op = BRW_AOP_CMPWR;
+   } else {
+      unreachable("Unsupported atomic intrinsic");
+   }
+
+   src_reg atomic_result =
+      surface_access::emit_untyped_atomic(bld, surface, offset,
+                                          data1, data2,
+                                          1 /* dims */, 1 /* rsize */,
+                                          atomic_op,
+                                          BRW_PREDICATE_NONE);
+   emit(MOV(dst, atomic_result));
+}
+
+void
 vec4_visitor::visit(ir_call *ir)
 {
    const char *callee = ir->callee->function_name();
@@ -2564,6 +2658,15 @@ vec4_visitor::visit(ir_call *ir)
        !strcmp("__intrinsic_atomic_increment", callee) ||
        !strcmp("__intrinsic_atomic_predecrement", callee)) {
       visit_atomic_counter_intrinsic(ir);
+   } else if (!strcmp("__intrinsic_atomic_add", callee) ||
+              !strcmp("__intrinsic_atomic_min", callee) ||
+              !strcmp("__intrinsic_atomic_max", callee) ||
+              !strcmp("__intrinsic_atomic_and", callee) ||
+              !strcmp("__intrinsic_atomic_or", callee) ||
+              !strcmp("__intrinsic_atomic_xor", callee) ||
+              !strcmp("__intrinsic_atomic_exchange", callee) ||
+              !strcmp("__intrinsic_atomic_comp_swap", callee)) {
+      visit_atomic_intrinsic(ir);
    } else {
       unreachable("Unsupported intrinsic.");
    }
