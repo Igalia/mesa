@@ -1549,6 +1549,55 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       emit_barrier();
       break;
 
+   case nir_intrinsic_ssbo_unsized_array_length: {
+      nir_const_value *const_uniform_block = nir_src_as_const_value(instr->src[0]);
+      unsigned ubo_index = const_uniform_block ? const_uniform_block->u[0] : 0;
+      nir_const_value *const_offset_ir = nir_src_as_const_value(instr->src[1]);
+      int const_offset = const_offset_ir ? const_offset_ir->u[0] : 0;
+      nir_const_value *const_stride_ir = nir_src_as_const_value(instr->src[2]);
+      unsigned unsized_array_stride = const_stride_ir ? const_stride_ir->u[0] : 1;
+      int reg_width = dispatch_width / 8;
+
+      assert(shader->base.UniformBlocks[ubo_index].IsShaderStorage);
+
+      /* Set LOD = 0 */
+      fs_reg source = fs_reg(0);
+
+      int mlen = 1 * reg_width;
+      fs_reg src_payload = fs_reg(GRF, alloc.allocate(mlen),
+                                  BRW_REGISTER_TYPE_UD);
+      bld.LOAD_PAYLOAD(src_payload, &source, 1, 0);
+
+      fs_reg surf_index = fs_reg(prog_data->binding_table.ubo_start + ubo_index);
+      fs_reg buffer_size = vgrf(glsl_type::int_type);
+
+      fs_inst *inst = bld.emit(FS_OPCODE_UNSIZED_ARRAY_LENGTH, buffer_size,
+                               src_payload, surf_index);
+      inst->header_size = 0;
+      inst->mlen = mlen;
+      inst->regs_written = 4 * reg_width;
+      bld.emit(inst);
+
+      /* array.length() =
+          max((buffer_object_size - offset_of_array) / stride_of_array, 0) */
+      fs_reg temp = vgrf(glsl_type::float_type);
+      bld.ADD(buffer_size, buffer_size, fs_reg(-const_offset));
+      bld.MOV(temp, buffer_size);
+
+      assert(unsized_array_stride > 0);
+
+      fs_reg stride = fs_reg((float)1/unsized_array_stride);
+      bld.MUL(temp, temp, stride);
+      bld.MOV(dest, fs_reg(0));
+      bld.CMP(bld.null_reg_f(), temp, fs_reg(0), BRW_CONDITIONAL_G);
+      bld.IF(BRW_PREDICATE_NORMAL);
+      {
+         bld.MOV(retype(dest, BRW_REGISTER_TYPE_D), temp);
+      }
+      bld.emit(BRW_OPCODE_ENDIF);
+      break;
+   }
+
    default:
       unreachable("unknown intrinsic");
    }
