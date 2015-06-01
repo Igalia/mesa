@@ -1618,6 +1618,16 @@ nir_visitor::visit(ir_expression *ir)
          instr->src[2].swizzle[i] = 0;
       }
       break;
+   case ir_triop_ssbo_unsized_array_length: {
+      nir_intrinsic_instr *load = nir_intrinsic_instr_create(this->shader,
+                                     nir_intrinsic_ssbo_unsized_array_length);
+      load->num_components = ir->type->vector_elements;
+      load->src[0] = evaluate_rvalue(ir->operands[0]);
+      load->src[1] = evaluate_rvalue(ir->operands[1]);
+      load->src[2] = evaluate_rvalue(ir->operands[2]);
+      add_instr(&load->instr, ir->type->vector_elements);
+      return;
+   }
    case ir_quadop_bitfield_insert:
       instr = emit(nir_op_bitfield_insert, dest_size, srcs);
       for (unsigned i = 0; i < ir->operands[0]->type->vector_elements; i++) {
