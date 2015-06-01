@@ -2643,6 +2643,100 @@ vec4_visitor::visit_store_ssbo_intrinsic(ir_call *ir)
 }
 
 void
+vec4_visitor::visit_atomic_intrinsic(ir_call *ir)
+{
+   int param_count = ir->actual_parameters.length();
+   assert(param_count == 3 || param_count == 4);
+
+   /* block index */
+   exec_node *param = ir->actual_parameters.get_head();
+   ir_instruction *inst = (ir_instruction *) param;
+   ir_constant *const_uniform_block = inst->as_constant();
+   src_reg surface;
+   if (const_uniform_block) {
+      unsigned surf_index = prog_data->base.binding_table.ubo_start +
+                            const_uniform_block->value.u[0];
+      surface = src_reg(surf_index);
+      brw_mark_surface_used(&prog_data->base, surf_index);
+   } else {
+      inst->accept(this);
+      surface = this->result;
+      emit(ADD(dst_reg(surface), surface,
+               src_reg(prog_data->base.binding_table.ubo_start)));
+
+      /* Assume this may touch any UBO. This is the same we do for other
+       * UBO/SSBO accesses with non-constant surface.
+       */
+      brw_mark_surface_used(&prog_data->base,
+                            prog_data->base.binding_table.ubo_start +
+                            shader_prog->NumUniformBlocks - 1);
+   }
+
+   /* offset */
+   param = param->get_next();
+   inst = (ir_instruction *) param;
+   inst->accept(this);
+   src_reg offset = this->result;
+
+   /* data1 parameter (this is always present) */
+   param = param->get_next();
+   inst = (ir_instruction *) param;
+   assert(inst);
+   inst->accept(this);
+   src_reg data1 = this->result;
+   src_reg data2;
+
+   /* Emit the actual atomic operation operation */
+   const char *callee = ir->callee->function_name();
+   dst_reg dst = get_assignment_lhs(ir->return_deref, this);
+
+   const vec4_builder bld = vec4_builder(this).at_end()
+                            .annotate(current_annotation, base_ir);
+
+   unsigned atomic_op;
+   if (!strcmp("__intrinsic_ssbo_atomic_add_internal", callee)) {
+      atomic_op = BRW_AOP_ADD;
+   } else if (!strcmp("__intrinsic_ssbo_atomic_and_internal", callee)) {
+      atomic_op = BRW_AOP_AND;
+   } else if (!strcmp("__intrinsic_ssbo_atomic_or_internal", callee)) {
+      atomic_op = BRW_AOP_OR;
+   } else if (!strcmp("__intrinsic_ssbo_atomic_xor_internal", callee)) {
+      atomic_op = BRW_AOP_XOR;
+   } else if (!strcmp("__intrinsic_ssbo_atomic_min_internal", callee)) {
+      if (dst.type == BRW_REGISTER_TYPE_D)
+         atomic_op = BRW_AOP_IMIN;
+      else
+         atomic_op = BRW_AOP_UMIN;
+   } else if (!strcmp("__intrinsic_ssbo_atomic_max_internal", callee)) {
+      if (dst.type == BRW_REGISTER_TYPE_D)
+         atomic_op = BRW_AOP_IMAX;
+      else
+         atomic_op = BRW_AOP_UMAX;
+   } else if (!strcmp("__intrinsic_ssbo_atomic_exchange_internal", callee)) {
+      atomic_op = BRW_AOP_MOV;
+   } else if (!strcmp("__intrinsic_ssbo_atomic_comp_swap_internal", callee)) {
+      /* Needs data2 parameter */
+      assert(param_count == 4);
+      param = param->get_next();
+      inst = (ir_instruction *) param;
+      assert(inst);
+      inst->accept(this);
+      data2 = this->result;
+      atomic_op = BRW_AOP_CMPWR;
+   } else {
+      unreachable("Unsupported atomic intrinsic");
+   }
+
+   src_reg atomic_result =
+      surface_access::emit_untyped_atomic(bld, surface, offset,
+                                          data1, data2,
+                                          1 /* dims */, 1 /* rsize */,
+                                          atomic_op,
+                                          BRW_PREDICATE_NONE);
+   emit(MOV(dst, atomic_result));
+}
+
+void
 vec4_visitor::visit_load_ssbo_intrinsic(ir_call *ir)
 {
    const glsl_type *type = ir->return_deref->var->type;
@@ -2729,6 +2823,15 @@ vec4_visitor::visit(ir_call *ir)
       visit_store_ssbo_intrinsic(ir);
    } else if (!strcmp("__intrinsic_load_ssbo", callee)) {
       visit_load_ssbo_intrinsic(ir);
+   } else if (!strcmp("__intrinsic_ssbo_atomic_add_internal", callee) ||
+              !strcmp("__intrinsic_ssbo_atomic_min_internal", callee) ||
+              !strcmp("__intrinsic_ssbo_atomic_max_internal", callee) ||
+              !strcmp("__intrinsic_ssbo_atomic_and_internal", callee) ||
+              !strcmp("__intrinsic_ssbo_atomic_or_internal", callee) ||
+              !strcmp("__intrinsic_ssbo_atomic_xor_internal", callee) ||
+              !strcmp("__intrinsic_ssbo_atomic_exchange_internal", callee) ||
+              !strcmp("__intrinsic_ssbo_atomic_comp_swap_internal", callee)) {
+      visit_atomic_intrinsic(ir);
    } else {
       unreachable("Unsupported intrinsic.");
    }
