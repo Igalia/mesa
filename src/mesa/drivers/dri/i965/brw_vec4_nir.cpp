@@ -128,10 +128,19 @@ void
 vec4_visitor::nir_setup_inputs(nir_shader *shader)
 {
    foreach_list_typed(nir_variable, var, node, &shader->inputs) {
-      src_reg src = src_reg(ATTR, var->data.location, var->type);
-      src = retype(src, brw_type_for_base_type(var->type));
       int offset = var->data.driver_location;
-      nir_inputs[offset] = src;
+      int vector_elements =
+         var->type->is_array() ? var->type->fields.array->vector_elements
+                                 : var->type->vector_elements;
+      unsigned size = MAX2(ALIGN(var->type->length * vector_elements, 4) / 4, 1);
+      if (var->type->is_matrix())
+         size *= var->type->matrix_columns;
+
+      for (unsigned i = 0; i < size; i++) {
+         src_reg src = src_reg(ATTR, var->data.location + i, var->type);
+         src = retype(src, brw_type_for_base_type(var->type));
+         nir_inputs[offset + i * vector_elements] = src;
+      }
    }
 }
 
