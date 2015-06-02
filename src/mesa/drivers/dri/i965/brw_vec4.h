@@ -417,6 +417,7 @@ public:
    dst_reg *nir_locals;
    src_reg *nir_inputs;
    int *nir_outputs;
+   brw_reg_type *nir_output_types;
    dst_reg *nir_system_values;
    int *nir_uniform_offsets;
 

@@ -40,6 +40,7 @@ vec4_visitor::emit_nir_code()
    nir_setup_inputs(nir);
 
    nir_outputs = ralloc_array(mem_ctx, int, nir->num_outputs);
+   nir_output_types = ralloc_array(mem_ctx, brw_reg_type, nir->num_outputs);
    nir_setup_outputs(nir);
 
    nir_emit_system_values(nir);
@@ -205,8 +206,12 @@ vec4_visitor::nir_setup_outputs(nir_shader *shader)
       if (var->type->is_matrix())
          size *= var->type->matrix_columns;
 
-      for (unsigned i = 0; i < size; i++)
+      brw_reg_type type = brw_type_for_base_type(var->type);
+
+      for (unsigned i = 0; i < size; i++) {
          nir_outputs[offset + i * 4] = var->data.location + i;
+         nir_output_types[offset + i * 4] = type;
+      }
    }
 }
 
@@ -555,10 +560,10 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       for (unsigned i = 0; i < instr->num_components; i++)
          dest.writemask |= (1 << i);
 
-      dest = retype(dest, BRW_REGISTER_TYPE_F);
-
       int offset = instr->const_index[0];
       int output = nir_outputs[offset];
+
+      dest = retype(dest, nir_output_types[offset]);
 
       if (has_indirect)
          dest.reladdr = new(mem_ctx) src_reg(get_nir_src(instr->src[1]));
