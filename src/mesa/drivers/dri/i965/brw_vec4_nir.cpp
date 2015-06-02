@@ -899,7 +899,16 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_fceil: {
-      src_reg tmp = src_reg(this, glsl_type::float_type);
+      int num_components;
+
+      if (instr->src[0].src.is_ssa)
+         num_components = instr->src[0].src.ssa->num_components;
+      else
+         num_components = instr->src[0].src.reg.reg->num_components;
+
+      src_reg tmp = src_reg(this, glsl_type::float_type, num_components);
+      if (num_components > 0)
+         tmp.swizzle = brw_swizzle_for_size(num_components);
 
       op[0].negate = !op[0].negate;
       emit(RNDD(dst_reg(tmp), op[0]));
