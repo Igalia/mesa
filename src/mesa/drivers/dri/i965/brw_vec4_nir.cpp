@@ -623,7 +623,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    case nir_intrinsic_atomic_counter_dec: {
       unsigned surf_index = prog_data->base.binding_table.abo_start +
          (unsigned) instr->const_index[0];
-      src_reg offset = src_reg(get_nir_src(instr->src[0]));
+      src_reg offset = src_reg(get_nir_src(instr->src[0], nir_type_int));
       dest = get_nir_dest(instr->dest);
 
       switch (instr->intrinsic) {
