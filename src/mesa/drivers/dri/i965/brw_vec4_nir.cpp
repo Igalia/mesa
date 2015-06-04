@@ -663,7 +663,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
           * a value from any live channel.
           */
          surf_index = src_reg(this, glsl_type::uint_type);
-         emit(ADD(dst_reg(surf_index), get_nir_src(instr->src[0]),
+         emit(ADD(dst_reg(surf_index), get_nir_src(instr->src[0], nir_type_int),
                   src_reg(prog_data->base.binding_table.ubo_start)));
 
          /* Assume this may touch any UBO. It would be nice to provide
