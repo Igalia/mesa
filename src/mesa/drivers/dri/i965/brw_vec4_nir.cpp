@@ -125,26 +125,6 @@ vec4_visitor::nir_emit_system_values(nir_shader *shader)
    }
 }
 
-void
-vec4_visitor::nir_setup_inputs(nir_shader *shader)
-{
-   foreach_list_typed(nir_variable, var, node, &shader->inputs) {
-      int offset = var->data.driver_location;
-      int vector_elements =
-         var->type->is_array() ? var->type->fields.array->vector_elements
-                                 : var->type->vector_elements;
-      unsigned size = MAX2(ALIGN(var->type->length * vector_elements, 4) / 4, 1);
-      if (var->type->is_matrix())
-         size *= var->type->matrix_columns;
-
-      for (unsigned i = 0; i < size; i++) {
-         src_reg src = src_reg(ATTR, var->data.location + i, var->type);
-         src = retype(src, brw_type_for_base_type(var->type));
-         nir_inputs[offset + i * vector_elements] = src;
-      }
-   }
-}
-
 static int
 type_size(const struct glsl_type *type)
 {
@@ -193,6 +173,24 @@ type_size(const struct glsl_type *type)
    return 0;
 }
 
+void
+vec4_visitor::nir_setup_inputs(nir_shader *shader)
+{
+   foreach_list_typed(nir_variable, var, node, &shader->inputs) {
+      int offset = var->data.driver_location;
+      int vector_elements =
+         var->type->is_array() ? var->type->fields.array->vector_elements
+                               : var->type->vector_elements;
+
+      unsigned size = type_size(var->type);
+      for (unsigned i = 0; i < size; i++) {
+         src_reg src = src_reg(ATTR, var->data.location + i, var->type);
+         src = retype(src, brw_type_for_base_type(var->type));
+         nir_inputs[offset] = src;
+         offset += vector_elements;
+      }
+   }
+}
 
 void
 vec4_visitor::nir_setup_outputs(nir_shader *shader)
