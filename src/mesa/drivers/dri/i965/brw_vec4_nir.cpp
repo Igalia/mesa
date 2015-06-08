@@ -323,7 +323,10 @@ vec4_visitor::nir_setup_builtin_uniform(nir_variable *var)
 
       int uniform_offset = var->data.driver_location + offset;
       nir_uniform_offsets[uniform_offset] = uniforms;
-      offset += uniform_vector_size[uniforms];
+      if (!var->type->is_record())
+          offset += uniform_vector_size[uniforms];
+      else
+         offset += type_size(var->type->fields.structure[i].type);
 
       this->uniforms++;
    }
