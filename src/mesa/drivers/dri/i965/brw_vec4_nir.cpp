@@ -374,6 +374,19 @@ vec4_visitor::nir_emit_cf_list(exec_list *list)
 void
 vec4_visitor::nir_emit_if(nir_if *if_stmt)
 {
+   /* First, put the condition in f0 */
+   src_reg condition =
+      retype(get_nir_src(if_stmt->condition), BRW_REGISTER_TYPE_D);
+
+   int num_components = if_stmt->condition.is_ssa ?
+      if_stmt->condition.ssa->num_components :
+      if_stmt->condition.reg.reg->num_components;
+
+   condition.swizzle = brw_swizzle_for_size(num_components);
+
+   vec4_instruction *inst = emit(MOV(dst_null_d(), condition));
+   inst->conditional_mod = BRW_CONDITIONAL_NZ;
+
    emit(IF(BRW_PREDICATE_NORMAL));
 
    nir_emit_cf_list(&if_stmt->then_list);
