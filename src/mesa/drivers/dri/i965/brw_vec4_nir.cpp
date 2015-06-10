@@ -1403,6 +1403,44 @@ vec4_visitor::nir_emit_jump(nir_jump_instr *instr)
    }
 }
 
+static enum opcode
+shader_opcode_for_nir_opcode (nir_texop nir_opcode)
+{
+  switch (nir_opcode) {
+   case nir_texop_query_levels:
+      return SHADER_OPCODE_TXS;
+
+   case nir_texop_tex:
+      return SHADER_OPCODE_TXL;
+
+   case nir_texop_tg4:
+      return SHADER_OPCODE_TG4;
+
+   case nir_texop_txd:
+     return SHADER_OPCODE_TXD;
+
+   case nir_texop_txf:
+     return SHADER_OPCODE_TXF;
+
+   case nir_texop_txf_ms:
+     return SHADER_OPCODE_TXF_CMS;
+
+   case nir_texop_txl:
+     return SHADER_OPCODE_TXL;
+
+   case nir_texop_txs:
+     return SHADER_OPCODE_TXS;
+
+   case nir_texop_txb:
+      unreachable("TXB (ie: texture() with bias on glsl) is not valid for vertex shaders.\n");
+
+   case nir_texop_lod:
+      unreachable("LOD (ie: textureQueryLOD on glsl) is not valid for vertex shaders.\n");
+
+   default:
+      unreachable("Unknown texture opcode");
+   }
+}
 
 void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
@@ -1486,32 +1524,10 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    }
 
    /* Get the texture operation */
-   /*@FIME (comment to be removed) On brw_fs_visitor this switch makes a
-    * nir_texop=>ir_texop conversion, as it relies on brw_fs_visitor ir-based
-    * emit_texture (that relies on different gen versions). For now we are
-    * being "nir-pure" so we can do a direct shader opcode conversion */
-   enum opcode opcode;
-   switch (instr->op) {
-   case nir_texop_query_levels: opcode = SHADER_OPCODE_TXS; break;
-   case nir_texop_tex:
+   enum opcode opcode = shader_opcode_for_nir_opcode (instr->op);
+
+   if (instr->op == nir_texop_tex)
       lod = src_reg(0.0f);
-      opcode = SHADER_OPCODE_TXL;
-      break;
-      /* @FIXME: for tg4 we need to check if has a non constant offset */
-   case nir_texop_tg4: opcode = SHADER_OPCODE_TG4; break;
-   case nir_texop_txd: opcode = SHADER_OPCODE_TXD; break;
-   case nir_texop_txf: opcode = SHADER_OPCODE_TXF; break;
-   case nir_texop_txf_ms: opcode = SHADER_OPCODE_TXF_CMS; break;
-   case nir_texop_txl: opcode = SHADER_OPCODE_TXL; break;
-   case nir_texop_txs: opcode = SHADER_OPCODE_TXS; break;
-   case nir_texop_txb:
-      unreachable("TXB (ie: texture() with bias on glsl) is not valid for vertex shaders.\n");
-   case nir_texop_lod:
-      unreachable("LOD (ie: textureQueryLOD on glsl) is not valid for vertex shaders.\n");
-      break;
-   default:
-      unreachable("unknown texture opcode");
-   }
 
    enum glsl_base_type dest_base_type =
      brw_glsl_base_type_for_nir_type (instr->dest_type);
