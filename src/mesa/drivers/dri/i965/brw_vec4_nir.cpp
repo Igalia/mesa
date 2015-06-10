@@ -217,9 +217,12 @@ vec4_visitor::nir_setup_uniforms(nir_shader *shader)
 
    if (shader_prog) {
       foreach_list_typed(nir_variable, var, node, &shader->uniforms) {
-         /* UBO's and atomics don't take up space in the uniform file */
-         if (var->interface_type != NULL || var->type->contains_atomic())
+         /* UBO's, atomics and samplers don't take up space in the
+            uniform file */
+         if (var->interface_type != NULL || var->type->contains_atomic() ||
+             type_size(var->type) == 0) {
             continue;
+         }
 
          assert(uniforms < uniform_array_size);
          this->uniform_size[uniforms] = type_size(var->type);
