@@ -262,6 +262,9 @@ vec4_visitor::nir_setup_uniform(nir_variable *var)
     for (unsigned u = 0; u < shader_prog->NumUniformStorage; u++) {
        struct gl_uniform_storage *storage = &shader_prog->UniformStorage[u];
 
+       if (storage->builtin)
+          continue;
+
        if (strncmp(var->name, storage->name, namelen) != 0 ||
            (storage->name[namelen] != 0 &&
             storage->name[namelen] != '.' &&
