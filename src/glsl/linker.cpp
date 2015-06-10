@@ -2380,7 +2380,9 @@ assign_attribute_or_color_locations(gl_shader_program *prog,
 	 /* Reversed because we want a descending order sort below. */
 	 return r->slots - l->slots;
       }
-   } to_assign[16];
+   } to_assign[MAX2(MAX_VERTEX_GENERIC_ATTRIBS, MAX_DRAW_BUFFERS)];
+
+   assert(max_index <= MAX2(MAX_VERTEX_GENERIC_ATTRIBS, MAX_DRAW_BUFFERS));
 
    unsigned num_attr = 0;
    unsigned total_attribs_size = 0;
@@ -2572,6 +2574,15 @@ assign_attribute_or_color_locations(gl_shader_program *prog,
 	 }
 
 	 continue;
+      }
+
+      if (num_attr >= max_index) {
+         linker_error(prog,
+                      "Number of required %s exceeds allowed limit (limit=%d)",
+                      target_index == MESA_SHADER_VERTEX ?
+                        "vertex inputs" : "fragment outputs",
+                      max_index);
+         return false;
       }
 
       to_assign[num_attr].slots = slots;
