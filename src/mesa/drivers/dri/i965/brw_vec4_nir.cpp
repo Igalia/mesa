@@ -1004,7 +1004,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
        */
 
       /* Update the swizzle to take into account the size of the operand */
-      /* @FIXME: Probably we want to move this to glsl_to_nir */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
                                           op[0].swizzle);
@@ -1031,7 +1030,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
        */
 
       /* Update the swizzle to take into account the size of the operand */
-      /* @FIXME: Probably we want to move this to glsl_to_nir */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
                                           op[0].swizzle);
