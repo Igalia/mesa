@@ -1489,6 +1489,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    int offset_components = 0;
    src_reg tex_offset;
    src_reg lod;
+   bool has_nonconstant_offset = false;
+   src_reg offset_value;
    const glsl_type *lod_type = glsl_type::float_type;
 
    /* Get the parameters */
@@ -1537,7 +1539,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          fprintf(stderr, "WIP: nir_tex_src_ms_index\n");
          break;
       case nir_tex_src_offset:
-         fprintf(stderr, "WIP: nir_tex_src_offset\n");
+         offset_value = retype(src, BRW_REGISTER_TYPE_D);
+         has_nonconstant_offset = true;
          break;
 
       case nir_tex_src_sampler_offset: {
@@ -1609,6 +1612,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    /* @FIXME: wip consider all cases for header_size (see brw_vec4_visitor) */
    inst->header_size =
      (inst->offset != 0 ||
+      instr->op == nir_texop_tg4 ||
       is_high_sampler(devinfo, sampler_reg)) ? 1 : 0;
    inst->base_mrf = 2;
    inst->mlen = inst->header_size + 1;
