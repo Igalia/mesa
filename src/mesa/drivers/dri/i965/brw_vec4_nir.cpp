@@ -489,7 +489,7 @@ vec4_visitor::get_nir_dest(nir_dest dest)
 }
 
 src_reg
-vec4_visitor::get_nir_src(nir_src src, nir_alu_type type)
+vec4_visitor::get_nir_src(nir_src src, enum brw_reg_type type)
 {
    dst_reg reg;
 
@@ -498,7 +498,7 @@ vec4_visitor::get_nir_src(nir_src src, nir_alu_type type)
       nir_load_const_instr *load = nir_instr_as_load_const(src.ssa->parent_instr);
 
       reg = dst_reg(GRF, alloc.allocate(src.ssa->num_components));
-      reg = retype(reg, brw_type_for_nir_type(type));
+      reg = retype(reg, type);
 
       for (unsigned i = 0; i < src.ssa->num_components; ++i) {
          reg.writemask = 1 << i;
@@ -521,10 +521,16 @@ vec4_visitor::get_nir_src(nir_src src, nir_alu_type type)
    else {
      reg = dst_reg_for_nir_reg(this, src.reg.reg, src.reg.base_offset,
                                src.reg.indirect);
-     reg = retype(reg, brw_type_for_nir_type(type));
+     reg = retype(reg, type);
    }
 
    return src_reg(reg);
+}
+
+src_reg
+vec4_visitor::get_nir_src(nir_src src, nir_alu_type type)
+{
+   return get_nir_src(src, brw_type_for_nir_type (type));
 }
 
 src_reg
