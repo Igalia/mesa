@@ -1628,13 +1628,10 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    vec4_instruction *inst = new(mem_ctx)
       vec4_instruction(opcode, dst_reg(this, dest_type));
 
-   /* @FIXME: Copied from fs_nir, but not confirmed whether this is
-    * required for VS.
-    */
    for (unsigned i = 0; i < 3; i++) {
       if (instr->const_offset[i] != 0) {
          assert(offset_components == 0);
-         tex_offset = src_reg(brw_texture_offset(instr->const_offset, 3));
+         inst->offset = brw_texture_offset(instr->const_offset, 3);
          break;
       }
    }
