@@ -1630,7 +1630,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    int param_base = inst->base_mrf + inst->header_size;
 
    if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
-      /* @TODO */
+      emit(MOV(dst_reg(MRF, param_base, lod_type, WRITEMASK_X), lod));
    } else {
       /* Load the coordinate */
       int coord_mask = (1 << instr->coord_components) - 1;
