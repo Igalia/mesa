@@ -1672,7 +1672,14 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          /* @TODO */
       }
       else if (instr->op == nir_texop_tg4 && has_nonconstant_offset) {
-         /* @TODO */
+         if (shadow_compare) {
+            emit(MOV(dst_reg(MRF, param_base, shadow_comparitor.type, WRITEMASK_W),
+                     shadow_comparitor));
+         }
+
+         emit(MOV(dst_reg(MRF, param_base + 1, glsl_type::ivec2_type, WRITEMASK_XY),
+                  offset_value));
+         inst->mlen++;
       }
    }
 
