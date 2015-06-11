@@ -526,8 +526,8 @@ vec4_visitor::get_nir_src(nir_src src, nir_alu_type type)
 src_reg
 vec4_visitor::get_nir_src(nir_src src)
 {
-   /* if type is not specified, default to float */
-   return get_nir_src(src, nir_type_float);
+   /* if type is not specified, default to signed int */
+   return get_nir_src(src, nir_type_int);
 }
 
 void
