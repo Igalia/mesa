@@ -1410,7 +1410,7 @@ vec4_visitor::nir_emit_jump(nir_jump_instr *instr)
 }
 
 static enum opcode
-shader_opcode_for_nir_opcode (nir_texop nir_opcode)
+shader_opcode_for_nir_opcode(nir_texop nir_opcode)
 {
   switch (nir_opcode) {
    case nir_texop_query_levels:
@@ -1483,6 +1483,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
    unsigned sampler = instr->sampler_index;
    src_reg sampler_reg = src_reg(sampler);
+
    src_reg coordinate;
    src_reg shadow_comparitor;
    int shadow_compare = 0;
@@ -1496,30 +1497,34 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    /* Get the parameters */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       src_reg src = get_nir_src(instr->src[i].src);
+
       switch (instr->src[i].src_type) {
       case nir_tex_src_comparitor:
          shadow_comparitor = retype (src, BRW_REGISTER_TYPE_F);
          shadow_compare = 1;
          break;
+
       case nir_tex_src_coord:
          switch (instr->op) {
          case nir_texop_txf:
-            fprintf(stderr, "WIP: \tnir_texop_txf\n");
          case nir_texop_txf_ms:
-            fprintf(stderr, "\tnir_texop_txf_ms\n");
             coordinate = retype(src, BRW_REGISTER_TYPE_D);
             break;
+
          default:
             coordinate = retype(src, BRW_REGISTER_TYPE_F);
             break;
          }
          break;
+
       case nir_tex_src_ddx:
          lod = retype(src, BRW_REGISTER_TYPE_F);
          break;
+
       case nir_tex_src_ddy:
          lod2 = retype(src, BRW_REGISTER_TYPE_F);
          break;
+
       case nir_tex_src_lod:
          switch (instr->op) {
          case nir_texop_txs:
@@ -1535,9 +1540,11 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
             break;
          }
          break;
+
       case nir_tex_src_ms_index:
          fprintf(stderr, "WIP: nir_tex_src_ms_index\n");
          break;
+
       case nir_tex_src_offset:
          offset_value = retype(src, BRW_REGISTER_TYPE_D);
          has_nonconstant_offset = true;
@@ -1573,19 +1580,9 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
       case nir_tex_src_bias:
          unreachable("LOD bias is not valid for vertex shaders.\n");
-         break;
+
       default:
          unreachable("unknown texture source");
-      }
-   }
-
-   for (unsigned i = 0; i < 3; i++) {
-      if (instr->const_offset[i] != 0) {
-         /* @FIXME: right now offset_components will be always 0,
-            as nir_tex_src_offset is not supported yet */
-         assert(offset_components == 0);
-         tex_offset = src_reg(brw_texture_offset(instr->const_offset, 3));
-         break;
       }
    }
 
@@ -1598,7 +1595,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    lod_type = glsl_type_for_brw_reg_type(lod.type);
 
    enum glsl_base_type dest_base_type =
-     brw_glsl_base_type_for_nir_type (instr->dest_type);
+      brw_glsl_base_type_for_nir_type (instr->dest_type);
 
    const glsl_type *dest_type =
       glsl_type::get_instance(dest_base_type, nir_tex_instr_dest_size(instr), 1);
@@ -1606,14 +1603,22 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    vec4_instruction *inst = new(mem_ctx)
       vec4_instruction(opcode, dst_reg(this, dest_type));
 
+   for (unsigned i = 0; i < 3; i++) {
+      if (instr->const_offset[i] != 0) {
+         assert(offset_components == 0);
+         tex_offset = src_reg(brw_texture_offset(instr->const_offset, 3));
+         break;
+      }
+   }
+
    if (tex_offset.file == IMM)
       inst->offset = tex_offset.fixed_hw_reg.dw1.ud;
 
    /* @FIXME: wip consider all cases for header_size (see brw_vec4_visitor) */
    inst->header_size =
-     (inst->offset != 0 ||
-      instr->op == nir_texop_tg4 ||
-      is_high_sampler(devinfo, sampler_reg)) ? 1 : 0;
+      (inst->offset != 0 ||
+       instr->op == nir_texop_tg4 ||
+       is_high_sampler(devinfo, sampler_reg)) ? 1 : 0;
    inst->base_mrf = 2;
    inst->mlen = inst->header_size + 1;
    inst->dst.writemask = WRITEMASK_XYZW;
@@ -1658,8 +1663,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    emit(inst);
 
    dst_reg dest = get_nir_dest(instr->dest);
-   /* @FIXME: get_nir_dest calls dst_reg_for_nir_reg that sets a hardcoded
-    * type. It is needed to set the proper type to get things working. */
    dest.type = brw_type_for_base_type (dest_type);
 
    /* @FIXME: here brw_vec4_visitor call swizzle_result, that does a swizzle
