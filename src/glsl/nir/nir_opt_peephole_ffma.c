@@ -76,6 +76,7 @@ static nir_alu_instr *
 get_mul_for_src(nir_alu_src *src, int num_components,
                 uint8_t swizzle[4], bool *negate, bool *abs)
 {
+   uint8_t swizzle_tmp[4];
    assert(src->src.is_ssa && !src->abs && !src->negate);
 
    nir_instr *instr = src->src.ssa->parent_instr;
@@ -116,8 +117,10 @@ get_mul_for_src(nir_alu_src *src, int num_components,
    if (!alu)
       return NULL;
 
+   /* Copy swizzle data before overwriting it */
+   memcpy(swizzle_tmp, swizzle, 4*sizeof(uint8_t));
    for (unsigned i = 0; i < num_components; i++)
-      swizzle[i] = swizzle[src->swizzle[i]];
+      swizzle[i] = swizzle_tmp[src->swizzle[i]];
 
    return alu;
 }
