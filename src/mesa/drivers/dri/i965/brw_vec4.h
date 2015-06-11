@@ -412,6 +412,7 @@ public:
    virtual void nir_emit_texture(nir_tex_instr *instr);
 
    dst_reg get_nir_dest(nir_dest dest);
+   src_reg get_nir_src(nir_src src, enum brw_reg_type type);
    src_reg get_nir_src(nir_src src, nir_alu_type type);
    src_reg get_nir_src(nir_src src);
 
