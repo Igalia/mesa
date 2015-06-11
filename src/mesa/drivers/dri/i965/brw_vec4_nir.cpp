@@ -1512,11 +1512,35 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       case nir_tex_src_offset:
          fprintf(stderr, "WIP: nir_tex_src_offset\n");
          break;
+
+      case nir_tex_src_sampler_offset: {
+         /* The highest sampler which may be used by this operation is
+          * the last element of the array. Mark it here, because the generator
+          * doesn't have enough information to determine the bound.
+          */
+         uint32_t array_size = instr->sampler_array_size;
+
+         uint32_t max_used = sampler + array_size - 1;
+         if (instr->op == nir_texop_tg4 && devinfo->gen < 8) {
+            max_used += prog_data->base.binding_table.gather_texture_start;
+         } else {
+            max_used += prog_data->base.binding_table.texture_start;
+         }
+
+         brw_mark_surface_used(&prog_data->base, max_used);
+
+         /* Emit code to evaluate the actual indexing expression */
+         dst_reg temp(this, glsl_type::uint_type);
+         emit(ADD(temp, src, src_reg(sampler)));
+         emit_uniformize(temp, src_reg(temp));
+
+         sampler_reg = src_reg(temp);
+         break;
+      }
+
       case nir_tex_src_projector:
-         fprintf(stderr, "WIP: nir_tex_src_projector\n");
-         unreachable("should be lowered");
-      case nir_tex_src_sampler_offset:
-         fprintf(stderr, "WIP: nir_tex_src_sampler_offset\n");
+         unreachable("Should be lowered by do_lower_texture_projection");
+
       case nir_tex_src_bias:
          unreachable("LOD bias is not valid for vertex shaders.\n");
          break;
