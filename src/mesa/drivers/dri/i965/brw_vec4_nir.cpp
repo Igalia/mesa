@@ -1478,6 +1478,31 @@ glsl_type_for_brw_reg_type(enum brw_reg_type type)
    }
 }
 
+/**
+ * Set up the gather channel based on the swizzle, for gather4.
+ * @FIXME: This function is very similar to gather_channel() from
+ * vec4_visitor; consider factorizing them in the future.
+ */
+uint32_t
+vec4_visitor::nir_gather_channel(unsigned gather_component, uint32_t sampler)
+{
+   int swiz = GET_SWZ(key->tex.swizzles[sampler], gather_component);
+   switch (swiz) {
+      case SWIZZLE_X: return 0;
+      case SWIZZLE_Y:
+         /* gather4 sampler is broken for green channel on RG32F --
+          * we must ask for blue instead.
+          */
+         if (key->tex.gather_channel_quirk_mask & (1<<sampler))
+            return 2;
+         return 1;
+      case SWIZZLE_Z: return 2;
+      case SWIZZLE_W: return 3;
+      default:
+         unreachable("Not reached"); /* zero, one swizzles handled already */
+   }
+}
+
 void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
