@@ -1626,38 +1626,54 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    inst->src[1] = sampler_reg;
 
-   /* Load the coordinate */
+   /* MRF for the first parameter */
    int param_base = inst->base_mrf + inst->header_size;
-   int coord_mask = (1 << instr->coord_components) - 1;
-   int zero_mask = 0xf & ~coord_mask;
 
-   emit(MOV(dst_reg(MRF, param_base, coordinate.type, coord_mask), coordinate));
+   if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
+      /* @TODO */
+   } else {
+      /* Load the coordinate */
+      int coord_mask = (1 << instr->coord_components) - 1;
+      int zero_mask = 0xf & ~coord_mask;
 
-   if (zero_mask != 0) {
-      emit(MOV(dst_reg(MRF, param_base, coordinate.type, zero_mask), src_reg(0)));
-   }
+      emit(MOV(dst_reg(MRF, param_base, coordinate.type, coord_mask),
+               coordinate));
 
-   /* Load the shadow comparitor */
-   if (shadow_compare) { /*@FIXME: this conditional is assuming only tex op support */
-      emit(MOV(dst_reg(MRF, param_base + 1, shadow_comparitor.type, WRITEMASK_X),
-               shadow_comparitor));
-      inst->mlen++;
-   }
-   /* Load the LOD info */
-   if (instr->op == nir_texop_tex || instr->op == nir_texop_txl) {
-      int mrf, writemask;
-      mrf = param_base + 1; /* @FIXME: asumming devinfo->gen >= 5 */
-      if (shadow_compare) {
-         writemask = WRITEMASK_Y;
-         /* mlen already incremented on shadow comparitor loading */
-      } else {
-         writemask = WRITEMASK_X;
+      if (zero_mask != 0) {
+         emit(MOV(dst_reg(MRF, param_base, coordinate.type, zero_mask),
+                  src_reg(0)));
+      }
+
+      /* Load the shadow comparitor */
+      if (shadow_compare && instr->op != nir_texop_txd) {
+         emit(MOV(dst_reg(MRF, param_base + 1, shadow_comparitor.type,
+                          WRITEMASK_X),
+                  shadow_comparitor));
          inst->mlen++;
       }
-      emit(MOV(dst_reg(MRF, mrf, lod.type, writemask), lod));
-   } else {
-      /* @FIXME: WIP */
-      fprintf(stderr, "WIP: lod only supported for tex or txl texop\n");
+
+      /* Load the LOD info */
+      if (instr->op == nir_texop_tex || instr->op == nir_texop_txl) {
+         int mrf, writemask;
+         mrf = param_base + 1; /* @FIXME: asumming devinfo->gen >= 5 */
+         if (shadow_compare) {
+            writemask = WRITEMASK_Y;
+            /* mlen already incremented on shadow comparitor loading */
+         } else {
+            writemask = WRITEMASK_X;
+            inst->mlen++;
+         }
+         emit(MOV(dst_reg(MRF, mrf, lod_type, writemask), lod));
+      } else if (instr->op == nir_texop_txf) {
+         /* @TODO */
+      } else if (instr->op == nir_texop_txf_ms) {
+         /* @TODO */
+      } else if (instr->op == nir_texop_txd) {
+         /* @TODO */
+      }
+      else if (instr->op == nir_texop_tg4 && has_nonconstant_offset) {
+         /* @TODO */
+      }
    }
 
    emit(inst);
