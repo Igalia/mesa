@@ -1628,6 +1628,9 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    vec4_instruction *inst = new(mem_ctx)
       vec4_instruction(opcode, dst_reg(this, dest_type));
 
+   /* @FIXME: Copied from fs_nir, but not confirmed whether this is
+    * required for VS.
+    */
    for (unsigned i = 0; i < 3; i++) {
       if (instr->const_offset[i] != 0) {
          assert(offset_components == 0);
@@ -1640,7 +1643,11 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    if (instr->op == nir_texop_tg4)
       inst->offset |= nir_gather_channel(instr->component, sampler) << 16;
 
-   /* @FIXME: wip consider all cases for header_size (see brw_vec4_visitor) */
+   /* The message header is necessary for:
+    * - Texel offsets
+    * - Gather channel selection
+    * - Sampler indices too large to fit in a 4-bit value.
+    */
    inst->header_size =
       (inst->offset != 0 ||
        instr->op == nir_texop_tg4 ||
