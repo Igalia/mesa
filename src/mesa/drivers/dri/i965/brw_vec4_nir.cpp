@@ -575,15 +575,15 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       has_indirect = true;
       /* fallthrough */
    case nir_intrinsic_store_output: {
-      src = get_nir_src(instr->src[0]);
+      int offset = instr->const_index[0];
+      int output = nir_outputs[offset];
+
+      src = get_nir_src(instr->src[0], nir_output_types[offset]);
       dest = dst_reg(src);
 
       dest.writemask = 0;
       for (unsigned i = 0; i < instr->num_components; i++)
          dest.writemask |= (1 << i);
-
-      int offset = instr->const_index[0];
-      int output = nir_outputs[offset];
 
       dest = retype(dest, nir_output_types[offset]);
 
