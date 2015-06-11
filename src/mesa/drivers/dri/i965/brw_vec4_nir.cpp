@@ -1460,6 +1460,24 @@ is_high_sampler(const struct brw_device_info *devinfo, src_reg sampler)
    return sampler.file != IMM || sampler.fixed_hw_reg.dw1.ud >= 16;
 }
 
+static const glsl_type *
+glsl_type_for_brw_reg_type(enum brw_reg_type type)
+{
+   switch (type) {
+   case BRW_REGISTER_TYPE_D:
+      return glsl_type::int_type;
+
+   case BRW_REGISTER_TYPE_UD:
+      return glsl_type::uint_type;
+
+   case BRW_REGISTER_TYPE_F:
+      return glsl_type::float_type;
+
+   default:
+      unreachable("Invalid brw register type");
+   }
+}
+
 void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
@@ -1471,6 +1489,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    int offset_components = 0;
    src_reg tex_offset;
    src_reg lod;
+   const glsl_type *lod_type = glsl_type::float_type;
 
    /* Get the parameters */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
@@ -1502,11 +1521,13 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       case nir_tex_src_lod:
          switch (instr->op) {
          case nir_texop_txs:
-            fprintf(stderr, "\t WIP: nir_tex_src_lod:nir_texop_txs\n");
+            lod = retype(src, BRW_REGISTER_TYPE_UD);
             break;
+
          case nir_texop_txf:
-            fprintf(stderr, "\t WIP: nir_tex_src_lod:nir_texop_txf\n");
+            lod = retype(src, BRW_REGISTER_TYPE_D);
             break;
+
          default:
             lod = retype(src, BRW_REGISTER_TYPE_F);
             break;
@@ -1570,6 +1591,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    if (instr->op == nir_texop_tex)
       lod = src_reg(0.0f);
+
+   lod_type = glsl_type_for_brw_reg_type(lod.type);
 
    enum glsl_base_type dest_base_type =
      brw_glsl_base_type_for_nir_type (instr->dest_type);
