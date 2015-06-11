@@ -1665,7 +1665,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          }
          emit(MOV(dst_reg(MRF, mrf, lod_type, writemask), lod));
       } else if (instr->op == nir_texop_txf) {
-         /* @TODO */
+         emit(MOV(dst_reg(MRF, param_base, lod_type, WRITEMASK_W), lod));
       } else if (instr->op == nir_texop_txf_ms) {
          /* @TODO */
       } else if (instr->op == nir_texop_txd) {
