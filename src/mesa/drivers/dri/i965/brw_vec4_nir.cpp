@@ -1567,7 +1567,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          break;
 
       case nir_tex_src_ms_index:
-         fprintf(stderr, "WIP: nir_tex_src_ms_index\n");
+         fprintf(stderr, "Unimplemented nir_tex_src_ms_index\n");
          break;
 
       case nir_tex_src_offset:
@@ -1698,8 +1698,10 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          emit(MOV(dst_reg(MRF, param_base, lod_type, WRITEMASK_W), lod));
       } else if (instr->op == nir_texop_txf_ms) {
          /* @TODO */
+         fprintf(stderr, "Unimplemented nir_tex_src_ms_index\n");
       } else if (instr->op == nir_texop_txd) {
          /* @TODO */
+         fprintf(stderr, "Unimplemented nir_tex_src_ms_index\n");
       }
       else if (instr->op == nir_texop_tg4 && has_nonconstant_offset) {
          if (shadow_compare) {
