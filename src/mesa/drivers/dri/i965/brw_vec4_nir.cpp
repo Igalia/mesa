@@ -1636,8 +1636,9 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       }
    }
 
-   if (tex_offset.file == IMM)
-      inst->offset = tex_offset.fixed_hw_reg.dw1.ud;
+   /* Stuff the channel select bits in the top of the texture offset */
+   if (instr->op == nir_texop_tg4)
+      inst->offset |= nir_gather_channel(instr->component, sampler) << 16;
 
    /* @FIXME: wip consider all cases for header_size (see brw_vec4_visitor) */
    inst->header_size =
