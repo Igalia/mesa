@@ -1488,9 +1488,9 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    int shadow_compare = 0;
    int offset_components = 0;
    src_reg tex_offset;
-   src_reg lod;
    bool has_nonconstant_offset = false;
    src_reg offset_value;
+   src_reg lod, lod2;
    const glsl_type *lod_type = glsl_type::float_type;
 
    /* Get the parameters */
@@ -1515,10 +1515,10 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          }
          break;
       case nir_tex_src_ddx:
-         fprintf(stderr, "WIP: nir_tex_src_ddx\n");
+         lod = retype(src, BRW_REGISTER_TYPE_F);
          break;
       case nir_tex_src_ddy:
-         fprintf(stderr, "WIP: nir_tex_src_ddy\n");
+         lod2 = retype(src, BRW_REGISTER_TYPE_F);
          break;
       case nir_tex_src_lod:
          switch (instr->op) {
