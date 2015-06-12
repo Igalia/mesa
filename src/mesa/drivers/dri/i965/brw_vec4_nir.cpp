@@ -1513,7 +1513,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    src_reg shadow_comparitor;
    int shadow_compare = 0;
    int offset_components = 0;
-   src_reg tex_offset;
    bool has_nonconstant_offset = false;
    src_reg offset_value;
    src_reg lod, lod2;
