@@ -1510,6 +1510,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    src_reg sampler_reg = src_reg(sampler);
 
    src_reg coordinate;
+   const glsl_type *coord_type = NULL;
    src_reg shadow_comparitor;
    int shadow_compare = 0;
    int offset_components = 0;
@@ -1517,6 +1518,10 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    src_reg offset_value;
    src_reg lod, lod2;
    const glsl_type *lod_type = glsl_type::float_type;
+
+   src_reg sample_index;
+   const glsl_type *sample_index_type = NULL;
+   src_reg mcs;
 
    /* Get the parameters */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
@@ -1533,10 +1538,14 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          case nir_texop_txf:
          case nir_texop_txf_ms:
             coordinate = retype(src, BRW_REGISTER_TYPE_D);
+            coord_type = glsl_type::get_instance(GLSL_TYPE_INT,
+                                                 instr->coord_components, 1);
             break;
 
          default:
             coordinate = retype(src, BRW_REGISTER_TYPE_F);
+            coord_type = glsl_type::get_instance(GLSL_TYPE_FLOAT,
+                                                 instr->coord_components, 1);
             break;
          }
          break;
@@ -1565,9 +1574,20 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          }
          break;
 
-      case nir_tex_src_ms_index:
-         fprintf(stderr, "Unimplemented nir_tex_src_ms_index\n");
+      case nir_tex_src_ms_index: {
+         sample_index = retype(src, BRW_REGISTER_TYPE_D);
+         sample_index_type = glsl_type::uint_type;
+
+         assert(coord_type != NULL);
+         if (devinfo->gen >= 7 &&
+             key->tex.compressed_multisample_layout_mask & (1<<sampler)) {
+            mcs = emit_mcs_fetch(coord_type, coordinate, sampler_reg);
+         } else {
+            mcs = src_reg(0u);
+         }
+         mcs = retype(mcs, BRW_REGISTER_TYPE_UD);
          break;
+      }
 
       case nir_tex_src_offset:
          offset_value = retype(src, BRW_REGISTER_TYPE_D);
@@ -1612,6 +1632,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    /* Get the texture operation */
    enum opcode opcode = shader_opcode_for_nir_opcode (instr->op);
+   if (opcode == SHADER_OPCODE_TG4 && has_nonconstant_offset)
+      opcode = SHADER_OPCODE_TG4_OFFSET;
 
    if (instr->op == nir_texop_tex)
       lod = src_reg(0.0f);
@@ -1696,8 +1718,19 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       } else if (instr->op == nir_texop_txf) {
          emit(MOV(dst_reg(MRF, param_base, lod_type, WRITEMASK_W), lod));
       } else if (instr->op == nir_texop_txf_ms) {
-         /* @TODO */
-         fprintf(stderr, "Unimplemented nir_tex_src_ms_index\n");
+         emit(MOV(dst_reg(MRF, param_base + 1, sample_index_type, WRITEMASK_X),
+                  sample_index));
+
+         /* @FIXME: Asumming devinfo->gen >= 7 */
+         /* MCS data is in the first channel of `mcs`, but we need to get it into
+          * the .y channel of the second vec4 of params, so replicate .x across
+          * the whole vec4 and then mask off everything except .y
+          */
+         mcs.swizzle = BRW_SWIZZLE_XXXX;
+         emit(MOV(dst_reg(MRF, param_base + 1, glsl_type::uint_type, WRITEMASK_Y),
+                  mcs));
+
+         inst->mlen++;
       } else if (instr->op == nir_texop_txd) {
          const glsl_type *type = lod_type;
 
