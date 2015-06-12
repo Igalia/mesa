@@ -1769,6 +1769,18 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    emit(inst);
 
+   /* fixup num layers (z) for cube arrays: hardware returns faces * layers;
+    * spec requires layers.
+    */
+   if (instr->op == nir_texop_txs) {
+      if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE &&
+          instr->is_array) {
+         emit_math(SHADER_OPCODE_INT_QUOTIENT,
+                   writemask(inst->dst, WRITEMASK_Z),
+                   src_reg(inst->dst), src_reg(6));
+      }
+   }
+
    dst_reg dest = get_nir_dest(instr->dest);
    dest.type = brw_type_for_base_type (dest_type);
 
