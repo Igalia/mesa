@@ -1700,8 +1700,28 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          /* @TODO */
          fprintf(stderr, "Unimplemented nir_tex_src_ms_index\n");
       } else if (instr->op == nir_texop_txd) {
-         /* @TODO */
-         fprintf(stderr, "Unimplemented nir_tex_src_ms_index\n");
+         const glsl_type *type = lod_type;
+
+         /* @FIXME: asumming devinfo->gen >= 5 */
+         lod.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
+         lod2.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
+         emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_XZ), lod));
+         emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_YW), lod2));
+         inst->mlen++;
+
+         if (dest_type->vector_elements == 3 || shadow_compare) {
+            lod.swizzle = BRW_SWIZZLE_ZZZZ;
+            lod2.swizzle = BRW_SWIZZLE_ZZZZ;
+            emit(MOV(dst_reg(MRF, param_base + 2, type, WRITEMASK_X), lod));
+            emit(MOV(dst_reg(MRF, param_base + 2, type, WRITEMASK_Y), lod2));
+            inst->mlen++;
+
+            if (shadow_compare) {
+               emit(MOV(dst_reg(MRF, param_base + 2,
+                                shadow_comparitor.type, WRITEMASK_Z),
+                        shadow_comparitor));
+            }
+         }
       }
       else if (instr->op == nir_texop_tg4 && has_nonconstant_offset) {
          if (shadow_compare) {
