@@ -189,6 +189,29 @@ get_io_offset(nir_deref_var *deref, nir_instr *instr, nir_src *indirect,
    bool found_indirect = false;
    unsigned base_offset = 0;
 
+   /* In the vertex shader we upload entire uniform arrays that have
+    * indirect indexing to a pull constant surface and we want to index into
+    * them considering both the constant index and variable index. This is not
+    * the same we do for the fragment shader, were we add the constant part
+    * into the base offset. Thus, check if we are processing an array
+    * with indirect indexing so we can do the right thing below.
+    *
+    */
+   bool has_indirect = false;
+   if (state->stage != MESA_SHADER_FRAGMENT) {
+      nir_deref *tail = &deref->deref;
+      while (tail->child != NULL) {
+         tail = tail->child;
+         if (tail->deref_type == nir_deref_type_array) {
+            nir_deref_array *deref_array = nir_deref_as_array(tail);
+            if (deref_array->deref_array_type == nir_deref_array_type_indirect) {
+               has_indirect = true;
+               break;
+            }
+         }
+      }
+   }
+
    nir_deref *tail = &deref->deref;
    while (tail->child != NULL) {
       const struct glsl_type *parent_type = tail->type;
@@ -198,7 +221,39 @@ get_io_offset(nir_deref_var *deref, nir_instr *instr, nir_src *indirect,
          nir_deref_array *deref_array = nir_deref_as_array(tail);
          unsigned size = type_size(tail->type);
 
-         base_offset += size * deref_array->base_offset;
+         if (deref_array->base_offset && has_indirect) {
+            /* Vertex shader constant array access into a uniform that also
+             * has indirect access: add the constant ndex to the indirect
+             */
+            nir_load_const_instr *load_const =
+            nir_load_const_instr_create(state->mem_ctx, 1);
+
+            load_const->value.u[0] = size * deref_array->base_offset;
+            int vector_elements = glsl_get_vector_elements(tail->type);
+            if (vector_elements)
+                load_const->value.u[0] = size / vector_elements;
+
+            nir_instr_insert_before(instr, &load_const->instr);
+
+            if (found_indirect) {
+               nir_alu_instr *add = nir_alu_instr_create(state->mem_ctx, nir_op_iadd);
+               add->src[0].src = *indirect;
+               add->src[1].src.is_ssa = true;
+               add->src[1].src.ssa = &load_const->def;
+               add->dest.write_mask = 1;
+               nir_ssa_dest_init(&add->instr, &add->dest.dest, 1, NULL);
+               nir_instr_insert_before(instr, &add->instr);
+
+               indirect->is_ssa = true;
+               indirect->ssa = &add->dest.dest.ssa;
+            } else {
+               indirect->is_ssa = true;
+               indirect->ssa = &load_const->def;
+               found_indirect = true;
+            }
+         } else {
+            base_offset += size * deref_array->base_offset;
+         }
 
          if (deref_array->deref_array_type == nir_deref_array_type_indirect) {
             nir_load_const_instr *load_const =
