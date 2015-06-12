@@ -286,10 +286,9 @@ vec4_visitor::nir_setup_uniform(nir_variable *var)
              stage_prog_data->param[uniforms * 4 + i] = &zero;
           }
 
-          int uniform_offset =
-            var->data.driver_location + offset * uniform_vector_size[uniforms];
+          int uniform_offset = var->data.driver_location + offset;
           nir_uniform_offsets[uniform_offset] = uniforms;
-          offset++;
+          offset += uniform_vector_size[uniforms];
 
           uniforms++;
        }
@@ -324,10 +323,9 @@ vec4_visitor::nir_setup_builtin_uniform(nir_variable *var)
          (var->type->is_scalar() || var->type->is_vector() ||
           var->type->is_matrix() ? var->type->vector_elements : 4);
 
-      int uniform_offset =
-         var->data.driver_location + offset * uniform_vector_size[uniforms];
+      int uniform_offset = var->data.driver_location + offset;
       nir_uniform_offsets[uniform_offset] = uniforms;
-      offset++;
+      offset += uniform_vector_size[uniforms];
 
       this->uniforms++;
    }
