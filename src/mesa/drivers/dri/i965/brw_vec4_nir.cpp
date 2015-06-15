@@ -1456,6 +1456,64 @@ is_high_sampler(const struct brw_device_info *devinfo, src_reg sampler)
 }
 
 void
+vec4_visitor::nir_swizzle_result(nir_tex_instr *instr, const glsl_type *type,
+                                 src_reg orig_val, uint32_t sampler)
+{
+   int s = key->tex.swizzles[sampler];
+
+   this->result = src_reg(this, type);
+   dst_reg swizzled_result(this->result);
+
+   if (instr->op == nir_texop_query_levels) {
+      /* # levels is in .w */
+      orig_val.swizzle = BRW_SWIZZLE4(SWIZZLE_W, SWIZZLE_W, SWIZZLE_W, SWIZZLE_W);
+      emit(MOV(swizzled_result, orig_val));
+      return;
+   }
+
+   if (instr->op == nir_texop_txs || type == glsl_type::float_type
+			|| s == SWIZZLE_NOOP || instr->op == nir_texop_tg4) {
+      emit(MOV(swizzled_result, orig_val));
+      return;
+   }
+
+
+   int zero_mask = 0, one_mask = 0, copy_mask = 0;
+   int swizzle[4] = {0};
+
+   for (int i = 0; i < 4; i++) {
+      switch (GET_SWZ(s, i)) {
+      case SWIZZLE_ZERO:
+	 zero_mask |= (1 << i);
+	 break;
+      case SWIZZLE_ONE:
+	 one_mask |= (1 << i);
+	 break;
+      default:
+	 copy_mask |= (1 << i);
+	 swizzle[i] = GET_SWZ(s, i);
+	 break;
+      }
+   }
+
+   if (copy_mask) {
+      orig_val.swizzle = BRW_SWIZZLE4(swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
+      swizzled_result.writemask = copy_mask;
+      emit(MOV(swizzled_result, orig_val));
+   }
+
+   if (zero_mask) {
+      swizzled_result.writemask = zero_mask;
+      emit(MOV(swizzled_result, src_reg(0.0f)));
+   }
+
+   if (one_mask) {
+      swizzled_result.writemask = one_mask;
+      emit(MOV(swizzled_result, src_reg(1.0f)));
+   }
+}
+
+void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
    unsigned sampler = instr->sampler_index;
@@ -1728,12 +1786,10 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    }
 
    dst_reg dest = get_nir_dest(instr->dest);
-   dest.type = brw_type_for_base_type (dest_type);
+   dest = retype(dest, brw_type_for_base_type (dest_type));
 
-   /* @FIXME: here brw_vec4_visitor call swizzle_result, that does a swizzle
-    * on the source and/or the destination if needed, and then it emit the
-    * src->dest mov. swizzle not supported yet, so just doing a direct mov */
-   emit(MOV(dest, src_reg(inst->dst)));
+   nir_swizzle_result(instr, dest_type, src_reg(inst->dst), sampler);
+   emit(MOV(dest, this->result));
 }
 
 }
