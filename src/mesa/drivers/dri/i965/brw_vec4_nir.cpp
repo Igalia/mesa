@@ -1455,24 +1455,6 @@ is_high_sampler(const struct brw_device_info *devinfo, src_reg sampler)
    return sampler.file != IMM || sampler.fixed_hw_reg.dw1.ud >= 16;
 }
 
-static const glsl_type *
-glsl_type_for_brw_reg_type(enum brw_reg_type type)
-{
-   switch (type) {
-   case BRW_REGISTER_TYPE_D:
-      return glsl_type::int_type;
-
-   case BRW_REGISTER_TYPE_UD:
-      return glsl_type::uint_type;
-
-   case BRW_REGISTER_TYPE_F:
-      return glsl_type::float_type;
-
-   default:
-      unreachable("Invalid brw register type");
-   }
-}
-
 void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
@@ -1487,10 +1469,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    bool has_nonconstant_offset = false;
    src_reg offset_value;
    src_reg lod, lod2;
-   const glsl_type *lod_type = glsl_type::float_type;
-
    src_reg sample_index;
-   const glsl_type *sample_index_type = NULL;
    src_reg mcs;
 
    /* Get the parameters */
@@ -1546,7 +1525,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
       case nir_tex_src_ms_index: {
          sample_index = retype(src, BRW_REGISTER_TYPE_D);
-         sample_index_type = glsl_type::uint_type;
 
          assert(coord_type != NULL);
          if (devinfo->gen >= 7 &&
@@ -1608,8 +1586,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    if (instr->op == nir_texop_tex)
       lod = src_reg(0.0f);
 
-   lod_type = glsl_type_for_brw_reg_type(lod.type);
-
    enum glsl_base_type dest_base_type =
       brw_glsl_base_type_for_nir_type (instr->dest_type);
 
@@ -1651,7 +1627,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    int param_base = inst->base_mrf + inst->header_size;
 
    if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
-      emit(MOV(dst_reg(MRF, param_base, lod_type, WRITEMASK_X), lod));
+      emit(MOV(dst_reg(MRF, param_base, lod.type, WRITEMASK_X), lod));
    } else {
       /* Load the coordinate */
       int coord_mask = (1 << instr->coord_components) - 1;
@@ -1684,11 +1660,11 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
             writemask = WRITEMASK_X;
             inst->mlen++;
          }
-         emit(MOV(dst_reg(MRF, mrf, lod_type, writemask), lod));
+         emit(MOV(dst_reg(MRF, mrf, lod.type, writemask), lod));
       } else if (instr->op == nir_texop_txf) {
-         emit(MOV(dst_reg(MRF, param_base, lod_type, WRITEMASK_W), lod));
+         emit(MOV(dst_reg(MRF, param_base, lod.type, WRITEMASK_W), lod));
       } else if (instr->op == nir_texop_txf_ms) {
-         emit(MOV(dst_reg(MRF, param_base + 1, sample_index_type, WRITEMASK_X),
+         emit(MOV(dst_reg(MRF, param_base + 1, sample_index.type, WRITEMASK_X),
                   sample_index));
 
          /* @FIXME: Asumming devinfo->gen >= 7 */
@@ -1702,7 +1678,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
          inst->mlen++;
       } else if (instr->op == nir_texop_txd) {
-         const glsl_type *type = lod_type;
+         const brw_reg_type type = lod.type;
 
          /* @FIXME: asumming devinfo->gen >= 5 */
          lod.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
