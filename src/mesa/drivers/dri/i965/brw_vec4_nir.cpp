@@ -1236,12 +1236,10 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    case nir_op_ubitfield_extract:
    case nir_op_ibitfield_extract:
-      /* @FIXME: vec4_visitor adds:
-       *       op[0] = fix_3src_operand(op[0]);
-       *       op[1] = fix_3src_operand(op[1]);
-       *       op[2] = fix_3src_operand(op[2]);
-       * We probably want to add it too. To confirm.
-       */
+      op[0] = fix_3src_operand(op[0]);
+      op[1] = fix_3src_operand(op[1]);
+      op[2] = fix_3src_operand(op[2]);
+
       emit(BFE(dst, op[2], op[1], op[0]));
       break;
 
@@ -1250,12 +1248,10 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_bfi:
-      /* @FIXME: vec4_visitor adds:
-       *       op[0] = fix_3src_operand(op[0]);
-       *       op[1] = fix_3src_operand(op[1]);
-       *       op[2] = fix_3src_operand(op[2]);
-       * We probably want to add it too. To confirm.
-       */
+      op[0] = fix_3src_operand(op[0]);
+      op[1] = fix_3src_operand(op[1]);
+      op[2] = fix_3src_operand(op[2]);
+
       emit(BFI2(dst, op[0], op[1], op[2]));
       break;
 
@@ -1314,21 +1310,15 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_ffma:
-      /* @FIXME: vec4_visitor adds:
-       *       op[0] = fix_3src_operand(op[0]);
-       *       op[1] = fix_3src_operand(op[1]);
-       *       op[2] = fix_3src_operand(op[2]);
-       * We probably want to add it too. To confirm.
-       */
+      op[0] = fix_3src_operand(op[0]);
+      op[1] = fix_3src_operand(op[1]);
+      op[2] = fix_3src_operand(op[2]);
+
       inst = emit(MAD(dst, op[2], op[1], op[0]));
       inst->saturate = instr->dest.saturate;
       break;
 
    case nir_op_flrp:
-      /* @FIXME: emit_lrp is implicitly calling to fix_3src_operand.
-       * Notice that we are not doing it for other operations.
-       * Probably we want to do it.
-       */
       inst = emit_lrp(dst, op[0], op[1], op[2]);
       inst->saturate = instr->dest.saturate;
       break;
