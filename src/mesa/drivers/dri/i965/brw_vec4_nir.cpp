@@ -839,6 +839,46 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_ftrunc:
+      inst = emit(RNDZ(dst, op[0]));
+      inst->saturate = instr->dest.saturate;
+      break;
+
+   case nir_op_fceil: {
+      int num_components;
+
+      if (instr->src[0].src.is_ssa)
+         num_components = instr->src[0].src.ssa->num_components;
+      else
+         num_components = instr->src[0].src.reg.reg->num_components;
+
+      src_reg tmp = src_reg(this, glsl_type::float_type, num_components);
+      if (num_components > 0)
+         tmp.swizzle = brw_swizzle_for_size(num_components);
+
+      op[0].negate = !op[0].negate;
+      emit(RNDD(dst_reg(tmp), op[0]));
+      tmp.negate = true;
+      inst = emit(MOV(dst, tmp));
+      inst->saturate = instr->dest.saturate;
+      break;
+   }
+
+   case nir_op_ffloor:
+      inst = emit(RNDD(dst, op[0]));
+      inst->saturate = instr->dest.saturate;
+      break;
+
+   case nir_op_ffract:
+      inst = emit(FRC(dst, op[0]));
+      inst->saturate = instr->dest.saturate;
+      break;
+
+   case nir_op_fround_even:
+      inst = emit(RNDE(dst, op[0]));
+      inst->saturate = instr->dest.saturate;
+      break;
+
    default:
       unreachable("Unimplemented ALU operation");
    }
