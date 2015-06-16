@@ -1707,6 +1707,21 @@ vec4_visitor::emit_shader_time_write(int shader_time_subindex, src_reg value)
 }
 
 bool
+vec4_visitor::should_use_vec4_nir()
+{
+   /* NIR->vec4 pass is activated when all these conditions meet:
+    *
+    * 1) it is a vertex shader
+    * 2) INTEL_USE_NIR env-var set to true, so NirOptions are defined for VS
+    * 3) hardware gen is SNB, IVB or HSW
+    */
+   return
+      stage == MESA_SHADER_VERTEX &&
+      compiler->glsl_compiler_options[MESA_SHADER_VERTEX].NirOptions != NULL &&
+      devinfo->gen >= 6 && devinfo->gen < 8;
+}
+
+bool
 vec4_visitor::run(gl_clip_plane *clip_planes)
 {
    sanity_param_count = prog->Parameters->NumParameters;
@@ -1722,7 +1737,17 @@ vec4_visitor::run(gl_clip_plane *clip_planes)
     * functions called "main").
     */
    if (shader) {
-      visit_instructions(shader->base.ir);
+      if (should_use_vec4_nir()) {
+         assert(prog->nir != NULL);
+         emit_nir_code();
+         if (failed)
+            return false;
+      } else {
+         /* Generate VS IR for main().  (the visitor only descends into
+          * functions called "main").
+          */
+         visit_instructions(shader->base.ir);
+      }
    } else {
       emit_program_code();
    }
@@ -1882,7 +1907,10 @@ brw_vs_emit(struct brw_context *brw,
       st_index = brw_get_shader_time_index(brw, prog, &c->vp->program.Base,
                                            ST_VS);
 
-   if (unlikely(INTEL_DEBUG & DEBUG_VS))
+   /* Since git~104c8fc, shader->base.ir can be NULL if NIR is used,
+    * so we need to check that before dumping IR tree.
+    */
+   if (unlikely(INTEL_DEBUG & DEBUG_VS) && (!prog || shader->base.ir))
       brw_dump_ir("vertex", prog, &shader->base, &c->vp->program.Base);
 
    if (brw->intelScreen->compiler->scalar_vs) {

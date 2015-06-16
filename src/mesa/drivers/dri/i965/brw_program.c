@@ -574,6 +574,11 @@ brw_dump_ir(const char *stage, struct gl_shader_program *shader_prog,
             struct gl_shader *shader, struct gl_program *prog)
 {
    if (shader_prog) {
+      /* Since git~104c8fc, shader->ir can be NULL if NIR is used.
+       * That must have been checked prior to calling this function, but
+       * we double-check here just in case.
+       */
+      assert(shader->ir != NULL);
       fprintf(stderr,
               "GLSL IR for native %s shader %d:\n", stage, shader_prog->Name);
       _mesa_print_ir(stderr, shader->ir, NULL);
