@@ -392,6 +392,8 @@ public:
 
    void visit_atomic_counter_intrinsic(ir_call *ir);
 
+   int type_size(const struct glsl_type *type);
+
    virtual bool should_use_vec4_nir();
 
    virtual void emit_nir_code();
