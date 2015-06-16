@@ -361,6 +361,94 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
    }
 }
 
+static dst_reg
+dst_reg_for_nir_reg(vec4_visitor *v, nir_register *nir_reg,
+                    unsigned base_offset, nir_src *indirect)
+{
+   dst_reg reg;
+
+   reg = v->nir_locals[nir_reg->index];
+
+   reg = offset(reg, base_offset * nir_reg->num_components);
+   if (indirect) {
+      int multiplier = nir_reg->num_components;
+
+      reg.reladdr = new(v->mem_ctx) src_reg(dst_reg(GRF, v->alloc.allocate(1)));
+      v->emit(v->MUL(dst_reg(*reg.reladdr),
+                     retype(v->get_nir_src(*indirect), BRW_REGISTER_TYPE_D),
+                     src_reg(multiplier)));
+   }
+
+   return reg;
+}
+
+dst_reg
+vec4_visitor::get_nir_dest(nir_dest dest)
+{
+   return dst_reg_for_nir_reg(this, dest.reg.reg, dest.reg.base_offset,
+                              dest.reg.indirect);
+}
+
+src_reg
+vec4_visitor::get_nir_src(nir_src src, enum brw_reg_type type)
+{
+   dst_reg reg;
+
+   if (src.is_ssa) {
+      assert(src.ssa->parent_instr->type == nir_instr_type_load_const);
+      nir_load_const_instr *load = nir_instr_as_load_const(src.ssa->parent_instr);
+
+      reg = dst_reg(GRF, alloc.allocate(src.ssa->num_components));
+      reg = retype(reg, type);
+
+      /* @FIXME: while this is what fs_nir does, we can do this better in the VS
+       * stage because we can emit vector operations and save some MOVs in
+       * cases where the constants are representable in 8 bits.
+       * So by now, we emit a MOV for each component.
+       */
+      for (unsigned i = 0; i < src.ssa->num_components; ++i) {
+         reg.writemask = 1 << i;
+
+         switch (reg.type) {
+         case BRW_REGISTER_TYPE_F:
+            emit(MOV(reg, src_reg(load->value.f[i])));
+            break;
+         case BRW_REGISTER_TYPE_D:
+            emit(MOV(reg, src_reg(load->value.i[i])));
+            break;
+         case BRW_REGISTER_TYPE_UD:
+            emit(MOV(reg, src_reg(load->value.u[i])));
+            break;
+         default:
+            unreachable("invalid register type");
+         }
+      }
+
+      /* Set final writemask */
+      reg.writemask = brw_writemask_for_size(src.ssa->num_components);
+   }
+   else {
+     reg = dst_reg_for_nir_reg(this, src.reg.reg, src.reg.base_offset,
+                               src.reg.indirect);
+     reg = retype(reg, type);
+   }
+
+   return src_reg(reg);
+}
+
+src_reg
+vec4_visitor::get_nir_src(nir_src src, nir_alu_type type)
+{
+   return get_nir_src(src, brw_type_for_nir_type(type));
+}
+
+src_reg
+vec4_visitor::get_nir_src(nir_src src)
+{
+   /* if type is not specified, default to signed int */
+   return get_nir_src(src, nir_type_int);
+}
+
 void
 vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 {
