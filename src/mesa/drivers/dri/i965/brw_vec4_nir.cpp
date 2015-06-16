@@ -704,6 +704,8 @@ brw_swizzle_for_nir_swizzle(uint8_t swizzle[4])
 void
 vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 {
+   vec4_instruction *inst;
+
    dst_reg dst = get_nir_dest(instr->dest.dest);
    dst = retype(dst,
                 brw_type_for_nir_type(nir_op_infos[instr->op].output_type));
@@ -716,6 +718,18 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       op[i].swizzle = brw_swizzle_for_nir_swizzle(instr->src[i].swizzle);
       op[i].abs = instr->src[i].abs;
       op[i].negate = instr->src[i].negate;
+   }
+
+   switch(instr->op) {
+   case nir_op_imov:
+   case nir_op_fmov:
+      dst.writemask = instr->dest.write_mask;
+      inst = emit(MOV(dst, op[0]));
+      inst->saturate = instr->dest.saturate;
+      break;
+
+   default:
+      unreachable("Unimplemented ALU operation");
    }
 }
 
