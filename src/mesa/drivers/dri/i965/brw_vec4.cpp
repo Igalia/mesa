@@ -1683,6 +1683,12 @@ vec4_visitor::emit_shader_time_end()
    emit(BRW_OPCODE_ENDIF);
 }
 
+dst_reg *
+vec4_visitor::make_reg_for_system_value(ir_variable *ir)
+{
+   return make_reg_for_system_value(ir->data.location, ir->type);
+}
+
 void
 vec4_visitor::emit_shader_time_write(enum shader_time_shader_type type,
                                      src_reg value)

@@ -414,6 +414,9 @@ public:
    virtual void nir_emit_jump(nir_jump_instr *instr);
    virtual void nir_emit_texture(nir_tex_instr *instr);
 
+   virtual dst_reg *make_reg_for_system_value(int location,
+                                              const glsl_type *type) = 0;
+
    src_reg *nir_inputs;
    int *nir_outputs;
    brw_reg_type *nir_output_types;
@@ -425,7 +428,7 @@ protected:
                                     bool interleaved);
    void setup_payload_interference(struct ra_graph *g, int first_payload_node,
                                    int reg_node_count);
-   virtual dst_reg *make_reg_for_system_value(ir_variable *ir) = 0;
+   virtual dst_reg *make_reg_for_system_value(ir_variable *ir);
    virtual void assign_binding_table_offsets();
    virtual void setup_payload() = 0;
    virtual void emit_prolog() = 0;
