@@ -93,7 +93,19 @@ vec4_visitor::nir_setup_inputs(nir_shader *shader)
 void
 vec4_visitor::nir_setup_outputs(nir_shader *shader)
 {
-   /* @TODO: Not yet implemented */
+   nir_outputs = ralloc_array(mem_ctx, int, shader->num_outputs);
+   nir_output_types = ralloc_array(mem_ctx, brw_reg_type, shader->num_outputs);
+
+   foreach_list_typed(nir_variable, var, node, &shader->outputs) {
+      int offset = var->data.driver_location;
+      unsigned size = type_size(var->type);
+      brw_reg_type type = brw_type_for_base_type(var->type);
+
+      for (unsigned i = 0; i < size; i++) {
+         nir_outputs[offset + i * 4] = var->data.location + i;
+         nir_output_types[offset + i * 4] = type;
+      }
+   }
 }
 
 void
