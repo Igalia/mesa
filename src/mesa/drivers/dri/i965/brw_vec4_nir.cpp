@@ -72,7 +72,22 @@ vec4_visitor::nir_setup_system_values(nir_shader *shader)
 void
 vec4_visitor::nir_setup_inputs(nir_shader *shader)
 {
-   /* @TODO: Not yet implemented */
+   nir_inputs = ralloc_array(mem_ctx, src_reg, shader->num_inputs);
+
+   foreach_list_typed(nir_variable, var, node, &shader->inputs) {
+      int offset = var->data.driver_location;
+      int vector_elements =
+         var->type->is_array() ? var->type->fields.array->vector_elements
+                               : var->type->vector_elements;
+
+      unsigned size = type_size(var->type);
+      for (unsigned i = 0; i < size; i++) {
+         src_reg src = src_reg(ATTR, var->data.location + i, var->type);
+         src = retype(src, brw_type_for_base_type(var->type));
+         nir_inputs[offset] = src;
+         offset += vector_elements;
+      }
+   }
 }
 
 void
