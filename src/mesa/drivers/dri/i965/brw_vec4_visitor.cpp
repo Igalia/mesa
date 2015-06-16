@@ -3364,7 +3364,7 @@ vec4_visitor::get_pull_constant_offset(bblock_t * block, vec4_instruction *inst,
 
       emit_before(block, inst, ADD(dst_reg(index), *reladdr,
                                    src_reg(reg_offset)));
-
+printf("  get_pull_constant_offset: adding %d to indirect\n", reg_offset);
       /* Pre-gen6, the message header uses byte offsets instead of vec4
        * (16-byte) offset units.
        */

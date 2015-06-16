@@ -249,46 +249,20 @@ get_io_offset(nir_deref_var *deref, nir_instr *instr, nir_src *indirect,
          nir_deref_array *deref_array = nir_deref_as_array(tail);
          unsigned size = type_size(tail->type);
 
-         if (deref_array->base_offset && is_indirect_vertex) {
-            /* Vertex shader constant array access into a uniform that also
-             * has indirect access: add the constant ndex to the indirect
-             */
-            nir_load_const_instr *load_const =
-            nir_load_const_instr_create(state->mem_ctx, 1);
+         base_offset += size * deref_array->base_offset;
 
-            if (is_vertex_stage)
-               size = type_size_vertex(tail->type);
-            load_const->value.u[0] = size * deref_array->base_offset;
-
-            nir_instr_insert_before(instr, &load_const->instr);
-
-            if (found_indirect) {
-               nir_alu_instr *add = nir_alu_instr_create(state->mem_ctx, nir_op_iadd);
-               add->src[0].src = *indirect;
-               add->src[1].src.is_ssa = true;
-               add->src[1].src.ssa = &load_const->def;
-               add->dest.write_mask = 1;
-               nir_ssa_dest_init(&add->instr, &add->dest.dest, 1, NULL);
-               nir_instr_insert_before(instr, &add->instr);
-
-               indirect->is_ssa = true;
-               indirect->ssa = &add->dest.dest.ssa;
-            } else {
-               indirect->is_ssa = true;
-               indirect->ssa = &load_const->def;
-               found_indirect = true;
-            }
-         } else {
-            base_offset += size * deref_array->base_offset;
-         }
+if (size * deref_array->base_offset > 0)
+   printf(" * NIR: DIRECT array index %d * %d (%d)\n", size, deref_array->base_offset, base_offset);
 
          if (deref_array->deref_array_type == nir_deref_array_type_indirect) {
             nir_load_const_instr *load_const =
                nir_load_const_instr_create(state->mem_ctx, 1);
 
             if (is_vertex_stage)
-               size = type_size_vertex(tail->type);
+               size = type_size_vec4(tail->type);
             load_const->value.u[0] = size;
+
+printf(" * NIR: INDIRECT array index %d * INDEX\n", size);
 
             nir_instr_insert_before(instr, &load_const->instr);
 
@@ -321,42 +295,16 @@ get_io_offset(nir_deref_var *deref, nir_instr *instr, nir_src *indirect,
             }
          }
       } else if (tail->deref_type == nir_deref_type_struct) {
+         int prev_base_offset = base_offset;
          nir_deref_struct *deref_struct = nir_deref_as_struct(tail);
-         if (!is_indirect_vertex) {
-            for (unsigned i = 0; i < deref_struct->index; i++)
-               base_offset += type_size(glsl_get_struct_field(parent_type, i));
-         } else {
-            int struct_offset = 0;
-            for (unsigned i = 0; i < deref_struct->index; i++)
-               struct_offset += type_size_vertex(glsl_get_struct_field(parent_type, i));
-
-            nir_load_const_instr *load_const =
-            nir_load_const_instr_create(state->mem_ctx, 1);
-
-            load_const->value.u[0] = struct_offset;
-
-            nir_instr_insert_before(instr, &load_const->instr);
-
-            if (found_indirect) {
-               nir_alu_instr *add = nir_alu_instr_create(state->mem_ctx, nir_op_iadd);
-               add->src[0].src = *indirect;
-               add->src[1].src.is_ssa = true;
-               add->src[1].src.ssa = &load_const->def;
-               add->dest.write_mask = 1;
-               nir_ssa_dest_init(&add->instr, &add->dest.dest, 1, NULL);
-               nir_instr_insert_before(instr, &add->instr);
-
-               indirect->is_ssa = true;
-               indirect->ssa = &add->dest.dest.ssa;
-            } else {
-               indirect->is_ssa = true;
-               indirect->ssa = &load_const->def;
-               found_indirect = true;
-            }
-         }
+         for (unsigned i = 0; i < deref_struct->index; i++)
+            base_offset += type_size(glsl_get_struct_field(parent_type, i));
+printf(" * NIR: STRUCT added %d (%d fields)\n", base_offset - prev_base_offset, deref_struct->index);
       }
    }
 
+   if (base_offset > 0)
+      printf(" *   NIR BASE OFFSET: %d\n", base_offset);
    return base_offset;
 }
 
@@ -401,6 +349,12 @@ nir_lower_io_block(nir_block *block, void *void_state)
          nir_src indirect;
          unsigned offset = get_io_offset(intrin->variables[0],
                                          &intrin->instr, &indirect, state);
+if (offset > 0)        
+   printf(" *   NIR INDEX (%s): %d + %d = %d\n",
+          intrin->variables[0]->var->name,
+          intrin->variables[0]->var->data.driver_location,
+          offset, intrin->variables[0]->var->data.driver_location + offset);
+
          offset += intrin->variables[0]->var->data.driver_location;
 
          load->const_index[0] = offset;

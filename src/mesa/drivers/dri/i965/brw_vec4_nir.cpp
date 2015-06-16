@@ -250,6 +250,7 @@ void
 vec4_visitor::nir_setup_uniform(nir_variable *var)
 {
    int namelen = strlen(var->name);
+printf("Uniform: %s, Size=%d\n", var->name, uniform_size[uniforms]);
 
    /* The data for our (non-builtin) uniforms is stored in a series of
     * gl_uniform_driver_storage structs for each subcomponent that
@@ -276,6 +277,7 @@ vec4_visitor::nir_setup_uniform(nir_variable *var)
        unsigned vector_count = (MAX2(storage->array_elements, 1) *
                                 storage->type->matrix_columns);
 
+printf("   Storage: %s, vector count=%d\n", storage->name, vector_count);
        for (unsigned s = 0; s < vector_count; s++) {
           assert(uniforms < uniform_array_size);
           uniform_vector_size[uniforms] = storage->type->vector_elements;
@@ -292,6 +294,9 @@ vec4_visitor::nir_setup_uniform(nir_variable *var)
 
           int uniform_offset = var->data.driver_location + offset;
           nir_uniform_offsets[uniform_offset] = uniforms;
+printf("      Uniform ID: %d, Vector size=%d, param[%d..%d]\n",
+              uniforms, uniform_vector_size[uniforms], uniforms * 4, uniforms * 4+4);
+printf("      Index: %d, Offset=%d\n", uniform_offset, uniforms);
           offset += uniform_vector_size[uniforms];
 
           uniforms++;
@@ -634,11 +639,23 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       unsigned index = instr->const_index[0];
       unsigned offset = nir_uniform_offsets[index];
 
+printf("intrinsic_load_uniform: index=%d, offset=%d\n", index, offset);
+
       dest = get_nir_dest(instr->dest);
       src = src_reg(dst_reg(UNIFORM, offset));
 
       /* @FIXME: this has not been tested yet, just copied from fs_nir */
       if (has_indirect) {
+         int uniform = offset;
+         int offset = 0;
+         for (; uniform > 0 && uniform_size[uniform] == 0; uniform--)
+            offset++;
+         printf("intrinsic_load_uniform_indirect: indirect_offset=%d\n", offset);
+
+         // offset is the constant part of the address to be added to the indirect
+
+         src = src_reg(dst_reg(UNIFORM, uniform));
+         src.reg_offset = offset;
          src_reg tmp = retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_D);
          src.reladdr = new(mem_ctx) src_reg(tmp);
       }
