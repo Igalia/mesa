@@ -270,7 +270,17 @@ vec4_visitor::nir_setup_builtin_uniform(nir_variable *var)
 void
 vec4_visitor::nir_emit_impl(nir_function_impl *impl)
 {
-   /* @TODO: Not yet implemented */
+   nir_locals = ralloc_array(mem_ctx, dst_reg, impl->reg_alloc);
+
+   foreach_list_typed(nir_register, reg, node, &impl->registers) {
+      unsigned array_elems =
+         reg->num_array_elems == 0 ? 1 : reg->num_array_elems;
+      unsigned size = array_elems * reg->num_components;
+
+      nir_locals[reg->index] = dst_reg(GRF, alloc.allocate(size));
+   }
+
+   nir_emit_cf_list(&impl->body);
 }
 
 void
