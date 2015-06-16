@@ -422,6 +422,7 @@ public:
    brw_reg_type *nir_output_types;
    unsigned *nir_uniform_offset;
    unsigned *nir_uniform_driver_location;
+   dst_reg *nir_system_values;
 
 protected:
    void emit_vertex();
