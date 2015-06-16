@@ -556,10 +556,54 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    }
 
    case nir_intrinsic_load_uniform_indirect:
+      has_indirect = true;
       /* fallthrough */
-   case nir_intrinsic_load_uniform:
-      /* @TODO: Not yet implemented */
+   case nir_intrinsic_load_uniform: {
+      unsigned index = instr->const_index[0];
+      unsigned uniform = nir_uniform_offsets[index];
+
+      dest = get_nir_dest(instr->dest);
+
+      if (has_indirect) {
+         /* The vec4 backend uploads uniform arrays that have indirect
+          * indexing and sets uniform_size != 0 only for its first uniform
+          * element.
+          *
+          * NIR has computed the indirect part of the offset already and here
+          * we need to handle the constant part, which we need in units of vec4.
+          * For that we find the "parent" uniform that we are accessing (the
+          * one that we have uploaded to a pull constant and has
+          * uniform_size != 0). Since each uniform element within that uniform
+          * is vec4-sized, counting the number of steps gives us the offset in
+          * units of vec4.
+          *
+          * Notice that this is a work around to the fact that NIR computes
+          * offsets in scalar units. The idea is that at some point we have
+          * a nir_lower_io pass that can deliver vec4 units directly, in which
+          * case we can simplify this and just use whatever NIR gives us, but
+          * for now this is necessary. Also, notice that NIR will also compute
+          * the indirect part in scalar units, which is not what we want. A
+          * different patch will fix that in NIR, since we can't work around
+          * that in our NIR-vec4 backend.
+          *
+          * This offset in vec4 units is stored in reg_offset and will be added
+          * to the indirect offset when emitting the pull load for this uniform.
+          */
+         int offset = 0;
+         for (; uniform > 0 && uniform_size[uniform] == 0; uniform--)
+            offset++;
+
+         src = src_reg(dst_reg(UNIFORM, uniform));
+         src.reg_offset = offset;
+         src_reg tmp = retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_D);
+         src.reladdr = new(mem_ctx) src_reg(tmp);
+      } else {
+         src = src_reg(dst_reg(UNIFORM, uniform));
+      }
+
+      emit(MOV(dest, src));
       break;
+   }
 
    case nir_intrinsic_atomic_counter_read:
    case nir_intrinsic_atomic_counter_inc:
