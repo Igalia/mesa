@@ -615,16 +615,36 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       /* fallthrough */
    case nir_intrinsic_load_uniform: {
       unsigned index = instr->const_index[0];
-      unsigned offset = nir_uniform_offsets[index];
+      unsigned uniform = nir_uniform_offsets[index];
 
       dest = get_nir_dest(instr->dest);
-      src = src_reg(dst_reg(UNIFORM, offset));
 
-      /* @FIXME: this has not been tested yet, just copied from fs_nir */
       if (has_indirect) {
+         /* The vec4 backend uploads entire uniform arrays that have indirect
+          * indexing and sets uniform_size != 0 only for its first uniform
+          * element.
+          *
+          * NIR, accumulates the constant part of the offset in
+          * const_index[0] so now we have to find the "parent" uniform
+          * for which uniform_size is not 0 and compute the offset into
+          * that "parent" uniform in units of vec4 (since the vec4 backend
+          * assumes that each uniform element is a vec4)
+          *
+          * The offset stored in reg_offset, in vec4 units, will then be added
+          * to the indirect offset when emitting the pull load for this uniform.
+          */
+         int offset = 0;
+         for (; uniform > 0 && uniform_size[uniform] == 0; uniform--)
+            offset++;
+
+         src = src_reg(dst_reg(UNIFORM, uniform));
+         src.reg_offset = offset;
          src_reg tmp = retype(get_nir_src(instr->src[0]), BRW_REGISTER_TYPE_D);
          src.reladdr = new(mem_ctx) src_reg(tmp);
+      } else {
+         src = src_reg(dst_reg(UNIFORM, uniform));
       }
+
       emit(MOV(dest, src));
       break;
    }
