@@ -1797,6 +1797,10 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    dst_reg dest = get_nir_dest(instr->dest);
    dest = retype(dest, brw_type_for_base_type (dest_type));
 
+   if (devinfo->gen == 6 && instr->op == nir_texop_tg4) {
+      emit_gen6_gather_wa(key->tex.gen6_gather_wa[sampler], inst->dst);
+   }
+
    nir_swizzle_result(instr, dest_type, src_reg(inst->dst), sampler);
    emit(MOV(dest, this->result));
 }
