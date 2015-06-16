@@ -744,6 +744,15 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst = emit(MOV(dst, op[0]));
       break;
 
+   case nir_op_fadd:
+      op[0] = retype(op[0], BRW_REGISTER_TYPE_F);
+      op[1] = retype(op[1], BRW_REGISTER_TYPE_F);
+      /* fall through */
+   case nir_op_iadd:
+      inst = emit(ADD(dst, op[0], op[1]));
+      inst->saturate = instr->dest.saturate;
+      break;
+
    default:
       unreachable("Unimplemented ALU operation");
    }
