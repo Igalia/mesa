@@ -417,6 +417,7 @@ public:
    src_reg *nir_inputs;
    int *nir_outputs;
    brw_reg_type *nir_output_types;
+   int *nir_uniform_offsets;
 
 protected:
    void emit_vertex();
