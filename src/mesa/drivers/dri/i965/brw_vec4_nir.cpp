@@ -500,6 +500,9 @@ vec4_visitor::get_nir_src(nir_src src, enum brw_reg_type type)
             unreachable("invalid register type");
          }
       }
+      /* Set final writemask */
+      for (unsigned i = 0; i < src.ssa->num_components; ++i)
+         reg.writemask |= 1 << i;
    }
    else {
      reg = dst_reg_for_nir_reg(this, src.reg.reg, src.reg.base_offset,
