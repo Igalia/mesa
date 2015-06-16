@@ -1709,6 +1709,20 @@ vec4_visitor::emit_shader_time_write(enum shader_time_shader_type type,
 }
 
 bool
+vec4_visitor::should_use_vec4_nir()
+{
+   return
+      /* INTEL_USE_NIR env var should be set to true */
+      brw->ctx.Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].NirOptions != NULL
+
+      /* Only support vertex shader for now */
+      && stage == MESA_SHADER_VERTEX
+
+      /* and only support SNB, IVB and HSW for now */
+      && devinfo->gen >= 6 && devinfo->gen < 8;
+}
+
+bool
 vec4_visitor::run()
 {
    sanity_param_count = prog->Parameters->NumParameters;
@@ -1724,7 +1738,17 @@ vec4_visitor::run()
     * functions called "main").
     */
    if (shader) {
-      visit_instructions(shader->base.ir);
+      if (should_use_vec4_nir()) {
+         assert(prog->nir != NULL);
+         emit_nir_code();
+         if (failed)
+            return false;
+      } else {
+         /* Generate VS IR for main().  (the visitor only descends into
+          * functions called "main").
+          */
+         visit_instructions(shader->base.ir);
+      }
    } else {
       emit_program_code();
    }

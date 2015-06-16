@@ -392,6 +392,8 @@ public:
 
    void visit_atomic_counter_intrinsic(ir_call *ir);
 
+   virtual bool should_use_vec4_nir();
+
    virtual void emit_nir_code();
    virtual void nir_setup_inputs(nir_shader *shader);
    virtual void nir_setup_outputs(nir_shader *shader);
