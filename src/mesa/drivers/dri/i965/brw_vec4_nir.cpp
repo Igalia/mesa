@@ -22,11 +22,8 @@
  */
 
 #include "glsl/ir.h"
-#include "glsl/ir_optimization.h"
-#include "glsl/nir/glsl_to_nir.h"
 #include "brw_vec4.h"
 #include "brw_nir.h"
-#include "brw_vs.h"
 #include "brw_fs.h"
 
 namespace brw {
@@ -36,17 +33,16 @@ vec4_visitor::emit_nir_code()
 {
    nir_shader *nir = prog->nir;
 
-   nir_inputs = ralloc_array(mem_ctx, src_reg, nir->num_inputs);
-   nir_setup_inputs(nir);
+   if (nir->num_inputs > 0)
+      nir_setup_inputs(nir);
 
-   nir_outputs = ralloc_array(mem_ctx, int, nir->num_outputs);
-   nir_output_types = ralloc_array(mem_ctx, brw_reg_type, nir->num_outputs);
-   nir_setup_outputs(nir);
-
-   nir_emit_system_values(nir);
+   if (nir->num_outputs > 0)
+      nir_setup_outputs(nir);
 
    if (nir->num_uniforms > 0)
       nir_setup_uniforms(nir);
+
+   nir_setup_system_values(nir);
 
    /* get the main function and emit it */
    nir_foreach_overload(nir, overload) {
@@ -57,7 +53,7 @@ vec4_visitor::emit_nir_code()
 }
 
 static bool
-emit_system_values_block(nir_block *block, void *void_visitor)
+setup_system_values_block(nir_block *block, void *void_visitor)
 {
    vec4_visitor *v = (vec4_visitor *)void_visitor;
    dst_reg *reg;
@@ -98,25 +94,15 @@ emit_system_values_block(nir_block *block, void *void_visitor)
    return true;
 }
 
-/* @FIXME: this name is somewhat misleading. I doesn't do the emission yet,
- * but just some setups. Probably nir_setup_system_values would be a better
- * name (like nir_setup_inputs or nir_setup_outputs).
- *
- * Using nir_emit_system_values as is the one used at brw_fs_nir, for
- * consistency.
- *
- **/
 void
-vec4_visitor::nir_emit_system_values(nir_shader *shader)
+vec4_visitor::nir_setup_system_values(nir_shader *shader)
 {
-   /* @FIXME: vec4_visitor doesn't support fragment shader system values, so
-    * we could use a smaller array. Keeping that way for now for simplicity
-    * sake */
    nir_system_values = ralloc_array(mem_ctx, dst_reg, SYSTEM_VALUE_MAX);
+
    nir_foreach_overload(shader, overload) {
       assert(strcmp(overload->function->name, "main") == 0);
       assert(overload->impl);
-      nir_foreach_block(overload->impl, emit_system_values_block, this);
+      nir_foreach_block(overload->impl, setup_system_values_block, this);
    }
 }
 
@@ -171,6 +157,8 @@ type_size(const struct glsl_type *type)
 void
 vec4_visitor::nir_setup_inputs(nir_shader *shader)
 {
+   nir_inputs = ralloc_array(mem_ctx, src_reg, shader->num_inputs);
+
    foreach_list_typed(nir_variable, var, node, &shader->inputs) {
       int offset = var->data.driver_location;
       int vector_elements =
@@ -190,6 +178,9 @@ vec4_visitor::nir_setup_inputs(nir_shader *shader)
 void
 vec4_visitor::nir_setup_outputs(nir_shader *shader)
 {
+   nir_outputs = ralloc_array(mem_ctx, int, shader->num_outputs);
+   nir_output_types = ralloc_array(mem_ctx, brw_reg_type, shader->num_outputs);
+
    foreach_list_typed(nir_variable, var, node, &shader->outputs) {
       int offset = var->data.driver_location;
       unsigned size = type_size(var->type);
@@ -427,9 +418,6 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
    case nir_instr_type_load_const:
       /* We can hit these, but we do nothing now and use them as
        * immediates later in get_nir_src().
-       * @FIXME: while this is what fs_nir does, we can do this better in the VS
-       * stage because we can emit vector operations and save some MOVs in
-       * cases where the constants are representable in 8 bits.
        */
       break;
 
