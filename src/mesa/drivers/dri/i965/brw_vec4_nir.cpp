@@ -458,8 +458,7 @@ vec4_visitor::get_nir_src(nir_src src, enum brw_reg_type type)
       }
 
       /* Set final writemask */
-      for (unsigned i = 0; i < src.ssa->num_components; ++i)
-         reg.writemask |= 1 << i;
+      reg.writemask = brw_writemask_for_size(src.ssa->num_components);
    }
    else {
      reg = dst_reg_for_nir_reg(this, src.reg.reg, src.reg.base_offset,
@@ -499,9 +498,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    case nir_intrinsic_load_input: {
       dest = get_nir_dest(instr->dest);
 
-      dest.writemask = 0;
-      for (int i = 0; i < instr->num_components; i++)
-         dest.writemask |= 1 << i;
+      dest.writemask = brw_writemask_for_size(instr->num_components);
 
       int offset = instr->const_index[0];
       src = nir_inputs[offset];
@@ -524,9 +521,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       src = get_nir_src(instr->src[0], nir_output_types[offset]);
       dest = dst_reg(src);
 
-      dest.writemask = 0;
-      for (unsigned i = 0; i < instr->num_components; i++)
-         dest.writemask |= (1 << i);
+      dest.writemask = brw_writemask_for_size(instr->num_components);
 
       dest = retype(dest, nir_output_types[offset]);
 
