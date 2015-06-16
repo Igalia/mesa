@@ -586,12 +586,14 @@ brw_initialize_context_constants(struct brw_context *brw)
    ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].OptimizeForAOS = true;
    ctx->Const.ShaderCompilerOptions[MESA_SHADER_GEOMETRY].OptimizeForAOS = true;
 
-   if (brw->scalar_vs) {
-      /* If we're using the scalar backend for vertex shaders, we need to
-       * configure these accordingly.
-       */
-      ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].EmitNoIndirectOutput = true;
-      ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].EmitNoIndirectTemp = true;
+   if (brw->scalar_vs || brw_env_var_as_boolean("INTEL_USE_NIR", false)) {
+      if (brw->scalar_vs) {
+         /* If we're using the scalar backend for vertex shaders, we need to
+         * configure these accordingly.
+         */
+         ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].EmitNoIndirectOutput = true;
+         ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].EmitNoIndirectTemp = true;
+      }
       ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].OptimizeForAOS = false;
 
       ctx->Const.ShaderCompilerOptions[MESA_SHADER_VERTEX].NirOptions = &nir_options;
