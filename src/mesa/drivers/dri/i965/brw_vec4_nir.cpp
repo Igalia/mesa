@@ -1651,6 +1651,19 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    vec4_instruction *inst = new(mem_ctx)
       vec4_instruction(opcode, dst_reg(this, dest_type));
 
+   /* When tg4 is used with the degenerate ZERO/ONE swizzles, don't bother
+    * emitting anything other than setting up the constant result.
+    */
+   if (instr->op == nir_texop_tg4) {
+      int swiz = GET_SWZ(key->tex.swizzles[sampler], instr->component);
+      if (swiz == SWIZZLE_ZERO || swiz == SWIZZLE_ONE) {
+         dst_reg dest = get_nir_dest(instr->dest);
+         dest = retype(dest, brw_type_for_base_type (dest_type));
+         emit(MOV(dest, src_reg(swiz == SWIZZLE_ONE ? 1.0f : 0.0f)));
+         return;
+      }
+   }
+
    for (unsigned i = 0; i < 3; i++) {
       if (instr->const_offset[i] != 0) {
          assert(offset_components == 0);
