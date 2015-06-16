@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#include "glsl/ir.h"
-#include "brw_vec4.h"
-#include "brw_nir.h"
 #include "brw_fs.h"
+#include "brw_nir.h"
+#include "brw_vec4.h"
+#include "glsl/ir.h"
 
 namespace brw {
 
@@ -270,7 +270,7 @@ vec4_visitor::nir_setup_builtin_uniform(nir_variable *var)
       if (!var->type->is_record())
           offset += uniform_vector_size[uniforms];
       else
-         offset += type_size(var->type->fields.structure[i].type);
+          offset += type_size(var->type->fields.structure[i].type);
 
       this->uniforms++;
    }
@@ -369,7 +369,11 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
    switch (instr->type) {
    case nir_instr_type_load_const:
       /* We can hit these, but we do nothing now and use them as
-       * immediates later in get_nir_src().
+       * immediates later in a get_nir_src() method, similar to fs_nir.
+       *
+       * @FIXME: while this is what fs_nir does, we can do this better in the VS
+       * stage because we can emit vector operations and save some MOVs in
+       * cases where the constants are representable in 8 bits.
        */
       break;
 
@@ -452,6 +456,7 @@ vec4_visitor::get_nir_src(nir_src src, enum brw_reg_type type)
             unreachable("invalid register type");
          }
       }
+
       /* Set final writemask */
       for (unsigned i = 0; i < src.ssa->num_components; ++i)
          reg.writemask |= 1 << i;
@@ -541,7 +546,6 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       assert(vertex_id.file != BAD_FILE);
       dest.type = vertex_id.type;
       emit(MOV(dest, vertex_id));
-
       break;
    }
 
@@ -551,7 +555,6 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       assert(base_vertex.file != BAD_FILE);
       dest.type = base_vertex.type;
       emit(MOV(dest, base_vertex));
-
       break;
    }
 
@@ -561,7 +564,6 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       assert(instance_id.file != BAD_FILE);
       dest.type = instance_id.type;
       emit(MOV(dest, instance_id));
-
       break;
    }
 
@@ -627,8 +629,9 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
          default:
             unreachable("Unreachable");
       }
-   }
       break;
+   }
+
    case nir_intrinsic_load_ubo_indirect:
       has_indirect = true;
       /* fallthrough */
@@ -694,15 +697,11 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
                                             const_offset % 16 / 4);
 
       emit(MOV(dest, packed_consts));
-
       break;
    }
 
    default:
-      fprintf(stderr,
-              "Non-implemented intrinsic instruction in NIR->vec4 (%d)\n",
-              instr->intrinsic);
-      break;
+      unreachable("Unknown intrinsic");
    }
 }
 
@@ -735,14 +734,14 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_imov:
    case nir_op_fmov:
       dst.writemask = instr->dest.write_mask;
-
       inst = emit(MOV(dst, op[0]));
       inst->saturate = instr->dest.saturate;
       break;
+
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
-         unreachable("not reached: should be handled by lower_vec_to_movs()");
+      unreachable("not reached: should be handled by lower_vec_to_movs()");
 
    case nir_op_i2f:
    case nir_op_u2f:
