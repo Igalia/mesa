@@ -1071,6 +1071,40 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_unpack_unorm_4x8: {
+      /* Update the swizzle to take into account the size of the operand */
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[0].swizzle);
+      emit_unpack_unorm_4x8(dst, op[0]);
+      break;
+   }
+
+   case nir_op_unpack_snorm_4x8: {
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[0].swizzle);
+
+      emit_unpack_snorm_4x8(dst, op[0]);
+      break;
+   }
+
+   case nir_op_pack_unorm_4x8: {
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[0].swizzle);
+      emit_pack_unorm_4x8(dst, op[0]);
+      break;
+   }
+
+   case nir_op_pack_snorm_4x8: {
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[0].swizzle);
+      emit_pack_snorm_4x8(dst, op[0]);
+      break;
+   }
+
    default:
       unreachable("Unimplemented ALU operation");
    }
