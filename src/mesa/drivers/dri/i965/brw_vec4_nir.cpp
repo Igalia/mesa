@@ -1260,6 +1260,18 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_bany2:
+   case nir_op_bany3:
+   case nir_op_bany4:
+      emit(CMP(dst_null_d(),
+               fix_swizzle_for_input_fixed_size(instr->op, op[0]),
+               src_reg(0), BRW_CONDITIONAL_NZ));
+
+      emit(MOV(dst, src_reg(0)));
+      inst = emit(MOV(dst, src_reg(~0)));
+      inst->predicate = BRW_PREDICATE_ALIGN16_ANY4H;
+      break;
+
    default:
       unreachable("Unimplemented ALU operation");
    }
