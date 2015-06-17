@@ -1077,6 +1077,47 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_fnoise4_4:
       unreachable("not reached: should be handled by lower_noise");
 
+   case nir_op_unpack_half_2x16_split_x:
+   case nir_op_unpack_half_2x16_split_y:
+   case nir_op_pack_half_2x16_split:
+      unreachable("not reached: should not occur in vertex shader");
+
+   case nir_op_pack_snorm_2x16:
+   case nir_op_pack_unorm_2x16:
+   case nir_op_unpack_snorm_2x16:
+   case nir_op_unpack_unorm_2x16:
+      unreachable("not reached: should be handled by lower_packing_builtins");
+
+   case nir_op_pack_half_2x16:
+      op[0] = fix_swizzle_for_input_fixed_size(instr->op, op[0]);
+      emit_pack_half_2x16(dst, op[0]);
+      break;
+
+   case nir_op_unpack_half_2x16:
+      op[0] = fix_swizzle_for_input_fixed_size(instr->op, op[0]);
+      emit_unpack_half_2x16(dst, op[0]);
+      break;
+
+   case nir_op_unpack_unorm_4x8:
+      op[0] = fix_swizzle_for_input_fixed_size(instr->op, op[0]);
+      emit_unpack_unorm_4x8(dst, op[0]);
+      break;
+
+   case nir_op_unpack_snorm_4x8:
+      op[0] = fix_swizzle_for_input_fixed_size(instr->op, op[0]);
+      emit_unpack_snorm_4x8(dst, op[0]);
+      break;
+
+   case nir_op_pack_unorm_4x8:
+      op[0] = fix_swizzle_for_input_fixed_size(instr->op, op[0]);
+      emit_pack_unorm_4x8(dst, op[0]);
+      break;
+
+   case nir_op_pack_snorm_4x8:
+      op[0] = fix_swizzle_for_input_fixed_size(instr->op, op[0]);
+      emit_pack_snorm_4x8(dst, op[0]);
+      break;
+
    default:
       unreachable("Unimplemented ALU operation");
    }
