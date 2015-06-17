@@ -280,6 +280,7 @@ void
 vec4_visitor::nir_emit_impl(nir_function_impl *impl)
 {
    nir_locals = ralloc_array(mem_ctx, dst_reg, impl->reg_alloc);
+
    foreach_list_typed(nir_register, reg, node, &impl->registers) {
       unsigned array_elems =
          reg->num_array_elems == 0 ? 1 : reg->num_array_elems;
@@ -833,22 +834,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       emit_math(SHADER_OPCODE_INT_REMAINDER, dst, op[0], op[1]);
       break;
 
-   case nir_op_uadd_carry: {
-      struct brw_reg acc = retype(brw_acc_reg(8), BRW_REGISTER_TYPE_UD);
-
-      emit(ADDC(dst_null_ud(), op[0], op[1]));
-      emit(MOV(dst, src_reg(acc)));
-      break;
-   }
-
-   case nir_op_usub_borrow: {
-      struct brw_reg acc = retype(brw_acc_reg(8), BRW_REGISTER_TYPE_UD);
-
-      emit(SUBB(dst_null_ud(), op[0], op[1]));
-      emit(MOV(dst, src_reg(acc)));
-      break;
-   }
-
    case nir_op_ldexp:
       unreachable("not reached: should be handled by ldexp_to_arith()");
 
@@ -866,6 +851,22 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst = emit_math(SHADER_OPCODE_POW, dst, op[0], op[1]);
       inst->saturate = instr->dest.saturate;
       break;
+
+   case nir_op_uadd_carry: {
+      struct brw_reg acc = retype(brw_acc_reg(8), BRW_REGISTER_TYPE_UD);
+
+      emit(ADDC(dst_null_ud(), op[0], op[1]));
+      emit(MOV(dst, src_reg(acc)));
+      break;
+   }
+
+   case nir_op_usub_borrow: {
+      struct brw_reg acc = retype(brw_acc_reg(8), BRW_REGISTER_TYPE_UD);
+
+      emit(SUBB(dst_null_ud(), op[0], op[1]));
+      emit(MOV(dst, src_reg(acc)));
+      break;
+   }
 
    case nir_op_ftrunc:
       inst = emit(RNDZ(dst, op[0]));
@@ -950,12 +951,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_ieq:
    case nir_op_fne:
    case nir_op_ine:
-      /* @FIXME: if (gen <=5) both fs_visitor and vec4_visitor call the function
-       * resolve_bool_comparison for every operand before doing the emit.
-       * This check and function calls are not done in the brw_fs_nir.
-       * Check if we need to add it, it could be the case that NIR is not available
-       * for (gen <= 5) or this check and calls not needed for other reasons.
-       */
       emit(CMP(dst, op[0], op[1],
                brw_conditional_for_nir_comparison(instr->op)));
       break;
@@ -966,11 +961,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_ball_iequal3:
    case nir_op_ball_fequal4:
    case nir_op_ball_iequal4: {
-      /* @FIXME: if (gen <= 5) the vec4_visitor and fs_visitor call to
-       * resolve_bool_comparison for every operand. To check if we
-       * want to add it.
-       */
-
       /* Update the swizzle to take into account the size of the operand */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
@@ -992,11 +982,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_bany_inequal3:
    case nir_op_bany_fnequal4:
    case nir_op_bany_inequal4: {
-      /* @FIXME: if (gen <= 5) the vec4_visitor and fs_visitor call to
-       * resolve_bool_comparison for every operand. To check if we
-       * want to add it.
-       */
-
       /* Update the swizzle to take into account the size of the operand */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
@@ -1011,11 +996,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->predicate = BRW_PREDICATE_ALIGN16_ANY4H;
       break;
    }
-      /* @FIXME: for the following logical operations: inot, ixor, ior, iand,
-       * brw_fs_nir calls to resolve_source_modifiers for every operand
-       * if (gen > =8). This call and check is not present in the fs and vec4
-       * visitors. Decide if we want to add it.
-       */
+
    case nir_op_inot:
       inst = emit(NOT(dst, op[0]));
       break;
@@ -1036,11 +1017,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       emit(AND(dst, op[0], src_reg(1)));
       break;
    case nir_op_b2f:
-      /* @FIXME: as for the relational operations,  both the fs_visitor and vec4_visitor
-       * call to resolve_bool_comparison for the operand if (gen <= 5). Check if it is
-       * needed.
-       */
-
       /* @FIXME: fs_visitor and vec4_visitor, do:
        *      op[0].type = BRW_REGISTER_TYPE_D;
        *      result_dst.type = BRW_REGISTER_TYPE_D;
@@ -1088,7 +1064,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       unreachable("not reached: should be handled by lower_packing_builtins");
 
    case nir_op_pack_half_2x16: {
-     /* Update the swizzle to take into account the size of the operand */
+      /* Update the swizzle to take into account the size of the operand */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
                                           op[0].swizzle);
@@ -1097,17 +1073,15 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    case nir_op_unpack_half_2x16: {
-     /* Update the swizzle to take into account the size of the operand */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
                                           op[0].swizzle);
       emit_unpack_half_2x16(dst, op[0]);
       break;
-
    }
 
    case nir_op_unpack_unorm_4x8: {
-     /* Update the swizzle to take into account the size of the operand */
+      /* Update the swizzle to take into account the size of the operand */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
                                           op[0].swizzle);
@@ -1116,7 +1090,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    case nir_op_unpack_snorm_4x8: {
-     /* Update the swizzle to take into account the size of the operand */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
                                           op[0].swizzle);
@@ -1126,7 +1099,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    case nir_op_pack_unorm_4x8: {
-     /* Update the swizzle to take into account the size of the operand */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
                                           op[0].swizzle);
@@ -1135,7 +1107,6 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    case nir_op_pack_snorm_4x8: {
-     /* Update the swizzle to take into account the size of the operand */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
                                           op[0].swizzle);
@@ -1235,6 +1206,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
        *       this->result.type = BRW_REGISTER_TYPE_F;
        */
       break;
+
    case nir_op_isign:
       /*  ASR(val, 31) -> negative val generates 0xffffffff (signed -1).
        *               -> non-negative val generates 0x00000000.
@@ -1296,10 +1268,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_bany2:
    case nir_op_bany3:
    case nir_op_bany4: {
-      /* @FIXME: if (gen <= 5) the vec4_visitor calls to resolve_bool_comparison for
-       * the operand. To check if we want to add it.
-       */
-     /* Update the swizzle to take into account the size of the operand */
+      /* Update the swizzle to take into account the size of the operand */
       unsigned size = nir_op_infos[instr->op].input_sizes[0];
       op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
                                           op[0].swizzle);
@@ -1320,18 +1289,17 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       unreachable("not reached: should be lowered by lower_source mods");
 
    case nir_op_fdiv:
-     unreachable("not reached: should be lowered by DIV_TO_MUL_RCP in the compiler");
+      unreachable("not reached: should be lowered by DIV_TO_MUL_RCP in the compiler");
 
    case nir_op_fmod:
-     unreachable("not reached: should be lowered by MOD_TO_FLOOR in the compiler");
+      unreachable("not reached: should be lowered by MOD_TO_FLOOR in the compiler");
 
    case nir_op_fsub:
    case nir_op_isub:
       unreachable("not reached: should be handled by ir_sub_to_add_neg");
 
    default:
-      fprintf(stderr, "Non-implemented ALU operation (%d)\n", instr->op);
-      break;
+      unreachable("Unimplemented ALU operation");
    }
 }
 
@@ -1342,10 +1310,13 @@ vec4_visitor::nir_emit_jump(nir_jump_instr *instr)
    case nir_jump_break:
       emit(BRW_OPCODE_BREAK);
       break;
+
    case nir_jump_continue:
       emit(BRW_OPCODE_CONTINUE);
       break;
+
    case nir_jump_return:
+
    default:
       unreachable("unknown jump");
    }
