@@ -84,6 +84,8 @@ enum brw_reg_type brw_type_for_nir_type(nir_alu_type type);
 
 enum brw_conditional_mod brw_conditional_for_nir_comparison(nir_op op);
 
+enum glsl_base_type brw_glsl_base_type_for_nir_type(nir_alu_type type);
+
 #ifdef __cplusplus
 }
 #endif
