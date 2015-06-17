@@ -261,3 +261,24 @@ brw_conditional_for_nir_comparison(nir_op op)
       unreachable("not reached: bad operation for comparison");
    }
 }
+
+/* Returns the glsl_base_type corresponding to a nir_alu_type.
+ * This is used by both brw_vec4_nir and brw_fs_nir.
+ */
+enum glsl_base_type
+brw_glsl_base_type_for_nir_type (nir_alu_type type)
+{
+   switch (type) {
+   case nir_type_float:
+      return GLSL_TYPE_FLOAT;
+
+   case nir_type_int:
+      return GLSL_TYPE_INT;
+
+   case nir_type_unsigned:
+      return GLSL_TYPE_UINT;
+
+   default:
+      unreachable("bad type");
+   }
+}
