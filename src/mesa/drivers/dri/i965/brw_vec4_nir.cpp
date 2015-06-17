@@ -1054,6 +1054,23 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_unpack_unorm_2x16:
       unreachable("not reached: should be handled by lower_packing_builtins");
 
+   case nir_op_pack_half_2x16: {
+      /* Update the swizzle to take into account the size of the operand */
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[0].swizzle);
+      emit_pack_half_2x16(dst, op[0]);
+      break;
+   }
+
+   case nir_op_unpack_half_2x16: {
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[0].swizzle);
+      emit_unpack_half_2x16(dst, op[0]);
+      break;
+   }
+
    default:
       unreachable("Unimplemented ALU operation");
    }
