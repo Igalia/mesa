@@ -967,6 +967,27 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_bany_fnequal2:
+   case nir_op_bany_inequal2:
+   case nir_op_bany_fnequal3:
+   case nir_op_bany_inequal3:
+   case nir_op_bany_fnequal4:
+   case nir_op_bany_inequal4: {
+      /* Update the swizzle to take into account the size of the operand */
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      op[0].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[0].swizzle);
+      op[1].swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                          op[1].swizzle);
+
+      emit(CMP(dst_null_d(), op[0], op[1],
+               brw_conditional_for_nir_comparison(instr->op)));
+      emit(MOV(dst, src_reg(0)));
+      inst = emit(MOV(dst, src_reg(~0)));
+      inst->predicate = BRW_PREDICATE_ALIGN16_ANY4H;
+      break;
+   }
+
    default:
       unreachable("Unimplemented ALU operation");
    }
