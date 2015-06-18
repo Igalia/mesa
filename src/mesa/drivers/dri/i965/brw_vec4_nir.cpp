@@ -663,16 +663,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       src_reg offset;
 
       if  (!has_indirect)  {
-         if (devinfo->gen >= 8) {
-            /* Store the offset in a GRF so we can send-from-GRF. */
-            offset = src_reg(this, glsl_type::int_type);
-            emit(MOV(dst_reg(offset), src_reg(const_offset / 16)));
-         } else {
-            /* Immediates are fine on older generations since they'll be moved
-             * to a (potentially fake) MRF at the generator level.
-             */
-            offset = src_reg(const_offset / 16);
-         }
+         offset = src_reg(const_offset / 16);
       } else {
          offset = src_reg(this, glsl_type::uint_type);
          emit(SHR(dst_reg(offset), get_nir_src(instr->src[1], nir_type_int), src_reg(4)));
@@ -764,32 +755,29 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_imul:
-      if (brw->gen >= 8) {
-	 emit(MUL(dst, op[0], op[1]));
+   case nir_op_imul: {
+      nir_const_value *value0 = nir_src_as_const_value(instr->src[0].src);
+      nir_const_value *value1 = nir_src_as_const_value(instr->src[1].src);
+
+      if (value0 && value0->u[0] < (1 << 16)) {
+         if (brw->gen < 7)
+            emit(MUL(dst,  op[0], op[1]));
+         else
+            emit(MUL(dst, op[1], op[0]));
+      } else if  (value1 && value1->u[0] < (1 << 16)) {
+         if (brw->gen < 7)
+            emit(MUL(dst, op[1], op[0]));
+         else
+            emit(MUL(dst, op[0], op[1]));
       } else {
-         nir_const_value *value0 = nir_src_as_const_value(instr->src[0].src);
-         nir_const_value *value1 = nir_src_as_const_value(instr->src[1].src);
+         struct brw_reg acc = retype(brw_acc_reg(8), dst.type);
 
-         if (value0 && value0->u[0] < (1 << 16)) {
-            if (brw->gen < 7)
-               emit(MUL(dst,  op[0], op[1]));
-            else
-               emit(MUL(dst, op[1], op[0]));
-         } else if  (value1 && value1->u[0] < (1 << 16)) {
-            if (brw->gen < 7)
-               emit(MUL(dst, op[1], op[0]));
-            else
-               emit(MUL(dst, op[0], op[1]));
-         } else {
-            struct brw_reg acc = retype(brw_acc_reg(8), dst.type);
-
-            emit(MUL(acc, op[0], op[1]));
-            emit(MACH(dst_null_d(), op[0], op[1]));
-            emit(MOV(dst, src_reg(acc)));
-         }
+         emit(MUL(acc, op[0], op[1]));
+         emit(MACH(dst_null_d(), op[0], op[1]));
+         emit(MOV(dst, src_reg(acc)));
       }
       break;
+   }
 
    case nir_op_imul_high:
    case nir_op_umul_high: {
@@ -1526,7 +1514,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          uint32_t array_size = instr->sampler_array_size;
 
          uint32_t max_used = sampler + array_size - 1;
-         if (instr->op == nir_texop_tg4 && devinfo->gen < 8) {
+         if (instr->op == nir_texop_tg4) {
             max_used += prog_data->base.binding_table.gather_texture_start;
          } else {
             max_used += prog_data->base.binding_table.texture_start;
@@ -1641,7 +1629,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       /* Load the LOD info */
       if (instr->op == nir_texop_tex || instr->op == nir_texop_txl) {
          int mrf, writemask;
-         mrf = param_base + 1; /* @FIXME: asumming devinfo->gen >= 5 */
+         mrf = param_base + 1;
          if (shadow_compare) {
             writemask = WRITEMASK_Y;
             /* mlen already incremented on shadow comparitor loading */
@@ -1657,7 +1645,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          emit(MOV(dst_reg(MRF, param_base + 1, sample_index.type, WRITEMASK_X),
                   sample_index));
 
-         /* @FIXME: Asumming devinfo->gen >= 7 */
          /* MCS data is in the first channel of `mcs`, but we need to get it into
           * the .y channel of the second vec4 of params, so replicate .x across
           * the whole vec4 and then mask off everything except .y
@@ -1670,7 +1657,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       } else if (instr->op == nir_texop_txd) {
          const brw_reg_type type = lod.type;
 
-         /* @FIXME: asumming devinfo->gen >= 5 */
          lod.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
          lod2.swizzle = BRW_SWIZZLE4(SWIZZLE_X,SWIZZLE_X,SWIZZLE_Y,SWIZZLE_Y);
          emit(MOV(dst_reg(MRF, param_base + 1, type, WRITEMASK_XZ), lod));
