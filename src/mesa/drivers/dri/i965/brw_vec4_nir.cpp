@@ -1391,7 +1391,126 @@ vec4_visitor::nir_swizzle_result(nir_tex_instr *instr, dst_reg dest,
 void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
-   /* @TODO: Not yet implemented */
+   unsigned sampler = instr->sampler_index;
+   src_reg sampler_reg = src_reg(sampler);
+
+   const glsl_type *dest_type;
+
+   /* Load the texture operation sources */
+   for (unsigned i = 0; i < instr->num_srcs; i++) {
+      src_reg src = get_nir_src(instr->src[i].src);
+
+      switch (instr->src[i].src_type) {
+      case nir_tex_src_comparitor:
+         /* @TODO: not yet implemented */
+         break;
+
+      case nir_tex_src_coord:
+         /* @TODO: not yet implemented */
+         break;
+
+      case nir_tex_src_ddx:
+         /* @TODO: not yet implemented */
+         break;
+
+      case nir_tex_src_ddy:
+         /* @TODO: not yet implemented */
+         break;
+
+      case nir_tex_src_lod:
+         /* @TODO: not yet implemented */
+         break;
+
+      case nir_tex_src_ms_index:
+         /* @TODO: not yet implemented */
+         break;
+
+      case nir_tex_src_offset:
+         /* @TODO: not yet implemented */
+         break;
+
+      case nir_tex_src_sampler_offset:
+         /* @TODO: not yet implemented */
+         break;
+
+      case nir_tex_src_projector:
+         unreachable("Should be lowered by do_lower_texture_projection");
+
+      case nir_tex_src_bias:
+         unreachable("LOD bias is not valid for vertex shaders.\n");
+
+      default:
+         unreachable("unknown texture source");
+      }
+   }
+
+   /* Get the texture operation opcode */
+   enum opcode opcode = shader_opcode_for_nir_opcode (instr->op);
+
+   /* Build the instruction */
+   enum glsl_base_type dest_base_type =
+      brw_glsl_base_type_for_nir_type (instr->dest_type);
+
+   dest_type =
+      glsl_type::get_instance(dest_base_type, nir_tex_instr_dest_size(instr), 1);
+
+   vec4_instruction *inst = new(mem_ctx)
+      vec4_instruction(opcode, dst_reg(this, dest_type));
+
+   for (unsigned i = 0; i < 3; i++) {
+      if (instr->const_offset[i] != 0) {
+         inst->offset = brw_texture_offset(instr->const_offset, 3);
+         break;
+      }
+   }
+
+   /* The message header is necessary for:
+    * - Texel offsets
+    * - Gather channel selection
+    * - Sampler indices too large to fit in a 4-bit value.
+    */
+   inst->header_size =
+      (inst->offset != 0 ||
+       instr->op == nir_texop_tg4 ||
+       is_high_sampler(sampler_reg)) ? 1 : 0;
+   inst->base_mrf = 2;
+   inst->mlen = inst->header_size + 1;
+   inst->dst.writemask = WRITEMASK_XYZW;
+
+   inst->src[1] = sampler_reg;
+
+   /* Calculate the MRF for the first parameter */
+   int param_base = inst->base_mrf + inst->header_size;
+
+   if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
+      /* @TODO: not yet implemented */
+   } else {
+      /* @TODO: Load the coordinate */
+
+      /* @TODO: Load the shadow comparitor */
+
+      /* Load the LOD info */
+      if (instr->op == nir_texop_tex || instr->op == nir_texop_txl) {
+         /* @TODO: not yet implemented */
+      } else if (instr->op == nir_texop_txf) {
+         /* @TODO: not yet implemented */
+      } else if (instr->op == nir_texop_txf_ms) {
+         /* @TODO: not yet implemented */
+      } else if (instr->op == nir_texop_txd) {
+         /* @TODO: not yet implemented */
+      } else if (instr->op == nir_texop_tg4) {
+         /* @TODO: not yet implemented */
+      }
+   }
+
+   /* Emit the instruction */
+   emit(inst);
+
+   /* Move the result to the destination registry, applying swizzle */
+   dst_reg dest = get_nir_dest(instr->dest);
+   dest = retype(dest, brw_type_for_base_type (dest_type));
+
+   nir_swizzle_result(instr, dest, src_reg(inst->dst), sampler);
 }
 
 }
