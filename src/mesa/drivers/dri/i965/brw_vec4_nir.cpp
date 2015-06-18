@@ -1574,7 +1574,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    int param_base = inst->base_mrf + inst->header_size;
 
    if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
-      /* @TODO: not yet implemented */
+      emit(MOV(dst_reg(MRF, param_base, lod.type, WRITEMASK_X), lod));
    } else {
       /* Load the coordinate */
       int coord_mask = (1 << instr->coord_components) - 1;
@@ -1626,6 +1626,18 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    /* Emit the instruction */
    emit(inst);
+
+   /* fixup num layers (z) for cube arrays: hardware returns faces * layers;
+    * spec requires layers.
+    */
+   if (instr->op == nir_texop_txs) {
+      if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE &&
+          instr->is_array) {
+         emit_math(SHADER_OPCODE_INT_QUOTIENT,
+                   writemask(inst->dst, WRITEMASK_Z),
+                   src_reg(inst->dst), src_reg(6));
+      }
+   }
 
    /* Move the result to the destination registry, applying swizzle */
    dst_reg dest = get_nir_dest(instr->dest, brw_type_for_base_type(dest_type));
