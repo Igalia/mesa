@@ -1396,6 +1396,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    const glsl_type *dest_type;
 
+   src_reg coordinate;
+   const glsl_type *coord_type = NULL;
    src_reg shadow_comparitor;
    int shadow_compare = 0;
 
@@ -1410,7 +1412,20 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          break;
 
       case nir_tex_src_coord:
-         /* @TODO: not yet implemented */
+         switch (instr->op) {
+         case nir_texop_txf:
+         case nir_texop_txf_ms:
+            coordinate = retype(src, BRW_REGISTER_TYPE_D);
+            coord_type = glsl_type::get_instance(GLSL_TYPE_INT,
+                                                 instr->coord_components, 1);
+            break;
+
+         default:
+            coordinate = retype(src, BRW_REGISTER_TYPE_F);
+            coord_type = glsl_type::get_instance(GLSL_TYPE_FLOAT,
+                                                 instr->coord_components, 1);
+            break;
+         }
          break;
 
       case nir_tex_src_ddx:
@@ -1490,7 +1505,17 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
       /* @TODO: not yet implemented */
    } else {
-      /* @TODO: Load the coordinate */
+      /* Load the coordinate */
+      int coord_mask = (1 << instr->coord_components) - 1;
+      int zero_mask = 0xf & ~coord_mask;
+
+      emit(MOV(dst_reg(MRF, param_base, coordinate.type, coord_mask),
+               coordinate));
+
+      if (zero_mask != 0) {
+         emit(MOV(dst_reg(MRF, param_base, coordinate.type, zero_mask),
+                  src_reg(0)));
+      }
 
       /* Load the shadow comparitor */
       if (shadow_compare && instr->op != nir_texop_txd) {
