@@ -78,4 +78,17 @@ brw_get_line_width(struct brw_context *brw)
    return line_width_u3_7;
 }
 
+static inline bool
+brw_is_scalar_shader_stage(struct brw_context *brw, int stage)
+{
+   switch (stage) {
+   case MESA_SHADER_FRAGMENT:
+      return true;
+   case MESA_SHADER_VERTEX:
+      return brw->scalar_vs;
+   default:
+      return false;
+   }
+}
+
 #endif
