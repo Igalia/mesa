@@ -26,16 +26,37 @@
 #include "glsl/nir/glsl_to_nir.h"
 #include "program/prog_to_nir.h"
 
+/* @FIXME: C&P from brw_shader, candidate to be refactored to a common
+ * place */
+static inline bool
+is_scalar_shader_stage(struct brw_context *brw, int stage)
+{
+   switch (stage) {
+   case MESA_SHADER_FRAGMENT:
+      return true;
+   case MESA_SHADER_VERTEX:
+      return brw->scalar_vs;
+   default:
+      return false;
+   }
+}
+
 static void
-nir_optimize(nir_shader *nir)
+nir_optimize(nir_shader *nir,
+             struct brw_context *brw,
+             gl_shader_stage stage)
 {
    bool progress;
    do {
       progress = false;
       nir_lower_vars_to_ssa(nir);
       nir_validate_shader(nir);
-      nir_lower_alu_to_scalar(nir);
-      nir_validate_shader(nir);
+
+      if (is_scalar_shader_stage(brw, stage)) {
+         nir_lower_alu_to_scalar(nir);
+         nir_validate_shader(nir);
+      }
+
       progress |= nir_copy_prop(nir);
       nir_validate_shader(nir);
       nir_lower_phis_to_scalar(nir);
@@ -113,14 +134,14 @@ brw_create_nir(struct brw_context *brw,
    nir_split_var_copies(nir);
    nir_validate_shader(nir);
 
-   nir_optimize(nir);
+   nir_optimize(nir, brw, stage);
 
    /* Lower a bunch of stuff */
    nir_lower_var_copies(nir);
    nir_validate_shader(nir);
 
    /* Get rid of split copies */
-   nir_optimize(nir);
+   nir_optimize(nir, brw, stage);
 
    nir_assign_var_locations_scalar_direct_first(nir, &nir->uniforms,
                                                 &nir->num_direct_uniforms,
@@ -128,7 +149,7 @@ brw_create_nir(struct brw_context *brw,
    nir_assign_var_locations_scalar(&nir->inputs, &nir->num_inputs);
    nir_assign_var_locations_scalar(&nir->outputs, &nir->num_outputs);
 
-   nir_lower_io(nir);
+   nir_lower_io(nir, stage);
    nir_validate_shader(nir);
 
    nir_remove_dead_variables(nir);
@@ -145,7 +166,7 @@ brw_create_nir(struct brw_context *brw,
    nir_lower_atomics(nir);
    nir_validate_shader(nir);
 
-   nir_optimize(nir);
+   nir_optimize(nir, brw, stage);
 
    if (brw->gen >= 6) {
       /* Try and fuse multiply-adds */
@@ -189,6 +210,11 @@ brw_create_nir(struct brw_context *brw,
 
    nir_convert_from_ssa(nir);
    nir_validate_shader(nir);
+
+   if (!is_scalar_shader_stage(brw, stage)) {
+      nir_lower_vec_to_movs(nir);
+      nir_validate_shader(nir);
+   }
 
    /* This is the last pass we run before we start emitting stuff.  It
     * determines when we need to insert boolean resolves on Gen <= 5.  We
@@ -266,7 +292,7 @@ brw_conditional_for_nir_comparison(nir_op op)
  * This is used by both brw_vec4_nir and brw_fs_nir.
  */
 enum glsl_base_type
-brw_glsl_base_type_for_nir_type (nir_alu_type type)
+brw_glsl_base_type_for_nir_type(nir_alu_type type)
 {
    switch (type) {
    case nir_type_float:
