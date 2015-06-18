@@ -22,6 +22,7 @@
  */
 
 #include "brw_nir.h"
+#include "brw_shader.h"
 #include "glsl/glsl_parser_extras.h"
 #include "glsl/nir/glsl_to_nir.h"
 #include "program/prog_to_nir.h"
@@ -70,6 +71,9 @@ brw_create_nir(struct brw_context *brw,
    bool debug_enabled = INTEL_DEBUG & intel_debug_flag_for_shader_stage(stage);
    nir_shader *nir;
 
+   bool is_scalar =
+     brw_compiler_is_scalar_shader_stage(brw->intelScreen->compiler, stage);
+
    /* First, lower the GLSL IR or Mesa IR to NIR */
    if (shader_prog) {
       nir = glsl_to_nir(shader, options);
@@ -100,13 +104,15 @@ brw_create_nir(struct brw_context *brw,
    /* Get rid of split copies */
    nir_optimize(nir);
 
-   nir_assign_var_locations_scalar_direct_first(nir, &nir->uniforms,
-                                                &nir->num_direct_uniforms,
-                                                &nir->num_uniforms);
-   nir_assign_var_locations_scalar(&nir->inputs, &nir->num_inputs);
-   nir_assign_var_locations_scalar(&nir->outputs, &nir->num_outputs);
+   nir_assign_var_locations_direct_first(nir, &nir->uniforms,
+                                         &nir->num_direct_uniforms,
+                                         &nir->num_uniforms,
+                                         is_scalar);
+   nir_assign_var_locations(&nir->inputs, &nir->num_inputs, is_scalar);
+   nir_assign_var_locations(&nir->outputs, &nir->num_outputs, is_scalar);
 
-   nir_lower_io(nir);
+   nir_lower_io(nir, is_scalar);
+
    nir_validate_shader(nir);
 
    nir_remove_dead_variables(nir);
