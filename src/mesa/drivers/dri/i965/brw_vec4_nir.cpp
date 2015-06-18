@@ -1422,6 +1422,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    const glsl_type *coord_type = NULL;
    src_reg shadow_comparitor;
    int shadow_compare = 0;
+   bool has_nonconstant_offset = false;
+   src_reg offset_value;
    src_reg lod, lod2;
 
    /* Load the texture operation sources */
@@ -1480,7 +1482,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          break;
 
       case nir_tex_src_offset:
-         /* @TODO: not yet implemented */
+         offset_value = retype(src, BRW_REGISTER_TYPE_D);
+         has_nonconstant_offset = true;
          break;
 
       case nir_tex_src_sampler_offset:
