@@ -1536,6 +1536,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    /* Get the texture operation opcode */
    enum opcode opcode = shader_opcode_for_nir_opcode (instr->op);
+   if (opcode == SHADER_OPCODE_TG4 && has_nonconstant_offset)
+      opcode = SHADER_OPCODE_TG4_OFFSET;
 
    /* Build the instruction */
    enum glsl_base_type dest_base_type =
@@ -1547,12 +1549,29 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    vec4_instruction *inst = new(mem_ctx)
       vec4_instruction(opcode, dst_reg(this, dest_type));
 
+   /* When tg4 is used with the degenerate ZERO/ONE swizzles, don't bother
+    * emitting anything other than setting up the constant result.
+    */
+   if (instr->op == nir_texop_tg4) {
+      int swiz = GET_SWZ(key->tex.swizzles[sampler], instr->component);
+      if (swiz == SWIZZLE_ZERO || swiz == SWIZZLE_ONE) {
+         dst_reg dest = get_nir_dest(instr->dest);
+         dest = retype(dest, brw_type_for_base_type (dest_type));
+         emit(MOV(dest, src_reg(swiz == SWIZZLE_ONE ? 1.0f : 0.0f)));
+         return;
+      }
+   }
+
    for (unsigned i = 0; i < 3; i++) {
       if (instr->const_offset[i] != 0) {
          inst->offset = brw_texture_offset(instr->const_offset, 3);
          break;
       }
    }
+
+   /* Stuff the channel select bits in the top of the texture offset */
+   if (instr->op == nir_texop_tg4)
+      inst->offset |= gather_channel(instr->component, sampler) << 16;
 
    /* The message header is necessary for:
     * - Texel offsets
@@ -1649,8 +1668,15 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
                         shadow_comparitor));
             }
          }
-      } else if (instr->op == nir_texop_tg4) {
-         /* @TODO: not yet implemented */
+      } else if (instr->op == nir_texop_tg4 && has_nonconstant_offset) {
+         if (shadow_compare) {
+            emit(MOV(dst_reg(MRF, param_base, shadow_comparitor.type, WRITEMASK_W),
+                     shadow_comparitor));
+         }
+
+         emit(MOV(dst_reg(MRF, param_base + 1, glsl_type::ivec2_type, WRITEMASK_XY),
+                  offset_value));
+         inst->mlen++;
       }
    }
 
@@ -1672,6 +1698,10 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    /* Move the result to the destination registry, applying swizzle */
    dst_reg dest = get_nir_dest(instr->dest);
    dest = retype(dest, brw_type_for_base_type (dest_type));
+
+   if (devinfo->gen == 6 && instr->op == nir_texop_tg4) {
+      emit_gen6_gather_wa(key->tex.gen6_gather_wa[sampler], inst->dst);
+   }
 
    nir_swizzle_result(instr, dest_type, src_reg(inst->dst), sampler);
    emit(MOV(dest, this->result));
