@@ -1353,6 +1353,64 @@ shader_opcode_for_nir_opcode(nir_texop nir_opcode)
 }
 
 void
+vec4_visitor::nir_swizzle_result(nir_tex_instr *instr, const glsl_type *type,
+                                 src_reg orig_val, uint32_t sampler)
+{
+   int s = key->tex.swizzles[sampler];
+
+   this->result = src_reg(this, type);
+   dst_reg swizzled_result(this->result);
+
+   if (instr->op == nir_texop_query_levels) {
+      /* # levels is in .w */
+      orig_val.swizzle = BRW_SWIZZLE4(SWIZZLE_W, SWIZZLE_W, SWIZZLE_W, SWIZZLE_W);
+      emit(MOV(swizzled_result, orig_val));
+      return;
+   }
+
+   if (instr->op == nir_texop_txs || type == glsl_type::float_type
+			|| s == SWIZZLE_NOOP || instr->op == nir_texop_tg4) {
+      emit(MOV(swizzled_result, orig_val));
+      return;
+   }
+
+
+   int zero_mask = 0, one_mask = 0, copy_mask = 0;
+   int swizzle[4] = {0};
+
+   for (int i = 0; i < 4; i++) {
+      switch (GET_SWZ(s, i)) {
+      case SWIZZLE_ZERO:
+	 zero_mask |= (1 << i);
+	 break;
+      case SWIZZLE_ONE:
+	 one_mask |= (1 << i);
+	 break;
+      default:
+	 copy_mask |= (1 << i);
+	 swizzle[i] = GET_SWZ(s, i);
+	 break;
+      }
+   }
+
+   if (copy_mask) {
+      orig_val.swizzle = BRW_SWIZZLE4(swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
+      swizzled_result.writemask = copy_mask;
+      emit(MOV(swizzled_result, orig_val));
+   }
+
+   if (zero_mask) {
+      swizzled_result.writemask = zero_mask;
+      emit(MOV(swizzled_result, src_reg(0.0f)));
+   }
+
+   if (one_mask) {
+      swizzled_result.writemask = one_mask;
+      emit(MOV(swizzled_result, src_reg(1.0f)));
+   }
+}
+
+void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
    /* @TODO: Not yet implemented */
