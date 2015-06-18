@@ -415,6 +415,8 @@ public:
    virtual void nir_emit_alu(nir_alu_instr *instr);
    virtual void nir_emit_jump(nir_jump_instr *instr);
    virtual void nir_emit_texture(nir_tex_instr *instr);
+   virtual void nir_swizzle_result(nir_tex_instr *instr, dst_reg dest,
+                                   src_reg orig_val, uint32_t sampler);
 
    dst_reg get_nir_dest(nir_dest dest);
    src_reg get_nir_src(nir_src src, enum brw_reg_type type);
