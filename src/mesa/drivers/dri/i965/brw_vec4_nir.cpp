@@ -1590,7 +1590,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
             lod = src_reg(0.0f);
          emit(MOV(dst_reg(MRF, mrf, lod.type, writemask), lod));
       } else if (instr->op == nir_texop_txf) {
-         /* @TODO: not yet implemented */
+         lod.swizzle = BRW_SWIZZLE_XXXX;
+         emit(MOV(dst_reg(MRF, param_base, lod.type, WRITEMASK_W), lod));
       } else if (instr->op == nir_texop_txf_ms) {
          /* @TODO: not yet implemented */
       } else if (instr->op == nir_texop_txd) {
