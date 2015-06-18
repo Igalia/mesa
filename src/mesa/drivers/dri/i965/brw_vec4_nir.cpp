@@ -1349,18 +1349,6 @@ shader_opcode_for_nir_opcode(nir_texop nir_opcode)
    }
 }
 
-/* @FIXME: This function is taken as-is from vec4_visitor.
- * We need to factorize them, eventually
- */
-static bool
-is_high_sampler(const struct brw_device_info *devinfo, src_reg sampler)
-{
-   if (devinfo->gen < 8 && !devinfo->is_haswell)
-      return false;
-
-   return sampler.file != IMM || sampler.fixed_hw_reg.dw1.ud >= 16;
-}
-
 void
 vec4_visitor::nir_swizzle_result(nir_tex_instr *instr, const glsl_type *type,
                                  src_reg orig_val, uint32_t sampler)
@@ -1592,7 +1580,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    inst->header_size =
       (inst->offset != 0 ||
        instr->op == nir_texop_tg4 ||
-       is_high_sampler(devinfo, sampler_reg)) ? 1 : 0;
+       is_high_sampler(sampler_reg)) ? 1 : 0;
    inst->base_mrf = 2;
    inst->mlen = inst->header_size + 1;
    inst->dst.writemask = WRITEMASK_XYZW;
