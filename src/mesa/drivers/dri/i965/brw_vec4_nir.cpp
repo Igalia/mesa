@@ -1617,7 +1617,18 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          lod.swizzle = BRW_SWIZZLE_XXXX;
          emit(MOV(dst_reg(MRF, param_base, lod.type, WRITEMASK_W), lod));
       } else if (instr->op == nir_texop_txf_ms) {
-         /* @TODO: not yet implemented */
+         emit(MOV(dst_reg(MRF, param_base + 1, sample_index.type, WRITEMASK_X),
+                  sample_index));
+         if (devinfo->gen >= 7) {
+            /* MCS data is in the first channel of `mcs`, but we need to get it into
+             * the .y channel of the second vec4 of params, so replicate .x across
+             * the whole vec4 and then mask off everything except .y
+             */
+            mcs.swizzle = BRW_SWIZZLE_XXXX;
+            emit(MOV(dst_reg(MRF, param_base + 1, glsl_type::uint_type, WRITEMASK_Y),
+                     mcs));
+         }
+         inst->mlen++;
       } else if (instr->op == nir_texop_txd) {
          /* @TODO: not yet implemented */
       } else if (instr->op == nir_texop_tg4) {
