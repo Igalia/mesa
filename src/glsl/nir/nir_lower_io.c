@@ -38,7 +38,48 @@
 
 struct lower_io_state {
    void *mem_ctx;
+   int stage;
 };
+
+static int
+type_size_vec4(const struct glsl_type *type)
+{
+   unsigned int i;
+   int size;
+
+   switch (glsl_get_base_type(type)) {
+   case GLSL_TYPE_UINT:
+   case GLSL_TYPE_INT:
+   case GLSL_TYPE_FLOAT:
+   case GLSL_TYPE_BOOL:
+      if (glsl_type_is_matrix(type)) {
+         return glsl_get_matrix_columns(type);
+      } else {
+         return 1;
+      }
+   case GLSL_TYPE_ARRAY:
+      assert(glsl_get_length(type) > 0);
+      return type_size_vec4(glsl_get_array_element(type)) * glsl_get_length(type);
+   case GLSL_TYPE_STRUCT:
+      size = 0;
+      for (i = 0; i <  glsl_get_length(type); i++) {
+         size += type_size_vec4(glsl_get_struct_field(type, i));
+      }
+      return size;
+   case GLSL_TYPE_SAMPLER:
+      return 0;
+   case GLSL_TYPE_ATOMIC_UINT:
+      return 0;
+   case GLSL_TYPE_IMAGE:
+   case GLSL_TYPE_VOID:
+   case GLSL_TYPE_DOUBLE:
+   case GLSL_TYPE_ERROR:
+   case GLSL_TYPE_INTERFACE:
+      unreachable("not reached");
+   }
+
+   return 0;
+}
 
 static unsigned
 type_size(const struct glsl_type *type)
@@ -187,6 +228,7 @@ get_io_offset(nir_deref_var *deref, nir_instr *instr, nir_src *indirect,
 {
    bool found_indirect = false;
    unsigned base_offset = 0;
+   bool is_vertex_stage = state->stage != MESA_SHADER_FRAGMENT;
 
    nir_deref *tail = &deref->deref;
    while (tail->child != NULL) {
@@ -202,7 +244,18 @@ get_io_offset(nir_deref_var *deref, nir_instr *instr, nir_src *indirect,
          if (deref_array->deref_array_type == nir_deref_array_type_indirect) {
             nir_load_const_instr *load_const =
                nir_load_const_instr_create(state->mem_ctx, 1);
+
+            /* For vertex shaders we expect individual uniform elements to
+             * be a vec4, we need to consider that when emitting the code
+             * to compute the indirect part of the offset. Notice that the
+             * constant part accumulated in base_offset would need the same
+             * treatment, but that can be handled by the backend in
+             * the implementation of the intrinsic operation.
+             */
+            if (is_vertex_stage)
+               size = type_size_vec4(tail->type);
             load_const->value.u[0] = size;
+
             nir_instr_insert_before(instr, &load_const->instr);
 
             nir_alu_instr *mul = nir_alu_instr_create(state->mem_ctx,
@@ -350,11 +403,12 @@ nir_lower_io_block(nir_block *block, void *void_state)
 }
 
 static void
-nir_lower_io_impl(nir_function_impl *impl)
+nir_lower_io_impl(nir_function_impl *impl, int stage)
 {
    struct lower_io_state state;
 
    state.mem_ctx = ralloc_parent(impl);
+   state.stage = stage;
 
    nir_foreach_block(impl, nir_lower_io_block, &state);
 
@@ -363,10 +417,10 @@ nir_lower_io_impl(nir_function_impl *impl)
 }
 
 void
-nir_lower_io(nir_shader *shader)
+nir_lower_io(nir_shader *shader, int stage)
 {
    nir_foreach_overload(shader, overload) {
       if (overload->impl)
-         nir_lower_io_impl(overload->impl);
+         nir_lower_io_impl(overload->impl, stage);
    }
 }
