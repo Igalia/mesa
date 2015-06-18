@@ -1418,13 +1418,17 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    const glsl_type *dest_type;
 
+   src_reg shadow_comparitor;
+   int shadow_compare = 0;
+
    /* Load the texture operation sources */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       src_reg src = get_nir_src(instr->src[i].src);
 
       switch (instr->src[i].src_type) {
       case nir_tex_src_comparitor:
-         /* @TODO: not yet implemented */
+         shadow_comparitor = retype (src, BRW_REGISTER_TYPE_F);
+         shadow_compare = 1;
          break;
 
       case nir_tex_src_coord:
@@ -1498,6 +1502,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    inst->base_mrf = 2;
    inst->mlen = inst->header_size + 1;
    inst->dst.writemask = WRITEMASK_XYZW;
+   inst->shadow_compare = shadow_compare;
 
    inst->src[1] = sampler_reg;
 
@@ -1509,7 +1514,13 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    } else {
       /* @TODO: Load the coordinate */
 
-      /* @TODO: Load the shadow comparitor */
+      /* Load the shadow comparitor */
+      if (shadow_compare && instr->op != nir_texop_txd) {
+         emit(MOV(dst_reg(MRF, param_base + 1, shadow_comparitor.type,
+                          WRITEMASK_X),
+                  shadow_comparitor));
+         inst->mlen++;
+      }
 
       /* Load the LOD info */
       if (instr->op == nir_texop_tex || instr->op == nir_texop_txl) {
