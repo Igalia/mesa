@@ -302,6 +302,19 @@ bool brw_cs_precompile(struct gl_context *ctx,
                        struct gl_shader_program *shader_prog,
                        struct gl_program *prog);
 
+static inline bool
+brw_compiler_is_scalar_shader_stage(struct brw_compiler *compiler, int stage)
+{
+   switch (stage) {
+   case MESA_SHADER_FRAGMENT:
+      return true;
+   case MESA_SHADER_VERTEX:
+      return compiler->scalar_vs;
+   default:
+      return false;
+   }
+}
+
 #ifdef __cplusplus
 }
 #endif
