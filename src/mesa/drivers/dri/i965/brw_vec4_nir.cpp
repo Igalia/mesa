@@ -1400,7 +1400,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    const glsl_type *coord_type = NULL;
    src_reg shadow_comparitor;
    int shadow_compare = 0;
-   src_reg lod;
+   src_reg lod, lod2;
 
    /* Load the texture operation sources */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
@@ -1430,11 +1430,11 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          break;
 
       case nir_tex_src_ddx:
-         /* @TODO: not yet implemented */
+         lod = retype(src, BRW_REGISTER_TYPE_F);
          break;
 
       case nir_tex_src_ddy:
-         /* @TODO: not yet implemented */
+         lod2 = retype(src, BRW_REGISTER_TYPE_F);
          break;
 
       case nir_tex_src_lod:
