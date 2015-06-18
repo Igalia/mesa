@@ -122,13 +122,16 @@ brw_create_nir(struct brw_context *brw,
    /* Get rid of split copies */
    nir_optimize(nir);
 
-   nir_assign_var_locations_scalar_direct_first(nir, &nir->uniforms,
-                                                &nir->num_direct_uniforms,
-                                                &nir->num_uniforms);
-   nir_assign_var_locations_scalar(&nir->inputs, &nir->num_inputs);
-   nir_assign_var_locations_scalar(&nir->outputs, &nir->num_outputs);
+   bool is_scalar = stage == MESA_SHADER_FRAGMENT;
+   nir_assign_var_locations_direct_first(nir, &nir->uniforms,
+                                         &nir->num_direct_uniforms,
+                                         &nir->num_uniforms,
+                                         is_scalar);
+   nir_assign_var_locations(&nir->inputs, &nir->num_inputs, is_scalar);
+   nir_assign_var_locations(&nir->outputs, &nir->num_outputs, is_scalar);
 
-   nir_lower_io(nir);
+   nir_lower_io(nir, is_scalar);
+
    nir_validate_shader(nir);
 
    nir_remove_dead_variables(nir);
