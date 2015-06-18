@@ -1293,6 +1293,45 @@ vec4_visitor::nir_emit_jump(nir_jump_instr *instr)
    }
 }
 
+static enum opcode
+shader_opcode_for_nir_opcode(nir_texop nir_opcode)
+{
+  switch (nir_opcode) {
+   case nir_texop_query_levels:
+      return SHADER_OPCODE_TXS;
+
+   case nir_texop_tex:
+      return SHADER_OPCODE_TXL;
+
+   case nir_texop_tg4:
+      return SHADER_OPCODE_TG4;
+
+   case nir_texop_txd:
+     return SHADER_OPCODE_TXD;
+
+   case nir_texop_txf:
+     return SHADER_OPCODE_TXF;
+
+   case nir_texop_txf_ms:
+     return SHADER_OPCODE_TXF_CMS;
+
+   case nir_texop_txl:
+     return SHADER_OPCODE_TXL;
+
+   case nir_texop_txs:
+     return SHADER_OPCODE_TXS;
+
+   case nir_texop_txb:
+      unreachable("TXB (ie: texture() with bias on glsl) is not valid for vertex shaders.\n");
+
+   case nir_texop_lod:
+      unreachable("LOD (ie: textureQueryLOD on glsl) is not valid for vertex shaders.\n");
+
+   default:
+      unreachable("Unknown texture opcode");
+   }
+}
+
 void
 vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 {
