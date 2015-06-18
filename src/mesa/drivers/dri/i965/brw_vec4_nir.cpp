@@ -1413,18 +1413,19 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    unsigned sampler = instr->sampler_index;
    src_reg sampler_reg = src_reg(sampler);
 
+   const glsl_type *dest_type;
+
    src_reg coordinate;
    const glsl_type *coord_type = NULL;
    src_reg shadow_comparitor;
    int shadow_compare = 0;
-   int offset_components = 0;
    bool has_nonconstant_offset = false;
    src_reg offset_value;
    src_reg lod, lod2;
    src_reg sample_index;
    src_reg mcs;
 
-   /* Get the parameters */
+   /* Load the texture operation sources */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
       src_reg src = get_nir_src(instr->src[i].src);
 
@@ -1530,18 +1531,16 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       }
    }
 
-   /* Get the texture operation */
+   /* Get the texture operation opcode */
    enum opcode opcode = shader_opcode_for_nir_opcode (instr->op);
    if (opcode == SHADER_OPCODE_TG4 && has_nonconstant_offset)
       opcode = SHADER_OPCODE_TG4_OFFSET;
 
-   if (instr->op == nir_texop_tex)
-      lod = src_reg(0.0f);
-
+   /* Build the instruction */
    enum glsl_base_type dest_base_type =
       brw_glsl_base_type_for_nir_type (instr->dest_type);
 
-   const glsl_type *dest_type =
+   dest_type =
       glsl_type::get_instance(dest_base_type, nir_tex_instr_dest_size(instr), 1);
 
    vec4_instruction *inst = new(mem_ctx)
@@ -1562,7 +1561,6 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    for (unsigned i = 0; i < 3; i++) {
       if (instr->const_offset[i] != 0) {
-         assert(offset_components == 0);
          inst->offset = brw_texture_offset(instr->const_offset, 3);
          break;
       }
@@ -1588,7 +1586,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    inst->src[1] = sampler_reg;
 
-   /* MRF for the first parameter */
+   /* Calculate the MRF for the first parameter */
    int param_base = inst->base_mrf + inst->header_size;
 
    if (instr->op == nir_texop_txs || instr->op == nir_texop_query_levels) {
@@ -1625,6 +1623,9 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
             writemask = WRITEMASK_X;
             inst->mlen++;
          }
+
+         if (instr->op == nir_texop_tex)
+            lod = src_reg(0.0f);
          emit(MOV(dst_reg(MRF, mrf, lod.type, writemask), lod));
       } else if (instr->op == nir_texop_txf) {
          lod.swizzle = BRW_SWIZZLE_XXXX;
@@ -1676,6 +1677,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       }
    }
 
+   /* Emit the instruction */
    emit(inst);
 
    /* fixup num layers (z) for cube arrays: hardware returns faces * layers;
@@ -1690,6 +1692,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       }
    }
 
+   /* Move the result to the destination registry, applying swizzle */
    dst_reg dest = get_nir_dest(instr->dest);
    dest = retype(dest, brw_type_for_base_type (dest_type));
 
