@@ -1598,7 +1598,19 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
       /* Load the LOD info */
       if (instr->op == nir_texop_tex || instr->op == nir_texop_txl) {
-         /* @TODO: not yet implemented */
+         int mrf, writemask;
+         mrf = param_base + 1;
+         if (shadow_compare) {
+            writemask = WRITEMASK_Y;
+            /* mlen already incremented on shadow comparitor loading */
+         } else {
+            writemask = WRITEMASK_X;
+            inst->mlen++;
+         }
+
+         if (instr->op == nir_texop_tex)
+            lod = src_reg(0.0f);
+         emit(MOV(dst_reg(MRF, mrf, lod.type, writemask), lod));
       } else if (instr->op == nir_texop_txf) {
          /* @TODO: not yet implemented */
       } else if (instr->op == nir_texop_txf_ms) {
