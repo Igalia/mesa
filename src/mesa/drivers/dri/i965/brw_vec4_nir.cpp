@@ -1425,6 +1425,8 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    bool has_nonconstant_offset = false;
    src_reg offset_value;
    src_reg lod, lod2;
+   src_reg sample_index;
+   src_reg mcs;
 
    /* Load the texture operation sources */
    for (unsigned i = 0; i < instr->num_srcs; i++) {
@@ -1477,9 +1479,19 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
          }
          break;
 
-      case nir_tex_src_ms_index:
-         /* @TODO: not yet implemented */
+      case nir_tex_src_ms_index: {
+         sample_index = retype(src, BRW_REGISTER_TYPE_D);
+
+         assert(coord_type != NULL);
+         if (devinfo->gen >= 7 &&
+             key->tex.compressed_multisample_layout_mask & (1<<sampler)) {
+            mcs = emit_mcs_fetch(coord_type, coordinate, sampler_reg);
+         } else {
+            mcs = src_reg(0u);
+         }
+         mcs = retype(mcs, BRW_REGISTER_TYPE_UD);
          break;
+      }
 
       case nir_tex_src_offset:
          offset_value = retype(src, BRW_REGISTER_TYPE_D);
