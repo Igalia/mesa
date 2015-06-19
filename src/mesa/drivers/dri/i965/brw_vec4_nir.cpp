@@ -1351,13 +1351,12 @@ shader_opcode_for_nir_opcode(nir_texop nir_opcode)
 }
 
 void
-vec4_visitor::nir_swizzle_result(nir_tex_instr *instr, const glsl_type *type,
+vec4_visitor::nir_swizzle_result(nir_tex_instr *instr, dst_reg dest,
                                  src_reg orig_val, uint32_t sampler)
 {
    int s = key->tex.swizzles[sampler];
 
-   this->result = src_reg(this, type);
-   dst_reg swizzled_result(this->result);
+   dst_reg swizzled_result = dest;
 
    if (instr->op == nir_texop_query_levels) {
       /* # levels is in .w */
@@ -1366,12 +1365,11 @@ vec4_visitor::nir_swizzle_result(nir_tex_instr *instr, const glsl_type *type,
       return;
    }
 
-   if (instr->op == nir_texop_txs || type == glsl_type::float_type
+   if (instr->op == nir_texop_txs || dest.type == BRW_REGISTER_TYPE_F
 			|| s == SWIZZLE_NOOP || instr->op == nir_texop_tg4) {
       emit(MOV(swizzled_result, orig_val));
       return;
    }
-
 
    int zero_mask = 0, one_mask = 0, copy_mask = 0;
    int swizzle[4] = {0};
@@ -1432,7 +1430,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
       switch (instr->src[i].src_type) {
       case nir_tex_src_comparitor:
-         shadow_comparitor = retype (src, BRW_REGISTER_TYPE_F);
+         shadow_comparitor = retype(src, BRW_REGISTER_TYPE_F);
          shadow_compare = 1;
          break;
 
@@ -1533,13 +1531,13 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    }
 
    /* Get the texture operation opcode */
-   enum opcode opcode = shader_opcode_for_nir_opcode (instr->op);
+   enum opcode opcode = shader_opcode_for_nir_opcode(instr->op);
    if (opcode == SHADER_OPCODE_TG4 && has_nonconstant_offset)
       opcode = SHADER_OPCODE_TG4_OFFSET;
 
    /* Build the instruction */
    enum glsl_base_type dest_base_type =
-      brw_glsl_base_type_for_nir_type (instr->dest_type);
+      brw_glsl_base_type_for_nir_type(instr->dest_type);
 
    dest_type =
       glsl_type::get_instance(dest_base_type, nir_tex_instr_dest_size(instr), 1);
@@ -1554,7 +1552,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       int swiz = GET_SWZ(key->tex.swizzles[sampler], instr->component);
       if (swiz == SWIZZLE_ZERO || swiz == SWIZZLE_ONE) {
          dst_reg dest = get_nir_dest(instr->dest);
-         dest = retype(dest, brw_type_for_base_type (dest_type));
+         dest = retype(dest, brw_type_for_base_type(dest_type));
          emit(MOV(dest, src_reg(swiz == SWIZZLE_ONE ? 1.0f : 0.0f)));
          return;
       }
@@ -1693,16 +1691,15 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
       }
    }
 
-   /* Move the result to the destination registry, applying swizzle */
-   dst_reg dest = get_nir_dest(instr->dest);
-   dest = retype(dest, brw_type_for_base_type (dest_type));
-
    if (devinfo->gen == 6 && instr->op == nir_texop_tg4) {
       emit_gen6_gather_wa(key->tex.gen6_gather_wa[sampler], inst->dst);
    }
 
-   nir_swizzle_result(instr, dest_type, src_reg(inst->dst), sampler);
-   emit(MOV(dest, this->result));
+   /* Move the result to the destination registry, applying swizzle */
+   dst_reg dest = get_nir_dest(instr->dest);
+   dest = retype(dest, brw_type_for_base_type(dest_type));
+
+   nir_swizzle_result(instr, dest, src_reg(inst->dst), sampler);
 }
 
 }
