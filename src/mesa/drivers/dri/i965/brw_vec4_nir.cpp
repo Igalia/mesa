@@ -1445,11 +1445,11 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
    }
 
    /* Get the texture operation opcode */
-   enum opcode opcode = shader_opcode_for_nir_opcode (instr->op);
+   enum opcode opcode = shader_opcode_for_nir_opcode(instr->op);
 
    /* Build the instruction */
    enum glsl_base_type dest_base_type =
-      brw_glsl_base_type_for_nir_type (instr->dest_type);
+      brw_glsl_base_type_for_nir_type(instr->dest_type);
 
    dest_type =
       glsl_type::get_instance(dest_base_type, nir_tex_instr_dest_size(instr), 1);
@@ -1508,7 +1508,7 @@ vec4_visitor::nir_emit_texture(nir_tex_instr *instr)
 
    /* Move the result to the destination registry, applying swizzle */
    dst_reg dest = get_nir_dest(instr->dest);
-   dest = retype(dest, brw_type_for_base_type (dest_type));
+   dest = retype(dest, brw_type_for_base_type(dest_type));
 
    nir_swizzle_result(instr, dest, src_reg(inst->dst), sampler);
 }
