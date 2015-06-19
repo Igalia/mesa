@@ -24,7 +24,6 @@
 #include "brw_fs.h"
 #include "brw_nir.h"
 #include "brw_vec4.h"
-#include "glsl/ir.h"
 
 namespace brw {
 
@@ -371,10 +370,6 @@ vec4_visitor::nir_emit_instr(nir_instr *instr)
    case nir_instr_type_load_const:
       /* We can hit these, but we do nothing now and use them as
        * immediates later in a get_nir_src() method, similar to fs_nir.
-       *
-       * @FIXME: while this is what fs_nir does, we can do this better in the VS
-       * stage because we can emit vector operations and save some MOVs in
-       * cases where the constants are representable in 8 bits.
        */
       break;
 
@@ -424,8 +419,8 @@ dst_reg_for_nir_reg(vec4_visitor *v, nir_register *nir_reg,
 dst_reg
 vec4_visitor::get_nir_dest(nir_dest dest)
 {
-   return dst_reg_for_nir_reg (this, dest.reg.reg, dest.reg.base_offset,
-                               dest.reg.indirect);
+   return dst_reg_for_nir_reg(this, dest.reg.reg, dest.reg.base_offset,
+                              dest.reg.indirect);
 }
 
 src_reg
@@ -440,6 +435,11 @@ vec4_visitor::get_nir_src(nir_src src, enum brw_reg_type type)
       reg = dst_reg(GRF, alloc.allocate(src.ssa->num_components));
       reg = retype(reg, type);
 
+      /* @FIXME: while this is what fs_nir does, we can do this better in the VS
+       * stage because we can emit vector operations and save some MOVs in
+       * cases where the constants are representable in 8 bits.
+       * So by now, we emit a MOV for each component.
+       */
       for (unsigned i = 0; i < src.ssa->num_components; ++i) {
          reg.writemask = 1 << i;
 
@@ -473,7 +473,7 @@ vec4_visitor::get_nir_src(nir_src src, enum brw_reg_type type)
 src_reg
 vec4_visitor::get_nir_src(nir_src src, nir_alu_type type)
 {
-   return get_nir_src(src, brw_type_for_nir_type (type));
+   return get_nir_src(src, brw_type_for_nir_type(type));
 }
 
 src_reg
