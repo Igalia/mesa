@@ -734,6 +734,28 @@ brw_conditional_for_nir_comparison(nir_op op)
    }
 }
 
+static src_reg
+fix_swizzle_for_input_fixed_size(nir_op op, src_reg src)
+{
+   /* For operations that have a predefined operand size > 0, defined in
+    * glsl/nir/nir_opcodes.c, NIR returns a swizzle containing zeros in the
+    * components from outside the source vector. However, the driver
+    * expects those components to have a swizzle value equal to the swizzle
+    * of the component in (number of vector elements - 1). For example,
+    * for a vec2 operation with an identity swizzle (.xy):
+    *         - (NIR -> XYXX, driver ->XYYYY)
+    * for a vec3 operation with swizzle (.zxy)
+    *         - (NIR-> ZXYX, driver -> ZXYY)
+    */
+   unsigned size = nir_op_infos[op].input_sizes[0];
+   assert(size > 0);
+
+   src.swizzle = brw_compose_swizzle(brw_swizzle_for_size(size),
+                                     src.swizzle);
+
+   return src;
+}
+
 void
 vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 {
