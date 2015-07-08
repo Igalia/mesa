@@ -1928,9 +1928,51 @@ vec4_visitor::visit(ir_expression *ir)
       emit(BFE(result_dst, op[2], op[1], op[0]));
       break;
 
-   case ir_triop_ssbo_unsized_array_length:
-      unreachable("not reached: not implemented");
+   case ir_triop_ssbo_unsized_array_length: {
+      ir_constant *const_uniform_block = ir->operands[0]->as_constant();
+      unsigned ubo_index = const_uniform_block->value.u[0];
+      ir_constant *const_offset_ir = ir->operands[1]->as_constant();
+      int const_offset = const_offset_ir ? const_offset_ir->value.u[0] : 0;
+      ir_constant *const_stride_ir = ir->operands[2]->as_constant();
+      int unsized_array_stride = const_stride_ir ? const_stride_ir->value.u[0] : 1;
+
+      assert(shader->base.UniformBlocks[ubo_index].IsShaderStorage);
+
+      src_reg surf_index = src_reg(prog_data->base.binding_table.ubo_start +
+                                   ubo_index);
+
+      dst_reg buffer_size = dst_reg(this, ir->type);
+
+      vec4_instruction *inst = new(mem_ctx) vec4_instruction(
+         VS_OPCODE_UNSIZED_ARRAY_LENGTH, buffer_size);
+
+      inst->base_mrf = 2;
+      inst->mlen = 1; /* always at least one */
+      inst->src[1] = src_reg(surf_index);
+
+      /* MRF for the first parameter */
+      src_reg lod = src_reg(0);
+      int param_base = inst->base_mrf;
+      int writemask = WRITEMASK_X;
+      emit(MOV(dst_reg(MRF, param_base, glsl_type::int_type, writemask), lod));
+
+      emit(inst);
+
+      /* array.length() =
+          max((buffer_object_size - offset_of_array) / stride_of_array, 0) */
+      emit(ADD(buffer_size, src_reg(buffer_size), brw_imm_d(-const_offset)));
+
+      assert(unsized_array_stride > 0);
+
+      src_reg stride = src_reg(unsized_array_stride);
+      dst_reg temp = dst_reg(this, glsl_type::int_type);
+      emit_math(SHADER_OPCODE_INT_QUOTIENT,
+                temp,
+                src_reg(buffer_size),
+                stride);
+      emit_minmax(BRW_CONDITIONAL_GE, result_dst, src_reg(temp), brw_imm_d(0));
       break;
+   }
 
    case ir_triop_vector_insert:
       unreachable("should have been lowered by lower_vector_insert");
