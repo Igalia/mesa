@@ -363,6 +363,7 @@ fs_reg::fs_reg(float f)
    this->file = IMM;
    this->type = BRW_REGISTER_TYPE_F;
    this->fixed_hw_reg.dw1.f = f;
+   this->stride = 0;
 }
 
 /** Immediate value constructor. */
@@ -372,6 +373,7 @@ fs_reg::fs_reg(int32_t i)
    this->file = IMM;
    this->type = BRW_REGISTER_TYPE_D;
    this->fixed_hw_reg.dw1.d = i;
+   this->stride = 0;
 }
 
 /** Immediate value constructor. */
@@ -381,6 +383,7 @@ fs_reg::fs_reg(uint32_t u)
    this->file = IMM;
    this->type = BRW_REGISTER_TYPE_UD;
    this->fixed_hw_reg.dw1.ud = u;
+   this->stride = 0;
 }
 
 /** Vector float immediate value constructor. */
