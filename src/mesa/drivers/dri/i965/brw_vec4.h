@@ -566,6 +566,12 @@ private:
                                          struct brw_reg offset);
    void generate_set_simd4x2_header_gen9(vec4_instruction *inst,
                                          struct brw_reg dst);
+
+   void generate_unsized_array_length(vec4_instruction *inst,
+                                      struct brw_reg dst,
+                                      struct brw_reg src,
+                                      struct brw_reg index);
+
    void generate_unpack_flags(struct brw_reg dst);
 
    const struct brw_compiler *compiler;

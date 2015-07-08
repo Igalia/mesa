@@ -743,6 +743,9 @@ brw_instruction_name(enum opcode op)
    case VS_OPCODE_SET_SIMD4X2_HEADER_GEN9:
       return "set_simd4x2_header_gen9";
 
+   case VS_OPCODE_UNSIZED_ARRAY_LENGTH:
+      return "vs_unsized_array_length";
+
    case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
       return "unpack_flags_simd4x2";
 
