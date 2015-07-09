@@ -646,11 +646,14 @@ nir_visitor::visit(ir_call *ir)
          op = nir_intrinsic_image_size;
       } else if (strcmp(ir->callee_name(), "__intrinsic_store_ssbo") == 0) {
          op = nir_intrinsic_store_ssbo;
+      } else if (strcmp(ir->callee_name(), "__intrinsic_load_ssbo") == 0) {
+         op = nir_intrinsic_load_ssbo;
       } else {
          unreachable("not reached");
       }
 
       nir_intrinsic_instr *instr = nir_intrinsic_instr_create(shader, op);
+      nir_alu_instr *load_ssbo_compare;
 
       switch (op) {
       case nir_intrinsic_atomic_counter_read_var:
@@ -776,11 +779,75 @@ nir_visitor::visit(ir_call *ir)
          instr->src[1] = evaluate_rvalue(block);
          break;
       }
+      case nir_intrinsic_load_ssbo: {
+         exec_node *param = ir->actual_parameters.get_head();
+         ir_rvalue *block = ((ir_instruction *)param)->as_rvalue();
+
+         param = param->get_next();
+         ir_rvalue *offset = ((ir_instruction *)param)->as_rvalue();
+
+         /* Check if we need the indirect version */
+         ir_constant *const_offset = offset->as_constant();
+         if (!const_offset) {
+            op = nir_intrinsic_load_ssbo_indirect;
+            ralloc_free(instr);
+            instr = nir_intrinsic_instr_create(shader, op);
+            instr->src[1] = evaluate_rvalue(offset);
+            instr->const_index[0] = 0;
+         } else {
+            instr->const_index[0] = const_offset->value.u[0];
+         }
+
+         instr->src[0] = evaluate_rvalue(block);
+
+         const glsl_type *type = ir->return_deref->var->type;
+         instr->num_components = type->vector_elements;
+
+         /* Setup destination register */
+         nir_ssa_dest_init(&instr->instr, &instr->dest,
+                           type->vector_elements, NULL);
+
+         /* Insert the created nir instruction now since in the case of boolean
+          * result we will need to emit another instruction after it
+          */
+         nir_instr_insert_after_cf_list(this->cf_node_list, &instr->instr);
+
+         /*
+          * In SSBO/UBO's, a true boolean value is any non-zero value, but we
+          * consider a true boolean to be ~0. Fix this up with a != 0
+          * comparison.
+          */
+         if (type->base_type == GLSL_TYPE_BOOL) {
+            nir_load_const_instr *const_zero =
+               nir_load_const_instr_create(shader, 1);
+            const_zero->value.u[0] = 0;
+            nir_instr_insert_after_cf_list(this->cf_node_list,
+                                           &const_zero->instr);
+
+            load_ssbo_compare = nir_alu_instr_create(shader, nir_op_ine);
+            load_ssbo_compare->src[0].src.is_ssa = true;
+            load_ssbo_compare->src[0].src.ssa = &instr->dest.ssa;
+            load_ssbo_compare->src[1].src.is_ssa = true;
+            load_ssbo_compare->src[1].src.ssa = &const_zero->def;
+            for (unsigned i = 0; i < type->vector_elements; i++)
+               load_ssbo_compare->src[1].swizzle[i] = 0;
+            nir_ssa_dest_init(&load_ssbo_compare->instr,
+                              &load_ssbo_compare->dest.dest,
+                              type->vector_elements, NULL);
+            load_ssbo_compare->dest.write_mask = (1 << type->vector_elements) - 1;
+            nir_instr_insert_after_cf_list(this->cf_node_list,
+                                           &load_ssbo_compare->instr);
+         }
+
+         break;
+      }
       default:
          unreachable("not reached");
       }
 
-      nir_instr_insert_after_cf_list(this->cf_node_list, &instr->instr);
+      /* nir_intrinsic_load_ssbo{_indirect} were already emitted */
+      if (op != nir_intrinsic_load_ssbo && op != nir_intrinsic_load_ssbo_indirect)
+         nir_instr_insert_after_cf_list(this->cf_node_list, &instr->instr);
 
       if (ir->return_deref) {
          nir_intrinsic_instr *store_instr =
@@ -789,7 +856,16 @@ nir_visitor::visit(ir_call *ir)
 
          store_instr->variables[0] =
             evaluate_deref(&store_instr->instr, ir->return_deref);
-         store_instr->src[0] = nir_src_for_ssa(&instr->dest.ssa);
+
+         /* If nir_intrinsic_load_ssbo{_indirect} is loading a boolean variable,
+          * the value is on load_ssbo_compare's dest. Use it instead.
+          */
+         if ((op == nir_intrinsic_load_ssbo || op == nir_intrinsic_load_ssbo_indirect) &&
+             ir->return_deref->var->type->base_type == GLSL_TYPE_BOOL) {
+            store_instr->src[0] = nir_src_for_ssa(&load_ssbo_compare->dest.dest.ssa);
+         } else {
+            store_instr->src[0] = nir_src_for_ssa(&instr->dest.ssa);
+         }
 
          nir_instr_insert_after_cf_list(this->cf_node_list,
                                         &store_instr->instr);
