@@ -176,12 +176,12 @@ LOAD(input, 0, NIR_INTRINSIC_CAN_ELIMINATE | NIR_INTRINSIC_CAN_REORDER)
  * offset.
  */
 
-#define STORE(name, num_indices, flags) \
-   INTRINSIC(store_##name, 1, ARR(0), false, 0, 0, num_indices, flags) \
-   INTRINSIC(store_##name##_indirect, 2, ARR(0, 1), false, 0, 0, \
+#define STORE(name, extra_srcs, num_indices, flags) \
+   INTRINSIC(store_##name, extra_srcs, ARR(0, 1), false, 0, 0, num_indices, flags) \
+   INTRINSIC(store_##name##_indirect, extra_srcs + 1, ARR(0, 1, 1), false, 0, 0, \
              num_indices, flags) \
 
-STORE(output, 1, 0)
-/* STORE(ssbo, 2, 0) */
+STORE(output, 1, 2, 0)
+STORE(ssbo, 2, 2, 0)
 
-LAST_INTRINSIC(store_output_indirect)
+LAST_INTRINSIC(store_ssbo_indirect)
