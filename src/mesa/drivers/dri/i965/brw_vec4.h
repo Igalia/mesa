@@ -403,6 +403,8 @@ public:
 
    void visit_atomic_counter_intrinsic(ir_call *ir);
 
+   void visit_store_ssbo_intrinsic(ir_call *ir);
+
    bool is_high_sampler(src_reg sampler);
 
    virtual void emit_nir_code();
