@@ -168,7 +168,7 @@ SYSTEM_VALUE(invocation_id, 1)
 LOAD(uniform, 0, NIR_INTRINSIC_CAN_ELIMINATE | NIR_INTRINSIC_CAN_REORDER)
 LOAD(ubo, 1, NIR_INTRINSIC_CAN_ELIMINATE | NIR_INTRINSIC_CAN_REORDER)
 LOAD(input, 0, NIR_INTRINSIC_CAN_ELIMINATE | NIR_INTRINSIC_CAN_REORDER)
-/* LOAD(ssbo, 1, 0) */
+LOAD(ssbo, 1, 0)
 
 /*
  * Stores work the same way as loads, except now the first register input is
