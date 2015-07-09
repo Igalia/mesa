@@ -403,6 +403,9 @@ public:
 
    void visit_atomic_counter_intrinsic(ir_call *ir);
 
+   void visit_store_ssbo_intrinsic(ir_call *ir);
+
+   int type_size(const struct glsl_type *type);
    bool is_high_sampler(src_reg sampler);
 
    virtual void emit_nir_code();
