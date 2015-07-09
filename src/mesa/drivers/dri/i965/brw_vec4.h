@@ -383,6 +383,8 @@ public:
 
    void visit_atomic_counter_intrinsic(ir_call *ir);
 
+   void visit_store_ssbo_intrinsic(ir_call *ir);
+
 protected:
    void emit_vertex();
    void lower_attributes_to_hw_regs(const int *attribute_map,
