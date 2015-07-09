@@ -182,6 +182,16 @@ LOAD(input, 0, NIR_INTRINSIC_CAN_ELIMINATE | NIR_INTRINSIC_CAN_REORDER)
              num_indices, flags) \
 
 STORE(output, 1, 0)
-/* STORE(ssbo, 2, 0) */
 
-LAST_INTRINSIC(store_output_indirect)
+/*
+ * Similar to regular stores, but they have an extra src for the buffer
+ * index and an extra index for a writemask. Specifically, the first source
+ * is the value to write, the second source is the SSBO buffer index. The
+ * indirect version takes an additional souce for the non-constant offset.
+ * The first index represents a constant offset (it is set to 0 if for
+ * the indirect version) and the second index has the writemask.
+ */
+INTRINSIC(store_ssbo, 2, ARR(0, 1), false, 0, 0, 2, 0)
+INTRINSIC(store_ssbo_indirect, 3, ARR(0, 1, 1), false, 0, 0, 2, 0)
+
+LAST_INTRINSIC(store_ssbo_indirect)
