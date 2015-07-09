@@ -25,6 +25,11 @@
 #include "brw_cfg.h"
 #include "glsl/ir_uniform.h"
 #include "program/sampler.h"
+#include "brw_vec4_builder.h"
+#include "brw_vec4_surface_builder.h"
+
+using namespace brw;
+using namespace brw::surface_access;
 
 namespace brw {
 
@@ -2504,6 +2509,156 @@ vec4_visitor::visit_atomic_counter_intrinsic(ir_call *ir)
 }
 
 void
+vec4_visitor::visit_store_ssbo_intrinsic(ir_call *ir)
+{
+   /* Block index */
+   exec_node *param = ir->actual_parameters.get_head();
+   ir_rvalue *block_param = ((ir_instruction *)param)->as_rvalue();
+   ir_constant *const_uniform_block = block_param->as_constant();
+   src_reg surf_index;
+   if (const_uniform_block) {
+      unsigned index = prog_data->base.binding_table.ubo_start +
+                       const_uniform_block->value.u[0];
+      surf_index = src_reg(index);
+
+      brw_mark_surface_used(&prog_data->base, index);
+   } else {
+      block_param->accept(this);
+      src_reg block_reg = this->result;
+      surf_index = src_reg(this, glsl_type::uint_type);
+      emit(ADD(dst_reg(surf_index), block_reg,
+               src_reg(prog_data->base.binding_table.ubo_start)));
+
+      brw_mark_surface_used(&prog_data->base,
+                            prog_data->base.binding_table.ubo_start +
+                            shader_prog->NumUniformBlocks - 1);
+   }
+
+   /* Offset */
+   param = param->get_next();
+   ir_rvalue *offset_param = ((ir_instruction *)param)->as_rvalue();
+   ir_constant *const_offset_ir = offset_param->as_constant();
+   unsigned const_offset_bytes =
+      const_offset_ir ? const_offset_ir->value.u[0] : 0;
+   src_reg offset = src_reg(this, glsl_type::uint_type);
+   offset_param->accept(this);
+   emit(MOV(dst_reg(offset), this->result));
+
+   /* Value */
+   param = param->get_next();
+   ir_rvalue *val_param = ((ir_instruction *)param)->as_rvalue();
+   src_reg val_reg = src_reg(this, glsl_type::vec4_type);
+   val_param->accept(this);
+   val_reg.type = this->result.type;
+   emit(MOV(dst_reg(val_reg), this->result));
+
+   /* Writemask */
+   param = param->get_next();
+   ir_rvalue *writemask_param = ((ir_instruction *)param)->as_rvalue();
+   ir_constant *const_writemask = writemask_param->as_constant();
+   assert(const_writemask);
+   unsigned write_mask = const_writemask->value.u[0];
+
+   /* IvyBridge does not have a native SIMD4x2 untyped write message so untyped
+    * writes will use SIMD8 mode. In order to hide this and keep symmetry across
+    * typed and untyped messages and across hardware platforms, the
+    * current implementation of the untyped messages will transparently convert
+    * the SIMD4x2 payload into an equivalent SIMD8 payload by transposing it
+    * and enabling only channel X on the SEND instruction.
+    *
+    * The above, works well for full vector writes, but not for partial writes
+    * where we want to write some channels and not others, like when we have
+    * code such as v.xyw = vec3(1,2,4). Because the untyped write messages are
+    * quite restrictive with regards to the channel enables we can configure in
+    * the message descriptor (not all combinations are allowed) we cannot simply
+    * implement these scenarios with a single message while keeping the
+    * aforementioned symmetry in the implementation. For now we de decided that
+    * it is better to keep the symmetry to reduce complexity, so in situations
+    * such as the one described we end up emitting two untyped write messages
+    * (one for xy and another for w).
+    *
+    * The code below packs consecutive channels into a single write message,
+    * detects gaps in the vector write and if needed, sends a second message
+    * with the remaining channels. If in the future we decide that we want to
+    * emit a single message at the expense of losing the symmetry in the
+    * implementation we can:
+    *
+    * 1) For IvyBridge: Only use the red channel of the untyped write SIMD8
+    *    message payload. In this mode we can write up to 8 offsets and dwords
+    *    to the red channel only (for the two vec4s in the SIMD4x2 execution)
+    *    and select which of the 8 channels carry data to write by setting the
+    *    appropriate writemask in the dst register of the SEND instruction.
+    *    It would require to write a new generator opcode specifically for
+    *    IvyBridge since we would need to prepare a SIMD8 payload that could
+    *    use any channel, not just X.
+    *
+    * 2) For Haswell+: Simply send a single write message but set the writemask
+    *    on the dst of the SEND instruction to select the channels we want to
+    *    write. It would require to modify the current messages to receive
+    *    and honor the writemask provided.
+    */
+   const vec4_builder bld = vec4_builder(this).at_end()
+                            .annotate(current_annotation, base_ir);
+
+   int swizzle[4] = { 0, 0, 0, 0};
+   int num_channels = 0;
+   unsigned skipped_channels = 0;
+   int num_components = val_param->type->vector_elements;
+   for (int i = 0; i < num_components; i++) {
+      /* Check if this channel needs to be written. If so, record the
+       * channel we need to take the data from in the swizzle array
+       */
+      int component_mask = 1 << i;
+      int write_test = write_mask & component_mask;
+      if (write_test)
+         swizzle[num_channels++] = i;
+
+      /* If we don't have to write this channel it means we have a gap in the
+       * vector, so write the channels we accumulated until now, if any. Do
+       * the same if this was the last component in the vector.
+       */
+      if (!write_test || i == num_components - 1) {
+         if (num_channels > 0) {
+            /* We have channels to write, so update the offset we need to
+             * write at to skip the channels we skipped, if any.
+             */
+            if (skipped_channels > 0) {
+               if (const_offset_ir) {
+                  const_offset_bytes += 4 * skipped_channels;
+                  offset = src_reg(const_offset_bytes);
+               } else {
+                  emit(ADD(dst_reg(offset), offset,
+                           brw_imm_ud(4 * skipped_channels)));
+               }
+            }
+
+            /* Swizzle the data register so we take the data from the channels
+             * we need to write and send the write message. This will write
+             * num_channels consecutive dwords starting at offset.
+             */
+            val_reg.swizzle =
+               BRW_SWIZZLE4(swizzle[0], swizzle[1], swizzle[2], swizzle[3]);
+            emit_untyped_write(bld, surf_index, offset, val_reg,
+                               1 /* dims */, num_channels /* size */,
+                               BRW_PREDICATE_NONE);
+
+            /* If we have to do a second write we will have to update the
+             * offset so that we jump over the channels we have just written
+             * now.
+             */
+            skipped_channels = num_channels;
+
+            /* Restart the count for the next write message */
+            num_channels = 0;
+         }
+
+         /* We did not write the current channel, so increase skipped count */
+         skipped_channels++;
+      }
+   }
+}
+
+void
 vec4_visitor::visit(ir_call *ir)
 {
    const char *callee = ir->callee->function_name();
@@ -2512,6 +2667,8 @@ vec4_visitor::visit(ir_call *ir)
        !strcmp("__intrinsic_atomic_increment", callee) ||
        !strcmp("__intrinsic_atomic_predecrement", callee)) {
       visit_atomic_counter_intrinsic(ir);
+   } else if (!strcmp("__intrinsic_store_ssbo", callee)) {
+      visit_store_ssbo_intrinsic(ir);
    } else {
       unreachable("Unsupported intrinsic.");
    }
