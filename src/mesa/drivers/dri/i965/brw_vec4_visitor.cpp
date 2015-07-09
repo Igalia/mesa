@@ -2659,6 +2659,80 @@ vec4_visitor::visit_store_ssbo_intrinsic(ir_call *ir)
 }
 
 void
+vec4_visitor::visit_load_ssbo_intrinsic(ir_call *ir)
+{
+   const glsl_type *type = ir->return_deref->var->type;
+   assert(type->is_vector() || type->is_scalar());
+
+   /* Block */
+   exec_node *param = ir->actual_parameters.get_head();
+   ir_rvalue *block_param = ((ir_instruction *)param)->as_rvalue();
+   ir_constant *const_uniform_block = block_param->as_constant();
+   src_reg surf_index;
+
+   /* Storage for our result.  Ideally for an assignment we'd be using
+    * the actual storage for the result here, instead.
+    */
+   dst_reg result_dst = get_assignment_lhs(ir->return_deref, this);
+   src_reg result_src(result_dst);
+   this->result = result_src;
+
+   if (const_uniform_block) {
+      /* The block index is a constant, so just emit the binding table entry
+       * as an immediate.
+       */
+      unsigned index = prog_data->base.binding_table.ubo_start +
+                       const_uniform_block->value.u[0];
+      surf_index = src_reg(index);
+
+      brw_mark_surface_used(&prog_data->base, index);
+   } else {
+      /* The block index is not a constant. Evaluate the index expression
+       * per-channel and add the base UBO index; we have to select a value
+       * from any live channel.
+       */
+      block_param->accept(this);
+      src_reg block_reg = this->result;
+
+      surf_index = src_reg(this, glsl_type::uint_type);
+      emit(ADD(dst_reg(surf_index), block_reg,
+               src_reg(prog_data->base.binding_table.ubo_start)));
+      surf_index = emit_uniformize(surf_index);
+
+      /* Assume this may touch any UBO. It would be nice to provide
+       * a tighter bound, but the array information is already lowered away.
+       */
+      brw_mark_surface_used(&prog_data->base,
+                            prog_data->base.binding_table.ubo_start +
+                            shader_prog->NumUniformBlocks - 1);
+   }
+
+   /* Offset */
+   param = param->get_next();
+   ir_rvalue *offset_param = ((ir_instruction *)param)->as_rvalue();
+   offset_param->accept(this);
+   src_reg offset = src_reg(this, glsl_type::uint_type);
+   emit(MOV(dst_reg(offset), this->result));
+
+   /* Read the vector */
+   const vec4_builder bld = vec4_builder(this).at_end()
+      .annotate(current_annotation, base_ir);
+
+   src_reg read_result = emit_untyped_read(bld, surf_index, offset,
+                                           1 /* dims */, 4 /* size*/,
+                                           BRW_PREDICATE_NONE);
+   read_result.type = result_dst.type;
+   read_result.swizzle = brw_swizzle_for_size(type->vector_elements);
+
+   /* SSBO/UBO bools are any nonzero int.  We need to convert them to 0/~0. */
+   if (type->base_type == GLSL_TYPE_BOOL) {
+      emit(CMP(result_dst, read_result, src_reg(0u), BRW_CONDITIONAL_NZ));
+   } else {
+      emit(MOV(result_dst, read_result));
+   }
+}
+
+void
 vec4_visitor::visit(ir_call *ir)
 {
    const char *callee = ir->callee->function_name();
@@ -2669,6 +2743,8 @@ vec4_visitor::visit(ir_call *ir)
       visit_atomic_counter_intrinsic(ir);
    } else if (!strcmp("__intrinsic_store_ssbo", callee)) {
       visit_store_ssbo_intrinsic(ir);
+   } else if (!strcmp("__intrinsic_load_ssbo", callee)) {
+      visit_load_ssbo_intrinsic(ir);
    } else {
       unreachable("Unsupported intrinsic.");
    }
