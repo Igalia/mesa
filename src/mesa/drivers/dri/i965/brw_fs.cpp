@@ -1975,8 +1975,10 @@ fs_visitor::assign_constant_locations()
          } else {
             /* Mark the the one accessed uniform as live */
             int constant_nr = inst->src[i].nr + inst->src[i].reg_offset;
-            if (constant_nr >= 0 && constant_nr < (int) uniforms)
-               is_live[constant_nr] = true;
+            if (constant_nr >= 0 && constant_nr < (int) uniforms) {
+               for (int j = 0; j < inst->regs_read(i); j++)
+                  is_live[constant_nr + j] = true;
+            }
          }
       }
    }
