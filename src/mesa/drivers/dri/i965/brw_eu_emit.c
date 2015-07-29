@@ -1995,8 +1995,10 @@ void gen6_math(struct brw_codegen *p,
       assert(src1.file == BRW_GENERAL_REGISTER_FILE ||
              (devinfo->gen >= 8 && src1.file == BRW_IMMEDIATE_VALUE));
    } else {
-      assert(src0.type == BRW_REGISTER_TYPE_F);
-      assert(src1.type == BRW_REGISTER_TYPE_F);
+      assert(src0.type == BRW_REGISTER_TYPE_F ||
+             src0.type == BRW_REGISTER_TYPE_DF);
+      assert(src1.type == BRW_REGISTER_TYPE_F ||
+             src1.type == BRW_REGISTER_TYPE_DF);
       if (function == BRW_MATH_FUNCTION_POW) {
          assert(src1.file == BRW_GENERAL_REGISTER_FILE ||
                 (devinfo->gen >= 8 && src1.file == BRW_IMMEDIATE_VALUE));
