@@ -541,6 +541,34 @@ setup_mrf_hack_interference(fs_visitor *v, struct ra_graph *g,
    }
 }
 
+static unsigned
+get_reg_node(const fs_reg& reg, unsigned first_payload_node)
+{
+   switch (reg.file) {
+   case VGRF:
+      return reg.nr;
+   case ARF:
+   case FIXED_GRF:
+      return first_payload_node + reg.nr;
+   case MRF:
+   default:
+      unreachable("unhandled register file");
+   }
+
+   return 0;
+}
+
+static void
+add_reg_interference(struct ra_graph *g, const fs_reg& reg1,
+                     const fs_reg& reg2, unsigned first_payload_node)
+{
+   if ((reg1.file == VGRF || reg1.file == ARF || reg1.file == FIXED_GRF) &&
+       (reg2.file == VGRF || reg2.file == ARF || reg2.file == FIXED_GRF)) {
+      ra_add_node_interference(g, get_reg_node(reg1, first_payload_node),
+                               get_reg_node(reg2, first_payload_node));
+   }
+}
+
 bool
 fs_visitor::assign_regs(bool allow_spilling)
 {
@@ -643,26 +671,27 @@ fs_visitor::assign_regs(bool allow_spilling)
       }
    }
 
-   if (dispatch_width > 8) {
-      /* In 16-wide dispatch we have an issue where a compressed
-       * instruction is actually two instructions executed simultaneiously.
-       * It's actually ok to have the source and destination registers be
-       * the same.  In this case, each instruction over-writes its own
-       * source and there's no problem.  The real problem here is if the
-       * source and destination registers are off by one.  Then you can end
-       * up in a scenario where the first instruction over-writes the
-       * source of the second instruction.  Since the compiler doesn't know
-       * about this level of granularity, we simply make the source and
-       * destination interfere.
-       */
-      foreach_block_and_inst(block, fs_inst, inst, cfg) {
-         if (inst->dst.file != VGRF)
-            continue;
+   /* When instructions both read/write more than a single SIMD8 register, we
+    * have an issue where an instruction is actually two instructions executed
+    * simultaneiously.  It's actually ok to have the source and destination
+    * registers be the same.  In this case, each instruction over-writes its
+    * own source and there's no problem.  The real problem here is if the
+    * source and destination registers are off by one.  Then you can end up in
+    * a scenario where the first instruction over-writes the source of the
+    * second instruction.  Since the compiler doesn't know about this level of
+    * granularity, we simply make the source and destination interfere.
+    */
+   foreach_block_and_inst(block, fs_inst, inst, cfg) {
+      if (inst->dst.file != VGRF &&
+          inst->dst.file != ARF && inst->dst.file != FIXED_GRF)
+         continue;
 
-         for (int i = 0; i < inst->sources; ++i) {
-            if (inst->src[i].file == VGRF) {
-               ra_add_node_interference(g, inst->dst.nr, inst->src[i].nr);
-            }
+      if (inst->regs_written <= 1)
+         continue;
+
+      for (int i = 0; i < inst->sources; ++i) {
+         if (inst->regs_read(i) > 1) {
+            add_reg_interference(g, inst->dst, inst->src[i], first_payload_node);
          }
       }
    }
