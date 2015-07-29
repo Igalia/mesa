@@ -2045,8 +2045,10 @@ fs_visitor::assign_constant_locations()
             }
             is_live[last] = true;
          } else {
-            if (constant_nr >= 0 && constant_nr < (int) uniforms)
-               is_live[constant_nr] = true;
+            if (constant_nr >= 0 && constant_nr < (int) uniforms) {
+               for (int j = 0; j < inst->regs_read(i); j++)
+                  is_live[constant_nr + j] = true;
+            }
          }
       }
    }
