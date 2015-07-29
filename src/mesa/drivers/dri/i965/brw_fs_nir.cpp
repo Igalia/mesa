@@ -375,7 +375,9 @@ fs_visitor::nir_emit_impl(nir_function_impl *impl)
       unsigned array_elems =
          reg->num_array_elems == 0 ? 1 : reg->num_array_elems;
       unsigned size = array_elems * reg->num_components;
-      nir_locals[reg->index] = bld.vgrf(BRW_REGISTER_TYPE_F, size);
+      brw_reg_type reg_type =
+         reg->bit_size == 32 ? BRW_REGISTER_TYPE_F : BRW_REGISTER_TYPE_DF;
+      nir_locals[reg->index] = bld.vgrf(reg_type, size);
    }
 
    nir_ssa_values = reralloc(mem_ctx, nir_ssa_values, fs_reg,
@@ -1147,10 +1149,21 @@ void
 fs_visitor::nir_emit_load_const(const fs_builder &bld,
                                 nir_load_const_instr *instr)
 {
-   fs_reg reg = bld.vgrf(BRW_REGISTER_TYPE_D, instr->def.num_components);
+   brw_reg_type reg_type =
+      instr->def.bit_size == 32 ? BRW_REGISTER_TYPE_D : BRW_REGISTER_TYPE_DF;
+   fs_reg reg = bld.vgrf(reg_type, instr->def.num_components);
 
-   for (unsigned i = 0; i < instr->def.num_components; i++)
-      bld.MOV(offset(reg, bld, i), brw_imm_d(instr->value.i[i]));
+   switch (instr->def.bit_size) {
+   case 32:
+      for (unsigned i = 0; i < instr->def.num_components; i++)
+         bld.MOV(offset(reg, bld, i), brw_imm_d(instr->value.i[i]));
+      break;
+
+   case 64:
+      for (unsigned i = 0; i < instr->def.num_components; i++)
+         bld.MOV(offset(reg, bld, i), brw_imm_df(instr->value.d[i]));
+      break;
+   }
 
    nir_ssa_values[instr->def.index] = reg;
 }
@@ -1158,8 +1171,10 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
 void
 fs_visitor::nir_emit_undef(const fs_builder &bld, nir_ssa_undef_instr *instr)
 {
-   nir_ssa_values[instr->def.index] = bld.vgrf(BRW_REGISTER_TYPE_D,
-                                               instr->def.num_components);
+   brw_reg_type reg_type =
+      instr->def.bit_size == 32 ? BRW_REGISTER_TYPE_D : BRW_REGISTER_TYPE_DF;
+   nir_ssa_values[instr->def.index] =
+      bld.vgrf(reg_type, instr->def.num_components);
 }
 
 fs_reg
@@ -1186,8 +1201,10 @@ fs_reg
 fs_visitor::get_nir_dest(nir_dest dest)
 {
    if (dest.is_ssa) {
-      nir_ssa_values[dest.ssa.index] = bld.vgrf(BRW_REGISTER_TYPE_F,
-                                                dest.ssa.num_components);
+      brw_reg_type reg_type =
+         dest.ssa.bit_size == 32 ? BRW_REGISTER_TYPE_F : BRW_REGISTER_TYPE_DF;
+      nir_ssa_values[dest.ssa.index] =
+         bld.vgrf(reg_type, dest.ssa.num_components);
       return nir_ssa_values[dest.ssa.index];
    } else {
       /* We don't handle indirects on locals */
