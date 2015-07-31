@@ -135,6 +135,13 @@ nir_imm_ivec4(nir_builder *build, int x, int y, int z, int w)
 }
 
 static inline nir_ssa_def *
+nir_imm_uint(nir_builder *build, unsigned x)
+{
+   nir_const_value v = { { .u = {x, 0, 0, 0} } };
+   return nir_build_imm(build, 1, v);
+}
+
+static inline nir_ssa_def *
 nir_build_alu(nir_builder *build, nir_op op, nir_ssa_def *src0,
               nir_ssa_def *src1, nir_ssa_def *src2, nir_ssa_def *src3)
 {
