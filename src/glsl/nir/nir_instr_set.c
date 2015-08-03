@@ -52,6 +52,7 @@ hash_alu(uint32_t hash, const nir_alu_instr *instr)
 {
    hash = HASH(hash, instr->op);
    hash = HASH(hash, instr->dest.dest.ssa.num_components);
+   hash = HASH(hash, instr->dest.dest.ssa.bit_size);
 
    if (nir_op_infos[instr->op].algebraic_properties & NIR_OP_IS_COMMUTATIVE) {
       assert(nir_op_infos[instr->op].num_inputs == 2);
@@ -81,9 +82,8 @@ hash_load_const(uint32_t hash, const nir_load_const_instr *instr)
 {
    hash = HASH(hash, instr->def.num_components);
 
-   hash = _mesa_fnv32_1a_accumulate_block(hash, instr->value.f,
-                                          instr->def.num_components
-                                             * sizeof(instr->value.f[0]));
+   unsigned size = instr->def.num_components * (instr->def.bit_size / 8);
+   hash = _mesa_fnv32_1a_accumulate_block(hash, instr->value.f, size);
 
    return hash;
 }
@@ -125,8 +125,10 @@ hash_intrinsic(uint32_t hash, const nir_intrinsic_instr *instr)
    const nir_intrinsic_info *info = &nir_intrinsic_infos[instr->intrinsic];
    hash = HASH(hash, instr->intrinsic);
 
-   if (info->has_dest)
+   if (info->has_dest) {
       hash = HASH(hash, instr->dest.ssa.num_components);
+      hash = HASH(hash, instr->dest.ssa.bit_size);
+   }
 
    assert(info->num_variables == 0);
 
@@ -267,6 +269,9 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
       if (alu1->dest.dest.ssa.num_components != alu2->dest.dest.ssa.num_components)
          return false;
 
+      if (alu1->dest.dest.ssa.bit_size != alu2->dest.dest.ssa.bit_size)
+         return false;
+
       if (nir_op_infos[alu1->op].algebraic_properties & NIR_OP_IS_COMMUTATIVE) {
          assert(nir_op_infos[alu1->op].num_inputs == 2);
          return (nir_alu_srcs_equal(alu1, alu2, 0, 0) &&
@@ -322,8 +327,11 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
       if (load1->def.num_components != load2->def.num_components)
          return false;
 
+      if (load1->def.bit_size != load2->def.bit_size)
+         return false;
+
       return memcmp(load1->value.f, load2->value.f,
-                    load1->def.num_components * sizeof(*load2->value.f)) == 0;
+                    load1->def.num_components * (load1->def.bit_size / 8)) == 0;
    }
    case nir_instr_type_phi: {
       nir_phi_instr *phi1 = nir_instr_as_phi(instr1);
@@ -357,6 +365,10 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
 
       if (info->has_dest && intrinsic1->dest.ssa.num_components !=
                             intrinsic2->dest.ssa.num_components)
+         return false;
+
+      if (info->has_dest && intrinsic1->dest.ssa.bit_size !=
+                            intrinsic2->dest.ssa.bit_size)
          return false;
 
       for (unsigned i = 0; i < info->num_srcs; i++) {
