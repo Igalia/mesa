@@ -451,6 +451,9 @@ nir_optimize(nir_shader *nir, bool is_scalar)
       OPT(nir_opt_dead_cf);
       OPT(nir_opt_remove_phis);
       OPT(nir_opt_undef);
+      OPT_V(nir_lower_doubles, nir_lower_drcp |
+                               nir_lower_dsqrt |
+                               nir_lower_drsq);
    } while (progress);
 
    return nir;
