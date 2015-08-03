@@ -36,7 +36,7 @@
  * Visits and CSE's the given block and all its descendants in the dominance
  * tree recursively. Note that the instr_set is guaranteed to only ever
  * contain instructions that dominate the current block.
- */
+*/
 
 static bool
 cse_block(nir_block *block, struct set *instr_set)
