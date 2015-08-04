@@ -885,7 +885,7 @@ fs_inst::regs_read(int arg) const
       return 0;
    case UNIFORM:
    case IMM:
-      return 1;
+      return DIV_ROUND_UP(type_sz(src[arg].type), 4);
    case ARF:
    case FIXED_GRF:
    case VGRF:
