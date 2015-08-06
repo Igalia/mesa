@@ -629,6 +629,14 @@ public:
        * and uniforms.
        */
       unsigned read_only:1;
+
+      /**
+       * Is the variable write-only?
+       *
+       * This is set for variables declared with the writeonly qualifier.
+       */
+      unsigned write_only:1;
+
       unsigned centroid:1;
       unsigned sample:1;
       unsigned patch:1;
