@@ -824,6 +824,7 @@ nir_visitor::visit(ir_call *ir)
           * consider a true boolean to be ~0. Fix this up with a != 0
           * comparison.
           */
+#if 0 /* We do not handle compare->dest properly */
          if (type->base_type == GLSL_TYPE_BOOL) {
             nir_load_const_instr *const_zero =
                nir_load_const_instr_create(shader, 1);
@@ -838,10 +839,13 @@ nir_visitor::visit(ir_call *ir)
             compare->src[1].src.ssa = &const_zero->def;
             for (unsigned i = 0; i < type->vector_elements; i++)
                compare->src[1].swizzle[i] = 0;
+            nir_ssa_dest_init(&compare->instr, &compare->dest.dest,
+                              type->vector_elements, NULL);
             compare->dest.write_mask = (1 << type->vector_elements) - 1;
 
             nir_instr_insert_after_cf_list(this->cf_node_list, &compare->instr);
          }
+#endif
          break;
       }
       case nir_intrinsic_ssbo_atomic_add:
