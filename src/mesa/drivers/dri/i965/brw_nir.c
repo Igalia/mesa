@@ -424,6 +424,7 @@ nir_optimize(nir_shader *nir, bool is_scalar)
                                nir_lower_dceil |
                                nir_lower_dfract |
                                nir_lower_dround_even);
+      OPT_V(nir_lower_double_pack);
    } while (progress);
 
    return nir;
