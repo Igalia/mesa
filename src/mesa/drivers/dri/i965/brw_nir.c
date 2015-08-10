@@ -615,12 +615,24 @@ brw_type_for_nir_type(nir_alu_type type)
 {
    switch (type) {
    case nir_type_uint:
+   case nir_type_uint32:
       return BRW_REGISTER_TYPE_UD;
    case nir_type_bool:
    case nir_type_int:
+   case nir_type_bool32:
+   case nir_type_int32:
       return BRW_REGISTER_TYPE_D;
    case nir_type_float:
+   case nir_type_float32:
       return BRW_REGISTER_TYPE_F;
+   case nir_type_float64:
+      return BRW_REGISTER_TYPE_DF;
+   case nir_type_int64:
+   case nir_type_uint64:
+      /* TODO we should only see these in moves, so for now it's ok, but when
+       * we add actual 64-bit integer support we should fix this.
+       */
+      return BRW_REGISTER_TYPE_DF;
    default:
       unreachable("unknown type");
    }
