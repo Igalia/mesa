@@ -648,12 +648,18 @@ brw_glsl_base_type_for_nir_type(nir_alu_type type)
 {
    switch (type) {
    case nir_type_float:
+   case nir_type_float32:
       return GLSL_TYPE_FLOAT;
 
+   case nir_type_float64:
+      return GLSL_TYPE_DOUBLE;
+
    case nir_type_int:
+   case nir_type_int32:
       return GLSL_TYPE_INT;
 
    case nir_type_uint:
+   case nir_type_uint32:
       return GLSL_TYPE_UINT;
 
    default:
