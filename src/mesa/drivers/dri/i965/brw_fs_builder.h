@@ -563,8 +563,11 @@ namespace brw {
       {
          instruction *inst = emit(SHADER_OPCODE_LOAD_PAYLOAD, dst, src, sources);
          inst->header_size = header_size;
-         inst->regs_written = header_size +
-                              (sources - header_size) * (dispatch_width() / 8);
+         inst->regs_written = header_size;
+         for (unsigned i = header_size; i < sources; i++) {
+            inst->regs_written +=
+               DIV_ROUND_UP(dispatch_width() * type_sz(src[i].type), REG_SIZE);
+         }
 
          return inst;
       }
