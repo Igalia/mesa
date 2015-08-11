@@ -75,6 +75,8 @@ enum {
 
 void brw_nir_analyze_boolean_resolves(nir_shader *nir);
 
+void brw_nir_split_doubles(nir_shader *nir);
+
 nir_shader *brw_create_nir(struct brw_context *brw,
                            const struct gl_shader_program *shader_prog,
                            const struct gl_program *prog,
