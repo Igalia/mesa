@@ -94,6 +94,9 @@ opt_cmod_propagation_local(bblock_t *block)
                 scan_inst->exec_size != inst->exec_size)
                break;
 
+            if (scan_inst->exec_size != inst->exec_size)
+               break;
+
             /* CMP's result is the same regardless of dest type. */
             if (inst->conditional_mod == BRW_CONDITIONAL_NZ &&
                 scan_inst->opcode == BRW_OPCODE_CMP &&
