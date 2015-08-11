@@ -397,6 +397,8 @@ nir_optimize(nir_shader *nir, bool is_scalar)
 
       if (is_scalar) {
          OPT_V(nir_lower_alu_to_scalar);
+      } else {
+         OPT_V(nir_split_doubles);
       }
 
       OPT(nir_copy_prop);
