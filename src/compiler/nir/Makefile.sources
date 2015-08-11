@@ -64,6 +64,7 @@ NIR_FILES = \
 	nir_search.c \
 	nir_search.h \
 	nir_split_var_copies.c \
+	nir_split_doubles.c \
 	nir_sweep.c \
 	nir_to_ssa.c \
 	nir_validate.c \
