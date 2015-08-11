@@ -4809,6 +4809,9 @@ fs_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
          fprintf(file, "1sthalf ");
    }
 
+   if (inst->force_writemask_all)
+      fprintf(file, "WE_all ");
+
    fprintf(file, "\n");
 }
 
