@@ -448,6 +448,12 @@ vec4_visitor::opt_reduce_swizzle()
       case BRW_OPCODE_DP2:
          swizzle = brw_swizzle_for_size(2);
          break;
+
+      case VEC4_OPCODE_FLOAT_TO_DOUBLE:
+      case VEC4_OPCODE_DOUBLE_TO_FLOAT:
+         swizzle = brw_swizzle_for_size(4);
+         break;
+
       default:
          swizzle = brw_swizzle_for_mask(inst->dst.writemask);
          break;
