@@ -1273,10 +1273,30 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_feq:
    case nir_op_ieq:
    case nir_op_fne:
-   case nir_op_ine:
-      emit(CMP(dst, op[0], op[1],
+   case nir_op_ine: {
+      dst_reg temp = dst;
+
+      if (nir_src_bit_size(instr->src[0].src) == 64) {
+         temp = dst_reg(VGRF, alloc.allocate(1));
+         temp.type = dst.type;
+      }
+
+      emit(CMP(temp, op[0], op[1],
                brw_conditional_for_nir_comparison(instr->op)));
+
+      if (nir_src_bit_size(instr->src[0].src) == 64) {
+         /* Reinterpret the dvec1/2 result of the comparison as a vec2/4, and
+          * grab the low 32 bits of each component of the dvec1/2, which
+          * corresponds to the x and z components of the vec2/4.
+          */
+         src_reg temp_src = src_reg(temp);
+         temp_src.type = BRW_REGISTER_TYPE_UD;
+         temp_src.swizzle = BRW_SWIZZLE_XZXZ;
+         emit(MOV(dst, temp_src));
+      }
+
       break;
+   }
 
    case nir_op_ball_fequal2:
    case nir_op_ball_iequal2:
