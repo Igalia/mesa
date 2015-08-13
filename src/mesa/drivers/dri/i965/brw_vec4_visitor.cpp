@@ -581,21 +581,25 @@ type_size_vec4(const struct glsl_type *type)
 {
    unsigned int i;
    int size;
+   unsigned multiplier = 1;
 
    switch (type->base_type) {
+   case GLSL_TYPE_DOUBLE:
+      multiplier = 2;
+      /* fallthrough */
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
    case GLSL_TYPE_FLOAT:
    case GLSL_TYPE_BOOL:
       if (type->is_matrix()) {
-	 return type->matrix_columns;
+	 return type->matrix_columns * multiplier;
       } else {
 	 /* Regardless of size of vector, it gets a vec4. This is bad
 	  * packing for things like floats, but otherwise arrays become a
 	  * mess.  Hopefully a later pass over the code can pack scalars
 	  * down if appropriate.
 	  */
-	 return 1;
+	 return multiplier;
       }
    case GLSL_TYPE_ARRAY:
       assert(type->length > 0);
@@ -619,7 +623,6 @@ type_size_vec4(const struct glsl_type *type)
    case GLSL_TYPE_IMAGE:
       return DIV_ROUND_UP(BRW_IMAGE_PARAM_SIZE, 4);
    case GLSL_TYPE_VOID:
-   case GLSL_TYPE_DOUBLE:
    case GLSL_TYPE_ERROR:
    case GLSL_TYPE_INTERFACE:
       unreachable("not reached");
