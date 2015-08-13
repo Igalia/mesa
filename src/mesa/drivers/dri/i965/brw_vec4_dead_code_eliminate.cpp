@@ -42,6 +42,8 @@ can_do_writemask(const struct brw_device_info *devinfo,
 {
    switch (inst->opcode) {
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
+   case VEC4_OPCODE_DOUBLE_TO_FLOAT:
+   case VEC4_OPCODE_FLOAT_TO_DOUBLE:
    case VS_OPCODE_PULL_CONSTANT_LOAD:
    case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
    case VS_OPCODE_SET_SIMD4X2_HEADER_GEN9:
