@@ -159,6 +159,9 @@ vec4_visitor::nir_emit_impl(nir_function_impl *impl)
          array_elems *= 2;
 
       nir_locals[reg->index] = dst_reg(VGRF, alloc.allocate(array_elems));
+
+      if (reg->bit_size == 64)
+         nir_locals[reg->index].type = BRW_REGISTER_TYPE_DF;
    }
 
    nir_ssa_values = ralloc_array(mem_ctx, dst_reg, impl->ssa_alloc);
