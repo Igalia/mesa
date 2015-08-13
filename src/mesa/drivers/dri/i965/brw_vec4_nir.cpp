@@ -1080,6 +1080,38 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst = emit(MOV(dst, op[0]));
       break;
 
+   case nir_op_d2f: {
+      dst_reg temp = dst_reg(VGRF, alloc.allocate(1));
+      temp.type = BRW_REGISTER_TYPE_DF;
+      emit(MOV(temp, op[0]));
+      src_reg temp_src = src_reg(temp);
+      dst_reg temp2 = dst_reg(VGRF, alloc.allocate(1));
+      temp2.type = BRW_REGISTER_TYPE_F;
+      emit(VEC4_OPCODE_DOUBLE_TO_FLOAT, temp2, temp_src);
+      src_reg temp2_src = src_reg(temp2);
+      temp2_src.swizzle = BRW_SWIZZLE_XZXZ;
+      inst = emit(MOV(dst, temp2_src));
+      inst->saturate = instr->dest.saturate;
+      break;
+   }
+
+   case nir_op_f2d: {
+      dst_reg temp = dst_reg(VGRF, alloc.allocate(1));
+      temp.type = BRW_REGISTER_TYPE_F;
+      temp.writemask = 0x5;
+      op[0].swizzle = brw_compose_swizzle(BRW_SWIZZLE_XXYY, op[0].swizzle);
+      inst = emit(MOV(temp, op[0]));
+      inst->saturate = instr->dest.saturate;
+      src_reg temp_src = src_reg(temp);
+      temp_src.swizzle = BRW_SWIZZLE_NOOP;
+      dst_reg temp2 = dst_reg(VGRF, alloc.allocate(1));
+      temp2.type = BRW_REGISTER_TYPE_DF;
+      emit(VEC4_OPCODE_FLOAT_TO_DOUBLE, temp2, temp_src);
+      src_reg temp2_src = src_reg(temp2);
+      emit(MOV(dst, temp2_src));
+      break;
+   }
+
    case nir_op_fadd:
       /* fall through */
    case nir_op_iadd:
