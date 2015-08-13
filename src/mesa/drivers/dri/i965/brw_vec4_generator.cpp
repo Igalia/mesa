@@ -1846,6 +1846,31 @@ generate_code(struct brw_codegen *p,
          break;
       }
 
+      case VEC4_OPCODE_DOUBLE_TO_FLOAT: {
+         assert(src[0].type == BRW_REGISTER_TYPE_DF);
+         assert(dst.type == BRW_REGISTER_TYPE_F);
+
+         brw_set_default_access_mode(p, BRW_ALIGN_1);
+         dst.hstride = BRW_HORIZONTAL_STRIDE_2;
+         dst.width = BRW_WIDTH_4;
+         brw_MOV(p, dst, src[0]);
+         brw_set_default_access_mode(p, BRW_ALIGN_16);
+         break;
+      }
+
+      case VEC4_OPCODE_FLOAT_TO_DOUBLE: {
+         assert(src[0].type == BRW_REGISTER_TYPE_F);
+         assert(dst.type == BRW_REGISTER_TYPE_DF);
+
+         brw_set_default_access_mode(p, BRW_ALIGN_1);
+         src[0].vstride = BRW_VERTICAL_STRIDE_8;
+         src[0].hstride = BRW_HORIZONTAL_STRIDE_2;
+         src[0].width = BRW_WIDTH_4;
+         brw_MOV(p, dst, src[0]);
+         brw_set_default_access_mode(p, BRW_ALIGN_16);
+         break;
+      }
+
       case VEC4_OPCODE_PACK_BYTES: {
          /* Is effectively:
           *
