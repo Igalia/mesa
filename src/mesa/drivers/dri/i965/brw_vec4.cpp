@@ -1487,6 +1487,9 @@ vec4_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
          case BRW_REGISTER_TYPE_F:
             fprintf(file, "%fF", inst->src[i].f);
             break;
+         case BRW_REGISTER_TYPE_DF:
+            fprintf(file, "%fDF", inst->src[i].df);
+            break;
          case BRW_REGISTER_TYPE_D:
             fprintf(file, "%dD", inst->src[i].d);
             break;
