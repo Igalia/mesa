@@ -1424,6 +1424,62 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_pack_double_2x32_split: {
+      /* Our input is two uvec1/uvec2's, and our output is a dvec1/dvec2. We
+       * want to put the first source in the low 32 bits of the destination.
+       * If the destination is interpreted as a uvec2/uvec4, then this
+       * corresponds to x and z. Similarly, the second source needs to be
+       * moved into the y and w components of the destination. So we need to
+       * do:
+       *
+       * dest.xz = src0.xy;
+       * dest.yw = src1.xy;
+       */
+      op[0].swizzle = brw_compose_swizzle(BRW_SWIZZLE_XXYY, op[0].swizzle);
+      op[1].swizzle = brw_compose_swizzle(BRW_SWIZZLE_XXYY, op[1].swizzle);
+      dst_reg new_dst = retype(dst, BRW_REGISTER_TYPE_UD);
+
+      new_dst.writemask = 0;
+      if (instr->dest.write_mask & 1)
+         new_dst.writemask |= 0x1;
+      if (instr->dest.write_mask & 2)
+         new_dst.writemask |= 0x4;
+      emit(MOV(new_dst, op[0]));
+
+      new_dst.writemask = 0;
+      if (instr->dest.write_mask & 1)
+         new_dst.writemask |= 0x2;
+      if (instr->dest.write_mask & 2)
+         new_dst.writemask |= 0x8;
+      emit(MOV(new_dst, op[1]));
+
+      break;
+   }
+
+   case nir_op_unpack_double_2x32_split_x: {
+      /* Our input is a dvec1/dvec2, and we want to get the low 32 bits of
+       * each component. That corresponds to the x and z components of the
+       * input reinterpreted as a uvec2/4.
+       */
+
+      src_reg src = retype(op[0], BRW_REGISTER_TYPE_UD);
+      src.swizzle = brw_compose_swizzle(BRW_SWIZZLE_XZXZ, op[0].swizzle);
+      emit(MOV(dst, src));
+      break;
+   }
+
+   case nir_op_unpack_double_2x32_split_y: {
+      /* Our input is a dvec1/dvec2, and we want to get the high 32 bits of
+       * each component. That corresponds to the y and w components of the
+       * input reinterpreted as a uvec2/4.
+       */
+
+      src_reg src = retype(op[0], BRW_REGISTER_TYPE_UD);
+      src.swizzle = brw_compose_swizzle(BRW_SWIZZLE_YWYW, op[0].swizzle);
+      emit(MOV(dst, src));
+      break;
+   }
+
    case nir_op_unpack_half_2x16:
       /* As NIR does not guarantee that we have a correct swizzle outside the
        * boundaries of a vector, and the implementation of emit_unpack_half_2x16
