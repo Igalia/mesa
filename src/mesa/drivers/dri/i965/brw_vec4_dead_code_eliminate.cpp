@@ -110,6 +110,16 @@ vec4_visitor::dead_code_eliminate()
                result_live[3] = result;
             }
 
+            /* For 64-bit types, only the first two or the last two components
+             * can be eliminated.
+             */
+            if (type_sz(inst->dst.type) == 8) {
+               result_live[0] = result_live[1] =
+                  result_live[0] || result_live[1];
+               result_live[2] = result_live[3] =
+                  result_live[2] || result_live[3];
+            }
+
             for (int c = 0; c < 4; c++) {
                if (!result_live[c] && inst->dst.writemask & (1 << c)) {
                   inst->dst.writemask &= ~(1 << c);
