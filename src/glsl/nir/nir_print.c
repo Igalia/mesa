@@ -68,7 +68,7 @@ static void
 print_register_decl(nir_register *reg, print_state *state)
 {
    FILE *fp = state->fp;
-   fprintf(fp, "decl_reg %s ", sizes[reg->num_components]);
+   fprintf(fp, "decl_reg %s %u ", sizes[reg->num_components], reg->bit_size);
    if (reg->is_packed)
       fprintf(fp, "(packed) ");
    print_register(reg, state);
@@ -83,7 +83,8 @@ print_ssa_def(nir_ssa_def *def, print_state *state)
    FILE *fp = state->fp;
    if (def->name != NULL)
       fprintf(fp, "/* %s */ ", def->name);
-   fprintf(fp, "%s ssa_%u", sizes[def->num_components], def->index);
+   fprintf(fp, "%s %u ssa_%u", sizes[def->num_components], def->bit_size,
+           def->index);
 }
 
 static void
