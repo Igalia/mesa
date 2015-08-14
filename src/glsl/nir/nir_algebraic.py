@@ -63,7 +63,7 @@ class Value(object):
 static const ${val.c_type} ${val.name} = {
    { ${val.type_enum} },
 % if isinstance(val, Constant):
-   { ${hex(val)} /* ${val.value} */ },
+   ${val.type()}, { ${hex(val)} /* ${val.value} */ },
 % elif isinstance(val, Variable):
    ${val.index}, /* ${val.var_name} */
    ${'true' if val.is_constant else 'false'},
@@ -108,11 +108,19 @@ class Constant(Value):
       if isinstance(self.value, (bool)):
          return 'NIR_TRUE' if self.value else 'NIR_FALSE'
       if isinstance(self.value, (int, long)):
-         return hex(struct.unpack('I', struct.pack('i', self.value))[0])
+         return hex(struct.unpack('L', struct.pack('l', self.value))[0])
       elif isinstance(self.value, float):
-         return hex(struct.unpack('I', struct.pack('f', self.value))[0])
+         return hex(struct.unpack('L', struct.pack('d', self.value))[0])
       else:
          assert False
+
+   def type(self):
+      if isinstance(self.value, (bool)):
+         return "nir_type_bool32"
+      elif isinstance(self.value, (int, long)):
+         return "nir_type_int"
+      elif isinstance(self.value, float):
+         return "nir_type_float"
 
 _var_name_re = re.compile(r"(?P<const>#)?(?P<name>\w+)(?:@(?P<type>\w+))?")
 
