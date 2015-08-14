@@ -655,6 +655,8 @@ nir_deref_get_const_initializer_load(nir_shader *shader, nir_deref_var *deref)
    nir_load_const_instr *load =
       nir_load_const_instr_create(shader, glsl_get_vector_elements(tail->type));
 
+   load->def.bit_size = glsl_get_bit_size(glsl_get_base_type(tail->type));
+
    matrix_offset *= load->def.num_components;
    for (unsigned i = 0; i < load->def.num_components; i++) {
       switch (glsl_get_base_type(tail->type)) {
@@ -662,6 +664,9 @@ nir_deref_get_const_initializer_load(nir_shader *shader, nir_deref_var *deref)
       case GLSL_TYPE_INT:
       case GLSL_TYPE_UINT:
          load->value.u[i] = constant->value.u[matrix_offset + i];
+         break;
+      case GLSL_TYPE_DOUBLE:
+         load->value.d[i] = constant->value.d[matrix_offset + i];
          break;
       case GLSL_TYPE_BOOL:
          load->value.u[i] = constant->value.b[matrix_offset + i] ?
