@@ -80,6 +80,14 @@ retype(fs_reg reg, enum brw_reg_type type)
 }
 
 static inline fs_reg
+stride(fs_reg reg, unsigned stride)
+{
+   if (reg.stride != 0)
+      reg.stride = stride;
+   return reg;
+}
+
+static inline fs_reg
 byte_offset(fs_reg reg, unsigned delta)
 {
    switch (reg.file) {
