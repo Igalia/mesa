@@ -566,6 +566,15 @@ nir_src_bit_size(nir_src src)
    return src.reg.reg->bit_size;
 }
 
+static inline unsigned
+nir_dest_bit_size(nir_dest dest)
+{
+   if (dest.is_ssa)
+      return dest.ssa.bit_size;
+
+   return dest.reg.reg->bit_size;
+}
+
 void nir_src_copy(nir_src *dest, const nir_src *src, void *instr_or_if);
 void nir_dest_copy(nir_dest *dest, const nir_dest *src, nir_instr *instr);
 
