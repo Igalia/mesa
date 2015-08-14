@@ -46,9 +46,17 @@ constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
    if (!instr->dest.dest.is_ssa)
       return false;
 
+   unsigned bit_size = 0;
+   if (!(nir_op_infos[instr->op].output_type & NIR_ALU_TYPE_SIZE_MASK))
+      bit_size = instr->dest.dest.ssa.bit_size;
+
+
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
       if (!instr->src[i].src.is_ssa)
          return false;
+
+      if (!(nir_op_infos[instr->op].input_sizes[i] & NIR_ALU_TYPE_SIZE_MASK))
+         bit_size = instr->src[i].src.ssa->bit_size;
 
       nir_instr *src_instr = instr->src[i].src.ssa->parent_instr;
 
@@ -58,24 +66,31 @@ constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
 
       for (unsigned j = 0; j < nir_ssa_alu_instr_src_components(instr, i);
            j++) {
-         src[i].u[j] = load_const->value.u[instr->src[i].swizzle[j]];
+         if (load_const->def.bit_size == 64)
+            src[i].ul[j] = load_const->value.ul[instr->src[i].swizzle[j]];
+         else
+            src[i].u[j] = load_const->value.u[instr->src[i].swizzle[j]];
       }
 
       /* We shouldn't have any source modifiers in the optimization loop. */
       assert(!instr->src[i].abs && !instr->src[i].negate);
    }
 
+   if (bit_size == 0)
+      bit_size = 32;
+
    /* We shouldn't have any saturate modifiers in the optimization loop. */
    assert(!instr->dest.saturate);
 
    nir_const_value dest =
       nir_eval_const_opcode(instr->op, instr->dest.dest.ssa.num_components,
-                            src);
+                            bit_size, src);
 
    nir_load_const_instr *new_instr =
       nir_load_const_instr_create(mem_ctx,
                                   instr->dest.dest.ssa.num_components);
 
+   new_instr->def.bit_size = instr->dest.dest.ssa.bit_size;
    new_instr->value = dest;
 
    nir_instr_insert_before(&instr->instr, &new_instr->instr);
