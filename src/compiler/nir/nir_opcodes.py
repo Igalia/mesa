@@ -255,6 +255,34 @@ dst.x = (src0.x <<  0) |
         (src0.w << 24);
 """)
 
+unop_horiz("pack_double_2x32", 1, tfloat64, 2, tuint32, """
+union {
+    double d;
+    struct {
+        uint32_t i1;
+        uint32_t i2;
+    };
+} di;
+
+di.i1 = src0.x;
+di.i2 = src0.y;
+dst.x = di.d;
+""")
+
+unop_horiz("unpack_double_2x32", 2, tuint32, 1, tfloat64, """
+union {
+    double d;
+    struct {
+        uint32_t i1;
+        uint32_t i2;
+    };
+} di;
+
+di.d = src0.x;
+dst.x = di.i1;
+dst.y = di.i2;
+""")
+
 # Lowered floating point unpacking operations.
 
 
