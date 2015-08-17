@@ -326,6 +326,12 @@ st_framebuffer_add_renderbuffer(struct st_framebuffer *stfb,
 
    if (idx != BUFFER_DEPTH) {
       _mesa_add_renderbuffer(&stfb->Base, idx, rb);
+      if (idx == BUFFER_BACK_LEFT) {
+         rb = st_new_renderbuffer_fb(format, stfb->iface->visual->samples, sw);
+         if (!rb)
+            return FALSE;
+         _mesa_add_renderbuffer(&stfb->Base, BUFFER_FRONT_LEFT, rb);
+      }
    }
    else {
       if (util_format_get_component_bits(format, UTIL_FORMAT_COLORSPACE_ZS, 0))
