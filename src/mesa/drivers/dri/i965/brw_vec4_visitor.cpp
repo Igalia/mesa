@@ -1793,9 +1793,29 @@ vec4_visitor::visit(ir_expression *ir)
       emit(RNDE(result_dst, op[0]));
       break;
 
-   case ir_unop_get_buffer_size:
-      unreachable("not reached: not implemented");
+   case ir_unop_get_buffer_size: {
+      ir_constant *const_uniform_block = ir->operands[0]->as_constant();
+      unsigned ubo_index = const_uniform_block->value.u[0];
+      assert(shader->base.UniformBlocks[ubo_index].IsShaderStorage);
+
+      src_reg surf_index = src_reg(prog_data->base.binding_table.ubo_start +
+                                   ubo_index);
+      vec4_instruction *inst = new(mem_ctx)
+         vec4_instruction(VS_OPCODE_GET_BUFFER_SIZE, result_dst);
+
+      inst->base_mrf = 2;
+      inst->mlen = 1; /* always at least one */
+      inst->src[1] = src_reg(surf_index);
+
+      /* MRF for the first parameter */
+      src_reg lod = src_reg(0);
+      int param_base = inst->base_mrf;
+      int writemask = WRITEMASK_X;
+      emit(MOV(dst_reg(MRF, param_base, glsl_type::int_type, writemask), lod));
+
+      emit(inst);
       break;
+   }
 
    case ir_binop_min:
       emit_minmax(BRW_CONDITIONAL_L, result_dst, op[0], op[1]);
