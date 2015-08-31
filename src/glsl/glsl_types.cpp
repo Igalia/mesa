@@ -1357,6 +1357,115 @@ glsl_type::std140_size(bool row_major) const
    return -1;
 }
 
+unsigned
+glsl_type::std430_base_alignment(bool row_major) const
+{
+   unsigned base_alignment = 0;
+   /* OpenGL 4.30 spec, section 7.6.2.2 "Standard Uniform Block Layout":
+    *
+    * "When using the "std430" storage layout, shader storage
+    * blocks will be laid out in buffer storage identically to uniform and
+    * shader storage blocks using the "std140" layout, except that the base
+    * alignment of arrays of scalars and vectors in rule (4) and of structures
+    * in rule (9) are not rounded up a multiple of the base alignment of a
+    * vec4."
+    */
+
+   /* (1) If the member is a scalar consuming <N> basic machine units, the
+    *     base alignment is <N>.
+    *
+    * (2) If the member is a two- or four-component vector with components
+    *     consuming <N> basic machine units, the base alignment is 2<N> or
+    *     4<N>, respectively.
+    *
+    * (3) If the member is a three-component vector with components consuming
+    *     <N> basic machine units, the base alignment is 4<N>.
+    */
+   if (this->is_array()) {
+      base_alignment = this->fields.array->std430_base_alignment(row_major);
+   } else {
+      /* For the rest of cases, use std140_base_alignment() */
+      base_alignment = this->std140_base_alignment(row_major);
+   }
+   return base_alignment;
+}
+
+unsigned
+glsl_type::std430_size(bool row_major) const
+{
+   unsigned N = is_double() ? 8 : 4;
+
+   /* OpenGL 4.30 spec, section 7.6.2.2 "Standard Uniform Block Layout":
+    *
+    * "When using the "std430" storage layout, shader storage
+    * blocks will be laid out in buffer storage identically to uniform and
+    * shader storage blocks using the "std140" layout, except that the base
+    * alignment of arrays of scalars and vectors in rule (4) and of structures
+    * in rule (9) are not rounded up a multiple of the base alignment of a
+    * vec4."
+    */
+   if (this->is_scalar() || this->is_vector())
+         return this->vector_elements * N;
+
+   if (this->without_array()->is_matrix()) {
+      const struct glsl_type *element_type;
+      const struct glsl_type *vec_type;
+      unsigned int array_len;
+
+      if (this->is_array()) {
+	 element_type = this->fields.array;
+	 array_len = this->length;
+      } else {
+	 element_type = this;
+	 array_len = 1;
+      }
+
+      if (row_major) {
+         vec_type = get_instance(element_type->base_type,
+                                 element_type->matrix_columns, 1);
+
+	 array_len *= element_type->vector_elements;
+      } else {
+	 vec_type = get_instance(element_type->base_type,
+				 element_type->vector_elements, 1);
+	 array_len *= element_type->matrix_columns;
+      }
+      const glsl_type *array_type = glsl_type::get_array_instance(vec_type,
+								  array_len);
+
+      return array_type->std430_size(false);
+   }
+
+   if (this->is_array())
+         return this->length * this->fields.array->std430_size(row_major);
+
+   if (this->is_record()) {
+      unsigned size = 0;
+      unsigned max_align = 0;
+
+      for (unsigned i = 0; i < this->length; i++) {
+         bool field_row_major = row_major;
+         const enum glsl_matrix_layout matrix_layout =
+            glsl_matrix_layout(this->fields.structure[i].matrix_layout);
+         if (matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR) {
+            field_row_major = true;
+         } else if (matrix_layout == GLSL_MATRIX_LAYOUT_COLUMN_MAJOR) {
+            field_row_major = false;
+         }
+
+         const struct glsl_type *field_type = this->fields.structure[i].type;
+         unsigned align = field_type->std430_base_alignment(field_row_major);
+         size = glsl_align(size, align);
+         size += field_type->std430_size(field_row_major);
+
+         max_align = MAX2(align, max_align);
+      }
+      size = glsl_align(size, max_align);
+      return size;
+   }
+   /* For the rest of cases, return std140_size(). */
+   return this->std140_size(row_major);
+}
 
 unsigned
 glsl_type::count_attribute_slots() const
