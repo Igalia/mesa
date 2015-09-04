@@ -63,7 +63,9 @@ program_resource_visitor::process(const glsl_type *type, const char *name)
           || type->without_array()->is_interface());
 
    char *name_copy = ralloc_strdup(NULL, name);
-   recursion(type, &name_copy, strlen(name), false, NULL, false);
+   unsigned packing = type->interface_packing;
+
+   recursion(type, &name_copy, strlen(name), false, NULL, packing, false);
    ralloc_free(name_copy);
 }
 
@@ -73,6 +75,10 @@ program_resource_visitor::process(ir_variable *var)
    const glsl_type *t = var->type;
    const bool row_major =
       var->data.matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR;
+
+   const unsigned packing = var->get_interface_type() ?
+      var->get_interface_type()->interface_packing :
+      var->type->interface_packing;
 
    /* false is always passed for the row_major parameter to the other
     * processing functions because no information is available to do
@@ -110,7 +116,8 @@ program_resource_visitor::process(ir_variable *var)
           * lowering is only applied to non-uniform interface blocks, so we
           * can safely pass false for row_major.
           */
-         recursion(var->type, &name, new_length, row_major, NULL, false);
+         recursion(var->type, &name, new_length, row_major, NULL, packing,
+                   false);
       }
       ralloc_free(name);
    } else if (var->data.from_named_ifc_block_nonarray) {
@@ -134,22 +141,22 @@ program_resource_visitor::process(ir_variable *var)
        * is only applied to non-uniform interface blocks, so we can safely
        * pass false for row_major.
        */
-      recursion(var->type, &name, strlen(name), row_major, NULL, false);
+      recursion(var->type, &name, strlen(name), row_major, NULL, packing, false);
       ralloc_free(name);
    } else if (t->without_array()->is_record()) {
       char *name = ralloc_strdup(NULL, var->name);
-      recursion(var->type, &name, strlen(name), row_major, NULL, false);
+      recursion(var->type, &name, strlen(name), row_major, NULL, packing, false);
       ralloc_free(name);
    } else if (t->is_interface()) {
       char *name = ralloc_strdup(NULL, var->type->name);
-      recursion(var->type, &name, strlen(name), row_major, NULL, false);
+      recursion(var->type, &name, strlen(name), row_major, NULL, packing, false);
       ralloc_free(name);
    } else if (t->is_array() && t->fields.array->is_interface()) {
       char *name = ralloc_strdup(NULL, var->type->fields.array->name);
-      recursion(var->type, &name, strlen(name), row_major, NULL, false);
+      recursion(var->type, &name, strlen(name), row_major, NULL, packing, false);
       ralloc_free(name);
    } else {
-      this->visit_field(t, var->name, row_major, NULL, false);
+      this->visit_field(t, var->name, row_major, NULL, packing, false);
    }
 }
 
@@ -157,6 +164,7 @@ void
 program_resource_visitor::recursion(const glsl_type *t, char **name,
                                     size_t name_length, bool row_major,
                                     const glsl_type *record_type,
+                                    const unsigned packing,
                                     bool last_field)
 {
    /* Records need to have each field processed individually.
@@ -170,7 +178,7 @@ program_resource_visitor::recursion(const glsl_type *t, char **name,
          record_type = t;
 
       if (t->is_record())
-         this->enter_record(t, *name, row_major);
+         this->enter_record(t, *name, row_major, packing);
 
       for (unsigned i = 0; i < t->length; i++) {
 	 const char *field = t->fields.structure[i].name;
@@ -204,6 +212,7 @@ program_resource_visitor::recursion(const glsl_type *t, char **name,
          recursion(t->fields.structure[i].type, name, new_length,
                    field_row_major,
                    record_type,
+                   packing,
                    (i + 1) == t->length);
 
          /* Only the first leaf-field of the record gets called with the
@@ -214,7 +223,7 @@ program_resource_visitor::recursion(const glsl_type *t, char **name,
 
       if (t->is_record()) {
          (*name)[name_length] = '\0';
-         this->leave_record(t, *name, row_major);
+         this->leave_record(t, *name, row_major, packing);
       }
    } else if (t->is_array() && (t->fields.array->is_record()
                                 || t->fields.array->is_interface())) {
@@ -235,6 +244,7 @@ program_resource_visitor::recursion(const glsl_type *t, char **name,
 
          recursion(t->fields.array, name, new_length, row_major,
                    record_type,
+                   packing,
                    (i + 1) == t->length);
 
          /* Only the first leaf-field of the record gets called with the
@@ -243,7 +253,7 @@ program_resource_visitor::recursion(const glsl_type *t, char **name,
          record_type = NULL;
       }
    } else {
-      this->visit_field(t, *name, row_major, record_type, last_field);
+      this->visit_field(t, *name, row_major, record_type, packing, last_field);
    }
 }
 
@@ -251,6 +261,7 @@ void
 program_resource_visitor::visit_field(const glsl_type *type, const char *name,
                                       bool row_major,
                                       const glsl_type *,
+                                      const unsigned,
                                       bool /* last_field */)
 {
    visit_field(type, name, row_major);
@@ -264,12 +275,14 @@ program_resource_visitor::visit_field(const glsl_struct_field *field)
 }
 
 void
-program_resource_visitor::enter_record(const glsl_type *, const char *, bool)
+program_resource_visitor::enter_record(const glsl_type *, const char *, bool,
+                                       const unsigned)
 {
 }
 
 void
-program_resource_visitor::leave_record(const glsl_type *, const char *, bool)
+program_resource_visitor::leave_record(const glsl_type *, const char *, bool,
+                                       const unsigned)
 {
 }
 
@@ -579,25 +592,34 @@ private:
    }
 
    virtual void enter_record(const glsl_type *type, const char *,
-                             bool row_major) {
+                             bool row_major, const unsigned packing) {
       assert(type->is_record());
       if (this->ubo_block_index == -1)
          return;
-      this->ubo_byte_offset = glsl_align(
+      if (packing == GLSL_INTERFACE_PACKING_STD430)
+         this->ubo_byte_offset = glsl_align(
+            this->ubo_byte_offset, type->std430_base_alignment(row_major));
+      else
+         this->ubo_byte_offset = glsl_align(
             this->ubo_byte_offset, type->std140_base_alignment(row_major));
    }
 
    virtual void leave_record(const glsl_type *type, const char *,
-                             bool row_major) {
+                             bool row_major, const unsigned packing) {
       assert(type->is_record());
       if (this->ubo_block_index == -1)
          return;
-      this->ubo_byte_offset = glsl_align(
+      if (packing == GLSL_INTERFACE_PACKING_STD430)
+         this->ubo_byte_offset = glsl_align(
+            this->ubo_byte_offset, type->std430_base_alignment(row_major));
+      else
+         this->ubo_byte_offset = glsl_align(
             this->ubo_byte_offset, type->std140_base_alignment(row_major));
    }
 
    virtual void visit_field(const glsl_type *type, const char *name,
                             bool row_major, const glsl_type *record_type,
+                            const unsigned packing,
                             bool /* last_field */)
    {
       assert(!type->without_array()->is_record());
@@ -667,14 +689,23 @@ private:
       if (this->ubo_block_index != -1) {
 	 this->uniforms[id].block_index = this->ubo_block_index;
 
-	 const unsigned alignment = type->std140_base_alignment(row_major);
+	 unsigned alignment = type->std140_base_alignment(row_major);
+         if (packing == GLSL_INTERFACE_PACKING_STD430)
+            alignment = type->std430_base_alignment(row_major);
 	 this->ubo_byte_offset = glsl_align(this->ubo_byte_offset, alignment);
 	 this->uniforms[id].offset = this->ubo_byte_offset;
-	 this->ubo_byte_offset += type->std140_size(row_major);
+         if (packing == GLSL_INTERFACE_PACKING_STD430)
+            this->ubo_byte_offset += type->std430_size(row_major);
+         else
+            this->ubo_byte_offset += type->std140_size(row_major);
 
-	 if (type->is_array()) {
-	    this->uniforms[id].array_stride =
-	       glsl_align(type->fields.array->std140_size(row_major), 16);
+         if (type->is_array()) {
+            if (packing == GLSL_INTERFACE_PACKING_STD430)
+               this->uniforms[id].array_stride =
+                  type->fields.array->std430_array_stride(row_major);
+            else
+               this->uniforms[id].array_stride =
+                  glsl_align(type->fields.array->std140_size(row_major), 16);
 	 } else {
 	    this->uniforms[id].array_stride = 0;
 	 }
@@ -685,7 +716,11 @@ private:
             const unsigned items = row_major ? matrix->matrix_columns : matrix->vector_elements;
 
             assert(items <= 4);
-            this->uniforms[id].matrix_stride = glsl_align(items * N, 16);
+            if (packing == GLSL_INTERFACE_PACKING_STD430)
+               this->uniforms[id].matrix_stride = items < 3 ? items * N :
+                                                          glsl_align(items * N, 16);
+            else
+               this->uniforms[id].matrix_stride = glsl_align(items * N, 16);
 	    this->uniforms[id].row_major = row_major;
 	 } else {
 	    this->uniforms[id].matrix_stride = 0;
