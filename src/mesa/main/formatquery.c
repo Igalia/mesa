@@ -43,14 +43,553 @@ _mesa_query_samples_for_format(struct gl_context *ctx, GLenum target,
    return 1;
 }
 
+static bool
+_legal_parameters(struct gl_context *ctx, GLenum target, GLenum internalformat,
+                  GLenum pname, GLsizei bufSize, GLint *params)
+{
+   switch(target){
+   case GL_TEXTURE_1D:
+      break;
+   case GL_TEXTURE_1D_ARRAY:
+      break;
+   case GL_TEXTURE_2D:
+      break;
+   case GL_TEXTURE_2D_ARRAY:
+      break;
+   case GL_TEXTURE_3D:
+      break;
+   case GL_TEXTURE_CUBE_MAP:
+      break;
+   case GL_TEXTURE_CUBE_MAP_ARRAY:
+      break;
+   case GL_TEXTURE_RECTANGLE:
+      break;
+   case GL_TEXTURE_BUFFER:
+      break;
+   case GL_RENDERBUFFER:
+      break;
+   case GL_TEXTURE_2D_MULTISAMPLE:
+      break;
+   case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+      break;
+   default:
+      /* The ARB_internalformat_query spec says:
+       *
+       * "The INVALID_ENUM error is generated if the <target> parameter to
+       * GetInternalformati*v is not one of the targets listed in Table 6.xx.
+       *
+       * Being Table 6.xxx in the same spec:
+       *
+       * Target                         Usage
+       * -----------------              ------
+       * TEXTURE_1D                     1D texture
+       * TEXTURE_1D_ARRAY               1D array texture
+       * TEXTURE_2D                     2D texture
+       * TEXTURE_2D_ARRAY               2D array texture
+       * TEXTURE_2D_MULTISAMPLE         2D multisample texture
+       * TEXTURE_2D_MULTISAMPLE_ARRAY   2D multisample array texture
+       * TEXTURE_3D                     3D texture
+       * TEXTURE_BUFFER                 buffer texture
+       * TEXTURE_CUBE_MAP               cube map texture
+       * TEXTURE_CUBE_MAP_ARRAY         cube map array texture
+       * TEXTURE_RECTANGLE              rectangle texture
+       * RENDERBUFFER                   renderbuffer
+       *
+       * Table 6.xx: Possible targets that <internalformat> can be used with
+       * and the corresponding usage meaning.
+       */
+      _mesa_error(ctx, GL_INVALID_ENUM,
+                  "glGetInternalformativ(target=%s)",
+                  _mesa_enum_to_string(target));
+      return false;
+   }
+
+   switch(pname){
+   case GL_SAMPLES:
+      break;
+   case GL_NUM_SAMPLE_COUNTS:
+      break;
+   case GL_INTERNALFORMAT_SUPPORTED:
+      break;
+   case GL_INTERNALFORMAT_PREFERRED:
+      break;
+   case GL_INTERNALFORMAT_RED_SIZE:
+      break;
+   case GL_INTERNALFORMAT_GREEN_SIZE:
+      break;
+   case GL_INTERNALFORMAT_BLUE_SIZE:
+      break;
+   case GL_INTERNALFORMAT_ALPHA_SIZE:
+      break;
+   case GL_INTERNALFORMAT_DEPTH_SIZE:
+      break;
+   case GL_INTERNALFORMAT_STENCIL_SIZE:
+      break;
+   case GL_INTERNALFORMAT_SHARED_SIZE:
+      break;
+   case GL_INTERNALFORMAT_RED_TYPE:
+      break;
+   case GL_INTERNALFORMAT_GREEN_TYPE:
+      break;
+   case GL_INTERNALFORMAT_BLUE_TYPE:
+      break;
+   case GL_INTERNALFORMAT_ALPHA_TYPE:
+      break;
+   case GL_INTERNALFORMAT_DEPTH_TYPE:
+      break;
+   case GL_INTERNALFORMAT_STENCIL_TYPE:
+      break;
+   case GL_MAX_WIDTH:
+      break;
+   case GL_MAX_HEIGHT:
+      break;
+   case GL_MAX_DEPTH:
+      break;
+   case GL_MAX_LAYERS:
+      break;
+   case GL_MAX_COMBINED_DIMENSIONS:
+      break;
+   case GL_COLOR_COMPONENTS:
+      break;
+   case GL_DEPTH_COMPONENTS:
+      break;
+   case GL_STENCIL_COMPONENTS:
+      break;
+   case GL_COLOR_RENDERABLE:
+      break;
+   case GL_DEPTH_RENDERABLE:
+      break;
+   case GL_STENCIL_RENDERABLE:
+      break;
+   case GL_FRAMEBUFFER_RENDERABLE:
+      break;
+   case GL_FRAMEBUFFER_RENDERABLE_LAYERED:
+      break;
+   case GL_FRAMEBUFFER_BLEND:
+      break;
+   case GL_READ_PIXELS:
+      break;
+   case GL_READ_PIXELS_FORMAT:
+      break;
+   case GL_READ_PIXELS_TYPE:
+      break;
+   case GL_TEXTURE_IMAGE_FORMAT:
+      break;
+   case GL_TEXTURE_IMAGE_TYPE:
+      break;
+   case GL_GET_TEXTURE_IMAGE_FORMAT:
+      break;
+   case GL_GET_TEXTURE_IMAGE_TYPE:
+      break;
+   case GL_MIPMAP:
+      break;
+   case GL_MANUAL_GENERATE_MIPMAP:
+      break;
+   case GL_AUTO_GENERATE_MIPMAP:
+      break;
+   case GL_COLOR_ENCODING:
+      break;
+   case GL_SRGB_READ:
+      break;
+   case GL_SRGB_WRITE:
+      break;
+   case GL_SRGB_DECODE_ARB:
+      /* If ARB_texture_sRGB_decode or EXT_texture_sRGB_decode or
+       * equivalent functionality is not supported, queries for the
+       * SRGB_DECODE_ARB <pname> set the INVALID_ENUM error.
+       */
+      if (!ctx->Extensions.EXT_texture_sRGB_decode) {
+         _mesa_error(ctx, GL_INVALID_ENUM,
+                     "glGetInternalformativ(pname=%s)",
+                     _mesa_enum_to_string(pname));
+         return false;
+      }
+
+      break;
+   case GL_FILTER:
+      break;
+   case GL_VERTEX_TEXTURE:
+      break;
+   case GL_TESS_CONTROL_TEXTURE:
+      break;
+   case GL_TESS_EVALUATION_TEXTURE:
+      break;
+   case GL_GEOMETRY_TEXTURE:
+      break;
+   case GL_FRAGMENT_TEXTURE:
+      break;
+   case GL_COMPUTE_TEXTURE:
+      break;
+   case GL_TEXTURE_SHADOW:
+      break;
+   case GL_TEXTURE_GATHER:
+      break;
+   case GL_TEXTURE_GATHER_SHADOW:
+      break;
+   case GL_SHADER_IMAGE_LOAD:
+      break;
+   case GL_SHADER_IMAGE_STORE:
+      break;
+   case GL_SHADER_IMAGE_ATOMIC:
+      break;
+   case GL_IMAGE_TEXEL_SIZE:
+      break;
+   case GL_IMAGE_COMPATIBILITY_CLASS:
+      break;
+   case GL_IMAGE_PIXEL_FORMAT:
+      break;
+   case GL_IMAGE_PIXEL_TYPE:
+      break;
+   case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST:
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST:
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE:
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
+      break;
+   case GL_TEXTURE_COMPRESSED:
+      break;
+   case GL_TEXTURE_COMPRESSED_BLOCK_WIDTH:
+      break;
+   case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
+      break;
+   case GL_TEXTURE_COMPRESSED_BLOCK_SIZE:
+      break;
+   case GL_CLEAR_BUFFER:
+      break;
+   case GL_TEXTURE_VIEW:
+      break;
+   case GL_VIEW_COMPATIBILITY_CLASS:
+      break;
+   default:
+      /* The ARB_internalformat_query2 spec says:
+       *
+       * "The INVALID_ENUM error is generated if the <pname> parameter is
+       * not one of the listed possibilities."
+       *
+       * Being the listed possibilities:
+       *
+       * SAMPLES, NUM_SAMPLE_COUNTS, INTERNALFORMAT_SUPPORTED,
+       * INTERNALFORMAT_PREFERRED, INTERNALFORMAT_RED_SIZE,
+       * INTERNALFORMAT_GREEN_SIZE, INTERNALFORMAT_BLUE_SIZE,
+       * INTERNALFORMAT_ALPHA_SIZE, INTERNALFORMAT_DEPTH_SIZE,
+       * INTERNALFORMAT_STENCIL_SIZE, INTERNALFORMAT_SHARED_SIZE,
+       * INTERNALFORMAT_RED_TYPE, INTERNALFORMAT_GREEN_TYPE,
+       * INTERNALFORMAT_BLUE_TYPE, INTERNALFORMAT_ALPHA_TYPE,
+       * INTERNALFORMAT_DEPTH_TYPE, INTERNALFORMAT_STENCIL_TYPE,
+       * MAX_WIDTH, MAX_HEIGHT, MAX_DEPTH, MAX_LAYERS, MAX_COMBINED_DIMENSIONS,
+       * COLOR_COMPONENTS, DEPTH_COMPONENTS, STENCIL_COMPONENTS,
+       * COLOR_RENDERABLE, DEPTH_RENDERABLE, STENCIL_RENDERABLE,
+       * FRAMEBUFFER_RENDERABLE, FRAMEBUFFER_RENDERABLE_LAYERED,
+       * FRAMEBUFFER_BLEND,
+       * READ_PIXELS, READ_PIXELS_FORMAT, READ_PIXELS_TYPE,
+       * TEXTURE_IMAGE_FORMAT, TEXTURE_IMAGE_TYPE,
+       * GET_TEXTURE_IMAGE_FORMAT, GET_TEXTURE_IMAGE_TYPE,
+       * MIPMAP, MANUAL_GENERATE_MIPMAP, AUTO_GENERATE_MIPMAP,
+       * COLOR_ENCODING, SRGB_READ, SRGB_WRITE, SRGB_DECODE_ARB, FILTER,
+       * VERTEX_TEXTURE, TESS_CONTROL_TEXTURE, TESS_EVALUATION_TEXTURE,
+       * GEOMETRY_TEXTURE, FRAGMENT_TEXTURE, COMPUTE_TEXTURE,
+       * TEXTURE_SHADOW, TEXTURE_GATHER, TEXTURE_GATHER_SHADOW,
+       * SHADER_IMAGE_LOAD, SHADER_IMAGE_STORE, SHADER_IMAGE_ATOMIC,
+       * IMAGE_TEXEL_SIZE, IMAGE_COMPATIBILITY_CLASS, IMAGE_PIXEL_FORMAT,
+       * IMAGE_PIXEL_TYPE, IMAGE_FORMAT_COMPATIBILITY_TYPE,
+       * SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST,
+       * SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST,
+       * SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE,
+       * SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE,
+       * TEXTURE_COMPRESSED, TEXTURE_COMPRESSED_BLOCK_WIDTH,
+       * TEXTURE_COMPRESSED_BLOCK_HEIGHT, TEXTURE_COMPRESSED_BLOCK_SIZE,
+       * CLEAR_BUFFER, TEXTURE_VIEW, VIEW_COMPATIBILITY_CLASS
+       */
+      _mesa_error(ctx, GL_INVALID_ENUM,
+                  "glGetInternalformativ(pname=%s)",
+                  _mesa_enum_to_string(pname));
+      return false;
+   }
+
+   if (bufSize < 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE,
+                  "glGetInternalformativ(target=%s)",
+                  _mesa_enum_to_string(target));
+      return false;
+   }
+
+   return true;
+}
+
+static void
+_internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
+                       GLsizei bufSize, GLint *params)
+{
+   GLint buffer[16];
+   GLsizei count = 0;
+   GET_CURRENT_CONTEXT(ctx);
+
+   ASSERT_OUTSIDE_BEGIN_END(ctx);
+
+   if (!_legal_parameters(ctx, target, internalformat, pname, bufSize, params))
+      return;
+
+   switch(pname){
+   case GL_SAMPLES:
+      /* @TODO */
+      break;
+   case GL_NUM_SAMPLE_COUNTS:
+      /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_SUPPORTED:
+     /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_PREFERRED:
+     /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_RED_SIZE:
+      /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_GREEN_SIZE:
+     /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_BLUE_SIZE:
+     /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_ALPHA_SIZE:
+     /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_DEPTH_SIZE:
+     /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_STENCIL_SIZE:
+      /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_SHARED_SIZE:
+     /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_RED_TYPE:
+      /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_GREEN_TYPE:
+      /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_BLUE_TYPE:
+      /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_ALPHA_TYPE:
+      /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_DEPTH_TYPE:
+      /* @TODO */
+      break;
+   case GL_INTERNALFORMAT_STENCIL_TYPE:
+      /* @TODO */
+      break;
+   case GL_MAX_WIDTH:
+      /* @TODO */
+      break;
+   case GL_MAX_HEIGHT:
+      /* @TODO */
+      break;
+   case GL_MAX_DEPTH:
+      /* @TODO */
+      break;
+   case GL_MAX_LAYERS:
+      /* @TODO */
+      break;
+   case GL_MAX_COMBINED_DIMENSIONS:
+      /* @TODO */
+      break;
+   case GL_COLOR_COMPONENTS:
+      /* @TODO */
+      break;
+   case GL_DEPTH_COMPONENTS:
+      /* @TODO */
+      break;
+   case GL_STENCIL_COMPONENTS:
+      /* @TODO */
+      break;
+   case GL_COLOR_RENDERABLE:
+      /* @TODO */
+      break;
+   case GL_DEPTH_RENDERABLE:
+      /* @TODO */
+      break;
+   case GL_STENCIL_RENDERABLE:
+      /* @TODO */
+      break;
+   case GL_FRAMEBUFFER_RENDERABLE:
+     /* @TODO */
+      break;
+   case GL_FRAMEBUFFER_RENDERABLE_LAYERED:
+    /* @TODO */
+      break;
+   case GL_FRAMEBUFFER_BLEND:
+    /* @TODO */
+      break;
+   case GL_READ_PIXELS:
+    /* @TODO */
+      break;
+   case GL_READ_PIXELS_FORMAT:
+    /* @TODO */
+      break;
+   case GL_READ_PIXELS_TYPE:
+    /* @TODO */
+      break;
+   case GL_TEXTURE_IMAGE_FORMAT:
+    /* @TODO */
+      break;
+   case GL_TEXTURE_IMAGE_TYPE:
+    /* @TODO */
+      break;
+   case GL_GET_TEXTURE_IMAGE_FORMAT:
+    /* @TODO */
+      break;
+   case GL_GET_TEXTURE_IMAGE_TYPE:
+      /* @TODO */
+      break;
+   case GL_MIPMAP:
+      /* @TODO */
+      break;
+   case GL_MANUAL_GENERATE_MIPMAP:
+      /* @TODO */
+      break;
+   case GL_AUTO_GENERATE_MIPMAP:
+      /* @TODO */
+      break;
+   case GL_COLOR_ENCODING:
+      /* @TODO */
+      break;
+   case GL_SRGB_READ:
+      /* @TODO */
+      break;
+   case GL_SRGB_WRITE:
+      /* @TODO */
+      break;
+   case GL_SRGB_DECODE_ARB:
+      /* @TODO */
+      break;
+   case GL_FILTER:
+      /* @TODO */
+      break;
+   case GL_VERTEX_TEXTURE:
+      /* @TODO */
+      break;
+   case GL_TESS_CONTROL_TEXTURE:
+      /* @TODO */
+      break;
+   case GL_TESS_EVALUATION_TEXTURE:
+      /* @TODO */
+      break;
+   case GL_GEOMETRY_TEXTURE:
+      /* @TODO */
+      break;
+   case GL_FRAGMENT_TEXTURE:
+      /* @TODO */
+      break;
+   case GL_COMPUTE_TEXTURE:
+      /* @TODO */
+      break;
+   case GL_TEXTURE_SHADOW:
+      /* @TODO */
+      break;
+   case GL_TEXTURE_GATHER:
+      /* @TODO */
+      break;
+   case GL_TEXTURE_GATHER_SHADOW:
+      /* @TODO */
+      break;
+   case GL_SHADER_IMAGE_LOAD:
+      /* @TODO */
+      break;
+   case GL_SHADER_IMAGE_STORE:
+      /* @TODO */
+      break;
+   case GL_SHADER_IMAGE_ATOMIC:
+      /* @TODO */
+      break;
+   case GL_IMAGE_TEXEL_SIZE:
+      /* @TODO */
+      break;
+   case GL_IMAGE_COMPATIBILITY_CLASS:
+      /* @TODO */
+      break;
+   case GL_IMAGE_PIXEL_FORMAT:
+      /* @TODO */
+      break;
+   case GL_IMAGE_PIXEL_TYPE:
+      /* @TODO */
+      break;
+   case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
+      /* @TODO */
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST:
+      /* @TODO */
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST:
+      /* @TODO */
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE:
+      /* @TODO */
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
+      /* @TODO */
+      break;
+   case GL_TEXTURE_COMPRESSED:
+      /* @TODO */
+      break;
+   case GL_TEXTURE_COMPRESSED_BLOCK_WIDTH:
+      /* @TODO */
+      break;
+   case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
+      /* @TODO */
+      break;
+   case GL_TEXTURE_COMPRESSED_BLOCK_SIZE:
+      /* @TODO */
+      break;
+   case GL_CLEAR_BUFFER:
+      /* @TODO */
+      break;
+   case GL_TEXTURE_VIEW:
+      /* @TODO */
+      break;
+   case GL_VIEW_COMPATIBILITY_CLASS:
+      /* @TODO */
+      break;
+   default:
+      unreachable("bad param");
+   }
+
+   if (bufSize != 0 && params == NULL) {
+      /* Emit a warning to aid application debugging, but go ahead and do the
+       * memcpy (and probably crash) anyway.
+       */
+      _mesa_warning(ctx,
+                    "glGetInternalformativ(bufSize = %d, but params = NULL)",
+                    bufSize);
+   }
+
+   /* Copy the data from the temporary buffer to the buffer supplied by the
+    * application.  Clamp the size of the copy to the size supplied by the
+    * application.
+    */
+   memcpy(params, buffer, MIN2(count, bufSize) * sizeof(GLint));
+}
 
 void GLAPIENTRY
 _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
                           GLsizei bufSize, GLint *params)
 {
+   GET_CURRENT_CONTEXT(ctx);
+
+   /* FIXME: code-refactor */
+   if (ctx->Extensions.ARB_internalformat_query2) {
+      _internalformat_query2(target, internalformat, pname, bufSize, params);
+      return;
+   }
+
    GLint buffer[16];
    GLsizei count = 0;
-   GET_CURRENT_CONTEXT(ctx);
 
    ASSERT_OUTSIDE_BEGIN_END(ctx);
 
