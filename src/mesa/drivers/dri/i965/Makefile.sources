@@ -137,6 +137,7 @@ i965_FILES = \
 	brw_program.c \
 	brw_program.h \
 	brw_primitive_restart.c \
+	brw_queryformat.c \
 	brw_queryobj.c \
 	brw_reset.c \
 	brw_sampler_state.c \
