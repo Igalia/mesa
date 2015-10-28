@@ -154,9 +154,326 @@ _set_unsupported(GLenum pname, GLint buffer[16], GLsizei *count)
    }
 }
 
+/* Implements the Dependencies section of the ARB_internalformat_query2 spec.
+ * Returns 'true' if everything went fine, 'false' otherwise.
+ *
+ * @FIXME: this method and _legal_parameters could be possibly be joint.
+ */
+static bool
+_check_dependencies(struct gl_context *ctx, GLenum target,
+                    GLenum pname, GLint buffer[16], GLsizei *count)
+{
+   switch(target){
+   case GL_TEXTURE_2D:
+   case GL_TEXTURE_3D:
+      break;
+   case GL_TEXTURE_1D:
+      /* Taken from "legal_teximage_target" method */
+      if (!_mesa_is_desktop_gl(ctx))
+         return false;
+
+      break;
+   case GL_TEXTURE_1D_ARRAY:
+      /* Taken from "legal_teximage_target" method */
+      if (!(_mesa_is_desktop_gl(ctx) && ctx->Extensions.EXT_texture_array))
+         return false;
+
+      break;
+   case GL_TEXTURE_2D_ARRAY:
+      /* Taken from "legal_teximage_target" method"*/
+      if (!((_mesa_is_desktop_gl(ctx) && ctx->Extensions.EXT_texture_array) || _mesa_is_gles3(ctx)))
+          return false;
+
+      break;
+   case GL_TEXTURE_CUBE_MAP:
+      /* Addittional check (not mentioned in the ARB_internalformat_query2 spec)
+       * Taken from "legal_teximage_target" method
+       */
+      if (!(_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_texture_cube_map))
+         return false;
+
+      break;
+   case GL_TEXTURE_CUBE_MAP_ARRAY:
+      /* Taken from "legal_teximage_target" method */
+      if (!(_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_texture_cube_map_array))
+         return false;
+
+      break;
+   case GL_TEXTURE_RECTANGLE:
+      /* Taken from "legal_teximage_target" method */
+      if (!(_mesa_is_desktop_gl(ctx) && ctx->Extensions.NV_texture_rectangle))
+         return false;
+
+      break;
+   case GL_TEXTURE_BUFFER:
+      /* Taken from "_mesa_texture_buffer_range" method */
+
+      /* NOTE: ARB_texture_buffer_object has interactions with
+       * the compatibility profile that are not implemented.
+       */
+      if (!(ctx->API == API_OPENGL_CORE &&
+            ctx->Extensions.ARB_texture_buffer_object))
+         return false;
+
+      break;
+   case GL_RENDERBUFFER:
+      /* @FIXME: Also check EXT_framebuffer_object */
+      if (!ctx->Extensions.ARB_framebuffer_object)
+         return false;
+
+      break;
+   case GL_TEXTURE_2D_MULTISAMPLE:
+   case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+      /* Taken from the "texture_image_multisample" method */
+      if (!(ctx->Extensions.ARB_texture_multisample && _mesa_is_desktop_gl(ctx))
+          && !_mesa_is_gles31(ctx))
+         return false;
+
+      break;
+   default:
+      unreachable("invalid target");
+   }
+
+   switch(pname){
+   case GL_SAMPLES:
+      break;
+   case GL_NUM_SAMPLE_COUNTS:
+      break;
+   case GL_INTERNALFORMAT_SUPPORTED:
+      break;
+   case GL_INTERNALFORMAT_PREFERRED:
+      break;
+   case GL_INTERNALFORMAT_RED_SIZE:
+      break;
+   case GL_INTERNALFORMAT_GREEN_SIZE:
+      break;
+   case GL_INTERNALFORMAT_BLUE_SIZE:
+      break;
+   case GL_INTERNALFORMAT_ALPHA_SIZE:
+      break;
+   case GL_INTERNALFORMAT_DEPTH_SIZE:
+      break;
+   case GL_INTERNALFORMAT_STENCIL_SIZE:
+      break;
+   case GL_INTERNALFORMAT_SHARED_SIZE:
+      break;
+   case GL_INTERNALFORMAT_RED_TYPE:
+      break;
+   case GL_INTERNALFORMAT_GREEN_TYPE:
+      break;
+   case GL_INTERNALFORMAT_BLUE_TYPE:
+      break;
+   case GL_INTERNALFORMAT_ALPHA_TYPE:
+      break;
+   case GL_INTERNALFORMAT_DEPTH_TYPE:
+      break;
+   case GL_INTERNALFORMAT_STENCIL_TYPE:
+      break;
+   case GL_MAX_WIDTH:
+      break;
+   case GL_MAX_HEIGHT:
+      break;
+   case GL_MAX_DEPTH:
+      break;
+   case GL_MAX_LAYERS:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 20) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 20))
+          return false;
+
+      break;
+   case GL_MAX_COMBINED_DIMENSIONS:
+      break;
+   case GL_COLOR_COMPONENTS:
+      break;
+   case GL_DEPTH_COMPONENTS:
+      break;
+   case GL_STENCIL_COMPONENTS:
+      break;
+   case GL_COLOR_RENDERABLE:
+      break;
+   case GL_DEPTH_RENDERABLE:
+      break;
+   case GL_STENCIL_RENDERABLE:
+      break;
+   case GL_FRAMEBUFFER_RENDERABLE:
+      /* @FIXME: Also check EXT_framebuffer_object */
+      if  ((_mesa_is_desktop_gl(ctx) && ctx->Version <= 20) ||
+           !ctx->Extensions.ARB_framebuffer_object)
+      return false;
+
+      break;
+   case GL_FRAMEBUFFER_RENDERABLE_LAYERED:
+      /* @FIXME: Also check EXT_framebuffer_object */
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 20) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 20) ||
+          !ctx->Extensions.ARB_framebuffer_object ||
+          !ctx->Extensions.EXT_texture_array)
+         return false;
+
+      break;
+   case GL_FRAMEBUFFER_BLEND:
+      /* @FIXME: Also check EXT_framebuffer_object */
+      if  ((_mesa_is_desktop_gl(ctx) && ctx->Version <= 20)  ||
+          !ctx->Extensions.ARB_framebuffer_object)
+         return false;
+
+      break;
+   case GL_READ_PIXELS:
+      break;
+   case GL_READ_PIXELS_FORMAT:
+      break;
+   case GL_READ_PIXELS_TYPE:
+      break;
+   case GL_TEXTURE_IMAGE_FORMAT:
+      if (ctx->API == API_OPENGLES2 && ctx->Version <= 30)
+         return false;
+
+      break;
+   case GL_TEXTURE_IMAGE_TYPE:
+      if (ctx->API == API_OPENGLES2 && ctx->Version <= 30)
+         return false;
+
+      break;
+   case GL_GET_TEXTURE_IMAGE_FORMAT:
+      break;
+   case GL_GET_TEXTURE_IMAGE_TYPE:
+      break;
+   case GL_MIPMAP:
+      break;
+   case GL_MANUAL_GENERATE_MIPMAP:
+      /* @FIXME: Also check EXT_framebuffer_object */
+      if  ((_mesa_is_desktop_gl(ctx) && ctx->Version <= 20) ||
+         !ctx->Extensions.ARB_framebuffer_object)
+         return false;
+
+      break;
+   case GL_AUTO_GENERATE_MIPMAP:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30)  ||
+          (ctx->API = API_OPENGL_CORE && ctx->Version >= 32))
+         return false;
+
+      break;
+   case GL_COLOR_ENCODING:
+      break;
+   case GL_SRGB_READ:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 20) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 20) ||
+          !ctx->Extensions.EXT_texture_sRGB)
+         return false;
+
+      break;
+   case GL_SRGB_WRITE:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 20) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 20) ||
+          !ctx->Extensions.EXT_framebuffer_sRGB)
+         return false;
+
+      break;
+   case GL_SRGB_DECODE_ARB:
+      break;
+   case GL_FILTER:
+      break;
+   case GL_VERTEX_TEXTURE:
+      break;
+   case GL_TESS_CONTROL_TEXTURE:
+   case GL_TESS_EVALUATION_TEXTURE:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 30) ||
+          !ctx->Extensions.ARB_tessellation_shader)
+         return false;
+
+      break;
+   case GL_GEOMETRY_TEXTURE:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 30) ||
+          !ctx->Extensions.ARB_geometry_shader4)
+         return false;
+
+      break;
+   case GL_FRAGMENT_TEXTURE:
+      break;
+   case GL_COMPUTE_TEXTURE:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 40) ||
+          !ctx->Extensions.ARB_compute_shader)
+         return false;
+
+      break;
+   case GL_TEXTURE_SHADOW:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 20) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 23))
+         return false;
+
+      break;
+   case GL_TEXTURE_GATHER:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 30) ||
+          !ctx->Extensions.ARB_texture_gather)
+         return false;
+
+      break;
+   case GL_TEXTURE_GATHER_SHADOW:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 30))
+         return false;
+
+      break;
+   case GL_SHADER_IMAGE_LOAD:
+   case GL_SHADER_IMAGE_STORE:
+   case GL_SHADER_IMAGE_ATOMIC:
+   case GL_IMAGE_TEXEL_SIZE:
+   case GL_IMAGE_COMPATIBILITY_CLASS:
+   case GL_IMAGE_PIXEL_FORMAT:
+   case GL_IMAGE_PIXEL_TYPE:
+   case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
+    if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 40) ||
+          !ctx->Extensions.ARB_shader_image_load_store)
+         return false;
+
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST:
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST:
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE:
+      break;
+   case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
+      break;
+   case GL_TEXTURE_COMPRESSED:
+      break;
+   case GL_TEXTURE_COMPRESSED_BLOCK_WIDTH:
+      break;
+   case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
+      break;
+   case GL_TEXTURE_COMPRESSED_BLOCK_SIZE:
+      break;
+   case GL_CLEAR_BUFFER:
+      /* @FIXME: All the drivers in mesa implement ARB_clear_buffer_object */
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 40))
+         return false;
+
+      break;
+   case GL_TEXTURE_VIEW:
+   case GL_VIEW_COMPATIBILITY_CLASS:
+      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
+          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 40) ||
+          !ctx->Extensions.ARB_texture_view)
+         return false;
+
+      break;
+   default:
+      unreachable("invalid pname");
+   }
+
+   return true;
+}
+
 static bool
 _legal_parameters(struct gl_context *ctx, GLenum target, GLenum internalformat,
                   GLenum pname, GLsizei bufSize, GLint *params)
+
 {
    switch(target){
    case GL_TEXTURE_1D:
@@ -437,12 +754,19 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
 {
    GLint buffer[16];
    GLsizei count = 0;
+   bool unsupported = false;
    GET_CURRENT_CONTEXT(ctx);
 
    ASSERT_OUTSIDE_BEGIN_END(ctx);
 
    if (!_legal_parameters(ctx, target, internalformat, pname, bufSize, params))
       return;
+
+#if 0
+   unsupported = !_check_dependencies(ctx, target, pname, buffer, &count);
+   if (unsupported)
+      goto end;
+#endif
 
    switch(pname){
    case GL_SAMPLES:
@@ -671,6 +995,7 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       unreachable("bad param");
    }
 
+ end:
    if (bufSize != 0 && params == NULL) {
       /* Emit a warning to aid application debugging, but go ahead and do the
        * memcpy (and probably crash) anyway.
@@ -679,6 +1004,9 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
                     "glGetInternalformativ(bufSize = %d, but params = NULL)",
                     bufSize);
    }
+
+   if (unsupported)
+      _set_unsupported(pname, buffer, &count);
 
    /* Copy the data from the temporary buffer to the buffer supplied by the
     * application.  Clamp the size of the copy to the size supplied by the
