@@ -5123,6 +5123,11 @@ fs_visitor::optimize()
       OPT(dead_code_eliminate);
    }
 
+   if (OPT(lower_pack)) {
+      OPT(register_coalesce);
+      OPT(dead_code_eliminate);
+   }
+
    OPT(opt_combine_constants);
    OPT(lower_integer_multiplication);
 
