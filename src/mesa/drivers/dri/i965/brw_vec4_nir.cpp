@@ -347,7 +347,7 @@ src_reg
 vec4_visitor::get_nir_src(nir_src src, unsigned num_components)
 {
    /* if type is not specified, default to signed int */
-   return get_nir_src(src, nir_type_int, num_components);
+   return get_nir_src(src, nir_type_int32, num_components);
 }
 
 src_reg
