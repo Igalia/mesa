@@ -771,10 +771,27 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
 
    switch(pname){
    case GL_SAMPLES:
-      /* @TODO */
-      break;
    case GL_NUM_SAMPLE_COUNTS:
-      /* @TODO */
+      switch (target) {
+      case GL_RENDERBUFFER:
+         if (!_mesa_base_fbo_format(ctx, internalformat))
+            unsupported = true;
+         break;
+      case GL_TEXTURE_2D_MULTISAMPLE:
+      case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+         if (!_mesa_is_renderable_texture_format(ctx, internalformat))
+            unsupported = true;
+         break;
+      default:
+         unsupported = true;
+         break;
+      }
+
+      if (unsupported)
+         goto end;
+
+      /* @ TODO: call the driver */
+
       break;
    case GL_INTERNALFORMAT_SUPPORTED:
      /* @TODO */
