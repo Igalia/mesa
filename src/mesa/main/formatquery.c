@@ -28,6 +28,7 @@
 #include "enums.h"
 #include "fbobject.h"
 #include "formatquery.h"
+#include "teximage.h"
 
 /* default implementation of QuerySamplesForFormat driverfunc, for
  * non-multisample-capable drivers. */
@@ -983,7 +984,19 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO */
       break;
    case GL_CLEAR_BUFFER:
-      /* @TODO */
+      /* All drivers in Mesa support  ARB_clear_buffer_object,
+       * no check is needed.
+       */
+      if (target != GL_TEXTURE_BUFFER ||
+          _mesa_validate_texbuffer_format(ctx, internalformat) == MESA_FORMAT_NONE) {
+         unsupported = true;
+         goto end;
+      }
+
+      /* @FIXME: is full support the correct answer ? */
+      buffer[0] = GL_FULL_SUPPORT;
+      count = 1;
+
       break;
    case GL_TEXTURE_VIEW:
       /* @TODO */
