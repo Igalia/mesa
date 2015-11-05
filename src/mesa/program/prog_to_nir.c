@@ -607,7 +607,7 @@ ptn_tex(nir_builder *b, nir_alu_dest dest, nir_ssa_def **src,
 
    instr = nir_tex_instr_create(b->shader, num_srcs);
    instr->op = op;
-   instr->dest_type = nir_type_float;
+   instr->dest_type = nir_type_float32;
    instr->is_shadow = prog_inst->TexShadow;
    instr->sampler_index = prog_inst->TexSrcUnit;
 
