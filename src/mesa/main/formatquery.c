@@ -817,7 +817,17 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_INTERNALFORMAT_SUPPORTED:
-     /* @TODO */
+      if (_is_texture_target(target)) {
+         unsupported = _mesa_base_tex_format(ctx, internalformat) < 0;
+      } else {
+         unsupported = !_mesa_base_fbo_format(ctx, internalformat);
+      }
+
+      if (!unsupported) {
+         buffer[0] = GL_TRUE;
+         count = 1;
+      }
+
       break;
    case GL_INTERNALFORMAT_PREFERRED:
      /* @TODO */
