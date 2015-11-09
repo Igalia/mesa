@@ -830,7 +830,7 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_INTERNALFORMAT_PREFERRED:
-     /* @TODO */
+     /* @TODO: ask the driver */
       break;
    case GL_INTERNALFORMAT_RED_SIZE:
    case GL_INTERNALFORMAT_GREEN_SIZE:
@@ -883,19 +883,19 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       /* @FIXME: same problem than for the *SIZE queries */
       break;
    case GL_MAX_WIDTH:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_MAX_HEIGHT:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_MAX_DEPTH:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_MAX_LAYERS:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_MAX_COMBINED_DIMENSIONS:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_COLOR_COMPONENTS:
       /* @TODO */
@@ -970,22 +970,22 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO */
       break;
    case GL_VERTEX_TEXTURE:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_TESS_CONTROL_TEXTURE:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_TESS_EVALUATION_TEXTURE:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_GEOMETRY_TEXTURE:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_FRAGMENT_TEXTURE:
-      /* @TODO */
+      /* @TODO: ask the driver*/
       break;
    case GL_COMPUTE_TEXTURE:
-      /* @TODO */
+      /* @TODO: ask the driver*/
       break;
    case GL_TEXTURE_SHADOW:
       /* @TODO */
@@ -1021,16 +1021,16 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO */
       break;
    case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
-      /* @TODO */
+      /* @TODO: ask the driver */
       break;
    case GL_TEXTURE_COMPRESSED:
       /* @TODO */
