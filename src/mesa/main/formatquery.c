@@ -833,43 +833,54 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
      /* @TODO */
       break;
    case GL_INTERNALFORMAT_RED_SIZE:
-      /* @TODO */
-      break;
    case GL_INTERNALFORMAT_GREEN_SIZE:
-     /* @TODO */
-      break;
    case GL_INTERNALFORMAT_BLUE_SIZE:
-     /* @TODO */
-      break;
    case GL_INTERNALFORMAT_ALPHA_SIZE:
-     /* @TODO */
-      break;
    case GL_INTERNALFORMAT_DEPTH_SIZE:
-     /* @TODO */
-      break;
    case GL_INTERNALFORMAT_STENCIL_SIZE:
-      /* @TODO */
-      break;
    case GL_INTERNALFORMAT_SHARED_SIZE:
-     /* @TODO */
+      if (_is_texture_target(target)) {
+         /* From the ARB_internalformat_query2 spec:
+          *
+          * For textures this query will return the same information as querying
+          * GetTexLevelParameter{if}v for TEXTURE_*_SIZE would return.
+          */
+         if (target ==  GL_TEXTURE_BUFFER) {
+            /* @TODO: get_tex_level_parameter_buffer */
+            /* @FIXME: same than in the 'else' branch */
+         } else {
+            /* @TODO: Behave as get_tex_level_parameter_image  */
+            /* @FIXME: We do not have the texFormat */
+            /* baseformat = _mesa_base_tex_format(ctx, internalformat); */
+            /* if (_mesa_base_format_has_channel(baseformat, pname)) */
+            /*    *params = _mesa_get_format_bits(texFormat, pname); */
+            /* else */
+            /*    *params = 0; */
+         }
+      } else {
+         /* @TODO */
+
+         /* For uncompressed internal formats, queries of these values return the
+         * actual resolutions that would be used for storing image array components
+         * for the resource.
+         */
+         /*
+         * For compressed internal formats, the resolutions returned specify the
+         * component resolution of an uncompressed internal format that produces
+         * an image of roughly the same quality as the compressed algorithm.
+         */
+      }
+
       break;
+
    case GL_INTERNALFORMAT_RED_TYPE:
-      /* @TODO */
-      break;
    case GL_INTERNALFORMAT_GREEN_TYPE:
-      /* @TODO */
-      break;
    case GL_INTERNALFORMAT_BLUE_TYPE:
-      /* @TODO */
-      break;
    case GL_INTERNALFORMAT_ALPHA_TYPE:
-      /* @TODO */
-      break;
    case GL_INTERNALFORMAT_DEPTH_TYPE:
-      /* @TODO */
-      break;
    case GL_INTERNALFORMAT_STENCIL_TYPE:
       /* @TODO */
+      /* @FIXME: same problem than for the *SIZE queries */
       break;
    case GL_MAX_WIDTH:
       /* @TODO */
