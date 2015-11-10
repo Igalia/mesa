@@ -1112,9 +1112,9 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
    }
 
-   case nir_op_fadd:
-      /* fall through */
    case nir_op_iadd:
+      assert(dst_bit_size < 64);
+   case nir_op_fadd:
       inst = emit(ADD(dst, op[0], op[1]));
       inst->saturate = instr->dest.saturate;
       break;
@@ -1125,6 +1125,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_imul: {
+      assert(dst_bit_size < 64);
       if (devinfo->gen < 8) {
          nir_const_value *value0 = nir_src_as_const_value(instr->src[0].src);
          nir_const_value *value1 = nir_src_as_const_value(instr->src[1].src);
@@ -1160,6 +1161,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    case nir_op_imul_high:
    case nir_op_umul_high: {
+      assert(dst_bit_size < 64);
       struct brw_reg acc = retype(brw_acc_reg(8), dst.type);
 
       if (devinfo->gen >= 8)
@@ -1198,10 +1200,12 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 
    case nir_op_idiv:
    case nir_op_udiv:
+      assert(dst_bit_size < 64);
       emit_math(SHADER_OPCODE_INT_QUOTIENT, dst, op[0], op[1]);
       break;
 
    case nir_op_umod:
+      assert(dst_bit_size < 64);
       emit_math(SHADER_OPCODE_INT_REMAINDER, dst, op[0], op[1]);
       break;
 
@@ -1224,6 +1228,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_uadd_carry: {
+      assert(dst_bit_size < 64);
       struct brw_reg acc = retype(brw_acc_reg(8), BRW_REGISTER_TYPE_UD);
 
       emit(ADDC(dst_null_ud(), op[0], op[1]));
@@ -1232,6 +1237,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    case nir_op_usub_borrow: {
+      assert(dst_bit_size < 64);
       struct brw_reg acc = retype(brw_acc_reg(8), BRW_REGISTER_TYPE_UD);
 
       emit(SUBB(dst_null_ud(), op[0], op[1]));
@@ -1274,16 +1280,18 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_fmin:
    case nir_op_imin:
    case nir_op_umin:
+      assert(dst_bit_size < 64);
+   case nir_op_fmin:
       inst = emit_minmax(BRW_CONDITIONAL_L, dst, op[0], op[1]);
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_fmax:
    case nir_op_imax:
    case nir_op_umax:
+      assert(dst_bit_size < 64);
+   case nir_op_fmax:
       inst = emit_minmax(BRW_CONDITIONAL_GE, dst, op[0], op[1]);
       inst->saturate = instr->dest.saturate;
       break;
@@ -1296,16 +1304,18 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_fddy_fine:
       unreachable("derivatives are not valid in vertex shaders");
 
-   case nir_op_flt:
    case nir_op_ilt:
    case nir_op_ult:
-   case nir_op_fge:
    case nir_op_ige:
    case nir_op_uge:
-   case nir_op_feq:
    case nir_op_ieq:
-   case nir_op_fne:
-   case nir_op_ine: {
+   case nir_op_ine:
+      assert(dst_bit_size < 64);
+      /* Fallthrough */
+   case nir_op_flt:
+   case nir_op_fge:
+   case nir_op_feq:
+   case nir_op_fne: {
       dst_reg temp = dst;
 
       if (nir_src_bit_size(instr->src[0].src) == 64) {
@@ -1330,12 +1340,14 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
    }
 
-   case nir_op_ball_fequal2:
    case nir_op_ball_iequal2:
-   case nir_op_ball_fequal3:
    case nir_op_ball_iequal3:
-   case nir_op_ball_fequal4:
-   case nir_op_ball_iequal4: {
+   case nir_op_ball_iequal4:
+      assert(dst_bit_size < 64);
+      /* Fallthrough */
+   case nir_op_ball_fequal2:
+   case nir_op_ball_fequal3:
+   case nir_op_ball_fequal4: {
       unsigned swiz =
          brw_swizzle_for_size(nir_op_infos[instr->op].input_sizes[0]);
 
@@ -1347,12 +1359,14 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
    }
 
-   case nir_op_bany_fnequal2:
    case nir_op_bany_inequal2:
-   case nir_op_bany_fnequal3:
    case nir_op_bany_inequal3:
-   case nir_op_bany_fnequal4:
-   case nir_op_bany_inequal4: {
+   case nir_op_bany_inequal4:
+      assert(dst_bit_size < 64);
+      /* Fallthrough */
+   case nir_op_bany_fnequal2:
+   case nir_op_bany_fnequal3:
+   case nir_op_bany_fnequal4: {
       unsigned swiz =
          brw_swizzle_for_size(nir_op_infos[instr->op].input_sizes[0]);
 
@@ -1366,6 +1380,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    case nir_op_inot:
+      assert(dst_bit_size < 64);
       if (devinfo->gen >= 8) {
          op[0] = resolve_source_modifiers(op[0]);
       }
@@ -1373,6 +1388,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_ixor:
+      assert(dst_bit_size < 64);
       if (devinfo->gen >= 8) {
          op[0] = resolve_source_modifiers(op[0]);
          op[1] = resolve_source_modifiers(op[1]);
@@ -1381,6 +1397,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_ior:
+      assert(dst_bit_size < 64);
       if (devinfo->gen >= 8) {
          op[0] = resolve_source_modifiers(op[0]);
          op[1] = resolve_source_modifiers(op[1]);
@@ -1389,6 +1406,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_iand:
+      assert(dst_bit_size < 64);
       if (devinfo->gen >= 8) {
          op[0] = resolve_source_modifiers(op[0]);
          op[1] = resolve_source_modifiers(op[1]);
@@ -1530,31 +1548,38 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_unpack_unorm_4x8:
+      assert(dst_bit_size < 64);
       emit_unpack_unorm_4x8(dst, op[0]);
       break;
 
    case nir_op_pack_unorm_4x8:
+      assert(dst_bit_size < 64);
       emit_pack_unorm_4x8(dst, op[0]);
       break;
 
    case nir_op_unpack_snorm_4x8:
+      assert(dst_bit_size < 64);
       emit_unpack_snorm_4x8(dst, op[0]);
       break;
 
    case nir_op_pack_snorm_4x8:
+      assert(dst_bit_size < 64);
       emit_pack_snorm_4x8(dst, op[0]);
       break;
 
    case nir_op_bitfield_reverse:
+      assert(dst_bit_size < 64);
       emit(BFREV(dst, op[0]));
       break;
 
    case nir_op_bit_count:
+      assert(dst_bit_size < 64);
       emit(CBIT(dst, op[0]));
       break;
 
    case nir_op_ufind_msb:
    case nir_op_ifind_msb: {
+      assert(dst_bit_size < 64);
       emit(FBH(retype(dst, BRW_REGISTER_TYPE_UD), op[0]));
 
       /* FBH counts from the MSB side, while GLSL's findMSB() wants the count
@@ -1571,6 +1596,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    }
 
    case nir_op_find_lsb:
+      assert(dst_bit_size < 64);
       emit(FBL(dst, op[0]));
       break;
 
@@ -1579,6 +1605,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       unreachable("should have been lowered");
    case nir_op_ubfe:
    case nir_op_ibfe:
+      assert(dst_bit_size < 64);
       op[0] = fix_3src_operand(op[0]);
       op[1] = fix_3src_operand(op[1]);
       op[2] = fix_3src_operand(op[2]);
@@ -1587,10 +1614,12 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_bfm:
+      assert(dst_bit_size < 64);
       emit(BFI1(dst, op[0], op[1]));
       break;
 
    case nir_op_bfi:
+      assert(dst_bit_size < 64);
       op[0] = fix_3src_operand(op[0]);
       op[1] = fix_3src_operand(op[1]);
       op[2] = fix_3src_operand(op[2]);
@@ -1628,6 +1657,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
        *               -> non-negative val generates 0x00000000.
        *  Predicated OR sets 1 if val is positive.
        */
+      assert(dst_bit_size < 64);
       emit(CMP(dst_null_d(), op[0], brw_imm_d(0), BRW_CONDITIONAL_G));
       emit(ASR(dst, op[0], brw_imm_d(31)));
       inst = emit(OR(dst, src_reg(dst), brw_imm_d(1)));
@@ -1635,14 +1665,17 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_ishl:
+      assert(dst_bit_size < 64);
       emit(SHL(dst, op[0], op[1]));
       break;
 
    case nir_op_ishr:
+      assert(dst_bit_size < 64);
       emit(ASR(dst, op[0], op[1]));
       break;
 
    case nir_op_ushr:
+      assert(dst_bit_size < 64);
       emit(SHR(dst, op[0], op[1]));
       break;
 
@@ -1706,10 +1739,11 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_fabs:
    case nir_op_iabs:
-   case nir_op_fneg:
    case nir_op_ineg:
+      assert(dst_bit_size < 64);
+   case nir_op_fabs:
+   case nir_op_fneg:
    case nir_op_fsat:
       unreachable("not reached: should be lowered by lower_source mods");
 
