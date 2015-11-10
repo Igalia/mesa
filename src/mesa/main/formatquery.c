@@ -898,13 +898,41 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO: ask the driver */
       break;
    case GL_COLOR_COMPONENTS:
-      /* @TODO */
+      /* @FIXME: _mesa_is_color_format, considers luminance and
+       *  intensity colors, also GL_YCBCR_MESA, as color formats.
+       * Some of them do not have and explicit R,G,B or A component,
+       * they are calculated implicitly. Should we return FALSE for them?
+      */
+      if (_mesa_is_color_format(internalformat)) {
+         buffer[0] = GL_TRUE;
+         count = 1;
+      } else {
+         buffer[0] = GL_FALSE;
+         count = 1;
+      }
+
       break;
    case GL_DEPTH_COMPONENTS:
-      /* @TODO */
+      if (_mesa_is_depth_format(internalformat) ||
+          _mesa_is_depthstencil_format(internalformat)) {
+         buffer[0] = GL_TRUE;
+         count = 1;
+      } else {
+         buffer[0] = GL_FALSE;
+         count = 1;
+      }
+
       break;
    case GL_STENCIL_COMPONENTS:
-      /* @TODO */
+      if (_mesa_is_stencil_format(internalformat) ||
+          _mesa_is_depthstencil_format(internalformat)) {
+         buffer[0] = GL_TRUE;
+         count = 1;
+      } else {
+         buffer[0] = GL_FALSE;
+         count = 1;
+      }
+
       break;
    case GL_COLOR_RENDERABLE:
       /* @TODO */
