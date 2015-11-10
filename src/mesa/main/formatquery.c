@@ -1029,7 +1029,12 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO */
       break;
    case GL_SRGB_DECODE_ARB:
-      /* @TODO */
+      /* ARB_texture_sRGB_decode is supported, we won't reach this point otherwise
+      * (the check is done in _legal_parameters)
+      */
+      buffer[0] = GL_FULL_SUPPORT;
+      count = 1;
+      /* @FIXME: Should we ask the driver to know if the support is: FULL, CAVEAT, etc? */
       break;
    case GL_FILTER:
       /* @TODO */
