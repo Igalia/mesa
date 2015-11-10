@@ -934,14 +934,41 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       }
 
       break;
-   case GL_COLOR_RENDERABLE:
-      /* @TODO */
+   case GL_COLOR_RENDERABLE: {
+      GLenum baseFormat =  _mesa_base_fbo_format(ctx, internalformat);
+      switch (baseFormat) {
+      case GL_ALPHA:
+      case GL_LUMINANCE:
+      case GL_LUMINANCE_ALPHA:
+      case GL_INTENSITY:
+      case GL_RGB8:
+      case GL_RGB:
+      case GL_RGBA:
+      case GL_RED:
+      case GL_RG:
+         buffer[0] = GL_TRUE;
+         break;
+      default:
+         buffer[0] = GL_FALSE;
+         break;
+      }
+      count = 1;
+   }
+
       break;
    case GL_DEPTH_RENDERABLE:
-      /* @TODO */
-      break;
-   case GL_STENCIL_RENDERABLE:
-      /* @TODO */
+   case GL_STENCIL_RENDERABLE: {
+      GLenum baseFormat =  _mesa_base_fbo_format(ctx, internalformat);
+      if (baseFormat ==  GL_DEPTH_STENCIL ||
+          (pname == GL_DEPTH_RENDERABLE && baseFormat == GL_DEPTH_COMPONENT) ||
+          (pname == GL_STENCIL_RENDERABLE && baseFormat ==  GL_STENCIL_INDEX)) {
+         buffer[0] = GL_TRUE;
+      } else {
+         buffer[0] = GL_FALSE;
+      }
+      count = 1;
+   }
+
       break;
    case GL_FRAMEBUFFER_RENDERABLE:
      /* @TODO */
