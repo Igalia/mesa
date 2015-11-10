@@ -1010,7 +1010,17 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO */
       break;
    case GL_COLOR_ENCODING:
-      /* @TODO */
+      if (_mesa_is_color_format(internalformat)) {
+         if (_mesa_get_linear_internalformat(internalformat) != internalformat) {
+            buffer[0] = GL_SRGB;
+         } else {
+            buffer[0] = GL_LINEAR;
+         }
+         count = 1;
+      } else {
+         unsupported = true;
+      }
+
       break;
    case GL_SRGB_READ:
       /* @TODO */
