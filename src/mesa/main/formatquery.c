@@ -30,6 +30,57 @@
 #include "formatquery.h"
 #include "teximage.h"
 
+/* An element of the Table 3.22, in OpenGL 4.2 Core specification */
+struct imageformat {
+   GLenum format;
+   int texel_size;
+   GLenum pixel_format;
+   GLenum pixel_type;
+};
+
+/* Table 3.22, in OpenGL 4.2 Core specification */
+static const struct imageformat imageformat_table[] = {
+   {GL_RGBA32F, 128, GL_RGBA, GL_FLOAT},
+   {GL_RGBA16F, 64, GL_RGBA, GL_HALF_FLOAT},
+   {GL_RG32F, 64, GL_RG, GL_FLOAT},
+   {GL_RG16F, 32, GL_RG, GL_HALF_FLOAT},
+   {GL_R11F_G11F_B10F, 32, GL_RGB, GL_UNSIGNED_INT_10F_11F_11F_REV},
+   {GL_R32F, 32, GL_RED, GL_FLOAT},
+   {GL_R16F, 16, GL_RED, GL_HALF_FLOAT},
+   {GL_RGBA32UI, 128, GL_RGBA_INTEGER, GL_UNSIGNED_INT},
+   {GL_RGBA16UI, 64, GL_RGBA_INTEGER, GL_UNSIGNED_SHORT},
+   {GL_RGB10_A2UI, 32, GL_RGBA_INTEGER, GL_UNSIGNED_INT_2_10_10_10_REV},
+   {GL_RGBA8UI, 32, GL_RGBA_INTEGER, GL_UNSIGNED_BYTE},
+   {GL_RG32UI, 64, GL_RG_INTEGER, GL_UNSIGNED_INT},
+   {GL_RG16UI, 32, GL_RG_INTEGER, GL_UNSIGNED_SHORT},
+   {GL_RG8UI, 16, GL_RG_INTEGER, GL_UNSIGNED_BYTE},
+   {GL_R32UI, 32, GL_RED_INTEGER, GL_UNSIGNED_INT},
+   {GL_R16UI, 16, GL_RED_INTEGER, GL_UNSIGNED_SHORT},
+   {GL_R8UI, 8, GL_RED_INTEGER, GL_UNSIGNED_BYTE},
+   {GL_RGBA32I, 128, GL_RGBA_INTEGER, GL_INT},
+   {GL_RGBA16I, 64, GL_RGBA_INTEGER, GL_SHORT},
+   {GL_RGBA8I, 32, GL_RGBA_INTEGER, GL_BYTE},
+   {GL_RG32I, 64, GL_RG_INTEGER, GL_INT},
+   {GL_RG16I, 32, GL_RG_INTEGER, GL_SHORT},
+   {GL_RG8I, 16, GL_RG_INTEGER, GL_BYTE},
+   {GL_R32I, 32, GL_RED_INTEGER, GL_INT},
+   {GL_R16I, 16, GL_RED_INTEGER, GL_SHORT},
+   {GL_R8I, 8, GL_RED_INTEGER, GL_BYTE},
+   {GL_RGBA16, 64, GL_RGBA, GL_UNSIGNED_SHORT},
+   {GL_RGB10_A2, 32, GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV},
+   {GL_RGBA8, 32, GL_RGBA, GL_UNSIGNED_BYTE},
+   {GL_RG16, 32, GL_RG, GL_UNSIGNED_SHORT},
+   {GL_RG8, 16, GL_RG, GL_UNSIGNED_BYTE},
+   {GL_R16, 16, GL_RED, GL_UNSIGNED_SHORT},
+   {GL_R8, 8, GL_RED, GL_UNSIGNED_BYTE},
+   {GL_RGBA16_SNORM, 64, GL_RGBA, GL_SHORT},
+   {GL_RGBA8_SNORM, 32, GL_RGBA, GL_BYTE},
+   {GL_RG16_SNORM, 32, GL_RG, GL_SHORT},
+   {GL_RG8_SNORM, 16, GL_RG, GL_BYTE},
+   {GL_R16_SNORM, 16, GL_RED, GL_SHORT},
+   {GL_R8_SNORM, 8, GL_RED, GL_BYTE},
+};
+
 /* default implementation of QuerySamplesForFormat driverfunc, for
  * non-multisample-capable drivers. */
 size_t
@@ -1076,16 +1127,49 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO */
       break;
    case GL_IMAGE_TEXEL_SIZE:
-      /* @TODO */
+         for (int i = 0; i < ARRAY_SIZE(imageformat_table); ++i) {
+            if (imageformat_table[i].format == internalformat) {
+               buffer[0] = imageformat_table[i].texel_size;
+               count = 1;
+               break;
+            }
+         }
+
+         if (count < 1) {
+            unsupported = true;
+         }
+
       break;
    case GL_IMAGE_COMPATIBILITY_CLASS:
       /* @TODO */
       break;
    case GL_IMAGE_PIXEL_FORMAT:
-      /* @TODO */
+        for (int i = 0; i < ARRAY_SIZE(imageformat_table); ++i) {
+            if (imageformat_table[i].format == internalformat) {
+               buffer[0] = imageformat_table[i].pixel_format;
+               count = 1;
+               break;
+            }
+         }
+
+         if (count < 1) {
+            unsupported = true;
+         }
+
       break;
    case GL_IMAGE_PIXEL_TYPE:
-      /* @TODO */
+      for (int i = 0; i < ARRAY_SIZE(imageformat_table); ++i) {
+         if (imageformat_table[i].format == internalformat) {
+            buffer[0] = imageformat_table[i].pixel_type;
+            count = 1;
+            break;
+         }
+      }
+
+      if (count < 1) {
+         unsupported = true;
+      }
+
       break;
    case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
       /* @TODO */
