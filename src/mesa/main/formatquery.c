@@ -1210,7 +1210,10 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO: ask the driver */
       break;
    case GL_TEXTURE_COMPRESSED:
-      /* @TODO */
+      buffer[0] = _mesa_is_compressed_format(ctx, internalformat) ?
+         GL_TRUE : GL_FALSE;
+      count = 1;
+
       break;
    case GL_TEXTURE_COMPRESSED_BLOCK_WIDTH:
       /* @TODO */
