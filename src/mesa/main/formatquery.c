@@ -1188,7 +1188,14 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
-      /* @TODO */
+      /* Equivalent to calling GetTexParameter with <value> set to
+       * IMAGE_FORMAT_COMPATIBILITY_TYPE. Possible values are
+       * IMAGE_FORMAT_COMPATIBILITY_BY_SIZE or
+       * IMAGE_FORMAT_COMPATIBILITY_BY_CLASS.
+       */
+
+      /* @FIXME: again a query using GetTexParameter,
+         we need the texture object*/
       break;
    case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST:
       /* @TODO: ask the driver */
