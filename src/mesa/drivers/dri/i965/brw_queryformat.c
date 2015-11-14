@@ -117,6 +117,13 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
 
    case GL_INTERNALFORMAT_PREFERRED:
       /* @TODO */
+
+   /* Grouped queries that return FULL_SUPPORT */
+   case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST:
+   case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST:
+   case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE:
+   case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
+      params[0] = GL_FULL_SUPPORT;
       break;
 
    case GL_MAX_WIDTH:
@@ -268,22 +275,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       break;
 
    case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
-      /* @TODO */
-      break;
-
-   case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST:
-      /* @TODO */
-      break;
-
-   case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST:
-      /* @TODO */
-      break;
-
-   case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE:
-      /* @TODO */
-      break;
-
-   case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
       /* @TODO */
       break;
 
