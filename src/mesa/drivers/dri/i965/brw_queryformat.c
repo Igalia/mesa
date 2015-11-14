@@ -72,12 +72,32 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
    assert(params != NULL);
 
    switch (pname) {
-   case GL_SAMPLES:
-      /* @TODO */
-      break;
 
+   /* Grouped queries that should be answered by Mesa frontend,
+    * so are unreachable here.
+    */
+   case GL_SAMPLES:
    case GL_NUM_SAMPLE_COUNTS:
-      /* @TODO */
+   case GL_INTERNALFORMAT_RED_SIZE:
+   case GL_INTERNALFORMAT_GREEN_SIZE:
+   case GL_INTERNALFORMAT_BLUE_SIZE:
+   case GL_INTERNALFORMAT_ALPHA_SIZE:
+   case GL_INTERNALFORMAT_DEPTH_SIZE:
+   case GL_INTERNALFORMAT_STENCIL_SIZE:
+   case GL_INTERNALFORMAT_SHARED_SIZE:
+   case GL_INTERNALFORMAT_RED_TYPE:
+   case GL_INTERNALFORMAT_GREEN_TYPE:
+   case GL_INTERNALFORMAT_BLUE_TYPE:
+   case GL_INTERNALFORMAT_ALPHA_TYPE:
+   case GL_INTERNALFORMAT_DEPTH_TYPE:
+   case GL_INTERNALFORMAT_STENCIL_TYPE:
+   case GL_COLOR_COMPONENTS:
+   case GL_DEPTH_COMPONENTS:
+   case GL_STENCIL_COMPONENTS:
+   case GL_COLOR_RENDERABLE:
+   case GL_DEPTH_RENDERABLE:
+   case GL_STENCIL_RENDERABLE:
+      unreachable("Mesa should have answered these queries");
       break;
 
    case GL_INTERNALFORMAT_SUPPORTED:
@@ -85,58 +105,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       break;
 
    case GL_INTERNALFORMAT_PREFERRED:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_RED_SIZE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_GREEN_SIZE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_BLUE_SIZE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_ALPHA_SIZE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_DEPTH_SIZE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_STENCIL_SIZE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_SHARED_SIZE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_RED_TYPE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_GREEN_TYPE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_BLUE_TYPE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_ALPHA_TYPE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_DEPTH_TYPE:
-      /* @TODO */
-      break;
-
-   case GL_INTERNALFORMAT_STENCIL_TYPE:
       /* @TODO */
       break;
 
@@ -157,30 +125,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       break;
 
    case GL_MAX_COMBINED_DIMENSIONS:
-      /* @TODO */
-      break;
-
-   case GL_COLOR_COMPONENTS:
-      /* @TODO */
-      break;
-
-   case GL_DEPTH_COMPONENTS:
-      /* @TODO */
-      break;
-
-   case GL_STENCIL_COMPONENTS:
-      /* @TODO */
-      break;
-
-   case GL_COLOR_RENDERABLE:
-      /* @TODO */
-      break;
-
-   case GL_DEPTH_RENDERABLE:
-      /* @TODO */
-      break;
-
-   case GL_STENCIL_RENDERABLE:
       /* @TODO */
       break;
 
