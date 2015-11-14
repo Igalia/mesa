@@ -100,8 +100,19 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       unreachable("Mesa should have answered these queries");
       break;
 
+   /* Grouped queries that return NONE support */
+   case GL_TESS_CONTROL_TEXTURE:
+   case GL_TESS_EVALUATION_TEXTURE:
+      params[0] = GL_NONE;
+      break;
+
    case GL_INTERNALFORMAT_SUPPORTED:
-      /* @TODO */
+      /* Mesa frontend should have answered this query based on the formats
+       * known to it. Since we don't support any format on top of what Mesa
+       * frontend knows about, we simply return NONE for whatever format
+       * reaches this point.
+       */
+      params[0] = GL_NONE;
       break;
 
    case GL_INTERNALFORMAT_PREFERRED:
@@ -201,14 +212,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       break;
 
    case GL_VERTEX_TEXTURE:
-      /* @TODO */
-      break;
-
-   case GL_TESS_CONTROL_TEXTURE:
-      /* @TODO */
-      break;
-
-   case GL_TESS_EVALUATION_TEXTURE:
       /* @TODO */
       break;
 
