@@ -119,6 +119,64 @@ _is_texture_target(GLenum target)
    }
 }
 
+static bool
+_is_internalformat_supported(struct gl_context *ctx, GLenum target,
+                             GLenum internalformat)
+{
+   switch(target){
+   case GL_TEXTURE_1D:
+   case GL_TEXTURE_1D_ARRAY:
+   case GL_TEXTURE_2D:
+   case GL_TEXTURE_2D_ARRAY:
+   case GL_TEXTURE_3D:
+   case GL_TEXTURE_CUBE_MAP:
+   case GL_TEXTURE_CUBE_MAP_ARRAY:
+   case GL_TEXTURE_RECTANGLE:
+      /* Based on what is done in the "teximage" method  */
+      if (_mesa_base_tex_format(ctx, internalformat) < 0)
+         return false;
+
+      /* additional checks for depth textures */
+      /* @FIXME: In case of error, this call is currently setting an
+       * GL_INVALID_OPERATION error, we are  not interested in that.
+       */
+      if (!_mesa_legal_texture_base_format_for_target(ctx, target,
+                                                      internalformat, 0, "getInternalformativ"))
+         return false;
+
+      /* additional checks for compressed textures */
+      if (_mesa_is_compressed_format(ctx, internalformat) &&
+          (!_mesa_target_can_be_compressed(ctx, target, internalformat, NULL) ||
+           _mesa_format_no_online_compression(ctx, internalformat)))
+         return false;
+
+      break;
+   case GL_TEXTURE_2D_MULTISAMPLE:
+   case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+      /* Based on what it is done in "texture_image_multisample" method */
+      if (!_mesa_is_renderable_texture_format(ctx, internalformat))
+         return false;
+
+      break;
+   case GL_TEXTURE_BUFFER:
+      /* Based on what it is done in "_mesaTexBuffer" method */
+      if (_mesa_validate_texbuffer_format(ctx, internalformat) == MESA_FORMAT_NONE)
+         return false;
+
+      break;
+   case GL_RENDERBUFFER:
+      /* Based on what it is done in "renderbuffer_storage" method */
+      if (!_mesa_base_fbo_format(ctx, internalformat))
+         return false;
+
+      break;
+   default:
+      unreachable("bad target");
+   }
+
+   return true;
+}
+
 /* Sets 'buffer' and 'count' to the appropriate "unsupported" response for each pname.
  *
  * From the ARB_internalformat_query2 specs, "Issues" section:
@@ -844,24 +902,21 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       goto end;
 #endif
 
+   unsupported = _is_internalformat_supported(ctx, target, internalformat);
+   if (unsupported)
+      goto end;
+
    switch(pname){
    case GL_SAMPLES:
    case GL_NUM_SAMPLE_COUNTS:
-      switch (target) {
-      case GL_RENDERBUFFER:
-         if (!_mesa_base_fbo_format(ctx, internalformat))
-            unsupported = true;
-         break;
-      case GL_TEXTURE_2D_MULTISAMPLE:
-      case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
-         if (!_mesa_is_renderable_texture_format(ctx, internalformat))
-            unsupported = true;
-         break;
-      default:
+      if (target != GL_RENDERBUFFER &&
+          target != GL_TEXTURE_2D_MULTISAMPLE &&
+          target != GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
          unsupported = true;
-         break;
-      }
 
+      /* The renderability of the internalformat is already checked in
+       * "_is_internalformat_supported" method.
+       */
       if (unsupported)
          goto end;
 
@@ -869,16 +924,9 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_INTERNALFORMAT_SUPPORTED:
-      if (_is_texture_target(target)) {
-         unsupported = _mesa_base_tex_format(ctx, internalformat) < 0;
-      } else {
-         unsupported = !_mesa_base_fbo_format(ctx, internalformat);
-      }
-
-      if (!unsupported) {
-         buffer[0] = GL_TRUE;
-         count = 1;
-      }
+      /* If we arrive here, the internalformat is supported */
+      buffer[0] = GL_TRUE;
+      count = 1;
 
       break;
    case GL_INTERNALFORMAT_PREFERRED:
