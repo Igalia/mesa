@@ -29,6 +29,7 @@
 #include "fbobject.h"
 #include "formatquery.h"
 #include "teximage.h"
+#include "textureview.h"
 
 /* An element of the Table 3.22, in OpenGL 4.2 Core specification */
 struct imageformat {
@@ -618,9 +619,7 @@ _check_dependencies(struct gl_context *ctx, GLenum target,
       break;
    case GL_TEXTURE_VIEW:
    case GL_VIEW_COMPATIBILITY_CLASS:
-      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
-          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 40) ||
-          !ctx->Extensions.ARB_texture_view)
+      if (!ctx->Extensions.ARB_texture_view)
          return false;
 
       break;
@@ -1344,10 +1343,28 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_TEXTURE_VIEW:
-      /* @TODO */
-      break;
    case GL_VIEW_COMPATIBILITY_CLASS:
-      /* @TODO */
+      /* If we arrive here "ARB_texture_view" is supported */
+      if (target == GL_TEXTURE_BUFFER || target == GL_RENDERBUFFER) {
+         unsupported = true;
+         goto end;
+      }
+
+      if (pname == GL_TEXTURE_VIEW) {
+         /* @FIXME: is full support the correct answer ? */
+         buffer[0] = GL_FULL_SUPPORT;
+      } else {
+         GLenum view_class = _mesa_texture_view_lookup_view_class(ctx,
+                                                                  internalformat);
+         if (view_class == GL_FALSE) {
+            unsupported = true;
+            goto end;
+         }
+
+         buffer[0] = view_class;
+      }
+      count = 1;
+
       break;
    default:
       unreachable("bad param");
