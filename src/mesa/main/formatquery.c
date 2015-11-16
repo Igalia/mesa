@@ -1332,15 +1332,12 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO */
       break;
    case GL_CLEAR_BUFFER:
-      /* All drivers in Mesa support  ARB_clear_buffer_object,
-       * no check is needed.
-       */
-      if (target != GL_TEXTURE_BUFFER ||
-          _mesa_validate_texbuffer_format(ctx, internalformat) == MESA_FORMAT_NONE) {
+      if (target != GL_TEXTURE_BUFFER) {
          unsupported = true;
          goto end;
       }
 
+      /* All drivers in Mesa support ARB_clear_buffer_object */
       /* @FIXME: is full support the correct answer ? */
       buffer[0] = GL_FULL_SUPPORT;
       count = 1;
