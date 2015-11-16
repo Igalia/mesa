@@ -916,7 +916,7 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       goto end;
 #endif
 
-   unsupported = _is_internalformat_supported(ctx, target, internalformat);
+   unsupported = !_is_internalformat_supported(ctx, target, internalformat);
    if (unsupported)
       goto end;
 
