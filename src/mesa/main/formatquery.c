@@ -30,6 +30,7 @@
 #include "formatquery.h"
 #include "teximage.h"
 #include "textureview.h"
+#include "texcompress.h"
 
 /* An element of the Table 3.22, in OpenGL 4.2 Core specification */
 struct imageformat {
@@ -1322,13 +1323,33 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_TEXTURE_COMPRESSED_BLOCK_WIDTH:
-      /* @TODO */
-      break;
    case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
-      /* @TODO */
-      break;
-   case GL_TEXTURE_COMPRESSED_BLOCK_SIZE:
-      /* @TODO */
+   case GL_TEXTURE_COMPRESSED_BLOCK_SIZE: {
+      mesa_format mesaformat = _mesa_glenum_to_compressed_format(internalformat);
+      unsupported = (mesaformat == MESA_FORMAT_NONE);
+      if (unsupported)
+         goto end;
+
+      GLint block_size = _mesa_get_format_bytes(mesaformat);
+      assert(block_size > 0);
+
+      if (pname == GL_TEXTURE_COMPRESSED_BLOCK_SIZE) {
+         buffer[0] = block_size;
+      } else {
+         GLuint bwidth, bheight;
+
+         /* Returns the width and height in pixels. We have to return bytes */
+         _mesa_get_format_block_size(mesaformat, &bwidth, &bheight);
+         assert(bwidth > 0 && bheight > 0);
+
+         if (pname == GL_TEXTURE_COMPRESSED_BLOCK_WIDTH)
+            buffer[0] = block_size / bheight;
+         else
+            buffer[0] = block_size / bwidth;
+      }
+      count = 1;
+   }
+
       break;
    case GL_CLEAR_BUFFER:
       if (target != GL_TEXTURE_BUFFER) {
