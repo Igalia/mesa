@@ -934,8 +934,9 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       if (unsupported)
          goto end;
 
-      /* @ TODO: call the driver */
-
+      /* let the driver answer */
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      params);
       break;
    case GL_INTERNALFORMAT_SUPPORTED:
       /* If we arrive here, the internalformat is supported */
@@ -944,7 +945,9 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_INTERNALFORMAT_PREFERRED:
-     /* @TODO: ask the driver */
+      /* let the driver answer */
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      params);
       break;
    case GL_INTERNALFORMAT_RED_SIZE:
    case GL_INTERNALFORMAT_GREEN_SIZE:
@@ -997,19 +1000,12 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
       /* @FIXME: same problem than for the *SIZE queries */
       break;
    case GL_MAX_WIDTH:
-      /* @TODO: ask the driver */
-      break;
    case GL_MAX_HEIGHT:
-      /* @TODO: ask the driver */
-      break;
    case GL_MAX_DEPTH:
-      /* @TODO: ask the driver */
-      break;
    case GL_MAX_LAYERS:
-      /* @TODO: ask the driver */
-      break;
    case GL_MAX_COMBINED_DIMENSIONS:
-      /* @TODO: ask the driver */
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      params);
       break;
    case GL_COLOR_COMPONENTS:
       /* @FIXME: _mesa_is_color_format, considers luminance and
@@ -1260,16 +1256,11 @@ _internalformat_query2(GLenum target, GLenum internalformat, GLenum pname,
          we need the texture object*/
       break;
    case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST:
-      /* @TODO: ask the driver */
-      break;
    case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST:
-      /* @TODO: ask the driver */
-      break;
    case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE:
-      /* @TODO: ask the driver */
-      break;
    case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
-      /* @TODO: ask the driver */
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      params);
       break;
    case GL_TEXTURE_COMPRESSED:
       buffer[0] = _mesa_is_compressed_format(ctx, internalformat) ?
