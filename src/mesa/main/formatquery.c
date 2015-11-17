@@ -589,9 +589,8 @@ _check_dependencies(struct gl_context *ctx, GLenum target,
    case GL_IMAGE_PIXEL_FORMAT:
    case GL_IMAGE_PIXEL_TYPE:
    case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
-    if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
-          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 40) ||
-          !ctx->Extensions.ARB_shader_image_load_store)
+      /* Taken from "_mesa_BindImageTextures" method */
+      if (!ctx->Extensions.ARB_shader_image_load_store)
          return false;
 
       break;
