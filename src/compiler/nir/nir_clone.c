@@ -189,7 +189,8 @@ __clone_dst(clone_state *state, nir_instr *ninstr,
 {
    ndst->is_ssa = dst->is_ssa;
    if (dst->is_ssa) {
-      nir_ssa_dest_init(ninstr, ndst, dst->ssa.num_components, dst->ssa.name);
+      nir_ssa_dest_init(ninstr, ndst, dst->ssa.num_components,
+                        dst->ssa.bit_size, dst->ssa.name);
       store_ptr(state, &ndst->ssa, &dst->ssa);
    } else {
       ndst->reg.reg = lookup_ptr(state, dst->reg.reg);
