@@ -31,6 +31,7 @@
 #include "teximage.h"
 #include "textureview.h"
 #include "texcompress.h"
+#include "shaderimage.h"
 
 /* An element of the Table 3.22, in OpenGL 4.2 Core specification */
 struct imageformat {
@@ -1230,10 +1231,25 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO */
       break;
    case GL_SHADER_IMAGE_LOAD:
-      /* @TODO */
-      break;
    case GL_SHADER_IMAGE_STORE:
-      /* @TODO */
+      /* The ARB_internalformat_query2 spec says:
+       * "In this case the <internalformat> is the value of the <format>
+       * parameter that is passed to BindImageTexture."
+       *
+       * We can call to _mesa_is_shader_image_format_supported
+       * using "internalformat" as parameter.
+       */
+      if (target == GL_RENDERBUFFER ||
+          !_mesa_is_image_format_supported(ctx, internalformat)) {
+         unsupported = true;
+         goto end;
+      }
+
+      /* If we arrive here, ARB_shader_image_load_store is supported */
+      /* @FIXME: Is FULL_SUPPORT the correct answer? */
+      buffer[0] = GL_FULL_SUPPORT;
+      count = 1;
+
       break;
    case GL_SHADER_IMAGE_ATOMIC:
       /* @TODO */
