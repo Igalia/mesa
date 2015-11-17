@@ -1410,3 +1410,19 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
     */
    memcpy(params, buffer, MIN2(count, bufSize) * sizeof(GLint));
 }
+
+void GLAPIENTRY
+_mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
+                            GLenum pname, GLsizei bufSize, GLint64 *params)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   ASSERT_OUTSIDE_BEGIN_END(ctx);
+
+   if (!ctx->Extensions.ARB_internalformat_query2) {
+      _mesa_error(ctx, GL_INVALID_OPERATION, "glGetInternalformati64v");
+      return;
+   }
+
+   _mesa_debug(ctx, "glGetInternalformati64v() not implemented");
+}
