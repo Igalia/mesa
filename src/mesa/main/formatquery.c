@@ -1252,7 +1252,12 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_SHADER_IMAGE_ATOMIC:
-      /* @TODO */
+      /* @TODO: I have doubts about how to determine if the "resource" is
+       * supported for being used with atomic memory operations. Mesa's
+       * implementation of "glMemoryBarrier" does not make any checks,
+       * only checks if the Driver hook exists.
+       * Should be this answered by the Driver?.
+       */
       break;
    case GL_IMAGE_TEXEL_SIZE:
          for (int i = 0; i < ARRAY_SIZE(imageformat_table); ++i) {
