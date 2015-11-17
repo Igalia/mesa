@@ -1274,21 +1274,28 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_IMAGE_COMPATIBILITY_CLASS:
-      /* @FIXME: I am adding the implementation taking into account values in Table 3.22
-       * of the OpenGL 4.2, but I do not think we support them, as I can not see any references
-       * in the code about IMAGE_CLASS*.
-      */
-      for (int i = 0; i < ARRAY_SIZE(imageformat_table); ++i) {
-         if (imageformat_table[i].format == internalformat) {
-            buffer[0] = imageformat_table[i].compatibility_class;
-            count = 1;
-            break;
-         }
-      }
-
-      if (count < 1) {
-         unsupported = true;
-      }
+      /* @FIXME: Verify if it is correct to call this function passing internalformat as param.
+       * I am using internalformat as it were the format passed to glBindTexture, i.e.
+       * the format in which formatted stores (writes from the shader) will be performed.
+       * This format should match the format of the image uniform in the shaders that will
+       * access the texture. However, it need not match the format of the actual
+       * texture. For textures allocated by calling one of the glTexImage() or
+       * glTexStorage() functions, any format that matches in size may be specified
+       * for format.
+       */
+      /* In the extension spec:
+       * The compatibility class of the resource when used as an image texture is returned in <params>.
+       * This corresponds to the value from the /Class/ column in Table 3.22.
+       * And Table 3.22 is: Texel sizes, compatibility classes, and pixel format/type combinations for
+       * each image format.
+       */
+      /*
+       * In Mesa's code (_mesa_is_image_unit_valid it uses both the internalformat of the textureObject
+       * and the format passed to glTexImage to check if their compatibility class is the same, so I conclude
+       * that is fine to use the internal format here.
+       */
+      buffer[0] = _mesa_get_image_format_class(internalformat);
+      count = 1;
 
       break;
    case GL_IMAGE_PIXEL_FORMAT:
