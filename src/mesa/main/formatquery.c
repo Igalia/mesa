@@ -1274,6 +1274,11 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_IMAGE_COMPATIBILITY_CLASS:
+      if (target == GL_RENDERBUFFER) {
+         unsupported = true;
+         goto end;
+      }
+
       /* @FIXME: Verify if it is correct to call this function passing internalformat as param.
        * I am using internalformat as it were the format passed to glBindTexture, i.e.
        * the format in which formatted stores (writes from the shader) will be performed.
