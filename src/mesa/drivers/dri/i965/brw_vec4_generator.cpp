@@ -1438,7 +1438,7 @@ generate_code(struct brw_codegen *p,
       unsigned pre_emit_nr_insn = p->nr_insn;
       bool fix_exec_size = false;
 
-      if (dst.width == BRW_WIDTH_4) {
+      if (dst.width == BRW_WIDTH_4 && type_sz(dst.type) != 8) {
          /* This happens in attribute fixups for "dual instanced" geometry
           * shaders, since they use attributes that are vec4's.  Since the exec
           * width is only 4, it's essential that the caller set
@@ -1464,6 +1464,18 @@ generate_code(struct brw_codegen *p,
          brw_set_default_exec_size(p, BRW_EXECUTE_4);
          fix_exec_size = true;
       }
+
+      bool is_64bit = false;
+
+      if (type_sz(dst.type) == 8)
+         is_64bit = true;
+      for (unsigned i = 0; i < 3; i++) {
+         if (src[i].file != BAD_FILE && type_sz(src[i].type) == 8)
+            is_64bit = true;
+      }
+
+      if (is_64bit)
+         brw_set_default_exec_size(p, BRW_EXECUTE_4);
 
       switch (inst->opcode) {
       case VEC4_OPCODE_UNPACK_UNIFORM:
@@ -1976,7 +1988,7 @@ generate_code(struct brw_codegen *p,
          unreachable("Unsupported opcode");
       }
 
-      if (fix_exec_size)
+      if (fix_exec_size || is_64bit)
          brw_set_default_exec_size(p, BRW_EXECUTE_8);
 
       if (inst->opcode == VEC4_OPCODE_PACK_BYTES) {
