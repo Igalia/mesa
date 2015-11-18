@@ -754,7 +754,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
    case nir_intrinsic_atomic_counter_dec: {
       unsigned surf_index = prog_data->base.binding_table.abo_start +
          (unsigned) instr->const_index[0];
-      src_reg offset = get_nir_src(instr->src[0], nir_type_int,
+      src_reg offset = get_nir_src(instr->src[0], nir_type_int32,
                                    instr->num_components);
       dest = get_nir_dest(instr->dest);
 
@@ -798,7 +798,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
           * from any live channel.
           */
          surf_index = src_reg(this, glsl_type::uint_type);
-         emit(ADD(dst_reg(surf_index), get_nir_src(instr->src[0], nir_type_int,
+         emit(ADD(dst_reg(surf_index), get_nir_src(instr->src[0], nir_type_int32,
                                                    instr->num_components),
                   brw_imm_ud(prog_data->base.binding_table.ubo_start)));
          surf_index = emit_uniformize(surf_index);
@@ -816,7 +816,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       if (const_offset) {
          offset = brw_imm_ud(const_offset->u[0] & ~15);
       } else {
-         offset = get_nir_src(instr->src[1], nir_type_int, 1);
+         offset = get_nir_src(instr->src[1], nir_type_uint32, 1);
       }
 
       src_reg packed_consts = src_reg(this, glsl_type::vec4_type);
