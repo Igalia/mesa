@@ -1259,18 +1259,56 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        * Should be this answered by the Driver?.
        */
       break;
-   case GL_IMAGE_TEXEL_SIZE:
-         for (int i = 0; i < ARRAY_SIZE(imageformat_table); ++i) {
-            if (imageformat_table[i].format == internalformat) {
-               buffer[0] = imageformat_table[i].texel_size;
-               count = 1;
-               break;
-            }
-         }
+   case GL_IMAGE_TEXEL_SIZE: {
+      mesa_format image_format;
 
-         if (count < 1) {
-            unsupported = true;
-         }
+      if (target == GL_RENDERBUFFER) {
+         unsupported = true;
+         goto end;
+      }
+
+      /* @FIXME: I am considering that the resource is used for glBindTexture.
+       * The ARB_internalformat_query2 extension spec says:
+       * "The size of a texel when the resource when used as
+       * an image texture is returned in <params>. This is the value from the
+       *  /Size/ column in Table 3.22. If the resource is not supported for image
+       * textures, or if image textures are not supported, zero is returned."
+       * It is not clear to me what it means by "resource when used as an image
+       * texture" but as the pname depends on the existance of the
+       * ARB_image_load_store extension, I am assuming that means "when the
+       * resource is bound to an image_unit, i.e., glBindTexture.
+       */
+      image_format = _mesa_get_shader_image_format(internalformat);
+      if (image_format == MESA_FORMAT_NONE) {
+         unsupported = true;
+         goto end;
+      }
+
+      /* Call image size with an image of 1x1x1 */
+      /* When passing an image of 1x1x1 _mesa_format_image_size returns
+       * BytesPerBock both for compressed and uncompressed formats.
+       * We want to return bits, hence multiply the result by 8.
+       */
+      /* @FIXME: Verify that the answer is correct for compressed
+       * formats. Questions to answer:
+       *    - Is it possible to define a texture of 1 texel if the format is
+       * compressed?.  In that case,
+       *    - Is it correct to return BytesPerBlock if the format is compressed,
+       * or should I divide the BytesPerBlock by BlockWidth and BlockHeight?
+       * Would it be that division an integer?.
+       *      Rationale:  Uncompressed formats have a block of 1 texel, but this
+       * is not true for compressed formats (in those either BlockWidth,
+       * BlockHeight or both are > 1,  both measured in number of texels).
+       * If I return BytesPerBlock for those, I would be assuming than a block
+       * is the minimum we can have although it may be larger than a texel.
+       *
+       * Update: AFAICS, compressed formats are not allowed in glBindTexture, so
+       * if we have to reply in terms of glBindTexture (see above) this call is
+       * correct.
+       */
+      buffer[0] = (_mesa_format_image_size(image_format, 1, 1, 1) * 8);
+      count = 1;
+   }
 
       break;
    case GL_IMAGE_COMPATIBILITY_CLASS:
