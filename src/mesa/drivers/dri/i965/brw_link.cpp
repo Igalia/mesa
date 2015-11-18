@@ -171,8 +171,8 @@ process_glsl_ir(gl_shader_stage stage,
       progress = false;
 
       if (compiler->scalar_stage[shader->Stage]) {
-         brw_do_channel_expressions(shader->ir);
-         brw_do_vector_splitting(shader->ir);
+         //brw_do_channel_expressions(shader->ir);
+         //brw_do_vector_splitting(shader->ir);
       }
 
       progress = do_lower_jumps(shader->ir, true, true,
