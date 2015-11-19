@@ -1094,10 +1094,23 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
     /* @TODO */
       break;
    case GL_READ_PIXELS_FORMAT:
-    /* @TODO */
+      /* @TODO: ask the driver */
+      /* The specification says:
+       * "The <format> to pass to ReadPixels to obtain the best performance and
+       * image quality when reading from framebuffers with<internalformat> is
+       * returned in <params>."
+       * so it should probably be answered by the driver.
+       */
       break;
    case GL_READ_PIXELS_TYPE:
-    /* @TODO */
+      /* @TODO: ask the driver */
+      /* The specification says:
+       * "The <type> to pass to ReadPixels to obtain the best performance and
+       * image quality when reading from framebuffers with<internalformat> is
+       * returned in <params>."
+       * so it should probably be answered by the driver.
+       */
+
       break;
    case GL_TEXTURE_IMAGE_FORMAT:
       /* @TODO: ask the driver */
