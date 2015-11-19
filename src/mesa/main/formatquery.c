@@ -1321,17 +1321,24 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_IMAGE_PIXEL_FORMAT:
-        for (int i = 0; i < ARRAY_SIZE(imageformat_table); ++i) {
-            if (imageformat_table[i].format == internalformat) {
-               buffer[0] = imageformat_table[i].pixel_format;
-               count = 1;
-               break;
-            }
-         }
+      if (target == GL_RENDERBUFFER ||
+          !_mesa_is_image_format_supported(ctx, internalformat)) {
+         unsupported = true;
+         goto end;
+      }
 
-         if (count < 1) {
-            unsupported = true;
-         }
+      GLint base_format = _mesa_base_tex_format(ctx, internalformat);
+      if (base_format == -1) {
+         unsupported = true;
+         goto end;
+      }
+
+      if (_mesa_is_enum_format_integer(internalformat))
+         buffer[0] = _mesa_base_format_to_integer_format(base_format);
+      else
+         buffer[0] = base_format;
+
+      count = 1;
 
       break;
    case GL_IMAGE_PIXEL_TYPE: {
