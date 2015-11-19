@@ -1499,6 +1499,9 @@ void GLAPIENTRY
 _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
                             GLenum pname, GLsizei bufSize, GLint64 *params)
 {
+   GLint *params32 = NULL;
+   unsigned i = 0;
+
    GET_CURRENT_CONTEXT(ctx);
 
    ASSERT_OUTSIDE_BEGIN_END(ctx);
@@ -1508,5 +1511,17 @@ _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
       return;
    }
 
-   _mesa_debug(ctx, "glGetInternalformati64v() not implemented");
+   /* FIXME: just wrapping GetInternalformativ as a temporal solution to get
+    * the work going. This would not be valid for the cases a 64-bit query is
+    * needed (ie: MAX_COMBINED_DIMENSIONS).*/
+   if (bufSize > 0)
+      params32 = malloc(sizeof(GLint) * bufSize);
+
+   _mesa_GetInternalformativ(target, internalformat, pname, bufSize, params32);
+
+   for (i = 0; i < bufSize; i++)
+      params[i] = params32[i];
+
+   if (bufSize > 0)
+      free(params32);
 }
