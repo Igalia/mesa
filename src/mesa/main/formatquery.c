@@ -1284,29 +1284,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
          goto end;
       }
 
-      /* Call image size with an image of 1x1x1 */
-      /* When passing an image of 1x1x1 _mesa_format_image_size returns
-       * BytesPerBock both for compressed and uncompressed formats.
-       * We want to return bits, hence multiply the result by 8.
-       */
-      /* @FIXME: Verify that the answer is correct for compressed
-       * formats. Questions to answer:
-       *    - Is it possible to define a texture of 1 texel if the format is
-       * compressed?.  In that case,
-       *    - Is it correct to return BytesPerBlock if the format is compressed,
-       * or should I divide the BytesPerBlock by BlockWidth and BlockHeight?
-       * Would it be that division an integer?.
-       *      Rationale:  Uncompressed formats have a block of 1 texel, but this
-       * is not true for compressed formats (in those either BlockWidth,
-       * BlockHeight or both are > 1,  both measured in number of texels).
-       * If I return BytesPerBlock for those, I would be assuming than a block
-       * is the minimum we can have although it may be larger than a texel.
-       *
-       * Update: AFAICS, compressed formats are not allowed in glBindTexture, so
-       * if we have to reply in terms of glBindTexture (see above) this call is
-       * correct.
-       */
-      buffer[0] = (_mesa_format_image_size(image_format, 1, 1, 1) * 8);
+      /* We have to return bits */
+      buffer[0] = (_mesa_get_format_bytes(image_format) * 8);
       count = 1;
    }
 
