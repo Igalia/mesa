@@ -825,6 +825,17 @@ vec4_visitor::is_dep_ctrl_unsafe(const vec4_instruction *inst)
    }
 
    /*
+    * Instructions that use Align1 mode cause the GPU to hang when inserted
+    * between a NoDDClr and NoDDChk in Align16 mode. Discovered empirically.
+    */
+
+   if (inst->opcode == VEC4_OPCODE_PACK_BYTES ||
+       inst->opcode == VEC4_OPCODE_MOV_BYTES ||
+       inst->is_math())
+      return true;
+
+
+   /*
     * mlen:
     * In the presence of send messages, totally interrupt dependency
     * control. They're long enough that the chance of dependency
@@ -838,12 +849,8 @@ vec4_visitor::is_dep_ctrl_unsafe(const vec4_instruction *inst)
     * enable of the last instruction, the optimization must be avoided. This is
     * to avoid instructions being shot down the pipeline when no writes are
     * required.
-    *
-    * math:
-    * Dependency control does not work well over math instructions.
-    * NB: Discovered empirically
     */
-   return (inst->mlen || inst->predicate || inst->is_math());
+   return (inst->mlen || inst->predicate);
 }
 
 /**
