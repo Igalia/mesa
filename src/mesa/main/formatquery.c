@@ -1355,18 +1355,32 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
          }
 
       break;
-   case GL_IMAGE_PIXEL_TYPE:
-      for (int i = 0; i < ARRAY_SIZE(imageformat_table); ++i) {
-         if (imageformat_table[i].format == internalformat) {
-            buffer[0] = imageformat_table[i].pixel_type;
-            count = 1;
-            break;
-         }
+   case GL_IMAGE_PIXEL_TYPE: {
+      mesa_format image_format;
+      GLenum datatype;
+      GLuint comps;
+
+      if (target == GL_RENDERBUFFER) {
+         unsupported = true;
+         goto end;
       }
 
-      if (count < 1) {
+      image_format = _mesa_get_shader_image_format(internalformat);
+      if (image_format == MESA_FORMAT_NONE) {
          unsupported = true;
+         goto end;
       }
+
+      _mesa_uncompressed_format_to_type_and_comps(image_format, &datatype,
+                                                  &comps);
+      if (!datatype) {
+         unsupported = true;
+         goto end;
+      }
+
+      buffer[0] = datatype;
+      count = 1;
+   }
 
       break;
    case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
