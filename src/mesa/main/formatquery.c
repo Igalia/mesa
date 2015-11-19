@@ -1100,16 +1100,28 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
     /* @TODO */
       break;
    case GL_TEXTURE_IMAGE_FORMAT:
-    /* @TODO */
+      /* @TODO: ask the driver */
+      /* The spec says: the implementation-preferred ..,
+       * so it should probably be answered by the driver
+       */
       break;
    case GL_TEXTURE_IMAGE_TYPE:
-    /* @TODO */
+      /* @TODO: ask the driver */
+      /* The spec says: the implementation-preferred ..,
+       * so it should probably be answered by the driver
+       */
       break;
    case GL_GET_TEXTURE_IMAGE_FORMAT:
-    /* @TODO */
+      /* @TODO: ask the driver */
+      /* The spec says: the implementation-preferred ..,
+       * so it should probably be answered by the driver
+       */
       break;
    case GL_GET_TEXTURE_IMAGE_TYPE:
-      /* @TODO */
+      /* @TODO: ask the driver */
+      /* The spec says: the implementation-preferred ..,
+       * so it should probably be answered by the driver
+       */
       break;
    case GL_MIPMAP:
       /* @TODO */
