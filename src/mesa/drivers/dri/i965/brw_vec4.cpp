@@ -838,6 +838,8 @@ vec4_visitor::is_dep_ctrl_unsafe(const vec4_instruction *inst)
 
    if (inst->opcode == VEC4_OPCODE_PACK_BYTES ||
        inst->opcode == VEC4_OPCODE_MOV_BYTES ||
+       inst->opcode == VEC4_OPCODE_DOUBLE_TO_FLOAT ||
+       inst->opcode == VEC4_OPCODE_FLOAT_TO_DOUBLE ||
        inst->is_math())
       return true;
 
