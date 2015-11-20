@@ -103,11 +103,7 @@ _is_internalformat_supported(struct gl_context *ctx, GLenum target,
          return false;
 
       /* additional checks for depth textures */
-      /* @FIXME: In case of error, this call is currently setting an
-       * GL_INVALID_OPERATION error, we are  not interested in that.
-       */
-      if (!_mesa_legal_texture_base_format_for_target(ctx, target,
-                                                      internalformat, 0, "getInternalformativ"))
+      if (!_mesa_legal_texture_base_format_for_target(ctx, target, internalformat));
          return false;
 
       /* additional checks for compressed textures */
