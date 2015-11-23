@@ -103,7 +103,7 @@ _is_internalformat_supported(struct gl_context *ctx, GLenum target,
          return false;
 
       /* additional checks for depth textures */
-      if (!_mesa_legal_texture_base_format_for_target(ctx, target, internalformat));
+      if (!_mesa_legal_texture_base_format_for_target(ctx, target, internalformat))
          return false;
 
       /* additional checks for compressed textures */
