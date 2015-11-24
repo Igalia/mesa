@@ -23,7 +23,7 @@
 
 #include "brw_context.h"
 
-size_t
+static size_t
 brw_query_samples_for_format(struct gl_context *ctx, GLenum target,
                              GLenum internalFormat, int samples[16])
 {
@@ -73,7 +73,17 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
 
    switch (pname) {
    case GL_SAMPLES:
-   case GL_NUM_SAMPLE_COUNTS:
+      brw_query_samples_for_format(ctx, target, internalFormat, params);
+      break;
+
+   case GL_NUM_SAMPLE_COUNTS: {
+      size_t num_samples;
+      num_samples = brw_query_samples_for_format(ctx, target, internalFormat,
+                                                 params);
+      params[0] = (GLint) num_samples;
+      break;
+   }
+
    case GL_INTERNALFORMAT_SUPPORTED:
    case GL_INTERNALFORMAT_PREFERRED:
    case GL_INTERNALFORMAT_RED_SIZE:
