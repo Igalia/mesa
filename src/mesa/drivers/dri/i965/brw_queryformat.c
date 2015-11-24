@@ -23,7 +23,7 @@
 
 #include "brw_context.h"
 
-size_t
+static size_t
 brw_query_samples_for_format(struct gl_context *ctx, GLenum target,
                              GLenum internalFormat, int samples[16])
 {
@@ -72,12 +72,21 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
    assert(params != NULL);
 
    switch (pname) {
+   case GL_SAMPLES:
+      brw_query_samples_for_format(ctx, target, internalFormat, params);
+      break;
+
+   case GL_NUM_SAMPLE_COUNTS: {
+      size_t num_samples;
+      num_samples = brw_query_samples_for_format(ctx, target, internalFormat,
+                                                 params);
+      params[0] = (GLint) num_samples;
+      break;
+   }
 
    /* Grouped queries that should be answered by Mesa frontend,
     * so are unreachable here.
     */
-   case GL_SAMPLES:
-   case GL_NUM_SAMPLE_COUNTS:
    case GL_INTERNALFORMAT_RED_SIZE:
    case GL_INTERNALFORMAT_GREEN_SIZE:
    case GL_INTERNALFORMAT_BLUE_SIZE:
