@@ -883,6 +883,19 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    switch(pname){
    case GL_SAMPLES:
    case GL_NUM_SAMPLE_COUNTS:
+      /* The ARB_internalformat_query2 states that when querying for SAMPLES,
+       * if no values are returned, then the given buffer is not modified. So,
+       * we need to initialize the local buffer with the contents of the user's
+       * buffer.
+       *
+       *     "If <internalformat> is not color-renderable, depth-renderable, or
+       *      stencil-renderable (as defined in section 4.4.4), or if <target>
+       *      does not support multiple samples (ie other than
+       *      TEXTURE_2D_MULTISAMPLE, TEXTURE_2D_MULTISAMPLE_ARRAY, or
+       *      RENDERBUFFER), <params> is not modified."
+       */
+      memcpy(buffer, params, MIN2(bufSize, 16) * sizeof(GLint));
+
       if (target != GL_RENDERBUFFER &&
           target != GL_TEXTURE_2D_MULTISAMPLE &&
           target != GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
