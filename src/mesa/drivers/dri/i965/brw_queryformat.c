@@ -97,6 +97,11 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
    case GL_COLOR_RENDERABLE:
    case GL_DEPTH_RENDERABLE:
    case GL_STENCIL_RENDERABLE:
+   case GL_TEXTURE_COMPRESSED:
+   case GL_TEXTURE_COMPRESSED_BLOCK_WIDTH:
+   case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
+   case GL_TEXTURE_COMPRESSED_BLOCK_SIZE:
+
       unreachable("Mesa should have answered these queries");
       break;
 
@@ -277,22 +282,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       break;
 
    case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
-      /* @TODO */
-      break;
-
-   case GL_TEXTURE_COMPRESSED:
-      /* @TODO */
-      break;
-
-   case GL_TEXTURE_COMPRESSED_BLOCK_WIDTH:
-      /* @TODO */
-      break;
-
-   case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
-      /* @TODO */
-      break;
-
-   case GL_TEXTURE_COMPRESSED_BLOCK_SIZE:
       /* @TODO */
       break;
 
