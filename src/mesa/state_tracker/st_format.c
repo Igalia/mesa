@@ -2266,9 +2266,9 @@ st_ChooseTextureFormat(struct gl_context *ctx, GLenum target,
 
 
 /**
- * Called via ctx->Driver.ChooseTextureFormat().
+ * Called via ctx->Driver.QueryInternalFormat().
  */
-size_t
+static size_t
 st_QuerySamplesForFormat(struct gl_context *ctx, GLenum target,
                          GLenum internalFormat, int samples[16])
 {
@@ -2307,6 +2307,42 @@ st_QuerySamplesForFormat(struct gl_context *ctx, GLenum target,
    return num_sample_counts;
 }
 
+/**
+ * ARB_internalformat_query2 driver hook.
+ */
+void
+st_QueryInternalFormat(struct gl_context *ctx, GLenum target,
+                       GLenum internalFormat, GLenum pname, GLint *params)
+{
+   /* The API entry-point gives us a temporary params buffer that is non-NULL
+    * and guaranteed to have at least 16 elements.
+    */
+   assert(params != NULL);
+
+   switch (pname) {
+   case GL_SAMPLES:
+      st_QuerySamplesForFormat(ctx, target, internalFormat, params);
+      break;
+
+   case GL_NUM_SAMPLE_COUNTS: {
+      size_t num_samples;
+      num_samples = st_QuerySamplesForFormat(ctx, target, internalFormat,
+                                             params);
+      params[0] = (GLint) num_samples;
+      break;
+   }
+
+   default:
+      /* @FIXME: For the rest of the pnames, we call back the Mesa's default
+       * function for drivers that don't implement ARB_internalformat_query2.
+       * But it is ugly to call frontend functions from the driver, so we need
+       * to find a better way to reuse code (or actually implement the
+       * rest of queries of the extension, at some point).
+       */
+      _mesa_query_internal_format_default(ctx, target, internalFormat, pname,
+                                          params);
+   }
+}
 
 /**
  * This is used for translating texture border color and the clear
