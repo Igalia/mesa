@@ -1355,8 +1355,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
                                       params);
       break;
    case GL_TEXTURE_COMPRESSED:
-      buffer[0] = _mesa_is_compressed_format(ctx, internalformat) ?
-         GL_TRUE : GL_FALSE;
+      buffer[0] = _mesa_is_compressed_format(ctx, internalformat);
       count = 1;
 
       break;
