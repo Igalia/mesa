@@ -139,7 +139,7 @@ _is_internalformat_supported(struct gl_context *ctx, GLenum target,
    return true;
 }
 
-/* Sets 'buffer' and 'count' to the appropriate "unsupported" response for each pname.
+/* Sets 'buffer' to the appropriate "unsupported" response for each pname.
  *
  * From the ARB_internalformat_query2 specs, "Issues" section:
  * "3 a) What if the combination of <target> and <pname> is invalid/nonsense
@@ -157,11 +157,10 @@ _is_internalformat_supported(struct gl_context *ctx, GLenum target,
  *    - list-based queries return no entries.
  */
 static void
-_set_unsupported(GLenum pname, GLint buffer[16], GLsizei *count)
+_set_unsupported(GLenum pname, GLint buffer[16])
 {
    switch(pname) {
    case GL_SAMPLES:
-      *count = 0;
       break;
    case GL_NUM_SAMPLE_COUNTS:
    case GL_INTERNALFORMAT_RED_SIZE:
@@ -181,7 +180,6 @@ _set_unsupported(GLenum pname, GLint buffer[16], GLsizei *count)
    case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
    case GL_TEXTURE_COMPRESSED_BLOCK_SIZE:
       buffer[0] = 0;
-      *count = 1;
       break;
    case GL_INTERNALFORMAT_PREFERRED:
    case GL_INTERNALFORMAT_RED_TYPE:
@@ -231,7 +229,6 @@ _set_unsupported(GLenum pname, GLint buffer[16], GLsizei *count)
    case GL_TEXTURE_VIEW:
    case GL_VIEW_COMPATIBILITY_CLASS:
       buffer[0] = GL_NONE;
-      *count = 1;
       break;
    case GL_INTERNALFORMAT_SUPPORTED:
    case GL_COLOR_COMPONENTS:
@@ -243,7 +240,6 @@ _set_unsupported(GLenum pname, GLint buffer[16], GLsizei *count)
    case GL_MIPMAP:
    case GL_TEXTURE_COMPRESSED:
       buffer[0] = GL_FALSE;
-      *count = 1;
       break;
    default:
       unreachable("invalid 'pname'");
@@ -257,8 +253,7 @@ _set_unsupported(GLenum pname, GLint buffer[16], GLsizei *count)
  */
 static bool
 _check_dependencies(struct gl_context *ctx, GLenum target,
-                    GLenum pname, GLenum internalformat, GLint buffer[16],
-                    GLsizei *count)
+                    GLenum pname, GLenum internalformat, GLint buffer[16])
 {
    switch(target){
    case GL_TEXTURE_2D:
@@ -852,7 +847,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
                           GLsizei bufSize, GLint *params)
 {
    GLint buffer[16];
-   GLsizei count = 0;
    bool unsupported = false;
    GET_CURRENT_CONTEXT(ctx);
 
@@ -871,7 +865,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
 #if 0
    unsupported = !_check_dependencies(ctx, target, pname, internalformat,
-                                      buffer, &count);
+                                      buffer);
    if (unsupported)
       goto end;
 #endif
@@ -912,8 +906,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        */
       if (!ctx->Extensions.ARB_internalformat_query2) {
          if (pname == GL_SAMPLES) {
-            count = ctx->Driver.QuerySamplesForFormat(ctx, target,
-                                                      internalformat, buffer);
+            ctx->Driver.QuerySamplesForFormat(ctx, target,
+                                              internalformat, buffer);
          } else { /* NUM_SAMPLE_COUNTS */
             size_t num_samples;
 
@@ -938,7 +932,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
              * separately over-write it with the requested value.
              */
             buffer[0] = (GLint) num_samples;
-            count = 1;
          }
 
          break;
@@ -951,7 +944,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_INTERNALFORMAT_SUPPORTED:
       /* If we arrive here, the internalformat is supported */
       buffer[0] = GL_TRUE;
-      count = 1;
 
       break;
    case GL_INTERNALFORMAT_PREFERRED:
@@ -1025,10 +1017,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       */
       if (_mesa_is_color_format(internalformat)) {
          buffer[0] = GL_TRUE;
-         count = 1;
       } else {
          buffer[0] = GL_FALSE;
-         count = 1;
       }
 
       break;
@@ -1036,10 +1026,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       if (_mesa_is_depth_format(internalformat) ||
           _mesa_is_depthstencil_format(internalformat)) {
          buffer[0] = GL_TRUE;
-         count = 1;
       } else {
          buffer[0] = GL_FALSE;
-         count = 1;
       }
 
       break;
@@ -1047,10 +1035,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       if (_mesa_is_stencil_format(internalformat) ||
           _mesa_is_depthstencil_format(internalformat)) {
          buffer[0] = GL_TRUE;
-         count = 1;
       } else {
          buffer[0] = GL_FALSE;
-         count = 1;
       }
 
       break;
@@ -1072,7 +1058,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
          buffer[0] = GL_FALSE;
          break;
       }
-      count = 1;
    }
 
       break;
@@ -1086,7 +1071,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       } else {
          buffer[0] = GL_FALSE;
       }
-      count = 1;
    }
 
       break;
@@ -1161,7 +1145,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
          } else {
             buffer[0] = GL_LINEAR;
          }
-         count = 1;
       } else {
          unsupported = true;
       }
@@ -1178,7 +1161,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       * (the check is done in _legal_parameters)
       */
       buffer[0] = GL_FULL_SUPPORT;
-      count = 1;
       /* @FIXME: Should we ask the driver to know if the support is: FULL, CAVEAT, etc? */
       break;
    case GL_FILTER:
@@ -1229,7 +1211,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       /* If we arrive here, ARB_shader_image_load_store is supported */
       /* @FIXME: Is FULL_SUPPORT the correct answer? */
       buffer[0] = GL_FULL_SUPPORT;
-      count = 1;
 
       break;
    case GL_SHADER_IMAGE_ATOMIC:
@@ -1267,7 +1248,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       /* We have to return bits */
       buffer[0] = (_mesa_get_format_bytes(image_format) * 8);
-      count = 1;
    }
 
       break;
@@ -1298,7 +1278,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        * that is fine to use the internal format here.
        */
       buffer[0] = _mesa_get_image_format_class(internalformat);
-      count = 1;
 
       break;
    case GL_IMAGE_PIXEL_FORMAT:
@@ -1318,8 +1297,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
          buffer[0] = _mesa_base_format_to_integer_format(base_format);
       else
          buffer[0] = base_format;
-
-      count = 1;
 
       break;
    case GL_IMAGE_PIXEL_TYPE: {
@@ -1346,7 +1323,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       }
 
       buffer[0] = datatype;
-      count = 1;
    }
 
       break;
@@ -1369,8 +1345,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
    case GL_TEXTURE_COMPRESSED:
       buffer[0] = _mesa_is_compressed_format(ctx, internalformat);
-      count = 1;
-
       break;
    case GL_TEXTURE_COMPRESSED_BLOCK_WIDTH:
    case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
@@ -1397,7 +1371,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
          else
             buffer[0] = block_size / bwidth;
       }
-      count = 1;
    }
 
       break;
@@ -1410,7 +1383,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       /* All drivers in Mesa support ARB_clear_buffer_object */
       /* @FIXME: is full support the correct answer ? */
       buffer[0] = GL_FULL_SUPPORT;
-      count = 1;
 
       break;
    case GL_TEXTURE_VIEW:
@@ -1434,7 +1406,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
          buffer[0] = view_class;
       }
-      count = 1;
 
       break;
    default:
@@ -1452,13 +1423,14 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    }
 
    if (unsupported)
-      _set_unsupported(pname, buffer, &count);
+      _set_unsupported(pname, buffer);
 
    /* Copy the data from the temporary buffer to the buffer supplied by the
-    * application.  Clamp the size of the copy to the size supplied by the
-    * application.
+    * application.  Clamp the size of the copy to minimum between the size
+    * supplied by the application and the maximum of 16 elements of the
+    * temporary buffer.
     */
-   memcpy(params, buffer, MIN2(count, bufSize) * sizeof(GLint));
+   memcpy(params, buffer, MIN2(bufSize, 16) * sizeof(GLint));
 }
 
 void GLAPIENTRY
