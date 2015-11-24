@@ -33,21 +33,6 @@
 #include "texcompress.h"
 #include "shaderimage.h"
 
-/* @TODO: remove this */
-/* default implementation of QuerySamplesForFormat driverfunc, for
- * non-multisample-capable drivers. */
-size_t
-_mesa_query_samples_for_format(struct gl_context *ctx, GLenum target,
-                               GLenum internalFormat, int samples[16])
-{
-   (void) target;
-   (void) internalFormat;
-   (void) ctx;
-
-   samples[0] = 1;
-   return 1;
-}
-
 void
 _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
                                     GLenum internalFormat, GLenum pname,
@@ -56,10 +41,18 @@ _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
    (void) ctx;
    (void) target;
    (void) internalFormat;
-   (void) pname;
    (void) params;
 
-   /* @TODO */
+   switch (pname) {
+   case GL_SAMPLES:
+   case GL_NUM_SAMPLE_COUNTS:
+      params[0] = 1;
+      break;
+
+   default:
+      /* @TODO: provide a default answer for the rest of the pnames */
+      unreachable("Default value for query not yet implemented");
+   }
 }
 
 static bool
@@ -876,7 +869,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
    switch(pname){
    case GL_SAMPLES:
-   case GL_NUM_SAMPLE_COUNTS:
       /* The ARB_internalformat_query2 states that when querying for SAMPLES,
        * if no values are returned, then the given buffer is not modified. So,
        * we need to initialize the local buffer with the contents of the user's
@@ -889,7 +881,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        *      RENDERBUFFER), <params> is not modified."
        */
       memcpy(buffer, params, MIN2(bufSize, 16) * sizeof(GLint));
-
+      /* fall-through */
+   case GL_NUM_SAMPLE_COUNTS:
       if (target != GL_RENDERBUFFER &&
           target != GL_TEXTURE_2D_MULTISAMPLE &&
           target != GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
@@ -898,49 +891,18 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       /* The renderability of the internalformat is already checked in
        * "_is_internalformat_supported" method.
        */
-      if (unsupported)
+      if (unsupported) {
+         if (pname == GL_NUM_SAMPLE_COUNTS)
+            buffer[0] = 0;
+
          goto end;
-
-      /* @TODO: remove everything under this IF, we will be using
-       * QueryInternalFormat.
-       */
-      if (!ctx->Extensions.ARB_internalformat_query2) {
-         if (pname == GL_SAMPLES) {
-            ctx->Driver.QuerySamplesForFormat(ctx, target,
-                                              internalformat, buffer);
-         } else { /* NUM_SAMPLE_COUNTS */
-            size_t num_samples;
-
-            /* The driver can return 0, and we should pass that along to the
-             * application.  The ARB decided that ARB_internalformat_query should
-             * behave as ARB_internalformat_query2 in this situation.
-             *
-             * The ARB_internalformat_query2 spec says:
-             *
-             *     "- NUM_SAMPLE_COUNTS: The number of sample counts that would be
-             *        returned by querying SAMPLES is returned in <params>.
-             *        * If <internalformat> is not color-renderable,
-             *          depth-renderable, or stencil-renderable (as defined in
-             *          section 4.4.4), or if <target> does not support multiple
-             *          samples (ie other than TEXTURE_2D_MULTISAMPLE,
-             *          TEXTURE_2D_MULTISAMPLE_ARRAY, or RENDERBUFFER), 0 is
-             *          returned."
-             */
-            num_samples =  ctx->Driver.QuerySamplesForFormat(ctx, target, internalformat, buffer);
-
-            /* QuerySamplesForFormat writes some stuff to buffer, so we have to
-             * separately over-write it with the requested value.
-             */
-            buffer[0] = (GLint) num_samples;
-         }
-
-         break;
       }
 
-      /* let the driver answer */
+      /* ask the driver */
       ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
-                                      params);
+                                      buffer);
       break;
+
    case GL_INTERNALFORMAT_SUPPORTED:
       /* If we arrive here, the internalformat is supported */
       buffer[0] = GL_TRUE;
