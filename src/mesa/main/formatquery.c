@@ -32,6 +32,7 @@
 #include "textureview.h"
 #include "texcompress.h"
 #include "shaderimage.h"
+#include "texobj.h"
 
 void
 _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
@@ -1288,15 +1289,32 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    }
 
       break;
-   case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
-      /* Equivalent to calling GetTexParameter with <value> set to
-       * IMAGE_FORMAT_COMPATIBILITY_TYPE. Possible values are
-       * IMAGE_FORMAT_COMPATIBILITY_BY_SIZE or
-       * IMAGE_FORMAT_COMPATIBILITY_BY_CLASS.
-       */
+   case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE: {
+      /* Dimension is not specified at GetInternalformat query, so at this
+       * point is it valid if it is valid with at least one of the
+       * dimensions */
+      GLboolean valid_teximage_target =
+         _mesa_legal_teximage_target(ctx, 1, target) ||
+         _mesa_legal_teximage_target(ctx, 2, target) ||
+         _mesa_legal_teximage_target(ctx, 3, target);
 
-      /* @FIXME: again a query using GetTexParameter,
-         we need the texture object*/
+      if (valid_teximage_target) {
+         /* From spec: "Equivalent to calling GetTexParameter with <value> set
+          * to IMAGE_FORMAT_COMPATIBILITY_TYPE."
+          *
+          * GetTexParameter just returns
+          * tex_obj->ImageFormatCompatibilityType. We create a fake tex_obj
+          * just with the purpose of getting the value.
+          */
+         struct gl_texture_object *tex_obj = _mesa_new_texture_object(ctx, 0, target);
+         buffer[0] = tex_obj->ImageFormatCompatibilityType;
+         _mesa_delete_texture_object(ctx, tex_obj);
+      } else {
+         /* From spec: "If the resource is not supported for image textures,
+          * or if image textures are not supported, NONE is returned." */
+         buffer[0] = 0;
+      }
+   }
       break;
    case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST:
    case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST:
