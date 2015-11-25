@@ -42,6 +42,7 @@
 #include "main/texstore.h"
 #include "main/image.h"
 #include "main/macros.h"
+#include "main/formatquery.h"
 
 #include "pipe/p_context.h"
 #include "pipe/p_defines.h"
