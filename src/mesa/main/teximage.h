@@ -58,7 +58,6 @@ _mesa_is_zero_size_texture(const struct gl_texture_image *texImage)
 
 /** \name Internal functions */
 /*@{*/
-
 extern GLboolean
 _mesa_is_proxy_texture(GLenum target);
 
@@ -206,6 +205,12 @@ _mesa_texture_buffer_range(struct gl_context *ctx,
                            struct gl_buffer_object *bufObj,
                            GLintptr offset, GLsizeiptr size,
                            const char *caller);
+
+GLboolean
+_mesa_legal_teximage_target(struct gl_context *ctx,
+                            GLuint dims,
+                            GLenum target);
+
 /*@}*/
 
 

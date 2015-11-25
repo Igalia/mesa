@@ -1408,8 +1408,8 @@ _mesa_target_can_be_compressed(const struct gl_context *ctx, GLenum target,
  * Check if the given texture target value is legal for a
  * glTexImage1/2/3D call.
  */
-static GLboolean
-legal_teximage_target(struct gl_context *ctx, GLuint dims, GLenum target)
+GLboolean
+_mesa_legal_teximage_target(struct gl_context *ctx, GLuint dims, GLenum target)
 {
    switch (dims) {
    case 1:
@@ -2802,7 +2802,7 @@ teximage(struct gl_context *ctx, GLboolean compressed, GLuint dims,
    internalFormat = override_internal_format(internalFormat, width, height);
 
    /* target error checking */
-   if (!legal_teximage_target(ctx, dims, target)) {
+   if (!_mesa_legal_teximage_target(ctx, dims, target)) {
       _mesa_error(ctx, GL_INVALID_ENUM, "%s%uD(target=%s)",
                   func, dims, _mesa_enum_to_string(target));
       return;
