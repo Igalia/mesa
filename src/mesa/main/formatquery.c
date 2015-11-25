@@ -252,6 +252,7 @@ _check_dependencies(struct gl_context *ctx, GLenum target,
    switch(target){
    case GL_TEXTURE_2D:
    case GL_TEXTURE_3D:
+      /* OES_texture_3D is supported by all Mesa's drivers */
       break;
    case GL_TEXTURE_1D:
       /* Taken from "legal_teximage_target" method */
