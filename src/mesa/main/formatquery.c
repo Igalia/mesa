@@ -1038,7 +1038,17 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_FRAMEBUFFER_RENDERABLE:
-     /* @TODO */
+      unsupported = (target != GL_RENDERBUFFER);
+      if (unsupported)
+         goto end;
+
+      /* If we arrived here, we already know that the internalformat is
+       * framebuffer renderable (see_is_internalformat_supported)
+       * method.
+       */
+      /* @FIXME: Is full support the correct answer? */
+      buffer[0] = GL_FULL_SUPPORT;
+
       break;
    case GL_FRAMEBUFFER_RENDERABLE_LAYERED:
     /* @TODO */
