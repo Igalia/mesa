@@ -1113,6 +1113,9 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO */
       break;
    case GL_MANUAL_GENERATE_MIPMAP:
+      /* Manual mipmap generation refers to generate mipmaps using the
+       * 'glGenerateMipmap' method.
+       */
       if (!(_mesa_is_valid_generate_texture_mipmap_target(ctx, target) &&
             _mesa_is_valid_generate_texture_mipmap_internalformat(ctx,
                                                                   internalformat))) {
@@ -1120,12 +1123,11 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
          goto end;
       }
 
-      /* @FIXME: Is full support the correct answer? */
-      buffer[0] = GL_FULL_SUPPORT;
+      /* @FIXME: Is full support the correct answer?. Review
+       * meta_generate_mipmap.c, there is a fallback_required method.
+       */
+       buffer[0] = GL_FULL_SUPPORT;
 
-      break;
-   case GL_AUTO_GENERATE_MIPMAP:
-      /* @TODO */
       break;
    case GL_COLOR_ENCODING:
       if (_mesa_is_color_format(internalformat)) {
