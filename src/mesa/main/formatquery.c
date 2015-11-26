@@ -33,6 +33,7 @@
 #include "texcompress.h"
 #include "shaderimage.h"
 #include "texobj.h"
+#include "genmipmap.h"
 
 void
 _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
@@ -1105,7 +1106,16 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO */
       break;
    case GL_MANUAL_GENERATE_MIPMAP:
-      /* @TODO */
+      if (!(_mesa_is_valid_generate_texture_mipmap_target(ctx, target) &&
+            _mesa_is_valid_generate_texture_mipmap_internalformat(ctx,
+                                                                  internalformat))) {
+         unsupported = true;
+         goto end;
+      }
+
+      /* @FIXME: Is full support the correct answer? */
+      buffer[0] = GL_FULL_SUPPORT;
+
       break;
    case GL_AUTO_GENERATE_MIPMAP:
       /* @TODO */
