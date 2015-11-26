@@ -480,9 +480,7 @@ _check_dependencies(struct gl_context *ctx, GLenum target,
 
       break;
    case GL_GEOMETRY_TEXTURE:
-      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30) ||
-          (_mesa_is_desktop_gl(ctx) && ctx->Version <= 30) ||
-          !ctx->Extensions.ARB_geometry_shader4)
+      if (!_mesa_has_geometry_shaders(ctx))
          return false;
 
       break;
