@@ -1110,7 +1110,20 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        */
       break;
    case GL_MIPMAP:
-      /* @TODO */
+      /* The following texture targets can not have mipmaps:
+       * TEXTURE_RECTANGLE, TEXTURE_BUFFER, TEXTURE_2D_MULTISAMPLE and
+       * TEXTURE_2D_MULTISAMPLE_ARRAY. @FIXME: For the moment, I am using
+       * _mesa_is_valid_generate_texture_mipmap_target method to check this.
+       */
+      unsupported = _mesa_is_valid_generate_texture_mipmap_target(ctx, target);
+      if (unsupported)
+         goto end;
+
+      /*@FIXME: Are there restrictions about the internalformat like in the
+       * mipmap generation?, i.e. should I call to
+       * _mesa_is_valid_generate_texture_mipmap_internalformat too?
+       */
+      buffer[0] = GL_FULL_SUPPORT;
       break;
 
    case GL_AUTO_GENERATE_MIPMAP:
