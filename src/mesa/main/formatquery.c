@@ -446,8 +446,10 @@ _check_dependencies(struct gl_context *ctx, GLenum target,
 
       break;
    case GL_AUTO_GENERATE_MIPMAP:
-      if ((ctx->API == API_OPENGLES2 && ctx->Version <= 30)  ||
-          (ctx->API = API_OPENGL_CORE && ctx->Version >= 32))
+      /* Taken from 'get_tex_parameteriv' when the pname is
+       * GL_GENERATE_MIPMAP_SGIS.
+       */
+      if (ctx->API != API_OPENGL_COMPAT && ctx->API != API_OPENGLES)
          return false;
 
       break;
