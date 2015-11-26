@@ -1186,10 +1186,13 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO: ask the driver */
       break;
    case GL_TESS_CONTROL_TEXTURE:
-      /* @TODO: ask the driver */
-      break;
    case GL_TESS_EVALUATION_TEXTURE:
-      /* @TODO: ask the driver */
+     /* Mesa doesn't support tesselation stages, so we ask the backend
+      * in case it supports it.
+      */
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      buffer);
+
       break;
    case GL_GEOMETRY_TEXTURE:
       /* @TODO: ask the driver */
