@@ -917,7 +917,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_INTERNALFORMAT_PREFERRED:
       /* let the driver answer */
       ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
-                                      params);
+                                      buffer);
       break;
    case GL_INTERNALFORMAT_RED_SIZE:
    case GL_INTERNALFORMAT_GREEN_SIZE:
@@ -975,7 +975,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_MAX_LAYERS:
    case GL_MAX_COMBINED_DIMENSIONS:
       ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
-                                      params);
+                                      buffer);
       break;
    case GL_COLOR_COMPONENTS:
       /* @FIXME: _mesa_is_color_format, considers luminance and
@@ -1351,7 +1351,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE:
    case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
       ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
-                                      params);
+                                      buffer);
       break;
    case GL_TEXTURE_COMPRESSED:
       buffer[0] = _mesa_is_compressed_format(ctx, internalformat);
