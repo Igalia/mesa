@@ -1477,7 +1477,7 @@ _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
                             GLenum pname, GLsizei bufSize, GLint64 *params)
 {
    GLint *params32 = NULL;
-   unsigned i = 0;
+   GLsizei i = 0;
 
    GET_CURRENT_CONTEXT(ctx);
 
@@ -1493,6 +1493,9 @@ _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
     * needed (ie: MAX_COMBINED_DIMENSIONS).*/
    if (bufSize > 0)
       params32 = malloc(sizeof(GLint) * bufSize);
+
+   for (i = 0; i < bufSize; i++)
+      params32[i] = params[i];
 
    _mesa_GetInternalformativ(target, internalformat, pname, bufSize, params32);
 
