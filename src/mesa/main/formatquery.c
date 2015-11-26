@@ -857,6 +857,23 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    if (!_legal_parameters(ctx, target, internalformat, pname, bufSize, params))
       return;
 
+   /* The ARB_internalformat_query2 states that when querying for SAMPLES,
+    * if no values are returned, then the given buffer is not modified. So,
+    * we need to initialize the local buffer with the contents of the user's
+    * buffer.
+    *
+    *     "If <internalformat> is not color-renderable, depth-renderable, or
+    *      stencil-renderable (as defined in section 4.4.4), or if <target>
+    *      does not support multiple samples (ie other than
+    *      TEXTURE_2D_MULTISAMPLE, TEXTURE_2D_MULTISAMPLE_ARRAY, or
+    *      RENDERBUFFER), <params> is not modified."
+    *
+    * This includes when it is not supported so we need to check the need of
+    * the copy here.
+    */
+   if (pname == GL_SAMPLES)
+      memcpy(buffer, params, MIN2(bufSize, 16) * sizeof(GLint));
+
 #if 0
    unsupported = !_check_dependencies(ctx, target, pname, internalformat,
                                       buffer);
@@ -870,18 +887,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
    switch(pname){
    case GL_SAMPLES:
-      /* The ARB_internalformat_query2 states that when querying for SAMPLES,
-       * if no values are returned, then the given buffer is not modified. So,
-       * we need to initialize the local buffer with the contents of the user's
-       * buffer.
-       *
-       *     "If <internalformat> is not color-renderable, depth-renderable, or
-       *      stencil-renderable (as defined in section 4.4.4), or if <target>
-       *      does not support multiple samples (ie other than
-       *      TEXTURE_2D_MULTISAMPLE, TEXTURE_2D_MULTISAMPLE_ARRAY, or
-       *      RENDERBUFFER), <params> is not modified."
-       */
-      memcpy(buffer, params, MIN2(bufSize, 16) * sizeof(GLint));
       /* fall-through */
    case GL_NUM_SAMPLE_COUNTS:
       if (target != GL_RENDERBUFFER &&
