@@ -2094,7 +2094,12 @@ fs_visitor::demote_pull_constants()
          /* Set up the annotation tracking for new generated instructions. */
          const fs_builder ibld(this, block, inst);
          const unsigned index = stage_prog_data->binding_table.pull_constants_start;
-         fs_reg dst = vgrf(glsl_type::float_type);
+         fs_reg dst;
+
+         if (type_sz(inst->src[i].type) <= 4)
+            dst = vgrf(glsl_type::float_type);
+         else
+            dst = vgrf(glsl_type::double_type);
 
          assert(inst->src[i].stride == 0);
 
