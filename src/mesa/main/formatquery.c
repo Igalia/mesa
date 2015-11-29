@@ -58,29 +58,6 @@ _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
 }
 
 static bool
-_is_texture_target(GLenum target)
-{
-   switch(target){
-   case GL_TEXTURE_1D:
-   case GL_TEXTURE_1D_ARRAY:
-   case GL_TEXTURE_2D:
-   case GL_TEXTURE_2D_ARRAY:
-   case GL_TEXTURE_3D:
-   case GL_TEXTURE_CUBE_MAP:
-   case GL_TEXTURE_CUBE_MAP_ARRAY:
-   case GL_TEXTURE_RECTANGLE:
-   case GL_TEXTURE_2D_MULTISAMPLE:
-   case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
-   case GL_TEXTURE_BUFFER:
-      return true;
-   case GL_RENDERBUFFER:
-      return false;
-   default:
-      unreachable("bad target");
-   }
-}
-
-static bool
 _is_internalformat_supported(struct gl_context *ctx, GLenum target,
                              GLenum internalformat)
 {
