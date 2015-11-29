@@ -941,48 +941,109 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_INTERNALFORMAT_DEPTH_SIZE:
    case GL_INTERNALFORMAT_STENCIL_SIZE:
    case GL_INTERNALFORMAT_SHARED_SIZE:
-      if (_is_texture_target(target)) {
+      if (target != GL_RENDERBUFFER) {
          /* From the ARB_internalformat_query2 spec:
           *
           * For textures this query will return the same information as querying
           * GetTexLevelParameter{if}v for TEXTURE_*_SIZE would return.
           */
-         if (target ==  GL_TEXTURE_BUFFER) {
-            /* @TODO: get_tex_level_parameter_buffer */
-            /* @FIXME: same than in the 'else' branch */
-         } else {
-            /* @TODO: Behave as get_tex_level_parameter_image  */
-            /* @FIXME: We do not have the texFormat */
-            /* baseformat = _mesa_base_tex_format(ctx, internalformat); */
-            /* if (_mesa_base_format_has_channel(baseformat, pname)) */
-            /*    *params = _mesa_get_format_bits(texFormat, pname); */
-            /* else */
-            /*    *params = 0; */
+         GLint baseformat;
+         mesa_format texformat;
+
+         /* Let the driver choose the texture format . */
+         texformat = ctx->Driver.ChooseTextureFormat(ctx, target, internalformat,
+                                                     GL_NONE /*format */, GL_NONE /* type */);
+         baseformat = _mesa_base_tex_format(ctx, internalformat);
+
+         if (texformat == MESA_FORMAT_NONE || baseformat == -1) {
+            unsupported = true;
+            goto end;
+         }
+
+         buffer[0] = 0;
+         switch (pname) {
+         case GL_INTERNALFORMAT_RED_SIZE:
+         case GL_INTERNALFORMAT_GREEN_SIZE:
+         case GL_INTERNALFORMAT_BLUE_SIZE:
+         case GL_INTERNALFORMAT_ALPHA_SIZE:
+            if (_mesa_base_format_has_channel(baseformat, pname))
+               buffer[0] = _mesa_get_format_bits(texformat, pname);
+         case GL_INTERNALFORMAT_DEPTH_SIZE:
+         case GL_INTERNALFORMAT_STENCIL_SIZE:
+            buffer[0] =_mesa_get_format_bits(texformat, pname);
+            break;
+         case GL_INTERNALFORMAT_SHARED_SIZE:
+            if (target != GL_RENDERBUFFER &&
+                texformat == MESA_FORMAT_R9G9B9E5_FLOAT)
+               buffer[0] = 5;
+            break;
+         default:
+            break;
          }
       } else {
          /* @TODO */
 
          /* For uncompressed internal formats, queries of these values return the
-         * actual resolutions that would be used for storing image array components
-         * for the resource.
-         */
+          * actual resolutions that would be used for storing image array components
+          * for the resource.
+          */
          /*
-         * For compressed internal formats, the resolutions returned specify the
-         * component resolution of an uncompressed internal format that produces
-         * an image of roughly the same quality as the compressed algorithm.
-         */
+          * For compressed internal formats, the resolutions returned specify the
+          * component resolution of an uncompressed internal format that produces
+          * an image of roughly the same quality as the compressed algorithm.
+          */
       }
 
       break;
-
    case GL_INTERNALFORMAT_RED_TYPE:
    case GL_INTERNALFORMAT_GREEN_TYPE:
    case GL_INTERNALFORMAT_BLUE_TYPE:
    case GL_INTERNALFORMAT_ALPHA_TYPE:
    case GL_INTERNALFORMAT_DEPTH_TYPE:
    case GL_INTERNALFORMAT_STENCIL_TYPE:
-      /* @TODO */
-      /* @FIXME: same problem than for the *SIZE queries */
+      if (target != GL_RENDERBUFFER) {
+         /* From the ARB_internalformat_query2 spec:
+          *
+          * For textures this query will return the same information as querying
+          * GetTexLevelParameter{if}v for TEXTURE_*_TYPE would return.
+          */
+         mesa_format texformat;
+         GLint baseformat;
+
+         /* @FIXME: AFAICS, GL_TEXTURE_STENCIL_TYPE does not exist */
+         if (pname == GL_INTERNALFORMAT_STENCIL_TYPE) {
+            unsupported = true;
+            goto end;
+         }
+
+         /* Let the driver choose the texture format . */
+         texformat = ctx->Driver.ChooseTextureFormat(ctx, target, internalformat,
+                                                     GL_NONE /*format */, GL_NONE /* type */);
+         baseformat = _mesa_base_tex_format(ctx, internalformat);
+
+         if (texformat == MESA_FORMAT_NONE || baseformat == -1) {
+            unsupported = true;
+            goto end;
+         }
+
+	 if (_mesa_base_format_has_channel(baseformat, pname))
+	    buffer[0]  = _mesa_get_format_datatype(texformat);
+	 else
+            buffer[0] = GL_NONE;
+      } else {
+         /* @TODO */
+
+         /* For uncompressed internal formats, queries of these values return the
+          * actual resolutions that would be used for storing image array components
+          * for the resource.
+          */
+         /*
+          * For compressed internal formats, the resolutions returned specify the
+          * component resolution of an uncompressed internal format that produces
+          * an image of roughly the same quality as the compressed algorithm.
+          */
+      }
+
       break;
    case GL_MAX_WIDTH:
    case GL_MAX_HEIGHT:
