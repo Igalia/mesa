@@ -1530,8 +1530,9 @@ void GLAPIENTRY
 _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
                             GLenum pname, GLsizei bufSize, GLint64 *params)
 {
-   GLint *params32 = NULL;
+   GLint params32[16];
    GLsizei i = 0;
+   GLsizei realSize = MIN2(bufSize, 16);
 
    GET_CURRENT_CONTEXT(ctx);
 
@@ -1542,20 +1543,18 @@ _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
       return;
    }
 
-   /* FIXME: just wrapping GetInternalformativ as a temporal solution to get
-    * the work going. This would not be valid for the cases a 64-bit query is
-    * needed (ie: MAX_COMBINED_DIMENSIONS).*/
-   if (bufSize > 0)
-      params32 = malloc(sizeof(GLint) * bufSize);
+   /* For SAMPLES there are cases where params needs to remain unmodified. As
+    * no pname can return a negative value, we fill params32 with negative
+    * values as reference values, that can be used to know what copy-back to
+    * params */
+   memset(params32, -1, 16);
 
-   for (i = 0; i < bufSize; i++)
-      params32[i] = params[i];
+   _mesa_GetInternalformativ(target, internalformat, pname, realSize, params32);
 
-   _mesa_GetInternalformativ(target, internalformat, pname, bufSize, params32);
-
-   for (i = 0; i < bufSize; i++)
-      params[i] = params32[i];
-
-   if (bufSize > 0)
-      free(params32);
+   for (i = 0; i < realSize; i++) {
+      /* We only copy back the values that changed */
+      if (params32[i] < 0)
+         break;
+      params[i] = (GLint64) params32[i];
+   }
 }
