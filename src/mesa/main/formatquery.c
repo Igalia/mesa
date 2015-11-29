@@ -350,20 +350,33 @@ _check_dependencies(struct gl_context *ctx, GLenum target,
    case GL_INTERNALFORMAT_ALPHA_SIZE:
       break;
    case GL_INTERNALFORMAT_DEPTH_SIZE:
+      /* From 'get_tex_level_parameter_image' */
+      if (target != GL_RENDERBUFFER &&
+          target != GL_TEXTURE_BUFFER &&
+          !ctx->Extensions.ARB_depth_texture)
+         return false;
+
       break;
    case GL_INTERNALFORMAT_STENCIL_SIZE:
       break;
    case GL_INTERNALFORMAT_SHARED_SIZE:
+      /* From 'get_tex_level_parameter_image' */
+      if (target != GL_RENDERBUFFER &&
+          ctx->Version < 30 &&
+          !ctx->Extensions.EXT_texture_shared_exponent)
+         return false;
+
       break;
    case GL_INTERNALFORMAT_RED_TYPE:
-      break;
    case GL_INTERNALFORMAT_GREEN_TYPE:
-      break;
    case GL_INTERNALFORMAT_BLUE_TYPE:
-      break;
    case GL_INTERNALFORMAT_ALPHA_TYPE:
-      break;
    case GL_INTERNALFORMAT_DEPTH_TYPE:
+      /* From 'get_tex_level_parameter_image' and
+         'get_tex_level_parameter_buffer' */
+      if (!ctx->Extensions.ARB_texture_float)
+         return false;
+
       break;
    case GL_INTERNALFORMAT_STENCIL_TYPE:
       break;
