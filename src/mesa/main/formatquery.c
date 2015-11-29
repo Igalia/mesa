@@ -1027,6 +1027,11 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_MAX_DEPTH:
    case GL_MAX_LAYERS:
    case GL_MAX_COMBINED_DIMENSIONS:
+      /* MAX_COMBINED_DIMENSIONS can be a 64-bit integer. It is packed on
+       * buffer[0]-[1] 32-bit integers. As the default is the 32-bit query, we
+       * don't do anything here. The frontend wrapper for the 64-bit query
+       * will unpack the values.*/
+
       ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
                                       buffer);
       break;
@@ -1526,6 +1531,11 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    memcpy(params, buffer, MIN2(bufSize, 16) * sizeof(GLint));
 }
 
+/* MAX_COMBINED_DIMENSIONS is the only pname that the spec specifies that can
+ * be a 64-bit query. Due that we maintain the 32-bit query as default, and
+ * implement the 64-bit query as a wrap over the 32-bit query. To handle
+ * MAX_COMBINED_DIMENSIONS, the driver packs the 64-bit integer on two 32-bit
+ * integers at params, and the wrapper here unpacks it */
 void GLAPIENTRY
 _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
                             GLenum pname, GLsizei bufSize, GLint64 *params)
@@ -1533,6 +1543,7 @@ _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
    GLint params32[16];
    GLsizei i = 0;
    GLsizei realSize = MIN2(bufSize, 16);
+   GLsizei callSize;
 
    GET_CURRENT_CONTEXT(ctx);
 
@@ -1549,12 +1560,26 @@ _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
     * params */
    memset(params32, -1, 16);
 
-   _mesa_GetInternalformativ(target, internalformat, pname, realSize, params32);
+   /* For GL_MAX_COMBINED_DIMENSIONS we need to get back 2 32-bit integers,
+    * and at the same time we only need 2. So for that pname, we call the
+    * 32-bit query with bufSize 2, except on the case of bufSize 0, that is
+    * basically like asking to not get the value, but that is a caller
+    * problem. */
+   if (pname == GL_MAX_COMBINED_DIMENSIONS && bufSize > 0)
+      callSize = 2;
+   else
+      callSize = bufSize;
 
-   for (i = 0; i < realSize; i++) {
-      /* We only copy back the values that changed */
-      if (params32[i] < 0)
-         break;
-      params[i] = (GLint64) params32[i];
+   _mesa_GetInternalformativ(target, internalformat, pname, callSize, params32);
+
+   if (pname == GL_MAX_COMBINED_DIMENSIONS) {
+      memcpy(params, params32, sizeof(GLint64));
+   } else {
+      for (i = 0; i < realSize; i++) {
+         /* We only copy back the values that changed */
+         if (params32[i] < 0)
+            break;
+         params[i] = (GLint64) params32[i];
+      }
    }
 }
