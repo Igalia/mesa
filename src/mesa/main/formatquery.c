@@ -1229,6 +1229,9 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO: ask the driver*/
       break;
    case GL_COMPUTE_TEXTURE:
+      if (!_mesa_has_compute_shaders(ctx))
+         goto end;
+
       /* @TODO: ask the driver*/
       break;
    case GL_TEXTURE_SHADOW:
