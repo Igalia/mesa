@@ -854,6 +854,17 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_SAMPLES:
       /* fall-through */
    case GL_NUM_SAMPLE_COUNTS:
+      /* Taken from Mesa's implementation of ARB_internalformat_query.
+       *
+       * From GL ES 3.0 specification, section 6.1.15 page 236: "Since
+       * multisampling is not supported for signed and unsigned integer
+       * internal formats, the value of NUM_SAMPLE_COUNTS will be zero
+       * for such formats.
+       */
+      if (pname == GL_NUM_SAMPLE_COUNTS && _mesa_is_gles3(ctx) &&
+          _mesa_is_enum_format_integer(internalformat))
+         goto end;
+
       if (target != GL_RENDERBUFFER &&
           target != GL_TEXTURE_2D_MULTISAMPLE &&
           target != GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
