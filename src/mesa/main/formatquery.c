@@ -1223,6 +1223,9 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_GEOMETRY_TEXTURE:
+      if (!_mesa_has_geometry_shaders(ctx))
+         goto end;
+
       /* @TODO: ask the driver */
       break;
    case GL_FRAGMENT_TEXTURE:
