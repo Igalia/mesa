@@ -1218,6 +1218,10 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
      /* Mesa doesn't support tesselation stages, so we ask the backend
       * in case it supports it.
       */
+      /* @FIXME: Should we add instead a call to:
+       * if (!_mesa_has_tessellation(ctx))
+       *      goto end;
+       */
       ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
                                       buffer);
 
