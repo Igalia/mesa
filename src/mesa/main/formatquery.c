@@ -1065,6 +1065,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_FRAMEBUFFER_RENDERABLE:
+      /* @TODO: Check dependencies for this pname */
       if (target != GL_RENDERBUFFER)
          goto end;
 
@@ -1077,10 +1078,12 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_FRAMEBUFFER_RENDERABLE_LAYERED:
-    /* @TODO */
+      /* @TODO: Check dependencies for this pname */
+      /* @TODO */
       break;
    case GL_FRAMEBUFFER_BLEND:
-    /* @TODO */
+      /* @TODO: Check dependencies for this pname */
+      /* @TODO */
       break;
    case GL_READ_PIXELS:
     /* @TODO */
