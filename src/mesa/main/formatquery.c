@@ -1423,7 +1423,9 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
    case GL_TEXTURE_VIEW:
    case GL_VIEW_COMPATIBILITY_CLASS:
-      /* If we arrive here "ARB_texture_view" is supported */
+      if (!ctx->Extensions.ARB_texture_view)
+         goto end;
+
       if (target == GL_TEXTURE_BUFFER || target == GL_RENDERBUFFER)
          goto end;
 
