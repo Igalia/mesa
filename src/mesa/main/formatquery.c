@@ -834,7 +834,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
                           GLsizei bufSize, GLint *params)
 {
    GLint buffer[16];
-   bool unsupported = false;
+
    GET_CURRENT_CONTEXT(ctx);
 
    ASSERT_OUTSIDE_BEGIN_END(ctx);
@@ -867,15 +867,15 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    if (pname == GL_SAMPLES)
       memcpy(buffer, params, MIN2(bufSize, 16) * sizeof(GLint));
 
+   /* 'Unsupported' is the default response */
+   _set_unsupported(pname, buffer);
+
 #if 0
-   unsupported = !_check_dependencies(ctx, target, pname, internalformat,
-                                      buffer);
-   if (unsupported)
+   if (!_check_dependencies(ctx, target, pname, internalformat, buffer))
       goto end;
 #endif
 
-   unsupported = !_is_internalformat_supported(ctx, target, internalformat);
-   if (unsupported)
+   if (!_is_internalformat_supported(ctx, target, internalformat))
       goto end;
 
    switch(pname){
@@ -885,17 +885,11 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       if (target != GL_RENDERBUFFER &&
           target != GL_TEXTURE_2D_MULTISAMPLE &&
           target != GL_TEXTURE_2D_MULTISAMPLE_ARRAY)
-         unsupported = true;
+         goto end;
 
       /* The renderability of the internalformat is already checked in
        * "_is_internalformat_supported" method.
        */
-      if (unsupported) {
-         if (pname == GL_NUM_SAMPLE_COUNTS)
-            buffer[0] = 0;
-
-         goto end;
-      }
 
       /* ask the driver */
       ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
@@ -929,10 +923,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       mesa_format texformat;
 
       if (target != GL_RENDERBUFFER) {
-         if (!_mesa_legal_get_tex_level_parameter_target(ctx, target, false)) {
-            unsupported = true;
+         if (!_mesa_legal_get_tex_level_parameter_target(ctx, target, false))
             goto end;
-         }
 
          baseformat = _mesa_base_tex_format(ctx, internalformat);
       } else {
@@ -947,10 +939,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       texformat = ctx->Driver.ChooseTextureFormat(ctx, target, internalformat,
                                                   GL_NONE /*format */, GL_NONE /* type */);
 
-      if (texformat == MESA_FORMAT_NONE || baseformat <= 0) {
-         unsupported = true;
+      if (texformat == MESA_FORMAT_NONE || baseformat <= 0)
          goto end;
-      }
 
       /* Based on the 'get_tex_level_parameter_image' and
        * 'get_tex_level_parameter_buffer' implementations for texture
@@ -963,16 +953,12 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
              target != GL_RENDERBUFFER &&
              texformat == MESA_FORMAT_R9G9B9E5_FLOAT) {
             buffer[0] = 5;
-         } else {
-            unsupported = true;
          }
          goto end;
       }
 
-      if (!_mesa_base_format_has_channel(baseformat, pname)) {
-         unsupported = true;
+      if (!_mesa_base_format_has_channel(baseformat, pname))
          goto end;
-      }
 
       switch (pname) {
       case GL_INTERNALFORMAT_RED_SIZE:
@@ -1076,8 +1062,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_FRAMEBUFFER_RENDERABLE:
-      unsupported = (target != GL_RENDERBUFFER);
-      if (unsupported)
+      if (target != GL_RENDERBUFFER)
          goto end;
 
       /* If we arrived here, we already know that the internalformat is
@@ -1146,8 +1131,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        * TEXTURE_2D_MULTISAMPLE_ARRAY. @FIXME: For the moment, I am using
        * _mesa_is_valid_generate_texture_mipmap_target method to check this.
        */
-      unsupported = !_mesa_is_valid_generate_texture_mipmap_target(ctx, target);
-      if (unsupported)
+      if (!_mesa_is_valid_generate_texture_mipmap_target(ctx, target))
          goto end;
 
       /*@FIXME: Are there restrictions about the internalformat like in the
@@ -1175,7 +1159,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       if (!(_mesa_is_valid_generate_texture_mipmap_target(ctx, target) &&
             _mesa_is_valid_generate_texture_mipmap_internalformat(ctx,
                                                                   internalformat))) {
-         unsupported = true;
          goto end;
       }
 
@@ -1186,15 +1169,13 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_COLOR_ENCODING:
-      if (_mesa_is_color_format(internalformat)) {
-         if (_mesa_get_linear_internalformat(internalformat) != internalformat) {
-            buffer[0] = GL_SRGB;
-         } else {
-            buffer[0] = GL_LINEAR;
-         }
-      } else {
-         unsupported = true;
-      }
+      if (!_mesa_is_color_format(internalformat))
+         goto end;
+
+      if (_mesa_get_linear_internalformat(internalformat) != internalformat)
+         buffer[0] = GL_SRGB;
+      else
+         buffer[0] = GL_LINEAR;
 
       break;
    case GL_SRGB_READ:
@@ -1254,7 +1235,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        */
       if (target == GL_RENDERBUFFER ||
           !_mesa_is_image_format_supported(ctx, internalformat)) {
-         unsupported = true;
          goto end;
       }
 
@@ -1274,10 +1254,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_IMAGE_TEXEL_SIZE: {
       mesa_format image_format;
 
-      if (target == GL_RENDERBUFFER) {
-         unsupported = true;
+      if (target == GL_RENDERBUFFER)
          goto end;
-      }
 
       /* @FIXME: I am considering that the resource is used for glBindTexture.
        * The ARB_internalformat_query2 extension spec says:
@@ -1291,10 +1269,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        * resource is bound to an image_unit, i.e., glBindTexture.
        */
       image_format = _mesa_get_shader_image_format(internalformat);
-      if (image_format == MESA_FORMAT_NONE) {
-         unsupported = true;
+      if (image_format == MESA_FORMAT_NONE)
          goto end;
-      }
 
       /* We have to return bits */
       buffer[0] = (_mesa_get_format_bytes(image_format) * 8);
@@ -1302,10 +1278,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_IMAGE_COMPATIBILITY_CLASS:
-      if (target == GL_RENDERBUFFER) {
-         unsupported = true;
+      if (target == GL_RENDERBUFFER)
          goto end;
-      }
 
       /* @FIXME: Verify if it is correct to call this function passing internalformat as param.
        * I am using internalformat as it were the format passed to glBindTexture, i.e.
@@ -1333,15 +1307,12 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_IMAGE_PIXEL_FORMAT:
       if (target == GL_RENDERBUFFER ||
           !_mesa_is_image_format_supported(ctx, internalformat)) {
-         unsupported = true;
          goto end;
       }
 
       GLint base_format = _mesa_base_tex_format(ctx, internalformat);
-      if (base_format == -1) {
-         unsupported = true;
+      if (base_format == -1)
          goto end;
-      }
 
       if (_mesa_is_enum_format_integer(internalformat))
          buffer[0] = _mesa_base_format_to_integer_format(base_format);
@@ -1354,23 +1325,17 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       GLenum datatype;
       GLuint comps;
 
-      if (target == GL_RENDERBUFFER) {
-         unsupported = true;
+      if (target == GL_RENDERBUFFER)
          goto end;
-      }
 
       image_format = _mesa_get_shader_image_format(internalformat);
-      if (image_format == MESA_FORMAT_NONE) {
-         unsupported = true;
+      if (image_format == MESA_FORMAT_NONE)
          goto end;
-      }
 
       _mesa_uncompressed_format_to_type_and_comps(image_format, &datatype,
                                                   &comps);
-      if (!datatype) {
-         unsupported = true;
+      if (!datatype)
          goto end;
-      }
 
       buffer[0] = datatype;
    }
@@ -1386,28 +1351,23 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        * not finished, and not called at this moment. This comment is a
        * reminder.
        */
-      GLboolean valid_teximage_target =
-         _mesa_legal_teximage_target(ctx, 1, target) ||
-         _mesa_legal_teximage_target(ctx, 2, target) ||
-         _mesa_legal_teximage_target(ctx, 3, target);
+      if (_mesa_legal_teximage_target(ctx, 1, target) ||
+          _mesa_legal_teximage_target(ctx, 2, target) ||
+          _mesa_legal_teximage_target(ctx, 3, target))
+         goto end;
 
-      if (valid_teximage_target) {
-         /* From spec: "Equivalent to calling GetTexParameter with <value> set
-          * to IMAGE_FORMAT_COMPATIBILITY_TYPE."
-          *
-          * GetTexParameter just returns
-          * tex_obj->ImageFormatCompatibilityType. We create a fake tex_obj
-          * just with the purpose of getting the value.
-          */
-         struct gl_texture_object *tex_obj = _mesa_new_texture_object(ctx, 0, target);
-         buffer[0] = tex_obj->ImageFormatCompatibilityType;
-         _mesa_delete_texture_object(ctx, tex_obj);
-      } else {
-         /* From spec: "If the resource is not supported for image textures,
-          * or if image textures are not supported, NONE is returned." */
-         buffer[0] = 0;
-      }
+      /* From spec: "Equivalent to calling GetTexParameter with <value> set
+       * to IMAGE_FORMAT_COMPATIBILITY_TYPE."
+       *
+       * GetTexParameter just returns
+       * tex_obj->ImageFormatCompatibilityType. We create a fake tex_obj
+       * just with the purpose of getting the value.
+       */
+      struct gl_texture_object *tex_obj = _mesa_new_texture_object(ctx, 0, target);
+      buffer[0] = tex_obj->ImageFormatCompatibilityType;
+      _mesa_delete_texture_object(ctx, tex_obj);
    }
+
       break;
    case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_TEST:
    case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_TEST:
@@ -1423,8 +1383,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
    case GL_TEXTURE_COMPRESSED_BLOCK_SIZE: {
       mesa_format mesaformat = _mesa_glenum_to_compressed_format(internalformat);
-      unsupported = (mesaformat == MESA_FORMAT_NONE);
-      if (unsupported)
+      if (mesaformat == MESA_FORMAT_NONE)
          goto end;
 
       GLint block_size = _mesa_get_format_bytes(mesaformat);
@@ -1448,10 +1407,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_CLEAR_BUFFER:
-      if (target != GL_TEXTURE_BUFFER) {
-         unsupported = true;
+      if (target != GL_TEXTURE_BUFFER)
          goto end;
-      }
 
       /* All drivers in Mesa support ARB_clear_buffer_object */
       /* @FIXME: is full support the correct answer ? */
@@ -1461,10 +1418,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    case GL_TEXTURE_VIEW:
    case GL_VIEW_COMPATIBILITY_CLASS:
       /* If we arrive here "ARB_texture_view" is supported */
-      if (target == GL_TEXTURE_BUFFER || target == GL_RENDERBUFFER) {
-         unsupported = true;
+      if (target == GL_TEXTURE_BUFFER || target == GL_RENDERBUFFER)
          goto end;
-      }
 
       if (pname == GL_TEXTURE_VIEW) {
          /* @FIXME: is full support the correct answer ? */
@@ -1472,10 +1427,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       } else {
          GLenum view_class = _mesa_texture_view_lookup_view_class(ctx,
                                                                   internalformat);
-         if (view_class == GL_FALSE) {
-            unsupported = true;
+         if (view_class == GL_FALSE)
             goto end;
-         }
 
          buffer[0] = view_class;
       }
@@ -1494,9 +1447,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
                     "glGetInternalformativ(bufSize = %d, but params = NULL)",
                     bufSize);
    }
-
-   if (unsupported)
-      _set_unsupported(pname, buffer);
 
    /* Copy the data from the temporary buffer to the buffer supplied by the
     * application.  Clamp the size of the copy to minimum between the size
