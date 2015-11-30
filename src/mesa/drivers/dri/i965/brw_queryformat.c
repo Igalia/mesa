@@ -111,7 +111,9 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
    case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
    case GL_TEXTURE_COMPRESSED_BLOCK_SIZE:
    case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
-
+   case GL_MIPMAP:
+   case GL_MANUAL_GENERATE_MIPMAP:
+   case GL_AUTO_GENERATE_MIPMAP:
       unreachable("Mesa should have answered these queries");
       break;
 
@@ -200,18 +202,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       break;
 
    case GL_GET_TEXTURE_IMAGE_TYPE:
-      /* @TODO */
-      break;
-
-   case GL_MIPMAP:
-      /* @TODO */
-      break;
-
-   case GL_MANUAL_GENERATE_MIPMAP:
-      /* @TODO */
-      break;
-
-   case GL_AUTO_GENERATE_MIPMAP:
       /* @TODO */
       break;
 
