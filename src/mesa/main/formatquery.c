@@ -231,44 +231,16 @@ _check_dependencies(struct gl_context *ctx, GLenum target,
    switch(target){
    case GL_TEXTURE_2D:
    case GL_TEXTURE_3D:
-      /* OES_texture_3D is supported by all Mesa's drivers */
-      break;
    case GL_TEXTURE_1D:
-      /* Taken from "legal_teximage_target" method */
-      if (!_mesa_is_desktop_gl(ctx))
-         return false;
-
-      break;
    case GL_TEXTURE_1D_ARRAY:
-      /* Taken from "legal_teximage_target" method */
-      if (!(_mesa_is_desktop_gl(ctx) && ctx->Extensions.EXT_texture_array))
-         return false;
-
-      break;
    case GL_TEXTURE_2D_ARRAY:
-      /* Taken from "legal_teximage_target" method"*/
-      if (!((_mesa_is_desktop_gl(ctx) && ctx->Extensions.EXT_texture_array) || _mesa_is_gles3(ctx)))
-          return false;
-
-      break;
    case GL_TEXTURE_CUBE_MAP:
-      /* Addittional check (not mentioned in the ARB_internalformat_query2 spec)
-       * Taken from "legal_teximage_target" method
-       */
-      if (!(_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_texture_cube_map))
-         return false;
-
-      break;
    case GL_TEXTURE_CUBE_MAP_ARRAY:
-      /* Taken from "legal_teximage_target" method */
-      if (!(_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_texture_cube_map_array))
-         return false;
-
-      break;
    case GL_TEXTURE_RECTANGLE:
-      /* Taken from "legal_teximage_target" method */
-      if (!(_mesa_is_desktop_gl(ctx) && ctx->Extensions.NV_texture_rectangle))
-         return false;
+      if (!(_mesa_legal_teximage_target(ctx, 1, target) ||
+            _mesa_legal_teximage_target(ctx, 2, target) ||
+            _mesa_legal_teximage_target(ctx, 3, target)))
+          return false;
 
       break;
    case GL_TEXTURE_BUFFER:
