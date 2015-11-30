@@ -1189,9 +1189,15 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_SRGB_READ:
+      if (!ctx->Extensions.EXT_texture_sRGB)
+         goto end;
+
       /* @TODO */
       break;
    case GL_SRGB_WRITE:
+      if (!ctx->Extensions.EXT_framebuffer_sRGB)
+         goto end;
+
       /* @TODO */
       break;
    case GL_SRGB_DECODE_ARB:
