@@ -1242,6 +1242,10 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
    case GL_SHADER_IMAGE_LOAD:
    case GL_SHADER_IMAGE_STORE:
+      /* Taken from "_mesa_BindImageTextures" method */
+      if (!ctx->Extensions.ARB_shader_image_load_store)
+         goto end;
+
       /* The ARB_internalformat_query2 spec says:
        * "In this case the <internalformat> is the value of the <format>
        * parameter that is passed to BindImageTexture."
@@ -1260,6 +1264,10 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_SHADER_IMAGE_ATOMIC:
+      /* Taken from "_mesa_BindImageTextures" method */
+      if (!ctx->Extensions.ARB_shader_image_load_store)
+         goto end;
+
       /* @TODO: I have doubts about how to determine if the "resource" is
        * supported for being used with atomic memory operations. Mesa's
        * implementation of "glMemoryBarrier" does not make any checks,
@@ -1269,6 +1277,10 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
    case GL_IMAGE_TEXEL_SIZE: {
       mesa_format image_format;
+
+      /* Taken from "_mesa_BindImageTextures" method */
+      if (!ctx->Extensions.ARB_shader_image_load_store)
+         goto end;
 
       if (target == GL_RENDERBUFFER)
          goto end;
@@ -1294,6 +1306,10 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_IMAGE_COMPATIBILITY_CLASS:
+      /* Taken from "_mesa_BindImageTextures" method */
+      if (!ctx->Extensions.ARB_shader_image_load_store)
+         goto end;
+
       if (target == GL_RENDERBUFFER)
          goto end;
 
@@ -1321,6 +1337,10 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_IMAGE_PIXEL_FORMAT:
+      /* Taken from "_mesa_BindImageTextures" method */
+      if (!ctx->Extensions.ARB_shader_image_load_store)
+         goto end;
+
       if (target == GL_RENDERBUFFER ||
           !_mesa_is_image_format_supported(ctx, internalformat)) {
          goto end;
@@ -1341,6 +1361,10 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       GLenum datatype;
       GLuint comps;
 
+      /* Taken from "_mesa_BindImageTextures" method */
+      if (!ctx->Extensions.ARB_shader_image_load_store)
+         goto end;
+
       if (target == GL_RENDERBUFFER)
          goto end;
 
@@ -1358,6 +1382,10 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE: {
+      /* Taken from "_mesa_BindImageTextures" method */
+      if (!ctx->Extensions.ARB_shader_image_load_store)
+         goto end;
+
       if (!_mesa_legal_get_tex_level_parameter_target(ctx, target, false))
          goto end;
 
