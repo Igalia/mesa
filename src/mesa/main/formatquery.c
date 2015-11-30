@@ -982,10 +982,14 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    }
 
       break;
+  case GL_MAX_LAYERS:
+     if (!ctx->Extensions.EXT_texture_array)
+        goto end;
+
+     /* No break */
    case GL_MAX_WIDTH:
    case GL_MAX_HEIGHT:
    case GL_MAX_DEPTH:
-   case GL_MAX_LAYERS:
    case GL_MAX_COMBINED_DIMENSIONS:
       /* MAX_COMBINED_DIMENSIONS can be a 64-bit integer. It is packed on
        * buffer[0]-[1] 32-bit integers. As the default is the 32-bit query, we
