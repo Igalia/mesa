@@ -219,14 +219,11 @@ _set_unsupported(GLenum pname, GLint buffer[16])
    }
 }
 
-/* Implements the Dependencies section of the ARB_internalformat_query2 spec.
- * Returns 'true' if everything went fine, 'false' otherwise.
- *
- * @FIXME: this method and _legal_parameters could be possibly be joint.
- */
+/* @FIXME: This method could also check if the target is supported for the
+ * pname.
+*/
 static bool
-_check_dependencies(struct gl_context *ctx, GLenum target,
-                    GLenum pname, GLenum internalformat, GLint buffer[16])
+_is_target_supported(struct gl_context *ctx, GLenum target)
 {
    switch(target){
    case GL_TEXTURE_2D:
@@ -589,10 +586,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
    /* 'Unsupported' is the default response */
    _set_unsupported(pname, buffer);
 
-#if 0
-   if (!_check_dependencies(ctx, target, pname, internalformat, buffer))
+   if (!_is_target_supported(ctx, target))
       goto end;
-#endif
 
    if (!_is_internalformat_supported(ctx, target, internalformat))
       goto end;
