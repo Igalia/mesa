@@ -1108,12 +1108,14 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_TEXTURE_IMAGE_FORMAT:
+      /* @TODO: Check dependencies for this pname */
       /* @TODO: ask the driver */
       /* The spec says: the implementation-preferred ..,
        * so it should probably be answered by the driver
        */
       break;
    case GL_TEXTURE_IMAGE_TYPE:
+      /* @TODO: Check dependencies for this pname */
       /* @TODO: ask the driver */
       /* The spec says: the implementation-preferred ..,
        * so it should probably be answered by the driver
