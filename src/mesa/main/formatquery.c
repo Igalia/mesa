@@ -1242,12 +1242,15 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       /* @TODO: ask the driver*/
       break;
    case GL_TEXTURE_SHADOW:
+      /* @TODO: Add dependencies check */
       /* @TODO */
       break;
    case GL_TEXTURE_GATHER:
+      /* @TODO: Add dependencies check */
       /* @TODO */
       break;
    case GL_TEXTURE_GATHER_SHADOW:
+      /* @TODO: Add dependencies check */
       /* @TODO */
       break;
    case GL_SHADER_IMAGE_LOAD:
