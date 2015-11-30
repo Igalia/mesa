@@ -1146,7 +1146,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        * TEXTURE_2D_MULTISAMPLE_ARRAY. @FIXME: For the moment, I am using
        * _mesa_is_valid_generate_texture_mipmap_target method to check this.
        */
-      unsupported = _mesa_is_valid_generate_texture_mipmap_target(ctx, target);
+      unsupported = !_mesa_is_valid_generate_texture_mipmap_target(ctx, target);
       if (unsupported)
          goto end;
 
