@@ -1150,6 +1150,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
 
    case GL_AUTO_GENERATE_MIPMAP:
+      /* @TODO: Check dependencies for this pname */
       /* Automatic mipmap generation refers to generate mipmaps
        * through glTexParameter (pname = GL_GENERATE_MIPMAP).
        * This is deprecated in some OpenGL versions,
@@ -1161,6 +1162,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       /* No break */
    case GL_MANUAL_GENERATE_MIPMAP:
+      /* @TODO: Check dependencies for this pname */
       /* Manual mipmap generation refers to generate mipmaps using the
        * 'glGenerateMipmap' method.
        */
