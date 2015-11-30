@@ -1412,6 +1412,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_CLEAR_BUFFER:
+      /* @TODO: Add dependencies check, if any */
       if (target != GL_TEXTURE_BUFFER)
          goto end;
 
