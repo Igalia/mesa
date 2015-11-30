@@ -1314,18 +1314,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE: {
-      /* Dimension is not specified at GetInternalformat query, so at this
-       * point is it valid if it is valid with at least one of the
-       * dimensions */
-      /*
-       * @FIXME: it is not clear yet if this kind of checks should be done
-       * here or at _check_dependencies. Additionally _check_dependencies is
-       * not finished, and not called at this moment. This comment is a
-       * reminder.
-       */
-      if (_mesa_legal_teximage_target(ctx, 1, target) ||
-          _mesa_legal_teximage_target(ctx, 2, target) ||
-          _mesa_legal_teximage_target(ctx, 3, target))
+      if (!_mesa_legal_get_tex_level_parameter_target(ctx, target, false))
          goto end;
 
       /* From spec: "Equivalent to calling GetTexParameter with <value> set
