@@ -932,7 +932,10 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
        */
 
       if (pname == GL_INTERNALFORMAT_SHARED_SIZE) {
-         if (target != GL_TEXTURE_BUFFER &&
+         /* Version check taken from 'get_tex_level_parameter_image' */
+         if ((ctx->Version >= 30 ||
+              ctx->Extensions.EXT_texture_shared_exponent) &&
+             target != GL_TEXTURE_BUFFER &&
              target != GL_RENDERBUFFER &&
              texformat == MESA_FORMAT_R9G9B9E5_FLOAT) {
             buffer[0] = 5;
@@ -944,19 +947,32 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
          goto end;
 
       switch (pname) {
+      case GL_INTERNALFORMAT_DEPTH_SIZE:
+         /* Extension check taken from 'get_tex_level_parameter_image' */
+         if (target != GL_RENDERBUFFER &&
+             target != GL_TEXTURE_BUFFER &&
+             !ctx->Extensions.ARB_depth_texture)
+            goto end;
+
+         /* No break */
       case GL_INTERNALFORMAT_RED_SIZE:
       case GL_INTERNALFORMAT_GREEN_SIZE:
       case GL_INTERNALFORMAT_BLUE_SIZE:
       case GL_INTERNALFORMAT_ALPHA_SIZE:
-      case GL_INTERNALFORMAT_DEPTH_SIZE:
       case GL_INTERNALFORMAT_STENCIL_SIZE:
          buffer[0] = _mesa_get_format_bits(texformat, pname);
          break;
+      case GL_INTERNALFORMAT_DEPTH_TYPE:
+         /* Extension check taken from 'get_tex_level_parameter_image' and
+            'get_tex_level_parameter_buffer' */
+         if (!ctx->Extensions.ARB_texture_float)
+            goto end;
+
+         /* No break */
       case GL_INTERNALFORMAT_RED_TYPE:
       case GL_INTERNALFORMAT_GREEN_TYPE:
       case GL_INTERNALFORMAT_BLUE_TYPE:
       case GL_INTERNALFORMAT_ALPHA_TYPE:
-      case GL_INTERNALFORMAT_DEPTH_TYPE:
       case GL_INTERNALFORMAT_STENCIL_TYPE:
          buffer[0]  = _mesa_get_format_datatype(texformat);
          break;
