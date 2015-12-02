@@ -36,6 +36,7 @@
 #include "genmipmap.h"
 #include "texparam.h"
 #include "get.h"
+#include "texformat.h"
 
 void
 _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
@@ -620,6 +621,51 @@ equivalentSizePname(GLenum target,
    }
 }
 
+/*
+ * Returns the minimum amount of dimensions associated to a pname. So for
+ * example, if querying GL_MAX_HEIGHT, it is assumed that your target would
+ * have as minimum 2 dimensions.
+ *
+ * Useful to handle sentences like this from query2 spec:
+ *
+ * "MAX_HEIGHT:
+ *  <skip>
+ *  If the resource does not have at least two dimensions
+ *  <skip>."
+ */
+static GLint
+get_min_dimensions(GLenum pname)
+{
+   switch(pname) {
+   case GL_MAX_WIDTH:
+      return 1;
+   case GL_MAX_HEIGHT:
+      return 2;
+   case GL_MAX_DEPTH:
+      return 3;
+   default:
+      return 0;
+   }
+}
+
+/*
+ * Returns the dimensions associated to a target. GL_TEXTURE_BUFFER and
+ * GL_RENDERBUFFER have associated a dimension, but they are not textures
+ * per-se, so we can't just call _mesa_get_texture_dimension directly.
+ */
+static GLint
+get_target_dimensions(GLenum target)
+{
+   switch(target) {
+   case GL_TEXTURE_BUFFER:
+      return 1;
+   case GL_RENDERBUFFER:
+      return 2;
+   default:
+      return _mesa_get_texture_dimensions(target);
+   }
+}
+
 void GLAPIENTRY
 _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
                           GLsizei bufSize, GLint *params)
@@ -803,22 +849,43 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
      if (!ctx->Extensions.EXT_texture_array)
         goto end;
 
-     /* No break */
+     if (!_mesa_tex_target_is_array(target))
+        goto end;
+
+     /* FIXME: (see full explanation on next call to _mesa_GetInteger) */
+     _mesa_GetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, buffer);
+
      /* For WIDTH/HEIGHT/DEPTH there is no reason to think that the returned
       * values should be different to the values returned by GetInteger with
       * MAX_TEXTURE_SIZE, MAX_3D_TEXTURE_SIZE, etc.*/
+     break;
    case GL_MAX_WIDTH:
    case GL_MAX_HEIGHT:
    case GL_MAX_DEPTH: {
       GLenum get_pname;
-      GLint size;
+      GLint dimensions;
+      GLint min_dimensions;
 
       get_pname = equivalentSizePname(target, pname);
       if (get_pname == 0)
          goto end;
 
-      _mesa_GetIntegerv(get_pname, &size);
-      
+      /* From query2:MAX_HEIGHT spec (as example):
+       *
+       * "If the resource does not have at least two dimensions, or if the
+       * resource is unsupported, zero is returned."
+       */
+      dimensions = get_target_dimensions(target);
+      min_dimensions = get_min_dimensions(pname);
+      if (dimensions < min_dimensions)
+         goto end;
+
+      /* FIXME: this is the easiest way to get it done. This has the problem
+       * that if an error happens, it will use "glGetInteger" as a prefix. It
+       * could be possible to workaround it by using find_value. But that
+       * would mean moving find_value, value_desc and union value to the
+       * public header get.h. This would need to be revisited. */
+      _mesa_GetIntegerv(get_pname, buffer);
    }
       break;
    case GL_MAX_COMBINED_DIMENSIONS:
