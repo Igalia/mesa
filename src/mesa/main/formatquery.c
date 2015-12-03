@@ -926,11 +926,19 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_COLOR_ENCODING:
-      if (!_mesa_is_color_format(internalformat))
+      /* From the spec: "For non-color formats (such as depth or stencil),
+       * or for unsupported resources, the value NONE is returned."
+       */
+      if (!_mesa_is_color_format(internalformat)) {
+         buffer[0] = GL_NONE;
          goto end;
+      }
 
+      /* From the spec: "Possible values for color buffers are LINEAR or SRGB,
+       * for linear or sRGB-encoded color components, respectively."
+       */
       if (_mesa_get_linear_internalformat(internalformat) != internalformat)
-         buffer[0] = GL_SRGB;
+        buffer[0] = GL_SRGB;
       else
          buffer[0] = GL_LINEAR;
 
