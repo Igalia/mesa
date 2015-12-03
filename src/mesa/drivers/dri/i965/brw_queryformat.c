@@ -114,6 +114,7 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
    case GL_MIPMAP:
    case GL_MANUAL_GENERATE_MIPMAP:
    case GL_AUTO_GENERATE_MIPMAP:
+   case GL_FRAMEBUFFER_RENDERABLE:
       unreachable("Mesa should have answered these queries");
       break;
 
@@ -170,10 +171,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
        * unpack it back. */
       memcpy(params, &real_value, sizeof(GLint64));
    }
-
-   case GL_FRAMEBUFFER_RENDERABLE:
-      /* @TODO */
-      break;
 
    case GL_FRAMEBUFFER_RENDERABLE_LAYERED:
       /* @TODO */
