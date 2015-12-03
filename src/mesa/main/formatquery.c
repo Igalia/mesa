@@ -52,6 +52,14 @@ _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
       params[0] = 1;
       break;
 
+   case GL_INTERNALFORMAT_PREFERRED:
+      /* return a generic preferred internal format */
+      /* @FIXME: this value is arbitrary. Maybe another generic internal
+       * format makes more sense.
+       */
+      params[0] = GL_RGBA8UI;
+      break;
+
    case GL_TEXTURE_IMAGE_FORMAT:
    case GL_GET_TEXTURE_IMAGE_FORMAT:
       /* Return a generic preferred image format.
