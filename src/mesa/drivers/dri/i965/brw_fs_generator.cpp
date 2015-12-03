@@ -1264,6 +1264,7 @@ fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
       brw_set_default_compression_control(p, BRW_COMPRESSION_NONE);
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
       brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
+      brw_inst_set_exec_size(devinfo, send, dst.width);
       brw_pop_insn_state(p);
 
       brw_set_dest(p, send, dst);
@@ -1295,6 +1296,7 @@ fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
       /* dst = send(payload, a0.0 | <descriptor>) */
       brw_inst *insn = brw_send_indirect_message(
          p, BRW_SFID_SAMPLER, dst, src, addr);
+      brw_inst_set_exec_size(devinfo, insn, dst.width);
       brw_set_sampler_message(p, insn,
                               0,
                               0, /* LD message ignores sampler unit */
