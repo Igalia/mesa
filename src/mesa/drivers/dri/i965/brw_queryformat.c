@@ -115,6 +115,17 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
    case GL_MANUAL_GENERATE_MIPMAP:
    case GL_AUTO_GENERATE_MIPMAP:
    case GL_FRAMEBUFFER_RENDERABLE:
+   case GL_COLOR_ENCODING:
+   case GL_SHADER_IMAGE_LOAD:
+   case GL_SHADER_IMAGE_STORE:
+   case GL_SHADER_IMAGE_ATOMIC:
+   case GL_IMAGE_TEXEL_SIZE:
+   case GL_IMAGE_COMPATIBILITY_CLASS:
+   case GL_IMAGE_PIXEL_FORMAT:
+   case GL_IMAGE_PIXEL_TYPE:
+   case GL_CLEAR_BUFFER:
+   case GL_TEXTURE_VIEW:
+   case GL_VIEW_COMPATIBILITY_CLASS:
       unreachable("Mesa should have answered these queries");
       break;
 
@@ -208,10 +219,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       params[0] = GL_UNSIGNED_BYTE;
       break;
 
-   case GL_COLOR_ENCODING:
-      /* @TODO */
-      break;
-
    case GL_SRGB_READ:
       /* @TODO */
       break;
@@ -253,46 +260,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       break;
 
    case GL_TEXTURE_GATHER_SHADOW:
-      /* @TODO */
-      break;
-
-   case GL_SHADER_IMAGE_LOAD:
-      /* @TODO */
-      break;
-
-   case GL_SHADER_IMAGE_STORE:
-      /* @TODO */
-      break;
-
-   case GL_SHADER_IMAGE_ATOMIC:
-      /* @TODO */
-      break;
-
-   case GL_IMAGE_TEXEL_SIZE:
-      /* @TODO */
-      break;
-
-   case GL_IMAGE_COMPATIBILITY_CLASS:
-      /* @TODO */
-      break;
-
-   case GL_IMAGE_PIXEL_FORMAT:
-      /* @TODO */
-      break;
-
-   case GL_IMAGE_PIXEL_TYPE:
-      /* @TODO */
-      break;
-
-   case GL_CLEAR_BUFFER:
-      /* @TODO */
-      break;
-
-   case GL_TEXTURE_VIEW:
-      /* @TODO */
-      break;
-
-   case GL_VIEW_COMPATIBILITY_CLASS:
       /* @TODO */
       break;
 
