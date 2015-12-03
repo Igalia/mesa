@@ -196,19 +196,19 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       break;
 
    case GL_TEXTURE_IMAGE_FORMAT:
-      /* @TODO */
+   case GL_GET_TEXTURE_IMAGE_FORMAT:
+      /* The result should be consistent with the INTERNALFORMAT_PREFERRED
+       * query above.
+       */
+      params[0] = GL_RGBA;
       break;
 
    case GL_TEXTURE_IMAGE_TYPE:
-      /* @TODO */
-      break;
-
-   case GL_GET_TEXTURE_IMAGE_FORMAT:
-      /* @TODO */
-      break;
-
    case GL_GET_TEXTURE_IMAGE_TYPE:
-      /* @TODO */
+      /* The result should also be consistent with the
+       * INTERNALFORMAT_PREFERRED query above.
+       */
+      params[0] = GL_UNSIGNED_BYTE;
       break;
 
    case GL_COLOR_ENCODING:
