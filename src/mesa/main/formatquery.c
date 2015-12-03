@@ -52,6 +52,22 @@ _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
       params[0] = 1;
       break;
 
+   case GL_TEXTURE_IMAGE_FORMAT:
+   case GL_GET_TEXTURE_IMAGE_FORMAT:
+      /* Return a generic preferred image format.
+       * That's better than no answer at all.
+       */
+      params[0] = GL_RGBA;
+      break;
+
+   case GL_TEXTURE_IMAGE_TYPE:
+   case GL_GET_TEXTURE_IMAGE_TYPE:
+      /* Return a generic preferred image format.
+       * That's better than no answer at all.
+       */
+      params[0] = GL_UNSIGNED_BYTE;
+      break;
+
    default:
       /* @TODO: provide a default answer for the rest of the pnames */
       unreachable("Default value for query not yet implemented");
@@ -850,30 +866,11 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
 
       break;
    case GL_TEXTURE_IMAGE_FORMAT:
-      /* @TODO: Check dependencies for this pname */
-      /* @TODO: ask the driver */
-      /* The spec says: the implementation-preferred ..,
-       * so it should probably be answered by the driver
-       */
-      break;
    case GL_TEXTURE_IMAGE_TYPE:
-      /* @TODO: Check dependencies for this pname */
-      /* @TODO: ask the driver */
-      /* The spec says: the implementation-preferred ..,
-       * so it should probably be answered by the driver
-       */
-      break;
    case GL_GET_TEXTURE_IMAGE_FORMAT:
-      /* @TODO: ask the driver */
-      /* The spec says: the implementation-preferred ..,
-       * so it should probably be answered by the driver
-       */
-      break;
    case GL_GET_TEXTURE_IMAGE_TYPE:
-      /* @TODO: ask the driver */
-      /* The spec says: the implementation-preferred ..,
-       * so it should probably be answered by the driver
-       */
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      buffer);
       break;
    case GL_MIPMAP:
       /* The following texture targets can not have mipmaps:
