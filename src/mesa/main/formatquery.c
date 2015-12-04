@@ -35,6 +35,7 @@
 #include "texobj.h"
 #include "genmipmap.h"
 #include "texparam.h"
+#include "get.h"
 
 void
 _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
@@ -569,6 +570,56 @@ _legal_parameters(struct gl_context *ctx, GLenum target, GLenum internalformat,
    return true;
 }
 
+/*
+ * For MAX_WIDTH/MAX_HEIGHT/MAX_DEPTH it returns the equivalent GetInteger
+ * pname for a Getinternalformat pname/target combination. target/pname
+ * combinations that would return 0 due dimension number or unsupported status
+ * should be already filtered out
+ *
+ * It is true that this makes the returned value independent of the
+ * internalformat. This possibility is already mentioned at the Issue 7 of the
+ * arb_internalformat_query2 spec.
+ */
+static GLenum
+equivalentSizePname(GLenum target,
+                    GLenum pname)
+{
+   switch (target) {
+   case GL_TEXTURE_1D:
+   case GL_TEXTURE_2D:
+   case GL_TEXTURE_2D_MULTISAMPLE:
+      return GL_MAX_TEXTURE_SIZE;
+   case GL_TEXTURE_3D:
+      return GL_MAX_3D_TEXTURE_SIZE;
+   case GL_TEXTURE_CUBE_MAP:
+      return GL_MAX_CUBE_MAP_TEXTURE_SIZE;
+   case GL_TEXTURE_RECTANGLE:
+      return GL_MAX_RECTANGLE_TEXTURE_SIZE;
+   case GL_RENDERBUFFER:
+      return GL_MAX_RENDERBUFFER_SIZE;
+   case GL_TEXTURE_1D_ARRAY:
+      if (pname == GL_MAX_HEIGHT)
+         return GL_MAX_ARRAY_TEXTURE_LAYERS;
+      else
+         return GL_MAX_TEXTURE_SIZE;
+   case GL_TEXTURE_2D_ARRAY:
+   case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+      if (pname == GL_MAX_DEPTH)
+         return GL_MAX_ARRAY_TEXTURE_LAYERS;
+      else
+         return GL_MAX_TEXTURE_SIZE;
+   case GL_TEXTURE_CUBE_MAP_ARRAY:
+      if (pname == GL_MAX_DEPTH)
+         return GL_MAX_ARRAY_TEXTURE_LAYERS;
+      else
+         return GL_MAX_CUBE_MAP_TEXTURE_SIZE;
+   case GL_TEXTURE_BUFFER:
+      return GL_MAX_TEXTURE_BUFFER_SIZE;
+   default:
+      return 0;
+   }
+}
+
 void GLAPIENTRY
 _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
                           GLsizei bufSize, GLint *params)
@@ -753,9 +804,23 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
         goto end;
 
      /* No break */
+     /* For WIDTH/HEIGHT/DEPTH there is no reason to think that the returned
+      * values should be different to the values returned by GetInteger with
+      * MAX_TEXTURE_SIZE, MAX_3D_TEXTURE_SIZE, etc.*/
    case GL_MAX_WIDTH:
    case GL_MAX_HEIGHT:
-   case GL_MAX_DEPTH:
+   case GL_MAX_DEPTH: {
+      GLenum get_pname;
+      GLint size;
+
+      get_pname = equivalentSizePname(target, pname);
+      if (get_pname == 0)
+         goto end;
+
+      _mesa_GetIntegerv(get_pname, &size);
+      
+   }
+      break;
    case GL_MAX_COMBINED_DIMENSIONS:
       /* MAX_COMBINED_DIMENSIONS can be a 64-bit integer. It is packed on
        * buffer[0]-[1] 32-bit integers. As the default is the 32-bit query, we

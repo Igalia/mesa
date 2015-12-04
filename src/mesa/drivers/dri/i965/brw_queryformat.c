@@ -126,6 +126,11 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
    case GL_CLEAR_BUFFER:
    case GL_TEXTURE_VIEW:
    case GL_VIEW_COMPATIBILITY_CLASS:
+   case GL_MAX_WIDTH:
+   case GL_MAX_HEIGHT:
+   case GL_MAX_DEPTH:
+   case GL_MAX_LAYERS:
+
       unreachable("Mesa should have answered these queries");
       break;
 
@@ -155,22 +160,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
    case GL_SIMULTANEOUS_TEXTURE_AND_DEPTH_WRITE:
    case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
       params[0] = GL_FULL_SUPPORT;
-      break;
-
-   case GL_MAX_WIDTH:
-      /* @TODO */
-      break;
-
-   case GL_MAX_HEIGHT:
-      /* @TODO */
-      break;
-
-   case GL_MAX_DEPTH:
-      /* @TODO */
-      break;
-
-   case GL_MAX_LAYERS:
-      /* @TODO */
       break;
 
    case GL_MAX_COMBINED_DIMENSIONS: {
