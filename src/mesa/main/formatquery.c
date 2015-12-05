@@ -161,6 +161,12 @@ _set_unsupported(GLenum pname, GLint buffer[16])
    switch(pname) {
    case GL_SAMPLES:
       break;
+   case GL_MAX_COMBINED_DIMENSIONS:
+      /* This value can be a 64-bit value. As the default is the 32-bit query,
+       * we pack 2 32-bit integers. So we need to clean both */
+      buffer[0] = 0;
+      buffer[1] = 0;
+      break;
    case GL_NUM_SAMPLE_COUNTS:
    case GL_INTERNALFORMAT_RED_SIZE:
    case GL_INTERNALFORMAT_GREEN_SIZE:
@@ -173,7 +179,6 @@ _set_unsupported(GLenum pname, GLint buffer[16])
    case GL_MAX_HEIGHT:
    case GL_MAX_DEPTH:
    case GL_MAX_LAYERS:
-   case GL_MAX_COMBINED_DIMENSIONS:
    case GL_IMAGE_TEXEL_SIZE:
    case GL_TEXTURE_COMPRESSED_BLOCK_WIDTH:
    case GL_TEXTURE_COMPRESSED_BLOCK_HEIGHT:
