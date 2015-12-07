@@ -849,7 +849,7 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
      if (!ctx->Extensions.EXT_texture_array)
         goto end;
 
-     if (!_mesa_tex_target_is_array(target))
+     if (!_mesa_is_array_texture(target))
         goto end;
 
      /* FIXME: (see full explanation on next call to _mesa_GetInteger) */
