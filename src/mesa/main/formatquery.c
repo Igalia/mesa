@@ -671,6 +671,22 @@ get_target_dimensions(GLenum target)
    }
 }
 
+/*
+ * Similar to teximage.c:check_multisample_target, but independent of the
+ * dimensions.
+ */
+static bool
+is_multisample_target(GLenum target)
+{
+   switch(target) {
+   case GL_TEXTURE_2D_MULTISAMPLE:
+   case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+      return true;
+   default:
+      return false;
+   }
+
+}
 void GLAPIENTRY
 _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
                           GLsizei bufSize, GLint *params)
@@ -893,14 +909,46 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       _mesa_GetIntegerv(get_pname, buffer);
    }
       break;
-   case GL_MAX_COMBINED_DIMENSIONS:
+   case GL_MAX_COMBINED_DIMENSIONS: {
       /* MAX_COMBINED_DIMENSIONS can be a 64-bit integer. It is packed on
        * buffer[0]-[1] 32-bit integers. As the default is the 32-bit query, we
        * don't do anything here. The frontend wrapper for the 64-bit query
        * will unpack the values.*/
+      GLint64 combined_value = 1;
+      GLenum max_dimensions_pnames[] = {
+         GL_MAX_WIDTH,
+         GL_MAX_HEIGHT,
+         GL_MAX_DEPTH,
+         GL_SAMPLES
+      };
+      unsigned i;
+      GLint current_value;
 
-      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
-                                      buffer);
+      /* Combining the dimensions. Note that for array targets, this would
+       * automatically include the value of MAX_LAYERS, as that value is
+       * returned as MAX_HEIGHT or MAX_DEPTH */
+      for (i = 0; i < 4; i++) {
+         if (max_dimensions_pnames[i] == GL_SAMPLES &&
+             !is_multisample_target(target))
+            continue;
+
+         _mesa_GetInternalformativ(target, internalformat,
+                                   max_dimensions_pnames[i],
+                                   1, &current_value);
+
+         if (current_value != 0)
+            combined_value *= current_value;
+      }
+
+      if (_mesa_is_cube_map_texture(target))
+         combined_value *= 6;
+
+      /* We pack the 64-bit value on two 32-bit values. Calling the 32-bit
+       * query, this would work as far as the value can be hold on a 32-bit
+       * signed integer. For the 64-bit query, the wrapper around the 32-bit
+       * query will unpack the value */
+      memcpy(buffer, &combined_value, sizeof(GLint64));
+   }
       break;
    case GL_COLOR_COMPONENTS:
       /* @FIXME: _mesa_is_color_format, considers luminance and
