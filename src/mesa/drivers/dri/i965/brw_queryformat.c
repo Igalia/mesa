@@ -130,6 +130,7 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
    case GL_MAX_HEIGHT:
    case GL_MAX_DEPTH:
    case GL_MAX_LAYERS:
+   case GL_MAX_COMBINED_DIMENSIONS:
 
       unreachable("Mesa should have answered these queries");
       break;
@@ -161,16 +162,6 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
    case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
       params[0] = GL_FULL_SUPPORT;
       break;
-
-   case GL_MAX_COMBINED_DIMENSIONS: {
-      /* @TODO get the real_value*/
-      GLint64 real_value = 0xDEADBEEF;
-
-      /* MAX_COMBINED_DIMENSIONS can be a 64-bit integer. So we pack it using
-       * the two first 32-bit elements of params. Frontend would need to
-       * unpack it back. */
-      memcpy(params, &real_value, sizeof(GLint64));
-   }
 
    case GL_FRAMEBUFFER_RENDERABLE_LAYERED:
       /* @TODO */
