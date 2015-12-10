@@ -211,6 +211,9 @@ _mesa_legal_teximage_target(struct gl_context *ctx,
                             GLuint dims,
                             GLenum target);
 
+bool
+_mesa_is_cube_map_texture(GLenum target);
+
 /*@}*/
 
 
