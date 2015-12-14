@@ -873,7 +873,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
      if (!_mesa_is_array_texture(target))
         goto end;
 
-     /* FIXME: (see full explanation on next call to _mesa_GetInteger) */
      _mesa_GetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, buffer);
 
      /* For WIDTH/HEIGHT/DEPTH there is no reason to think that the returned
@@ -901,11 +900,6 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       if (dimensions < min_dimensions)
          goto end;
 
-      /* FIXME: this is the easiest way to get it done. This has the problem
-       * that if an error happens, it will use "glGetInteger" as a prefix. It
-       * could be possible to workaround it by using find_value. But that
-       * would mean moving find_value, value_desc and union value to the
-       * public header get.h. This would need to be revisited. */
       _mesa_GetIntegerv(get_pname, buffer);
    }
       break;
