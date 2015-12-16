@@ -28,6 +28,7 @@
 #include "enums.h"
 #include "fbobject.h"
 #include "formatquery.h"
+#include "teximage.h"
 
 /* Handles the cases where either ARB_internalformat_query or
  * ARB_internalformat_query2 have to return an error.
@@ -361,6 +362,76 @@ _set_default_response(GLenum pname, GLint buffer[16])
    default:
       unreachable("invalid 'pname'");
    }
+}
+
+static bool
+_is_target_supported(struct gl_context *ctx, GLenum target)
+{
+   /* The ARB_internalformat_query2 spec says:
+    *
+    *     "if a particular type of <target> is not supported by the
+    *     implementation the "unsupported" answer should be given.
+    *     This is not an error."
+    */
+   switch(target){
+   case GL_TEXTURE_2D:
+   case GL_TEXTURE_3D:
+      break;
+
+   case GL_TEXTURE_1D:
+      if (!_mesa_is_desktop_gl(ctx))
+         return false;
+      break;
+
+   case GL_TEXTURE_1D_ARRAY:
+      if (!(_mesa_is_desktop_gl(ctx) && ctx->Extensions.EXT_texture_array))
+         return false;
+      break;
+
+   case GL_TEXTURE_2D_ARRAY:
+      if (!((_mesa_is_desktop_gl(ctx) && ctx->Extensions.EXT_texture_array)
+            || _mesa_is_gles3(ctx)))
+         return false;
+      break;
+
+   case GL_TEXTURE_CUBE_MAP:
+      if (!ctx->Extensions.ARB_texture_cube_map)
+         return false;
+      break;
+
+   case GL_TEXTURE_CUBE_MAP_ARRAY:
+      if (!ctx->Extensions.ARB_texture_cube_map_array)
+         return false;
+      break;
+
+   case GL_TEXTURE_RECTANGLE:
+      if (!(_mesa_is_desktop_gl(ctx) && ctx->Extensions.NV_texture_rectangle))
+          return false;
+      break;
+
+   case GL_TEXTURE_BUFFER:
+      if (!(ctx->API == API_OPENGL_CORE &&
+            ctx->Extensions.ARB_texture_buffer_object))
+         return false;
+      break;
+
+   case GL_RENDERBUFFER:
+      if (!ctx->Extensions.ARB_framebuffer_object)
+         return false;
+      break;
+
+   case GL_TEXTURE_2D_MULTISAMPLE:
+   case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
+      if (!(ctx->Extensions.ARB_texture_multisample && _mesa_is_desktop_gl(ctx))
+          && !_mesa_is_gles31(ctx))
+         return false;
+      break;
+
+   default:
+      unreachable("invalid target");
+   }
+
+   return true;
 }
 
 /* default implementation of QueryInternalFormat driverfunc, for
