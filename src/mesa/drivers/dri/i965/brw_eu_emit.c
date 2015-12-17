@@ -209,6 +209,7 @@ brw_set_dest(struct brw_codegen *p, brw_inst *inst, struct brw_reg dest)
     * set properly when they are emitted and we can't rely on this code to fix
     * it.
     */
+   assert(dest.width != BRW_EXECUTE_4 || brw_inst_exec_size(devinfo, inst) == dest.width);
    bool fix_exec_size;
    if (devinfo->gen >= 6)
       fix_exec_size = dest.width < BRW_EXECUTE_4;
