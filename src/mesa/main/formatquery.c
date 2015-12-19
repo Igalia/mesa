@@ -595,6 +595,7 @@ _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
    case GL_AUTO_GENERATE_MIPMAP:
    case GL_SRGB_READ:
    case GL_SRGB_WRITE:
+   case GL_SRGB_DECODE_ARB:
       params[0] = GL_FULL_SUPPORT;
       break;
 
@@ -1106,7 +1107,9 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
 
    case GL_SRGB_DECODE_ARB:
-      /* @TODO */
+      /* If we arrive here,  ARB_texture_sRGB_decode is supported */
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      buffer);
       break;
 
    case GL_FILTER:
