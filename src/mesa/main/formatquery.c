@@ -593,6 +593,8 @@ _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
 
    case GL_MANUAL_GENERATE_MIPMAP:
    case GL_AUTO_GENERATE_MIPMAP:
+   case GL_SRGB_READ:
+   case GL_SRGB_WRITE:
       params[0] = GL_FULL_SUPPORT;
       break;
 
@@ -1088,11 +1090,19 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
 
    case GL_SRGB_READ:
-      /* @TODO */
+      if (!_mesa_has_EXT_texture_sRGB(ctx))
+         goto end;
+
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      buffer);
       break;
 
    case GL_SRGB_WRITE:
-      /* @TODO */
+      if (!_mesa_has_EXT_framebuffer_sRGB(ctx))
+         goto end;
+
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      buffer);
       break;
 
    case GL_SRGB_DECODE_ARB:
