@@ -1021,6 +1021,7 @@ _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
 {
    GLint params32[16];
    unsigned i;
+   GLsizei realSize = MIN2(bufSize, 16);
 
    GET_CURRENT_CONTEXT(ctx);
 
@@ -1031,8 +1032,18 @@ _mesa_GetInternalformati64v(GLenum target, GLenum internalformat,
       return;
    }
 
-   _mesa_GetInternalformativ(target, internalformat, pname, bufSize, params32);
+   /* For SAMPLES there are cases where params needs to remain unmodified. As
+    * no pname can return a negative value, we fill params32 with negative
+    * values as reference values, that can be used to know what copy-back to
+    * params */
+   memset(params32, -1, 16);
 
-   for (i = 0; i < bufSize; i++)
-      params[i] = params32[i];
+   _mesa_GetInternalformativ(target, internalformat, pname, realSize, params32);
+
+   for (i = 0; i < realSize; i++) {
+      /* We only copy back the values that changed */
+      if (params32[i] < 0)
+         break;
+      params[i] = (GLint64) params32[i];
+   }
 }
