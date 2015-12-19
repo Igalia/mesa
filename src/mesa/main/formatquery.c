@@ -32,6 +32,7 @@
 #include "texparam.h"
 #include "texobj.h"
 #include "get.h"
+#include "genmipmap.h"
 
 static bool
 _is_renderable(struct gl_context *ctx, GLenum internalformat)
@@ -593,6 +594,11 @@ _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
       params[0] = internalFormat;
       break;
 
+   case GL_MANUAL_GENERATE_MIPMAP:
+   case GL_AUTO_GENERATE_MIPMAP:
+      params[0] = GL_FULL_SUPPORT;
+      break;
+
    default:
       _set_default_response(pname, params);
       break;
@@ -1057,15 +1063,22 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
 
    case GL_MIPMAP:
-      /* @TODO */
-      break;
-
    case GL_MANUAL_GENERATE_MIPMAP:
-      /* @TODO */
-      break;
-
    case GL_AUTO_GENERATE_MIPMAP:
-      /* @TODO */
+      if (pname == GL_MANUAL_GENERATE_MIPMAP &&
+          !ctx->Extensions.ARB_framebuffer_object)
+         goto end;
+
+      if (!_mesa_is_valid_generate_texture_mipmap_target(ctx, target) ||
+          !_mesa_is_valid_generate_texture_mipmap_internalformat(ctx,
+                                                                 internalformat))
+         goto end;
+
+      if (pname == GL_MIPMAP)
+         buffer[0] = GL_TRUE;
+      else
+         ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                         buffer);
       break;
 
    case GL_COLOR_ENCODING:
