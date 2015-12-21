@@ -617,6 +617,9 @@ _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
    case GL_SIMULTANEOUS_TEXTURE_AND_STENCIL_WRITE:
    case GL_CLEAR_BUFFER:
    case GL_TEXTURE_VIEW:
+   case GL_TEXTURE_SHADOW:
+   case GL_TEXTURE_GATHER:
+   case GL_TEXTURE_GATHER_SHADOW:
       params[0] = GL_FULL_SUPPORT;
       break;
 
@@ -1163,15 +1166,17 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
 
    case GL_TEXTURE_SHADOW:
-      /* @TODO */
-      break;
-
    case GL_TEXTURE_GATHER:
-      /* @TODO */
-      break;
-
    case GL_TEXTURE_GATHER_SHADOW:
-      /* @TODO */
+      if (target == GL_RENDERBUFFER)
+         goto end;
+
+      if (pname == GL_TEXTURE_GATHER &&
+          !ctx->Extensions.ARB_texture_gather)
+         goto end;
+
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      buffer);
       break;
 
    case GL_SHADER_IMAGE_LOAD:
