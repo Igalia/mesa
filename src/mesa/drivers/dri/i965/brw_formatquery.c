@@ -22,7 +22,9 @@
  */
 
 #include "brw_context.h"
+#include "brw_state.h"
 #include "main/formatquery.h"
+#include "main/glformats.h"
 
 static size_t
 brw_query_samples_for_format(struct gl_context *ctx, GLenum target,
@@ -82,6 +84,39 @@ brw_query_internal_format(struct gl_context *ctx, GLenum target,
       num_samples = brw_query_samples_for_format(ctx, target, internalFormat,
                                                  params);
       params[0] = (GLint) num_samples;
+      break;
+   }
+
+   case GL_INTERNALFORMAT_PREFERRED: {
+      params[0] = GL_NONE;
+
+      /* We need to resolve an internal format that is compatible with
+       * the passed internal format, and is "optimal" to the driver. This is
+       * still poorly defined to us, so right now we just validate that the
+       * passed internal format is supported. If so, we return the same
+       * internal format, otherwise GL_NONE.
+       */
+
+      /* We need to "come up" with a type, to obtain a mesa_format out of
+       * the passed internal format. Here, we get one from the internal
+       * format itself, that is generic enough.
+       */
+      GLenum type;
+      if (_mesa_is_enum_format_unsigned_int(internalFormat))
+         type = GL_UNSIGNED_BYTE;
+      else if (_mesa_is_enum_format_signed_int(internalFormat))
+         type = GL_BYTE;
+      else
+         type = GL_FLOAT;
+
+      /* Get a mesa_format from the internal format. */
+      mesa_format mesa_format =
+         _mesa_format_from_format_and_type(internalFormat, type);
+      if (mesa_format < MESA_FORMAT_COUNT) {
+         uint32_t brw_format = brw_format_for_mesa_format(mesa_format);
+         if (brw_format != 0)
+            params[0] = internalFormat;
+      }
       break;
    }
 
