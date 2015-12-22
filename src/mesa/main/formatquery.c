@@ -1082,7 +1082,8 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
       break;
 
    case GL_READ_PIXELS:
-      /* @TODO */
+      ctx->Driver.QueryInternalFormat(ctx, target, internalformat, pname,
+                                      buffer);
       break;
 
    case GL_READ_PIXELS_FORMAT:
