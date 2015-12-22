@@ -572,6 +572,11 @@ _mesa_query_internal_format_default(struct gl_context *ctx, GLenum target,
    case GL_NUM_SAMPLE_COUNTS:
       params[0] = 1;
       break;
+
+   case GL_INTERNALFORMAT_SUPPORTED:
+      params[0] = GL_TRUE;
+      break;
+
    default:
       _set_default_response(pname, params);
       break;
@@ -644,7 +649,11 @@ _mesa_GetInternalformativ(GLenum target, GLenum internalformat, GLenum pname,
                                       buffer);
       break;
    case GL_INTERNALFORMAT_SUPPORTED:
-      /* @TODO */
+      /* Having a supported <internalformat> is implemented as a prerequisite
+       * for all the <pnames>. Thus,  if we reach this point, the internalformat is
+       * supported.
+       */
+      buffer[0] = GL_TRUE;
       break;
 
    case GL_INTERNALFORMAT_PREFERRED:
