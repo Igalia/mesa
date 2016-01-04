@@ -305,6 +305,81 @@ lower_sqrt_rsq(nir_builder *b, nir_ssa_def *src, bool sqrt)
     return res;
 }
 
+static nir_ssa_def *
+lower_trunc(nir_builder *b, nir_ssa_def *src)
+{
+   nir_ssa_def *unbiased_exp = nir_isub(b, get_exponent(b, src),
+                                        nir_imm_int(b, 1023));
+
+   nir_ssa_def *frac_bits = nir_isub(b, nir_imm_int(b, 52), unbiased_exp);
+
+   /*
+    * Depending on the exponent, we compute a mask with the bits we need to
+    * remove in order to trunc the double. The mask is computed like this:
+    *
+    * if (unbiased_exp < 0)
+    *    mask = 0x0
+    * else if (unbiased_exp > 52)
+    *    mask = 0x7fffffffffffffff
+    * else
+    *    mask = (1LL < frac_bits) - 1
+    *
+    * Notice that the else branch is a 64-bit integer operation that we need
+    * to implement in terms of 32-bit integer arithmetics (at least until we
+    * support 64-bit integer arithmetics).
+    */
+
+   /* Compute "mask = (1LL << frac_bits) - 1" in terms of hi/lo 32-bit chunks
+    * for the else branch
+    */
+   nir_ssa_def *mask_lo =
+      nir_bcsel(b,
+                nir_ige(b, frac_bits, nir_imm_int(b, 32)),
+                nir_imm_int(b, 0xffffffff),
+                nir_isub(b,
+                         nir_ishl(b,
+                                  nir_imm_int(b, 1),
+                                  frac_bits),
+                         nir_imm_int(b, 1)));
+
+   nir_ssa_def *mask_hi =
+      nir_bcsel(b,
+                nir_ilt(b, frac_bits, nir_imm_int(b, 33)),
+                nir_imm_int(b, 0),
+                nir_isub(b,
+                         nir_ishl(b,
+                                  nir_imm_int(b, 1),
+                                  nir_isub(b,
+                                           frac_bits,
+                                           nir_imm_int(b, 32))),
+                         nir_imm_int(b, 1)));
+
+   /* Compute the correct mask to use based on unbiased_exp */
+   nir_ssa_def *mask =
+      nir_bcsel(b,
+                nir_ilt(b, unbiased_exp, nir_imm_int(b, 0)),
+                nir_pack_double_2x32_split(b,
+                                           nir_imm_int(b, 0xffffffff),
+                                           nir_imm_int(b, 0x7fffffff)),
+                nir_bcsel(b, nir_ige(b, unbiased_exp, nir_imm_int(b, 53)),
+                          nir_imm_double(b, 0.0),
+                          nir_pack_double_2x32_split(b, mask_lo, mask_hi)));
+
+   /* Mask off relevant mantissa bits (0..31 in the low 32-bits
+    * and 0..19 in the high 32 bits)
+    */
+   mask_lo = nir_unpack_double_2x32_split_x(b, mask);
+   mask_hi = nir_unpack_double_2x32_split_y(b, mask);
+
+   nir_ssa_def *src_lo = nir_unpack_double_2x32_split_x(b, src);
+   nir_ssa_def *src_hi = nir_unpack_double_2x32_split_y(b, src);
+
+   nir_ssa_def *zero = nir_imm_int(b, 0);
+   nir_ssa_def *new_src_lo = nir_bfi(b, mask_lo, zero, src_lo);
+   nir_ssa_def *new_src_hi = nir_bfi(b, mask_hi, zero, src_hi);
+   return nir_pack_double_2x32_split(b, new_src_lo, new_src_hi);
+}
+
 static void
 lower_doubles_instr(nir_alu_instr *instr, nir_lower_doubles_options options)
 {
@@ -325,6 +400,11 @@ lower_doubles_instr(nir_alu_instr *instr, nir_lower_doubles_options options)
 
    case nir_op_frsq:
       if (!(options & nir_lower_drsq))
+         return;
+      break;
+
+   case nir_op_ftrunc:
+      if (!(options & nir_lower_dtrunc))
          return;
       break;
 
@@ -350,6 +430,9 @@ lower_doubles_instr(nir_alu_instr *instr, nir_lower_doubles_options options)
       break;
    case nir_op_frsq:
       result = lower_sqrt_rsq(&bld, src, false);
+      break;
+   case nir_op_ftrunc:
+      result = lower_trunc(&bld, src);
       break;
    default:
       unreachable("unhandled opcode");
