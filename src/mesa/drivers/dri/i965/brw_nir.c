@@ -451,7 +451,9 @@ nir_optimize(nir_shader *nir, bool is_scalar)
       OPT_V(nir_lower_doubles, nir_lower_drcp |
                                nir_lower_dsqrt |
                                nir_lower_drsq |
-                               nir_lower_dtrunc);
+                               nir_lower_dtrunc |
+                               nir_lower_dfloor |
+                               nir_lower_dceil);
       OPT_V(nir_lower_double_pack);
    } while (progress);
 
