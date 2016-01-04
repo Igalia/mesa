@@ -380,6 +380,27 @@ lower_trunc(nir_builder *b, nir_ssa_def *src)
    return nir_pack_double_2x32_split(b, new_src_lo, new_src_hi);
 }
 
+static nir_ssa_def *
+lower_floor(nir_builder *b, nir_ssa_def *src)
+{
+   /*
+    * For x >= 0, floor(x) = trunc(x)
+    * For x < 0,
+    *    - if x is integer, floor(x) = x
+    *    - otherwise, floor(x) = trunc(x) - 1
+    */
+   nir_ssa_def *tr = nir_ftrunc(b, src);
+   return nir_bcsel(b,
+                    nir_fge(b, src, nir_imm_double(b, 0.0)),
+                    tr,
+                    nir_bcsel(b,
+                              nir_fne(b,
+                                      nir_fsub(b, src, tr),
+                                      nir_imm_double(b, 0.0)),
+                              nir_fsub(b, tr, nir_imm_double(b, 1.0)),
+                              src));
+}
+
 static void
 lower_doubles_instr(nir_alu_instr *instr, nir_lower_doubles_options options)
 {
@@ -408,6 +429,11 @@ lower_doubles_instr(nir_alu_instr *instr, nir_lower_doubles_options options)
          return;
       break;
 
+   case nir_op_ffloor:
+      if (!(options & nir_lower_dfloor))
+         return;
+      break;
+
    default:
       return;
    }
@@ -433,6 +459,9 @@ lower_doubles_instr(nir_alu_instr *instr, nir_lower_doubles_options options)
       break;
    case nir_op_ftrunc:
       result = lower_trunc(&bld, src);
+      break;
+   case nir_op_ffloor:
+      result = lower_floor(&bld, src);
       break;
    default:
       unreachable("unhandled opcode");
