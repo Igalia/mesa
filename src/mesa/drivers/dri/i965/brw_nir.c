@@ -453,7 +453,8 @@ nir_optimize(nir_shader *nir, bool is_scalar)
                                nir_lower_drsq |
                                nir_lower_dtrunc |
                                nir_lower_dfloor |
-                               nir_lower_dceil);
+                               nir_lower_dceil |
+                               nir_lower_dfract);
       OPT_V(nir_lower_double_pack);
    } while (progress);
 
