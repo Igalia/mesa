@@ -473,7 +473,7 @@ lower_round_even(nir_builder *b, nir_ssa_def *src)
     * We will do this by computing the mod(abs(src), 2) and testing if it
     * is < 1 or not.
     *
-    * We compute mos(abs(src), 2) as:
+    * We compute mod(abs(src), 2) as:
     * abs(src) - 2.0 * floor(abs(src) / 2.0)
     */
    nir_ssa_def *two = nir_imm_double(b, 2.0);
@@ -497,10 +497,8 @@ lower_round_even(nir_builder *b, nir_ssa_def *src)
     *      0.5 -> 0,   -0.5 -> -0
     *      2.5 -> 2,   -2.5 -> -2
     *
-    *   otherwise we need to check if src if src >= 0 in which case
-    *   we need to round upwards, or not, in which case we need to round
-    *   downwards so we get:
-    *
+    *   otherwise we need to check if src >= 0, in which case we need to round
+    *   upwards, or not, in which case we need to round downwards so we get:
     *      1.5 -> 2,   -1.5 -> -2
     *      3.5 -> 4,   -3.5 -> -4
     */
