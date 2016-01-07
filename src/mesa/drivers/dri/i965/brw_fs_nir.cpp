@@ -737,23 +737,87 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
 
    case nir_op_fsign: {
-      /* AND(val, 0x80000000) gives the sign bit.
-         *
-         * Predicated OR ORs 1.0 (0x3f800000) with the sign bit if val is not
-         * zero.
-         */
-      bld.CMP(bld.null_reg_f(), op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ);
+      if (type_sz(op[0].type) < 8) {
+         /* AND(val, 0x80000000) gives the sign bit.
+            *
+            * Predicated OR ORs 1.0 (0x3f800000) with the sign bit if val is not
+            * zero.
+            */
+         bld.CMP(bld.null_reg_f(), op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ);
 
-      fs_reg result_int = retype(result, BRW_REGISTER_TYPE_UD);
-      op[0].type = BRW_REGISTER_TYPE_UD;
-      result.type = BRW_REGISTER_TYPE_UD;
-      bld.AND(result_int, op[0], brw_imm_ud(0x80000000u));
+         fs_reg result_int = retype(result, BRW_REGISTER_TYPE_UD);
+         op[0].type = BRW_REGISTER_TYPE_UD;
+         result.type = BRW_REGISTER_TYPE_UD;
+         bld.AND(result_int, op[0], brw_imm_ud(0x80000000u));
 
-      inst = bld.OR(result_int, result_int, brw_imm_ud(0x3f800000u));
-      inst->predicate = BRW_PREDICATE_NORMAL;
-      if (instr->dest.saturate) {
-         inst = bld.MOV(result, result);
-         inst->saturate = true;
+         inst = bld.OR(result_int, result_int, brw_imm_ud(0x3f800000u));
+         inst->predicate = BRW_PREDICATE_NORMAL;
+         if (instr->dest.saturate) {
+            inst = bld.MOV(result, result);
+            inst->saturate = true;
+         }
+      } else {
+         /* For doubles we do the same but we need to consider:
+          *
+          * - 2-src instructions can't operate with 64-bit immediates
+          * - The sign is encoded in the high 32-bit of each DF
+          * - CMP with DF requires special handling in SIMD16
+          * - We need to produce a DF result.
+          */
+
+         /* 2-src instructions can't have 64-bit immediates, so put 0.0 in
+          * a register and compare with that.
+          */
+         if (bld.dispatch_width() == 8) {
+            /* A direct DF CMP using the flag register (null dst) won't work in
+             * SIMD16 because the CMP will be split in two by lower_simd_width,
+             * resulting in two CMP instructions with the same dst (NULL),
+             * leading to dead code elimination of the first one. In SIMD8,
+             * however, there is no need to split the CMP and we can save some
+             * work.
+             */
+            fs_reg tmp = vgrf(glsl_type::double_type);
+            bld.MOV(tmp, brw_imm_df(0.0));
+            fs_reg dst_tmp = vgrf(glsl_type::double_type);
+            bld.CMP(dst_tmp, op[0], tmp, BRW_CONDITIONAL_NZ);
+         } else {
+            /* In SIMD16 we want to avoid using a NULL dst register with DF CMP,
+             * so we store the result of the comparison in a vgrf instead and
+             * then we generate a UD comparison from that that won't have to
+             * be split by lower_simd_width. This is what NIR does to handle
+             * double comparisons in the general case.
+             */
+            fs_reg tmp = vgrf(glsl_type::double_type);
+            bld.MOV(tmp, brw_imm_df(0.0));
+            fs_reg dst_tmp = vgrf(glsl_type::double_type);
+            bld.CMP(dst_tmp, op[0], tmp, BRW_CONDITIONAL_NZ);
+
+            dst_tmp = retype(dst_tmp, BRW_REGISTER_TYPE_UD);
+            bld.MOV(dst_tmp, stride(dst_tmp, 2));
+            bld.CMP(bld.null_reg_ud(),
+                    dst_tmp, brw_imm_ud(0), BRW_CONDITIONAL_NZ);
+         }
+
+         /* Get the high 32-bit of each double component where the sign is */
+         fs_reg result_int = retype(result, BRW_REGISTER_TYPE_UD);
+         bld.MOV(result_int,
+                 stride(horiz_offset(retype(op[0], BRW_REGISTER_TYPE_UD), 1), 2));
+
+         /* Get the sign bit */
+         bld.AND(result_int, result_int, brw_imm_ud(0x80000000u));
+
+         /* Add 1.0 to the sign, predicated to skip the case of op[0] == 0.0 */
+         inst = bld.OR(result_int, result_int, brw_imm_ud(0x3f800000u));
+         inst->predicate = BRW_PREDICATE_NORMAL;
+
+         /* Convert from 32-bit float to 64-bit double */
+         result.type = BRW_REGISTER_TYPE_DF;
+         inst = bld.MOV(result, retype(result_int, BRW_REGISTER_TYPE_F));
+
+         if (instr->dest.saturate) {
+            inst = bld.MOV(result, result);
+            inst->saturate = true;
+         }
       }
       break;
    }
