@@ -435,29 +435,14 @@ static nir_ssa_def *
 lower_ceil(nir_builder *b, nir_ssa_def *src)
 {
    /*
-    * FIXME:
-    * We should be able to implement this as:
-    *
-    * For x < 0, ceil(x) = trunc(x)
-    * For x >= 0, ceil(x) = -floor(-x)
-    *
-    * However, the negates introduce some problems, apparently we get to
-    * see them ersolved during the integer pack/unpack operations, like this:
-    *
-    * mov(8)          g6<1>UD         -g4.1<8,4,2>UD         { align1 1Q };
-    *
-    * and we don't want that. Fix that first.
+    * If x < 0, ceil(x) = trunc(x)
+    * else      ceil(x) = -floor(-x)
     */
    nir_ssa_def *tr = nir_ftrunc(b, src);
    return nir_bcsel(b,
                     nir_flt(b, src, nir_imm_double(b, 0.0)),
                     tr,
-                    nir_bcsel(b,
-                              nir_fne(b,
-                                      nir_fsub(b, src, tr),
-                                      nir_imm_double(b, 0.0f)),
-                              nir_fadd(b, tr, nir_imm_double(b, 1.0)),
-                              src));
+                    nir_fneg(b, nir_ffloor(b, nir_fneg(b, src))));
 }
 
 static nir_ssa_def *
