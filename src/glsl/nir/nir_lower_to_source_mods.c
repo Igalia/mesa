@@ -33,6 +33,26 @@
  * easier to not have them when we're doing optimizations.
  */
 
+/*
+ * Some special alu operations cannot absorve src modifiers safely. For example,
+ * double unpack operations split a double into separate 32-bit chunks that
+ * are to be manipulated at bit level. If we allow these operations to absorve
+ * the srcmod we run into two issues:
+ *
+ * 1. We would be applying the source modifiers to both 32-bit chunks, which is
+ *    not correct.
+ * 2. If the 32-bit chunks are handled as unsigned data by the driver, the
+ *    the effect of the source modifier could be lost.
+ *
+ * So just skip srcmod lowering for these operations.
+ */
+static bool
+nir_alu_op_unsafe_for_srcmods(unsigned opcode)
+{
+   return opcode == nir_op_unpack_double_2x32_split_x ||
+          opcode == nir_op_unpack_double_2x32_split_y;
+}
+
 static bool
 nir_lower_to_source_mods_block(nir_block *block, void *state)
 {
@@ -41,6 +61,8 @@ nir_lower_to_source_mods_block(nir_block *block, void *state)
          continue;
 
       nir_alu_instr *alu = nir_instr_as_alu(instr);
+      if (nir_alu_op_unsafe_for_srcmods(alu->op))
+         continue;
 
       for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
          if (!alu->src[i].src.is_ssa)
