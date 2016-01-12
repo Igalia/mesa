@@ -1398,6 +1398,12 @@ nir_visitor::visit(ir_expression *ir)
    case ir_unop_d2i:  result = nir_d2i(&b, srcs[0]);   break;
    case ir_unop_d2u:  result = nir_d2u(&b, srcs[0]);   break;
    case ir_unop_d2b:  result = nir_d2b(&b, srcs[0]);   break;
+   case ir_unop_i2d:
+      result = supports_ints ? nir_i2d(&b, srcs[0]) : nir_fmov(&b, srcs[0]);
+      break;
+   case ir_unop_u2d:
+      result = supports_ints ? nir_u2d(&b, srcs[0]) : nir_fmov(&b, srcs[0]);
+      break;
    case ir_unop_i2u:
    case ir_unop_u2i:
    case ir_unop_bitcast_i2f:
