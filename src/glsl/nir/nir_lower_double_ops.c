@@ -326,12 +326,24 @@ lower_trunc(nir_builder *b, nir_ssa_def *src)
     *
     * Notice that the else branch is a 64-bit integer operation that we need
     * to implement in terms of 32-bit integer arithmetics (at least until we
-    * support 64-bit integer arithmetics).
+    * support 64-bit integer arithmetics). Because that is also the most
+    * likely branch, move that to control-flow and use bcsel for the other
+    * two branches:
+    *
+    * if (unbiased_exp >= 0 && unbiased_exp < 53)
+    *    mask = (1LL < frac_bits) - 1
+    * else
+    *    mask = bcsel(unbiased_exp < 0, 0x0, 0x7fffffffffffffff);
     */
 
-   /* Compute "mask = (1LL << frac_bits) - 1" in terms of hi/lo 32-bit chunks
-    * for the else branch
-    */
+   nir_if *if_stmt = nir_if_create(b->shader);
+   nir_ssa_def *condition1 = nir_ige(b, unbiased_exp, nir_imm_int(b, 0));
+   nir_ssa_def *condition2 = nir_ilt(b, unbiased_exp, nir_imm_int(b, 53));
+   nir_ssa_def *condition = nir_iand(b, condition1, condition2);
+   if_stmt->condition = nir_src_for_ssa(condition);
+   nir_cf_node_insert(b->cursor, &if_stmt->cf_node);
+
+   b->cursor = nir_after_cf_list(&if_stmt->then_list);
    nir_ssa_def *mask_lo =
       nir_bcsel(b,
                 nir_ige(b, frac_bits, nir_imm_int(b, 32)),
@@ -354,16 +366,34 @@ lower_trunc(nir_builder *b, nir_ssa_def *src)
                                            nir_imm_int(b, 32))),
                          nir_imm_int(b, 1)));
 
-   /* Compute the correct mask to use based on unbiased_exp */
-   nir_ssa_def *mask =
-      nir_bcsel(b,
-                nir_ilt(b, unbiased_exp, nir_imm_int(b, 0)),
+   nir_ssa_def *then_dest = nir_pack_double_2x32_split(b, mask_lo, mask_hi);
+
+   b->cursor = nir_after_cf_list(&if_stmt->else_list);
+   nir_ssa_def *else_dest =
+      nir_bcsel(b, nir_ilt(b, unbiased_exp, nir_imm_int(b, 0)),
                 nir_pack_double_2x32_split(b,
                                            nir_imm_int(b, 0xffffffff),
                                            nir_imm_int(b, 0x7fffffff)),
-                nir_bcsel(b, nir_ige(b, unbiased_exp, nir_imm_int(b, 53)),
-                          nir_imm_double(b, 0.0),
-                          nir_pack_double_2x32_split(b, mask_lo, mask_hi)));
+                nir_imm_double(b, 0.0));
+
+   b->cursor = nir_after_cf_node(&if_stmt->cf_node);
+
+   nir_phi_instr *phi = nir_phi_instr_create(b->shader);
+   nir_ssa_dest_init(&phi->instr, &phi->dest,
+                     then_dest->num_components, 64, NULL);
+
+   nir_phi_src *src0 = ralloc(phi, nir_phi_src);
+   src0->pred = nir_cf_node_as_block(nir_if_last_then_node(if_stmt));
+   src0->src = nir_src_for_ssa(then_dest);
+   exec_list_push_tail(&phi->srcs, &src0->node);
+
+   nir_phi_src *src1 = ralloc(phi, nir_phi_src);
+   src1->pred = nir_cf_node_as_block(nir_if_last_else_node(if_stmt));
+   src1->src = nir_src_for_ssa(else_dest);
+   exec_list_push_tail(&phi->srcs, &src1->node);
+
+   nir_builder_instr_insert(b, &phi->instr);
+   nir_ssa_def *mask = &phi->dest.ssa;
 
    /* Mask off relevant mantissa bits (0..31 in the low 32-bits
     * and 0..19 in the high 32 bits)
