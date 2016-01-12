@@ -469,13 +469,37 @@ lower_fract(nir_builder *b, nir_ssa_def *src)
 static nir_ssa_def *
 lower_round_even(nir_builder *b, nir_ssa_def *src)
 {
-   /* If fract(src) == 0.5, then we will have to decide the rounding direction.
-    * We will do this by computing the mod(abs(src), 2) and testing if it
-    * is < 1 or not.
+   /*
+    * If fract(src) != 0.5, then we round as floor(src + 0.5)
     *
-    * We compute mod(abs(src), 2) as:
-    * abs(src) - 2.0 * floor(abs(src) / 2.0)
+    * If fract(src) == 0.5, then we have to decide the rounding direction. To
+    * do that check if mod(abs(src), 2):
+    *
+    *   if it is < 1 we need to round using a trunc operation so we get:
+    *      0.5 -> 0,   -0.5 -> -0
+    *      2.5 -> 2,   -2.5 -> -2
+    *
+    *   if it is >= 1 we round upwards if src >= 0 and downwards otherwise so
+    *   we get:
+    *      1.5 -> 2,   -1.5 -> -2
+    *      3.5 -> 4,   -3.5 -> -4
+    *
+    * Notice that fract(src) != 0.5 is the most likely scenario so we move that
+    * to control flow and use bcsel for the remaining cases.
     */
+   nir_ssa_def *fract = nir_ffract(b, src);
+
+   nir_if *if_stmt = nir_if_create(b->shader);
+   nir_ssa_def *condition = nir_fne(b, fract, nir_imm_double(b, 0.5));
+   if_stmt->condition = nir_src_for_ssa(condition);
+   nir_cf_node_insert(b->cursor, &if_stmt->cf_node);
+
+   b->cursor = nir_after_cf_list(&if_stmt->then_list);
+   nir_ssa_def *then_dest =
+      nir_ffloor(b, nir_fadd(b, src, nir_imm_double(b, 0.5)));
+
+   /* mod(abs(src), 2) = abs(src) - 2 * floor(abs(src) / 2) */
+   b->cursor = nir_after_cf_list(&if_stmt->else_list);
    nir_ssa_def *two = nir_imm_double(b, 2.0);
    nir_ssa_def *abs_src = nir_fabs(b, src);
    nir_ssa_def *mod =
@@ -487,32 +511,31 @@ lower_round_even(nir_builder *b, nir_ssa_def *src)
                                    nir_fmul(b,
                                             abs_src,
                                             nir_imm_double(b, 0.5)))));
+   nir_ssa_def *else_dest =
+      nir_bcsel(b, nir_flt(b, mod, nir_imm_double(b, 1.0)),
+                nir_ftrunc(b, src),
+                nir_bcsel(b, nir_fge(b, src, nir_imm_double(b, 0.0)),
+                          nir_fadd(b, src, nir_imm_double(b, 0.5)),
+                          nir_fsub(b, src, nir_imm_double(b, 0.5))));
 
-   /*
-    * If fract(src) != 0.5, then we round as floor(src + 0.5)
-    *
-    * If fract(src) == 0.5, then we have to check the modulo:
-    *
-    *   if it is < 1 we need a trunc operation so we get:
-    *      0.5 -> 0,   -0.5 -> -0
-    *      2.5 -> 2,   -2.5 -> -2
-    *
-    *   otherwise we need to check if src >= 0, in which case we need to round
-    *   upwards, or not, in which case we need to round downwards so we get:
-    *      1.5 -> 2,   -1.5 -> -2
-    *      3.5 -> 4,   -3.5 -> -4
-    */
-   nir_ssa_def *fract = nir_ffract(b, src);
-   return nir_bcsel(b,
-                    nir_fne(b, fract, nir_imm_double(b, 0.5)),
-                    nir_ffloor(b, nir_fadd(b, src, nir_imm_double(b, 0.5))),
-                    nir_bcsel(b,
-                              nir_flt(b, mod, nir_imm_double(b, 1.0)),
-                              nir_ftrunc(b, src),
-                              nir_bcsel(b,
-                                        nir_fge(b, src, nir_imm_double(b, 0.0)),
-                                        nir_fadd(b, src, nir_imm_double(b, 0.5)),
-                                        nir_fsub(b, src, nir_imm_double(b, 0.5)))));
+   b->cursor = nir_after_cf_node(&if_stmt->cf_node);
+
+   nir_phi_instr *phi = nir_phi_instr_create(b->shader);
+   nir_ssa_dest_init(&phi->instr, &phi->dest,
+                     then_dest->num_components, 64, NULL);
+
+   nir_phi_src *src0 = ralloc(phi, nir_phi_src);
+   src0->pred = nir_cf_node_as_block(nir_if_last_then_node(if_stmt));
+   src0->src = nir_src_for_ssa(then_dest);
+   exec_list_push_tail(&phi->srcs, &src0->node);
+
+   nir_phi_src *src1 = ralloc(phi, nir_phi_src);
+   src1->pred = nir_cf_node_as_block(nir_if_last_else_node(if_stmt));
+   src1->src = nir_src_for_ssa(else_dest);
+   exec_list_push_tail(&phi->srcs, &src1->node);
+
+   nir_builder_instr_insert(b, &phi->instr);
+   return &phi->dest.ssa;
 }
 
 static void
