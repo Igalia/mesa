@@ -2963,6 +2963,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                                nir->info.num_ubos - 1);
       }
 
+      /* Number of 32-bit slots in the type */
+      unsigned type_slots = MAX2(1, type_sz(dest.type) / 4);
+
       nir_const_value *const_offset = nir_src_as_const_value(instr->src[1]);
       if (const_offset == NULL) {
          fs_reg base_offset = retype(get_nir_src(instr->src[1]),
@@ -2970,27 +2973,66 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
          for (int i = 0; i < instr->num_components; i++)
             VARYING_PULL_CONSTANT_LOAD(bld, offset(dest, bld, i), surf_index,
-                                       base_offset, i * 4);
+                                       base_offset, i * 4 * type_slots);
       } else {
+         /* Even if we are loading doubles, a pull constant load will load
+          * a 32-bit vec4, so should only reserve vgrf space for that. If we
+          * need to load a full dvec4 we will have to emit 2 loads. This is
+          * similar to demote_pull_constants(), except that in that case we
+          * see individual accesses to each component of the vector and then
+          * we let CSE deal with duplicate loads. Here we see a vector access
+          * and we have to split it if necessary.
+          */
          fs_reg packed_consts = vgrf(glsl_type::float_type);
          packed_consts.type = dest.type;
 
-         struct brw_reg const_offset_reg = brw_imm_ud(const_offset->u32[0] & ~15);
-         bld.emit(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD, packed_consts,
-                  surf_index, const_offset_reg);
+         unsigned const_offset_aligned = const_offset->u32[0] & ~15;
 
-         unsigned component_base =
-            (const_offset->u32[0] % 16) / MAX2(1, type_sz(dest.type));
-         for (unsigned i = 0; i < instr->num_components; i++) {
-            packed_consts.set_smear(component_base + i);
+         /* A vec4 only contains half of a dvec4, if we need more than 2
+          * components of a dvec4 we will have to issue another load for
+          * components z and w
+          */
+         int num_components;
+         if (type_slots == 1)
+            num_components = instr->num_components;
+         else
+            num_components = MIN2(2, instr->num_components);
 
-            /* The std140 packing rules don't allow vectors to cross 16-byte
-             * boundaries, and a reg is 32 bytes.
+         int remaining_components = instr->num_components;
+         while (remaining_components > 0) {
+            /* Read the vec4 from a 16-byte aligned offset */
+            struct brw_reg const_offset_reg = brw_imm_ud(const_offset_aligned);
+            bld.emit(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD,
+                     retype(packed_consts, BRW_REGISTER_TYPE_F),
+                     surf_index, const_offset_reg);
+
+            /* If the offset isn't 16-byte aligned, compute the component into
+             * the vec4 result that we need to read. This needs to consider the
+             * size of the type, since double components take twice the space.
              */
-            assert(packed_consts.subreg_offset < 32);
+            unsigned component_base =
+               (const_offset->u32[0] % 16) / (4 * type_slots);
 
-            bld.MOV(dest, packed_consts);
-            dest = offset(dest, bld, 1);
+            for (int i = 0; i < num_components; i++) {
+               packed_consts.set_smear(component_base + i);
+
+               /* The std140 packing rules don't allow vectors to cross 16-byte
+                * boundaries, and a reg is 32 bytes.
+                */
+               assert(packed_consts.subreg_offset < 32);
+
+               bld.MOV(dest, packed_consts);
+               dest = offset(dest, bld, 1);
+            }
+
+            /* If this is a large enough 64-bit load, we will need to emit
+             * another message
+             */
+            remaining_components -= num_components;
+            assert(remaining_components == 0 ||
+                   (remaining_components <= 2 && type_slots == 2));
+            num_components = remaining_components;
+            const_offset_aligned += 16;
          }
       }
       break;
