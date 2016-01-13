@@ -1228,6 +1228,7 @@ nir_visitor::evaluate_rvalue(ir_rvalue* ir)
       load_instr->dest.ssa.bit_size = glsl_get_bit_size(ir->type->base_type);
    }
 
+   this->result->bit_size = glsl_get_bit_size(ir->type->base_type);
    return this->result;
 }
 
