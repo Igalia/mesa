@@ -68,7 +68,9 @@ gen6_upload_push_constants(struct brw_context *brw,
          _mesa_load_state_parameters(ctx, prog->Parameters);
 
       gl_constant_value *param;
-      unsigned i;
+      unsigned i, j;
+      gl_constant_value zero;
+      zero.u = 0;
 
       param = brw_state_batch(brw, type,
 			      prog_data->nr_params * sizeof(gl_constant_value),
@@ -82,8 +84,11 @@ gen6_upload_push_constants(struct brw_context *brw,
        * side effect of dereferencing uniforms, so _NEW_PROGRAM_CONSTANTS
        * wouldn't be set for them.
       */
-      for (i = 0; i < prog_data->nr_params; i++) {
-         param[i] = *prog_data->param[i];
+      for (i = 0, j = 0; i < prog_data->nr_params; i++) {
+         if (prog_data->padding && prog_data->padding[j]) {
+            param[i++] = zero;
+         }
+         param[i] = *prog_data->param[j++];
       }
 
       if (0) {
