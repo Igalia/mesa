@@ -1571,7 +1571,8 @@ fs_visitor::assign_curb_setup()
             int uniform_nr = inst->src[i].nr + inst->src[i].reg_offset;
             int constant_nr;
             if (uniform_nr >= 0 && uniform_nr < (int) uniforms) {
-               constant_nr = push_constant_loc[uniform_nr];
+               constant_nr = push_constant_loc[uniform_nr] +
+                             stage_prog_data->param_padding[uniform_nr];
             } else {
                /* Section 5.11 of the OpenGL 4.1 spec says:
                 * "Out-of-bounds reads return undefined values, which include
@@ -2010,7 +2011,10 @@ fs_visitor::assign_constant_locations()
       return;
 
    bool is_live[uniforms];
+   bool is_64bit[uniforms];
+
    memset(is_live, 0, sizeof(is_live));
+   memset(is_64bit, 0, sizeof(is_64bit));
 
    /* For each uniform slot, a value of true indicates that the given slot and
     * the next slot must remain contiguous.  This is used to keep us from
@@ -2047,8 +2051,11 @@ fs_visitor::assign_constant_locations()
             is_live[last] = true;
          } else {
             if (constant_nr >= 0 && constant_nr < (int) uniforms) {
-               for (int j = 0; j < inst->regs_read(i); j++)
+               for (int j = 0; j < inst->regs_read(i); j++) {
                   is_live[constant_nr + j] = true;
+                  if (type_sz(inst->src[i].type) == 8)
+                     is_64bit[constant_nr + j] = true;
+               }
             }
          }
       }
@@ -2072,14 +2079,18 @@ fs_visitor::assign_constant_locations()
 
    unsigned int num_push_constants = 0;
    unsigned int num_pull_constants = 0;
+   unsigned num_paddings = 0;
+   bool is_64bit_aligned = true;
 
    push_constant_loc = ralloc_array(mem_ctx, int, uniforms);
    pull_constant_loc = ralloc_array(mem_ctx, int, uniforms);
+   stage_prog_data->param_padding = rzalloc_array(NULL, uint32_t, uniforms);
 
    int chunk_start = -1;
    for (unsigned u = 0; u < uniforms; u++) {
       push_constant_loc[u] = -1;
       pull_constant_loc[u] = -1;
+      stage_prog_data->param_padding[u] = num_paddings;
 
       if (!is_live[u])
          continue;
@@ -2094,17 +2105,44 @@ fs_visitor::assign_constant_locations()
        */
       if (!contiguous[u]) {
          unsigned chunk_size = u - chunk_start + 1;
+         unsigned total_push_components = num_push_constants + num_paddings;
+         bool push_32_bits_constant = !is_64bit[u] &&
+            total_push_components + chunk_size <= max_push_components;
+         /* Verify if the 64 bits constant can be saved into the push constant
+          * buffer. Take into account that it might need padding.
+          */
+         bool push_64_bits_constant = is_64bit[u] &&
+            (total_push_components + chunk_size + 1 + !is_64bit_aligned) <=
+            max_push_components;
 
          /* Decide whether we should push or pull this parameter.  In the
           * Vulkan driver, push constants are explicitly exposed via the API
           * so we push everything.  In GL, we only push small arrays.
           */
          if (stage_prog_data->pull_param == NULL ||
-             (num_push_constants + chunk_size <= max_push_components &&
+             ((push_32_bits_constant || push_64_bits_constant) &&
               chunk_size <= max_chunk_size)) {
-            assert(num_push_constants + chunk_size <= max_push_components);
-            for (unsigned j = chunk_start; j <= u; j++)
+            assert(total_push_components + chunk_size <= max_push_components);
+
+            for (unsigned j = chunk_start; j <= u; j++) {
+               /* If it is a double and it is not aligned to 64 bits, add padding.
+                * It is already aligned, don't add padding.
+                */
+               if (push_64_bits_constant) {
+                  if (!is_64bit_aligned) {
+                     num_paddings++;
+                     stage_prog_data->param_padding[j] = num_paddings;
+                     is_64bit_aligned = true;
+                  }
+               } else {
+                  /* We are pushing a 32 bits constant. Is the next push constant
+                   * aligned 64 bits?
+                   */
+                  is_64bit_aligned = !is_64bit_aligned;
+               }
+
                push_constant_loc[j] = num_push_constants++;
+            }
          } else {
             for (unsigned j = chunk_start; j <= u; j++)
                pull_constant_loc[j] = num_pull_constants++;
@@ -2114,7 +2152,7 @@ fs_visitor::assign_constant_locations()
       }
    }
 
-   stage_prog_data->nr_params = num_push_constants;
+   stage_prog_data->nr_params = num_push_constants + num_paddings;
    stage_prog_data->nr_pull_params = num_pull_constants;
 
    /* Up until now, the param[] array has been indexed by reg + reg_offset
