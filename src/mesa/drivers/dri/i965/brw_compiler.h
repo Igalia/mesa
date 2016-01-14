@@ -328,6 +328,14 @@ struct brw_stage_prog_data {
    } binding_table;
 
    GLuint nr_params;       /**< number of float params/constants */
+   /**
+    * Accumulated padding (in 32-bit units) in the push constant buffer for
+    * each param. If param_padding[n] = P, it means that params 0..n required
+    * a total accumulated padding of P 32-bit slots. This is useful to compute
+    * the actual location, including padding, for each param.
+    */
+   uint32_t *param_padding;
+
    GLuint nr_pull_params;
    unsigned nr_image_params;
 
