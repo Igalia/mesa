@@ -193,8 +193,15 @@ fs_visitor::VARYING_PULL_CONSTANT_LOAD(const fs_builder &bld,
    else
       op = FS_OPCODE_VARYING_PULL_CONSTANT_LOAD;
 
+   /* The pull load message will load a vec4 (16 bytes). If we are loading
+    * a double this means we are only loading 2 elements worth of data.
+    * We also want to use a 32-bit data type for the dst of the load operation
+    * so other parts of the driver don't get confused about the size of the
+    * result.
+    */
    int regs_written = 4 * (bld.dispatch_width() / 8) * scale;
-   fs_reg vec4_result = fs_reg(VGRF, alloc.allocate(regs_written), dst.type);
+   fs_reg vec4_result = fs_reg(VGRF, alloc.allocate(regs_written),
+                               BRW_REGISTER_TYPE_F);
    fs_inst *inst = bld.emit(op, vec4_result, surf_index, vec4_offset);
    inst->regs_written = regs_written;
 
@@ -207,7 +214,45 @@ fs_visitor::VARYING_PULL_CONSTANT_LOAD(const fs_builder &bld,
          inst->mlen = 1 + bld.dispatch_width() / 8;
    }
 
-   bld.MOV(dst, offset(vec4_result, bld, ((const_offset & 0xf) / 4) * scale));
+   vec4_result.type = dst.type;
+
+   /* Our VARYING_PULL_CONSTANT_LOAD reads a vector of 32-bit elements. If we
+    * are reading doubles this means that we get this:
+    *
+    *  r0: x0 x0 x0 x0 x0 x0 x0 x0
+    *  r1: x1 x1 x1 x1 x1 x1 x1 x1
+    *  r2: y0 y0 y0 y0 y0 y0 y0 y0
+    *  r3: y1 y1 y1 y1 y1 y1 y1 y1
+    *
+    * Fix this up so we return valid double elements:
+    *
+    *  r0: x0 x1 x0 x1 x0 x1 x0 x1
+    *  r1: x0 x1 x0 x1 x0 x1 x0 x1
+    *  r2: y0 y1 y0 y1 y0 y1 y0 y1
+    *  r3: y0 y1 y0 y1 y0 y1 y0 y1
+    */
+   if (type_sz(dst.type) == 8) {
+      int multiplier = bld.dispatch_width() / 8;
+      fs_reg fixed_res =
+         fs_reg(VGRF, alloc.allocate(2 * multiplier), BRW_REGISTER_TYPE_F);
+      /* We only have 2 doubles in a 32-bit vec4 */
+      for (int i = 0; i < 2; i++) {
+         fs_reg vec4_float =
+            horiz_offset(retype(vec4_result, BRW_REGISTER_TYPE_F),
+                         multiplier * 16 * i);
+
+         bld.MOV(stride(fixed_res, 2), vec4_float);
+         bld.MOV(stride(horiz_offset(fixed_res, 1), 2),
+                 horiz_offset(vec4_float, 8 * multiplier));
+
+         bld.MOV(horiz_offset(vec4_result, multiplier * 8 * i),
+                 retype(fixed_res, BRW_REGISTER_TYPE_DF));
+      }
+   }
+
+   int type_slots = MAX2(type_sz(dst.type) / 4, 1);
+   bld.MOV(dst, offset(vec4_result, bld,
+                       ((const_offset & 0xf) / (4 * type_slots)) * scale));
 }
 
 /**
