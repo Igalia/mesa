@@ -1541,6 +1541,10 @@ fs_visitor::assign_curb_setup()
             int constant_nr;
             if (uniform_nr >= 0 && uniform_nr < (int) uniforms) {
                constant_nr = push_constant_loc[uniform_nr];
+               /* Take padding into account */
+               for (int j = 0; j <= uniform_nr; j++)
+                  if (stage_prog_data->padding[j])
+                     constant_nr++;
             } else {
                /* Section 5.11 of the OpenGL 4.1 spec says:
                 * "Out-of-bounds reads return undefined values, which include
@@ -1992,7 +1996,10 @@ fs_visitor::assign_constant_locations()
    memset(pull_constant_loc, -1, sizeof(pull_constant_loc[0]) * uniforms);
 
    bool is_live[uniforms];
+   bool is_double[uniforms];
+
    memset(is_live, 0, sizeof(is_live));
+   memset(is_double, 0, sizeof(is_double));
 
    /* First, we walk through the instructions and do two things:
     *
@@ -2024,8 +2031,11 @@ fs_visitor::assign_constant_locations()
             /* Mark the the one accessed uniform as live */
             int constant_nr = inst->src[i].nr + inst->src[i].reg_offset;
             if (constant_nr >= 0 && constant_nr < (int) uniforms) {
-               for (int j = 0; j < inst->regs_read(i); j++)
+               for (int j = 0; j < inst->regs_read(i); j++) {
                   is_live[constant_nr + j] = true;
+                  if (inst->src[i].type == BRW_REGISTER_TYPE_DF)
+                     is_double[constant_nr + j] = true;
+               }
             }
          }
       }
@@ -2041,31 +2051,50 @@ fs_visitor::assign_constant_locations()
     */
    unsigned int max_push_components = 16 * 8;
    unsigned int num_push_constants = 0;
+   unsigned num_accumulated_non_doubles = 0;
 
    push_constant_loc = ralloc_array(mem_ctx, int, uniforms);
 
+   stage_prog_data->padding = ralloc_array(NULL, bool, uniforms);
+   memset(stage_prog_data->padding, 0, sizeof(bool) * uniforms);
+   stage_prog_data->nr_paddings = 0;
+
    for (unsigned int i = 0; i < uniforms; i++) {
-      if (!is_live[i] || pull_constant_loc[i] != -1) {
+       if (!is_live[i] || pull_constant_loc[i] != -1) {
          /* This UNIFORM register is either dead, or has already been demoted
           * to a pull const.  Mark it as no longer living in the param[] array.
           */
          push_constant_loc[i] = -1;
          continue;
-      }
+       }
+       unsigned total_push_components = num_push_constants + stage_prog_data->nr_paddings;
 
-      if (num_push_constants < max_push_components) {
-         /* Retain as a push constant.  Record the location in the params[]
-          * array.
-          */
-         push_constant_loc[i] = num_push_constants++;
-      } else {
-         /* Demote to a pull constant. */
-         push_constant_loc[i] = -1;
-         pull_constant_loc[i] = num_pull_constants++;
-      }
+       if (is_double[i] && (total_push_components + 1) < max_push_components) {
+          /* If it is a double not aligned to 64 bits, add padding */
+          if (num_accumulated_non_doubles % 2) {
+             stage_prog_data->padding[i] = true;
+             stage_prog_data->nr_paddings++;
+             num_accumulated_non_doubles++;
+          }
+
+          /* Retain as a push constant.  Record the location in the params[]
+           * array.
+           */
+          push_constant_loc[i] = num_push_constants++;
+       } else if (!is_double[i] && total_push_components < max_push_components) {
+          /* Retain as a push constant.  Record the location in the params[]
+           * array.
+           */
+          push_constant_loc[i] = num_push_constants++;
+          num_accumulated_non_doubles++;
+       } else {
+          /* Demote to a pull constant. */
+          push_constant_loc[i] = -1;
+          pull_constant_loc[i] = num_pull_constants++;
+       }
    }
 
-   stage_prog_data->nr_params = num_push_constants;
+   stage_prog_data->nr_params = num_push_constants + stage_prog_data->nr_paddings;
    stage_prog_data->nr_pull_params = num_pull_constants;
 
    /* Up until now, the param[] array has been indexed by reg + reg_offset

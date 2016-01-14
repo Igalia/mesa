@@ -327,6 +327,13 @@ struct brw_stage_prog_data {
    } binding_table;
 
    GLuint nr_params;       /**< number of float params/constants */
+   /**
+    * Number of 32-bit padding size needed in push constant buffer to
+    * align doubles to 64 bit accesses.
+    */
+   unsigned nr_paddings;
+   bool *padding;
+
    GLuint nr_pull_params;
    unsigned nr_image_params;
 

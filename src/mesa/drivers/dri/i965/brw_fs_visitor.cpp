@@ -304,6 +304,7 @@ fs_visitor::emit_dummy_fs()
 
    /* We don't have any uniforms. */
    stage_prog_data->nr_params = 0;
+   stage_prog_data->nr_paddings = 0;
    stage_prog_data->nr_pull_params = 0;
    stage_prog_data->curb_read_length = 0;
    stage_prog_data->dispatch_grf_start_reg = 2;

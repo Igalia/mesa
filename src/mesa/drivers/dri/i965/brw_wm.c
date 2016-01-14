@@ -103,6 +103,8 @@ brw_codegen_wm_prog(struct brw_context *brw,
    param_count += 2 * ctx->Const.Program[MESA_SHADER_FRAGMENT].MaxTextureImageUnits;
    prog_data.base.param =
       rzalloc_array(NULL, const gl_constant_value *, param_count);
+   prog_data.base.padding =
+      rzalloc_array(NULL, bool, param_count);
    prog_data.base.pull_param =
       rzalloc_array(NULL, const gl_constant_value *, param_count);
    prog_data.base.image_param =
