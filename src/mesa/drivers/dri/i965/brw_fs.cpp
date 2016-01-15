@@ -4587,10 +4587,11 @@ fs_visitor::lower_simd_width()
                 * instruction and fix up the number of registers written.
                 */
                split_inst.dst = dsts[i] =
-                  lbld.vgrf(inst->dst.type, dst_size);
+                  lbld.vgrf(inst->dst.type, dst_size * inst->dst.stride);
                split_inst.regs_written =
                   DIV_ROUND_UP(inst->regs_written * lower_width,
                                inst->exec_size);
+               assert(type_sz(inst->dst.type) / 4 * dst_size * inst->dst.stride == split_inst.regs_written);
             }
 
             lbld.emit(split_inst);
