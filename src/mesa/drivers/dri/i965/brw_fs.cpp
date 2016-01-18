@@ -2134,7 +2134,8 @@ fs_visitor::demote_pull_constants()
             struct brw_reg offset = brw_imm_ud((unsigned)(pull_index * 4) & ~15);
             ubld.emit(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD,
                       dst, brw_imm_ud(index), offset);
-            inst->src[i].set_smear(pull_index & 3);
+            unsigned type_slots = MAX2(1, type_sz(inst->dst.type) / 4);
+            inst->src[i].set_smear((pull_index & 3) / type_slots);
          }
          brw_mark_surface_used(prog_data, index);
 

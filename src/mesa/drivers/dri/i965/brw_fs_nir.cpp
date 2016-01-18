@@ -2711,8 +2711,10 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          bld.emit(FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD, packed_consts,
                   surf_index, const_offset_reg);
 
+         unsigned component_base =
+            (const_offset->u[0] % 16) / MAX2(1, type_sz(dest.type));
          for (unsigned i = 0; i < instr->num_components; i++) {
-            packed_consts.set_smear(const_offset->u[0] % 16 / 4 + i);
+            packed_consts.set_smear(component_base + i);
 
             /* The std140 packing rules don't allow vectors to cross 16-byte
              * boundaries, and a reg is 32 bytes.
