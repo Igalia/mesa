@@ -2268,7 +2268,8 @@ fs_visitor::lower_constant_loads()
          inst->src[i].file = VGRF;
          inst->src[i].nr = dst.nr;
          inst->src[i].reg_offset = 0;
-         inst->src[i].set_smear(pull_index & 3);
+         unsigned type_slots = MAX2(1, type_sz(inst->dst.type) / 4);
+         inst->src[i].set_smear((pull_index & 3) / type_slots);
 
          brw_mark_surface_used(prog_data, index);
       }
