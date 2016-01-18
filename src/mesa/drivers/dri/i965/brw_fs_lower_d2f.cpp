@@ -36,7 +36,9 @@ fs_visitor::lower_d2f()
       if (inst->opcode != BRW_OPCODE_MOV)
          continue;
 
-      if (inst->dst.type != BRW_REGISTER_TYPE_F)
+      if (inst->dst.type != BRW_REGISTER_TYPE_F &&
+          inst->dst.type != BRW_REGISTER_TYPE_D &&
+          inst->dst.type != BRW_REGISTER_TYPE_UD)
          continue;
 
       if (inst->src[0].type != BRW_REGISTER_TYPE_DF)
@@ -58,7 +60,7 @@ fs_visitor::lower_d2f()
        * a strided MOV to get the lower DWord of every Qword that has the
        * result.
        */
-      fs_reg temp = ibld.vgrf(BRW_REGISTER_TYPE_F, 2);
+      fs_reg temp = ibld.vgrf(inst->dst.type, 2);
       ibld.MOV(stride(temp, 2), inst->src[0]);
       ibld.MOV(dst, stride(temp, 2));
 
