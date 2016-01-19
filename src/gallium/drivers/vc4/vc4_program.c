@@ -1771,6 +1771,7 @@ static const nir_shader_compiler_options nir_options = {
         .lower_extract_word = true,
         .lower_ffma = true,
         .lower_flrp32 = true,
+        .lower_flrp64 = true,
         .lower_fpow = true,
         .lower_fsat = true,
         .lower_fsqrt = true,
