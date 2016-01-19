@@ -1486,6 +1486,8 @@ typedef struct nir_shader_compiler_options {
    bool lower_fdiv;
    bool lower_ffma;
    bool lower_flrp;
+   /** Lowers flrp when it does not supports doubles */
+   bool lower_flrp_double;
    bool lower_fpow;
    bool lower_fsat;
    bool lower_fsqrt;
