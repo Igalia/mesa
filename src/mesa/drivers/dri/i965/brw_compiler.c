@@ -82,6 +82,7 @@ shader_perf_log_mesa(void *data, const char *fmt, ...)
    .lower_uadd_carry = true,                                                  \
    .lower_usub_borrow = true,                                                 \
    .lower_fdiv = true,                                                        \
+   .lower_flrp_double = true,                                                 \
    .native_integers = true
 
 static const struct nir_shader_compiler_options scalar_nir_options = {
