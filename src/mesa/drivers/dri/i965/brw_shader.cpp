@@ -110,6 +110,7 @@ brw_compiler_create(void *mem_ctx, const struct brw_device_info *devinfo)
    nir_options->lower_bitfield_insert = true;
    nir_options->lower_uadd_carry = true;
    nir_options->lower_usub_borrow = true;
+   nir_options->lower_flrp_double = true;
 
    /* In the vec4 backend, our dpN instruction replicates its result to all
     * the components of a vec4.  We would like NIR to give us replicated fdot
