@@ -168,6 +168,11 @@ class SearchAndReplace(object):
       else:
          self.condition = 'true'
 
+      if len(transform) > 3:
+         self.bit_size = transform[3]
+      else:
+         self.bit_size = 0
+
       if self.condition not in condition_list:
          condition_list.append(self.condition)
       self.condition_index = condition_list.index(self.condition)
@@ -196,6 +201,7 @@ struct transform {
    const nir_search_expression *search;
    const nir_search_value *replace;
    unsigned condition_offset;
+   unsigned bit_size;
 };
 
 struct opt_state {
@@ -214,7 +220,7 @@ struct opt_state {
 
 static const struct transform ${pass_name}_${opcode}_xforms[] = {
 % for xform in xform_list:
-   { &${xform.search.name}, ${xform.replace.c_ptr}, ${xform.condition_index} },
+   { &${xform.search.name}, ${xform.replace.c_ptr}, ${xform.condition_index}, ${xform.bit_size}},
 % endfor
 };
 % endfor
@@ -237,6 +243,9 @@ ${pass_name}_block(nir_block *block, void *void_state)
       case nir_op_${opcode}:
          for (unsigned i = 0; i < ARRAY_SIZE(${pass_name}_${opcode}_xforms); i++) {
             const struct transform *xform = &${pass_name}_${opcode}_xforms[i];
+            if (xform->bit_size != 0 &&
+                alu->dest.dest.ssa.bit_size != xform->bit_size)
+               continue;
             if (state->condition_flags[xform->condition_offset] &&
                 nir_replace_instr(alu, xform->search, xform->replace,
                                   state->mem_ctx)) {
