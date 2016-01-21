@@ -244,6 +244,13 @@ print_constant(nir_constant *c, const struct glsl_type *type, print_state *state
       }
       break;
 
+   case GLSL_TYPE_DOUBLE:
+      for (i = 0; i < total_elems; i++) {
+         if (i > 0) fprintf(fp, ", ");
+         fprintf(fp, "%f", c->value.d[i]);
+      }
+      break;
+
    case GLSL_TYPE_STRUCT:
       for (i = 0; i < c->num_elements; i++) {
          if (i > 0) fprintf(fp, ", ");
