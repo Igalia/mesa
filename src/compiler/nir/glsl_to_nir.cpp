@@ -901,8 +901,9 @@ nir_visitor::visit(ir_call *ir)
          instr->num_components = type->vector_elements;
 
          /* Setup destination register */
+         unsigned bit_size = glsl_get_bit_size(type->base_type);
          nir_ssa_dest_init(&instr->instr, &instr->dest,
-                           type->vector_elements, 32, NULL);
+                           type->vector_elements, bit_size, NULL);
 
          /* Insert the created nir instruction now since in the case of boolean
           * result we will need to emit another instruction after it
