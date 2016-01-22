@@ -216,43 +216,71 @@ fs_visitor::VARYING_PULL_CONSTANT_LOAD(const fs_builder &bld,
 
    vec4_result.type = dst.type;
 
-   /* Our VARYING_PULL_CONSTANT_LOAD reads a vector of 32-bit elements. If we
-    * are reading doubles this means that we get this:
-    *
-    *  r0: x0 x0 x0 x0 x0 x0 x0 x0
-    *  r1: x1 x1 x1 x1 x1 x1 x1 x1
-    *  r2: y0 y0 y0 y0 y0 y0 y0 y0
-    *  r3: y1 y1 y1 y1 y1 y1 y1 y1
-    *
-    * Fix this up so we return valid double elements:
-    *
-    *  r0: x0 x1 x0 x1 x0 x1 x0 x1
-    *  r1: x0 x1 x0 x1 x0 x1 x0 x1
-    *  r2: y0 y1 y0 y1 y0 y1 y0 y1
-    *  r3: y0 y1 y0 y1 y0 y1 y0 y1
-    */
-   if (type_sz(dst.type) == 8) {
-      int multiplier = bld.dispatch_width() / 8;
-      fs_reg fixed_res =
-         fs_reg(VGRF, alloc.allocate(2 * multiplier), BRW_REGISTER_TYPE_F);
-      /* We only have 2 doubles in a 32-bit vec4 */
-      for (int i = 0; i < 2; i++) {
-         fs_reg vec4_float =
-            horiz_offset(retype(vec4_result, BRW_REGISTER_TYPE_F),
-                         multiplier * 16 * i);
-
-         bld.MOV(stride(fixed_res, 2), vec4_float);
-         bld.MOV(stride(horiz_offset(fixed_res, 1), 2),
-                 horiz_offset(vec4_float, 8 * multiplier));
-
-         bld.MOV(horiz_offset(vec4_result, multiplier * 8 * i),
-                 retype(fixed_res, BRW_REGISTER_TYPE_DF));
-      }
-   }
+   if (type_sz(dst.type) == 8)
+      SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA(bld, vec4_result, vec4_result, 2);
 
    int type_slots = MAX2(type_sz(dst.type) / 4, 1);
    bld.MOV(dst, offset(vec4_result, bld,
                        ((const_offset & 0xf) / (4 * type_slots)) * scale));
+}
+
+/**
+ * This helper takes the result of a load operation that reads 32-bit elements
+ * in this format:
+ *
+ * x x x x x x x x
+ * y y y y y y y y
+ * z z z z z z z z
+ * w w w w w w w w
+ *
+ * and shuffles the data to get this:
+ *
+ * x y x y x y x y
+ * x y x y x y x y
+ * z w z w z w z w
+ * z w z w z w z w
+ *
+ * Which is exactly what we want if the load is reading 64-bit components
+ * like doubles, where x represent the low 32-bit of the x double component
+ * and y represents the high 32-bit of the x double component (likewise with
+ * z and w for double component y). The parameter @components represents
+ * the number of 64-bit components present in @src. This would typically be
+ * 2 at most, since we can only fit 2 double elements in the result of a
+ * vec4 load.
+ *
+ * Notice that @dst and @src can be the same register.
+ */
+void
+fs_visitor::SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA(const fs_builder &bld,
+                                                    const fs_reg dst,
+                                                    const fs_reg src,
+                                                    uint32_t components)
+{
+   int multiplier = bld.dispatch_width() / 8;
+
+   /* A temporary that we will use to shuffle the 32-bit data of each
+    * component in the vector into valid 64-bit data
+    */
+   fs_reg tmp =
+      fs_reg(VGRF, alloc.allocate(2 * multiplier), BRW_REGISTER_TYPE_F);
+
+   /* We are going to manipulate the data in elements of 32-bit */
+   fs_reg src_data = retype(src, BRW_REGISTER_TYPE_F);
+
+   /* We are going to manipulate the dst in elements of 64-bit */
+   fs_reg dst_data = retype(dst, BRW_REGISTER_TYPE_DF);
+
+   /* Shuffle the data */
+   for (unsigned i = 0; i < components; i++) {
+      fs_reg component_i = horiz_offset(src_data, multiplier * 16 * i);
+
+      bld.MOV(stride(tmp, 2), component_i);
+      bld.MOV(stride(horiz_offset(tmp, 1), 2),
+              horiz_offset(component_i, 8 * multiplier));
+
+      bld.MOV(horiz_offset(dst_data, multiplier * 8 * i),
+              retype(tmp, BRW_REGISTER_TYPE_DF));
+   }
 }
 
 /**
