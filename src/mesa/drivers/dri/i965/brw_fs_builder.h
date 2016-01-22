@@ -573,7 +573,8 @@ namespace brw {
          inst->regs_written = header_size;
          for (unsigned i = header_size; i < sources; i++) {
             inst->regs_written +=
-               DIV_ROUND_UP(dispatch_width() * type_sz(src[i].type), REG_SIZE);
+               DIV_ROUND_UP(dispatch_width() * type_sz(src[i].type) *
+                            dst.stride, REG_SIZE);
          }
 
          return inst;
