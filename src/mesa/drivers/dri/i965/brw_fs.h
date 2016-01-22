@@ -106,6 +106,11 @@ public:
                                    uint32_t const_offset);
    void DEP_RESOLVE_MOV(const brw::fs_builder &bld, int grf);
 
+   void SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA(const brw::fs_builder &bld,
+                                                const fs_reg dst,
+                                                const fs_reg src,
+                                                uint32_t components);
+
    bool run_fs(bool do_rep_send);
    bool run_vs(gl_clip_plane *clip_planes);
    bool run_tes();
