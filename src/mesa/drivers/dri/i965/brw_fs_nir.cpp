@@ -2833,14 +2833,87 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       }
 
       /* Read the vector */
-      fs_reg read_result = emit_untyped_read(bld, surf_index, offset_reg,
-                                             1 /* dims */,
-                                             instr->num_components,
-                                             BRW_PREDICATE_NONE);
-      read_result.type = dest.type;
-      for (int i = 0; i < instr->num_components; i++)
-         bld.MOV(offset(dest, bld, i), offset(read_result, bld, i));
+      if (type_sz(dest.type) <= 4) {
+         fs_reg read_result = emit_untyped_read(bld, surf_index, offset_reg,
+                                                1 /* dims */,
+                                                instr->num_components,
+                                                BRW_PREDICATE_NONE);
+         read_result.type = dest.type;
+         for (int i = 0; i < instr->num_components; i++)
+            bld.MOV(offset(dest, bld, i), offset(read_result, bld, i));
+      } else {
+         /* Reading a dvec, then the untyped read below gives us this:
+          *
+          * x0 x0 x0 x0 x0 x0 x0 x0
+          * x1 x1 x1 x1 x1 x1 x1 x1
+          * y0 y0 y0 y0 y0 y0 y0 y0
+          * y1 y1 y1 y1 y1 y1 y1 y1
+          *
+          * But that is not valid 64-bit data, instead we want:
+          *
+          * x0 x1 x0 x1 x0 x1 x0 x1
+          * x0 x1 x0 x1 x0 x1 x0 x1
+          * y0 y1 y0 y1 y0 y1 y0 y1
+          * y0 y1 y0 y1 y0 y1 y0 y1
+          *
+          * Also, that would only load half of a dvec4. So, we have to:
+          *
+          * 1. Multiply num_components by 2, to account for the fact that we need
+          *    to read 64-bit components.
+          * 2. Shuffle the result of the load to form valid 64-bit elements
+          * 3. Emit a second load (for components z/w) if needed.
+          *
+          * FIXME: extract the shuffling logic and share it with
+          *        varying_pull_constant_load
+          */
+         int multiplier = bld.dispatch_width() / 8;
 
+         fs_reg read_offset = vgrf(glsl_type::uint_type);
+         bld.MOV(read_offset, offset_reg);
+
+         int num_components = instr->num_components;
+         int iters = num_components <= 2 ? 1 : 2;
+
+         /* A temporary that we will use to shuffle the 32-bit data of each
+          * component in the vector into valid 64-bit data
+          */
+         fs_reg tmp =
+            fs_reg(VGRF, alloc.allocate(2 * multiplier), BRW_REGISTER_TYPE_F);
+
+         /* Load the dvec, the first iteration loads components x/y, the second
+          * iteration, if needed, loads components z/w
+          */
+         for (int it = 0; it < iters; it++) {
+            /* Compute number of components to read in this iteration */
+            int iter_components = MIN2(2, num_components);
+            num_components -= iter_components;
+
+            /* Read. Since this message reads 32-bit components, we need to
+             * read twice as many components.
+             */
+            fs_reg read_result = emit_untyped_read(bld, surf_index, read_offset,
+                                                   1 /* dims */,
+                                                   iter_components * 2,
+                                                   BRW_PREDICATE_NONE);
+            read_result.type = BRW_REGISTER_TYPE_F;
+
+            /* Shuffle the 32-bit load result into valid 64-bit data */
+            int multiplier = bld.dispatch_width() / 8;
+            for (int i = 0; i < iter_components; i++) {
+               fs_reg component_i =
+                  horiz_offset(read_result, multiplier * 16 * i);
+
+               bld.MOV(stride(tmp, 2), component_i);
+               bld.MOV(stride(horiz_offset(tmp, 1), 2),
+                       horiz_offset(component_i, 8 * multiplier));
+
+               bld.MOV(horiz_offset(dest, multiplier * 8 * (i + it * 2)),
+                       retype(tmp, BRW_REGISTER_TYPE_DF));
+            }
+
+            bld.ADD(read_offset, read_offset, brw_imm_ud(16));
+         }
+      }
       break;
    }
 
