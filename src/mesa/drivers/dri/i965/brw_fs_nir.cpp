@@ -2842,43 +2842,18 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          for (int i = 0; i < instr->num_components; i++)
             bld.MOV(offset(dest, bld, i), offset(read_result, bld, i));
       } else {
-         /* Reading a dvec, then the untyped read below gives us this:
+         /* Reading a dvec, so we need to:
           *
-          * x0 x0 x0 x0 x0 x0 x0 x0
-          * x1 x1 x1 x1 x1 x1 x1 x1
-          * y0 y0 y0 y0 y0 y0 y0 y0
-          * y1 y1 y1 y1 y1 y1 y1 y1
-          *
-          * But that is not valid 64-bit data, instead we want:
-          *
-          * x0 x1 x0 x1 x0 x1 x0 x1
-          * x0 x1 x0 x1 x0 x1 x0 x1
-          * y0 y1 y0 y1 y0 y1 y0 y1
-          * y0 y1 y0 y1 y0 y1 y0 y1
-          *
-          * Also, that would only load half of a dvec4. So, we have to:
-          *
-          * 1. Multiply num_components by 2, to account for the fact that we need
-          *    to read 64-bit components.
+          * 1. Multiply num_components by 2, to account for the fact that we
+          *    need to read 64-bit components.
           * 2. Shuffle the result of the load to form valid 64-bit elements
           * 3. Emit a second load (for components z/w) if needed.
-          *
-          * FIXME: extract the shuffling logic and share it with
-          *        varying_pull_constant_load
           */
-         int multiplier = bld.dispatch_width() / 8;
-
          fs_reg read_offset = vgrf(glsl_type::uint_type);
          bld.MOV(read_offset, offset_reg);
 
          int num_components = instr->num_components;
          int iters = num_components <= 2 ? 1 : 2;
-
-         /* A temporary that we will use to shuffle the 32-bit data of each
-          * component in the vector into valid 64-bit data
-          */
-         fs_reg tmp =
-            fs_reg(VGRF, alloc.allocate(2 * multiplier), BRW_REGISTER_TYPE_F);
 
          /* Load the dvec, the first iteration loads components x/y, the second
           * iteration, if needed, loads components z/w
@@ -2898,18 +2873,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
             read_result.type = BRW_REGISTER_TYPE_F;
 
             /* Shuffle the 32-bit load result into valid 64-bit data */
-            int multiplier = bld.dispatch_width() / 8;
-            for (int i = 0; i < iter_components; i++) {
-               fs_reg component_i =
-                  horiz_offset(read_result, multiplier * 16 * i);
-
-               bld.MOV(stride(tmp, 2), component_i);
-               bld.MOV(stride(horiz_offset(tmp, 1), 2),
-                       horiz_offset(component_i, 8 * multiplier));
-
-               bld.MOV(horiz_offset(dest, multiplier * 8 * (i + it * 2)),
-                       retype(tmp, BRW_REGISTER_TYPE_DF));
-            }
+            SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA(bld,
+                                                    offset(dest, bld, it * 2),
+                                                    read_result, iter_components);
 
             bld.ADD(read_offset, read_offset, brw_imm_ud(16));
          }
