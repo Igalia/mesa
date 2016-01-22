@@ -414,6 +414,10 @@ brw_nir_lower_uniforms(nir_shader *nir, bool is_scalar)
    NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);      \
    if (this_progress)                                      \
       progress = true;                                     \
+   if (this_progress) {                                    \
+      fprintf(stderr, "Done optimization at %s:\n", #pass);\
+      nir_print_shader(nir, stderr);                       \
+   }                                                       \
    this_progress;                                          \
 })
 
@@ -423,6 +427,8 @@ static nir_shader *
 nir_optimize(nir_shader *nir, bool is_scalar)
 {
    bool progress;
+   fprintf(stderr, "Optimizations started:\n");
+   nir_print_shader(nir, stderr);
    do {
       progress = false;
       OPT_V(nir_lower_vars_to_ssa);
