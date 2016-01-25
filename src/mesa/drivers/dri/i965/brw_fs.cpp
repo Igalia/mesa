@@ -284,6 +284,47 @@ fs_visitor::SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA(const fs_builder &bld,
 }
 
 /**
+ * This helper does the inverse operation of
+ * SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA.
+ *
+ * We need to do this when we are going to use untyped write messsages that
+ * operate with 32-bit components in order to arrange our 64-bit data i to be
+ * in the expected layout.
+ */
+void
+fs_visitor::SHUFFLE_32BIT_DATA_FOR_64BIT_WRITE(const fs_builder &bld,
+                                               const fs_reg dst,
+                                               const fs_reg src,
+                                               uint32_t components)
+{
+   int multiplier = bld.dispatch_width() / 8;
+
+   /* A temporary that we will use to shuffle the 64-bit data of each
+    * component in the vector into 32-bit data that we can write.
+    */
+   fs_reg tmp =
+      fs_reg(VGRF, alloc.allocate(2 * multiplier), BRW_REGISTER_TYPE_F);
+
+   /* We are going to operate the source in units of 32-bit */
+   fs_reg src_data = retype(src, BRW_REGISTER_TYPE_F);
+
+   /* We are going to operate on the dst in units of 64-bit */
+   fs_reg dst_data = retype(dst, BRW_REGISTER_TYPE_DF);
+
+   /* Shuffle the data */
+   for (unsigned i = 0; i < components; i++) {
+      fs_reg component_i = horiz_offset(src_data, multiplier * 16 * i);
+
+      bld.MOV(tmp, stride(component_i, 2));
+      bld.MOV(horiz_offset(tmp, 8 * multiplier),
+              stride(horiz_offset(component_i, 1), 2));
+
+      bld.MOV(horiz_offset(dst_data, multiplier * 8 * i),
+              retype(tmp, BRW_REGISTER_TYPE_DF));
+   }
+}
+
+/**
  * A helper for MOV generation for fixing up broken hardware SEND dependency
  * handling.
  */
