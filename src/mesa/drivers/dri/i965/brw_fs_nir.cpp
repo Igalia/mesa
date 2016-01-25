@@ -2457,6 +2457,62 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 }
 
 void
+fs_visitor::do_untyped_vector_read(const fs_builder &bld,
+                                   const fs_reg surf_index,
+                                   const fs_reg offset_reg,
+                                   const fs_reg dest,
+                                   unsigned num_components)
+{
+   if (type_sz(dest.type) <= 4) {
+      fs_reg read_result = emit_untyped_read(bld, surf_index, offset_reg,
+                                             1 /* dims */,
+                                             num_components,
+                                             BRW_PREDICATE_NONE);
+      read_result.type = dest.type;
+      for (unsigned i = 0; i < num_components; i++)
+         bld.MOV(offset(dest, bld, i), offset(read_result, bld, i));
+   } else {
+      /* Reading a dvec, so we need to:
+       *
+       * 1. Multiply num_components by 2, to account for the fact that we
+       *    need to read 64-bit components.
+       * 2. Shuffle the result of the load to form valid 64-bit elements
+       * 3. Emit a second load (for components z/w) if needed.
+       */
+      fs_reg read_offset = vgrf(glsl_type::uint_type);
+      bld.MOV(read_offset, offset_reg);
+
+      int iters = num_components <= 2 ? 1 : 2;
+
+      /* Load the dvec, the first iteration loads components x/y, the second
+       * iteration, if needed, loads components z/w
+       */
+      for (int it = 0; it < iters; it++) {
+         /* Compute number of components to read in this iteration */
+         int iter_components = MIN2(2, num_components);
+         num_components -= iter_components;
+
+         /* Read. Since this message reads 32-bit components, we need to
+          * read twice as many components.
+          */
+         fs_reg read_result = emit_untyped_read(bld, surf_index, read_offset,
+                                                1 /* dims */,
+                                                iter_components * 2,
+                                                BRW_PREDICATE_NONE);
+         read_result.type = BRW_REGISTER_TYPE_F;
+
+         /* Shuffle the 32-bit load result into valid 64-bit data */
+         SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA(bld,
+                                                 offset(dest, bld, it * 2),
+                                                 read_result, iter_components);
+
+         bld.ADD(read_offset, read_offset, brw_imm_ud(16));
+      }
+   }
+}
+
+
+void
 fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr)
 {
    fs_reg dest;
@@ -2817,53 +2873,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       }
 
       /* Read the vector */
-      if (type_sz(dest.type) <= 4) {
-         fs_reg read_result = emit_untyped_read(bld, surf_index, offset_reg,
-                                                1 /* dims */,
-                                                instr->num_components,
-                                                BRW_PREDICATE_NONE);
-         read_result.type = dest.type;
-         for (int i = 0; i < instr->num_components; i++)
-            bld.MOV(offset(dest, bld, i), offset(read_result, bld, i));
-      } else {
-         /* Reading a dvec, so we need to:
-          *
-          * 1. Multiply num_components by 2, to account for the fact that we
-          *    need to read 64-bit components.
-          * 2. Shuffle the result of the load to form valid 64-bit elements
-          * 3. Emit a second load (for components z/w) if needed.
-          */
-         fs_reg read_offset = vgrf(glsl_type::uint_type);
-         bld.MOV(read_offset, offset_reg);
+      do_untyped_vector_read(bld, surf_index, offset_reg,
+                             dest, instr->num_components);
 
-         int num_components = instr->num_components;
-         int iters = num_components <= 2 ? 1 : 2;
-
-         /* Load the dvec, the first iteration loads components x/y, the second
-          * iteration, if needed, loads components z/w
-          */
-         for (int it = 0; it < iters; it++) {
-            /* Compute number of components to read in this iteration */
-            int iter_components = MIN2(2, num_components);
-            num_components -= iter_components;
-
-            /* Read. Since this message reads 32-bit components, we need to
-             * read twice as many components.
-             */
-            fs_reg read_result = emit_untyped_read(bld, surf_index, read_offset,
-                                                   1 /* dims */,
-                                                   iter_components * 2,
-                                                   BRW_PREDICATE_NONE);
-            read_result.type = BRW_REGISTER_TYPE_F;
-
-            /* Shuffle the 32-bit load result into valid 64-bit data */
-            SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA(bld,
-                                                    offset(dest, bld, it * 2),
-                                                    read_result, iter_components);
-
-            bld.ADD(read_offset, read_offset, brw_imm_ud(16));
-         }
-      }
       break;
    }
 
