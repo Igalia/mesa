@@ -2997,6 +2997,21 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       /* Writemask */
       unsigned writemask = instr->const_index[0];
 
+      /* get_nir_src() retypes to integer. Be wary of 64-bit types though
+       * since the untyped writes below operate in units of 32-bits, which
+       * means that we need to write twice as many components each time.
+       * Also, we have to suffle 64-bit data to be in the appropriate layout
+       * expected by our 32-bit write messages.
+       */
+      unsigned type_size = 4;
+      if (instr->src[0].ssa->bit_size == 64) {
+         type_size = 8;
+         SHUFFLE_32BIT_DATA_FOR_64BIT_WRITE(bld, val_reg, val_reg,
+                                            instr->num_components);
+      }
+
+      unsigned type_slots = type_size / 4;
+
       /* Combine groups of consecutive enabled channels in one write
        * message. We use ffs to find the first enabled channel and then ffs on
        * the bit-inverse, down-shifted writemask to determine the length of
@@ -3006,20 +3021,29 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          unsigned first_component = ffs(writemask) - 1;
          unsigned length = ffs(~(writemask >> first_component)) - 1;
 
+         /* We can't write more than 2 64-bit components at once. Limit the
+          * length of the write to what we can do and let the next iteration
+          * handle the rest
+          */
+         if (type_size > 4)
+            length = MIN2(2, length);
+
          fs_reg offset_reg;
          nir_const_value *const_offset = nir_src_as_const_value(instr->src[2]);
          if (const_offset) {
-            offset_reg = brw_imm_ud(const_offset->u[0] + 4 * first_component);
+            offset_reg = brw_imm_ud(const_offset->u[0] +
+                                    type_size * first_component);
          } else {
             offset_reg = vgrf(glsl_type::uint_type);
             bld.ADD(offset_reg,
                     retype(get_nir_src(instr->src[2]), BRW_REGISTER_TYPE_UD),
-                    brw_imm_ud(4 * first_component));
+                    brw_imm_ud(type_size * first_component));
          }
 
+
          emit_untyped_write(bld, surf_index, offset_reg,
-                            offset(val_reg, bld, first_component),
-                            1 /* dims */, length,
+                            offset(val_reg, bld, first_component * type_slots),
+                            1 /* dims */, length * type_slots,
                             BRW_PREDICATE_NONE);
 
          /* Clear the bits in the writemask that we just wrote, then try
