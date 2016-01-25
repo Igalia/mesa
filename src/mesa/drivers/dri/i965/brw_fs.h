@@ -111,6 +111,11 @@ public:
                                                 const fs_reg src,
                                                 uint32_t components);
 
+   void SHUFFLE_32BIT_DATA_FOR_64BIT_WRITE(const brw::fs_builder &bld,
+                                           const fs_reg dst,
+                                           const fs_reg src,
+                                           uint32_t components);
+
    void do_untyped_vector_read(const brw::fs_builder &bld,
                                const fs_reg surf_index,
                                const fs_reg offset_reg,
