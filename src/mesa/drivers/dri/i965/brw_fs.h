@@ -111,6 +111,12 @@ public:
                                                 const fs_reg src,
                                                 uint32_t components);
 
+   void do_untyped_vector_read(const brw::fs_builder &bld,
+                               const fs_reg surf_index,
+                               const fs_reg offset_reg,
+                               const fs_reg dest,
+                               unsigned num_components);
+
    bool run_fs(bool do_rep_send);
    bool run_vs(gl_clip_plane *clip_planes);
    bool run_tes();
