@@ -280,6 +280,46 @@ fs_visitor::shuffle_32bit_load_result_to_64bit_data(const fs_builder &bld,
 }
 
 /**
+ * This helper does the inverse operation of
+ * SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA.
+ *
+ * We need to do this when we are going to use untyped write messsages that
+ * operate with 32-bit components in order to arrange our 64-bit data to be
+ * in the expected layout.
+ */
+void
+fs_visitor::shuffle_64bit_data_for_32bit_write(const fs_builder &bld,
+                                               const fs_reg dst,
+                                               const fs_reg src,
+                                               uint32_t components)
+{
+   assert(type_sz(src.type) == 8);
+   assert(type_sz(dst.type) == 4);
+
+   /* A temporary that we will use to shuffle the 64-bit data of each
+    * component in the vector into valid 32-bit data that we can write.
+    * We can't write directly to dst because dst can be (and would usually be)
+    * the same as src and in that case the first MOV in the loop below would
+    * overwrite the data read in the second MOV.
+    */
+   fs_reg tmp = retype(bld.vgrf(src.type), dst.type);
+
+   for (unsigned i = 0; i < components; i++) {
+      const fs_reg component_i = offset(src, bld, i);
+
+      bld.MOV(tmp, subscript(component_i, dst.type, 0));
+      bld.MOV(offset(tmp, bld, 1), subscript(component_i, dst.type, 1));
+
+      /* Because we are shuffling our 64-bit data to a 32-bit layout, we
+       * need these MOVs to be 32-bit (instead of doing this as a single
+       * DF MOV), otherwise we would not be respecting the channel enables.
+       */
+      bld.MOV(offset(dst, bld, 2 * i), tmp);
+      bld.MOV(offset(dst, bld, 2 * i + 1), offset(tmp, bld, 1));
+   }
+}
+
+/**
  * A helper for MOV generation for fixing up broken hardware SEND dependency
  * handling.
  */
