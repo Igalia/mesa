@@ -132,7 +132,7 @@ lower_alu_instr(nir_alu_instr *instr, nir_builder *b)
        * and dvec4's when necessary, so we don't lower them. If they're
        * unnecessary, copy propagation will clean them up.
        */
-      break;
+     return;
 
    LOWER_REDUCTION(nir_op_fdot, nir_op_fmul, nir_op_fadd);
    LOWER_REDUCTION(nir_op_ball_fequal, nir_op_feq, nir_op_iand);
