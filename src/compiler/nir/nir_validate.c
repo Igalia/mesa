@@ -180,9 +180,11 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
 
    unsigned num_components;
    unsigned src_bit_size;
+   bool is_undef = false;
    if (src->src.is_ssa) {
       src_bit_size = src->src.ssa->bit_size;
       num_components = src->src.ssa->num_components;
+      is_undef = src->src.ssa->parent_instr->type == nir_instr_type_ssa_undef;
    } else {
       src_bit_size = src->src.reg.reg->bit_size;
       if (src->src.reg.reg->is_packed)
@@ -205,12 +207,20 @@ validate_alu_src(nir_alu_instr *instr, unsigned index, validate_state *state)
 
    if (src_type & NIR_ALU_TYPE_SIZE_MASK) {
       /* This source has an explicit bit size */
+      if (is_undef) {
+         src_bit_size = src_type & NIR_ALU_TYPE_SIZE_MASK;
+         src->src.ssa->bit_size = src_bit_size;
+      }
       assert((src_type & NIR_ALU_TYPE_SIZE_MASK) == src_bit_size);
    } else {
       if (!(nir_op_infos[instr->op].output_type & NIR_ALU_TYPE_SIZE_MASK)) {
          unsigned dest_bit_size =
             instr->dest.dest.is_ssa ? instr->dest.dest.ssa.bit_size
                                     : instr->dest.dest.reg.reg->bit_size;
+         if (is_undef) {
+            src_bit_size = dest_bit_size;
+            src->src.ssa->bit_size = dest_bit_size;
+         }
          assert(dest_bit_size == src_bit_size);
       }
    }
