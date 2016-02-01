@@ -923,8 +923,10 @@ brw_swizzle_for_nir_swizzle(uint8_t swizzle[4], unsigned bit_size)
 static unsigned
 brw_writemask_for_nir_writemask(unsigned writemask, unsigned bit_size)
 {
-   if (bit_size == 64)
+   if (bit_size == 64) {
+      assert(writemask <= 3);
       return ((writemask & 1) * 3) + ((writemask & 2) * 6);
+   }
    return writemask;
 }
 
