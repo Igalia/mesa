@@ -1689,7 +1689,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
        */
 
       src_reg src = retype(op[0], BRW_REGISTER_TYPE_UD);
-      src.swizzle = brw_compose_swizzle(op[0].swizzle, BRW_SWIZZLE_YWYW);
+      src.swizzle = brw_compose_swizzle(BRW_SWIZZLE_YWYW, op[0].swizzle);
       emit(MOV(dst, src));
       break;
    }
