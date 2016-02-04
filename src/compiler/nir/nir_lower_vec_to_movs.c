@@ -227,8 +227,17 @@ lower_vec_to_movs_block(nir_block *block, void *void_state)
 
       switch (vec->op) {
       case nir_op_vec2:
+         break;
       case nir_op_vec3:
       case nir_op_vec4:
+         /* Let dvec4/dvec4 operations through, since otherwise we end up with
+          * MOVs that write to the Z and W channels of dvec3/dvec4 values that
+          * backends may have to handle specially. Instead, let the backend
+          * receive the dvec3/dvec4 operation so it can decide the best way to
+          * deal with it.
+          */
+         if (nir_dest_bit_size(vec->dest.dest) > 32)
+            continue;
          break;
       default:
          continue; /* The loop */
