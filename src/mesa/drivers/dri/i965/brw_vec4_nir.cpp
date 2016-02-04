@@ -1087,6 +1087,120 @@ vec4_visitor::nir_handle_large_dvec(nir_alu_instr *instr)
    }
 }
 
+/* Gets the register for a nir alu source.
+ *
+ * This handles 64-bit sources as well which need special treatment because
+ * 64-bit data vectors are split across 2 SIMD registers, the first contains
+ * channels XY and the second channels ZW. Thanks to our
+ * brw_nir_split_doubles pass we know that all ALU operations on dvec values
+ * have been split to operate on a maximum of 2 components so can only see
+ * 2-component swizzles in dvec operands. There are still a couple of things
+ * that need special care:
+ *
+ * - Addressing channels Z, W or ZW, that are mapped to the second SIMD
+ *   register that represents the full dvec3/4.
+ *
+ * - Cross dvec2 swizzles like XZ, YZ, ZW, etc. In this case, the swizzled
+ *   data lives in different SIMD registers and needs to be re-arranged (MOVed)
+ *   to a single SIMD register so we can source from it.
+ */
+src_reg
+vec4_visitor::get_nir_alu_src(nir_alu_instr *instr, unsigned i)
+{
+   nir_alu_type src_type = nir_op_infos[instr->op].input_types[i];
+   unsigned bit_size = nir_src_bit_size(instr->src[i].src);
+   src_type = (nir_alu_type) (src_type | bit_size);
+   src_reg src = get_nir_src(instr->src[i].src, src_type, 4);
+   src.abs = instr->src[i].abs;
+   src.negate = instr->src[i].negate;
+   src.swizzle = brw_swizzle_for_nir_swizzle(instr->src[i].swizzle, bit_size);
+
+   if (bit_size == 64) {
+      /* Get number of components being operated by looking at the writemask.
+       * brw_nir_split_doubles should've made it so that we only operate
+       * on a maximum of 2 doubles (the size of a dvec2).
+       */
+      unsigned num_components = 0;
+      unsigned writemask = instr->dest.write_mask;
+      for (int channel = 0; channel < 4; channel++) {
+         if (writemask & (1 << channel))
+            num_components++;
+      }
+      assert(num_components < 3);
+
+      if (num_components == 2 &&
+          ((instr->src[i].swizzle[0] >= 2) ^ (instr->src[i].swizzle[1] >= 2))) {
+         /* Handle the case where we are swizzling 2 components, one from
+          * channels X/Y and the other from W/Z. In this case the data for each
+          * component is in separate SIMD registers, so we need to move both
+          * components to a single register and source from that.
+          */
+         dst_reg dst_tmp = dst_reg(VGRF, alloc.allocate(1));
+         dst_tmp.type = BRW_REGISTER_TYPE_DF;
+
+         for (int comp = 0; comp < 2; comp++) {
+            src_reg src_tmp = src;
+
+            unsigned src_swizzle;
+            if (instr->src[i].swizzle[comp] >= 2) {
+               /* If reading from channels ZW, map that to channels XY of the
+                * second SIMD register backing the dvec3/dvec4
+                */
+               src_tmp.reg_offset++;
+               uint8_t new_swizzle[4] = { 0, 0, 0, 0 };
+               new_swizzle[0] = instr->src[i].swizzle[comp] - 2;
+               src_swizzle = brw_swizzle_for_nir_swizzle(new_swizzle, 64);
+            } else {
+               src_swizzle =
+                  brw_swizzle_for_nir_swizzle(instr->src[i].swizzle, 64);
+            }
+
+            unsigned compose_swizzle =
+               (comp == 0) ? BRW_SWIZZLE_XYXY : BRW_SWIZZLE_ZWZW;
+            src_tmp.swizzle = brw_compose_swizzle(compose_swizzle, src_swizzle);
+
+            dst_tmp.writemask = (comp == 0) ? WRITEMASK_XY : WRITEMASK_ZW;
+            emit(MOV(dst_tmp, src_tmp));
+         }
+
+         src = src_reg(dst_tmp);
+         src.swizzle = BRW_SWIZZLE_XYZW; /* A full dvec2 */
+         src.abs = false;
+         src.negate = false;
+      } else {
+         /* No cross-vec2 swizzle so all components read from channels XY or
+          * from channels ZW, that is, from the same SIMD register.
+          * Only need to make sure that we map reads from channels ZW to
+          * channels XY in the second SIMD register backing the dvec3/dvec4.
+          */
+         bool reads_zw = false;
+         for (unsigned comp = 0; comp < num_components; comp++) {
+            if (instr->src[i].swizzle[comp] >= 2) {
+               reads_zw = true;
+               break;
+            }
+         }
+         if (reads_zw) {
+            src.reg_offset++;
+            uint8_t new_swizzle[4] = { 0, 0, 0, 0 };
+            new_swizzle[0] = instr->src[i].swizzle[0] - 2;
+            if (num_components == 2)
+               new_swizzle[1] = instr->src[i].swizzle[1] - 2;
+            src.swizzle = brw_swizzle_for_nir_swizzle(new_swizzle, 64);
+
+            if (num_components == 1) {
+               /* Replicate the data so that it works with any writemask */
+               src.swizzle =
+                  brw_compose_swizzle(BRW_SWIZZLE_XYXY, src.swizzle);
+            }
+         }
+      }
+   }
+
+   return src;
+}
+
+
 void
 vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 {
@@ -1107,16 +1221,8 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
                                                    dst_bit_size);
 
    src_reg op[4];
-   for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
-      nir_alu_type src_type = nir_op_infos[instr->op].input_types[i];
-      unsigned bit_size = nir_src_bit_size(instr->src[i].src);
-      src_type = (nir_alu_type) (src_type | bit_size);
-      op[i] = get_nir_src(instr->src[i].src, src_type, 4);
-      op[i].swizzle = brw_swizzle_for_nir_swizzle(instr->src[i].swizzle,
-                                                  bit_size);
-      op[i].abs = instr->src[i].abs;
-      op[i].negate = instr->src[i].negate;
-   }
+   for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++)
+      op[i] = get_nir_alu_src(instr, i);
 
    switch (instr->op) {
    case nir_op_imov:
