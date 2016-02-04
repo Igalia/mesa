@@ -1054,6 +1054,7 @@ region_matches(struct brw_reg reg, enum brw_vertical_stride v,
 /* brw_packed_float.c */
 int brw_float_to_vf(float f);
 float brw_vf_to_float(unsigned char vf);
+int brw_double_to_vf(double f);
 
 #ifdef __cplusplus
 }

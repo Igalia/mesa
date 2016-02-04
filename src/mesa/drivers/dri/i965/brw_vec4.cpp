@@ -349,7 +349,11 @@ vec4_visitor::opt_vector_float()
           inst->src[0].file != IMM)
          continue;
 
-      int vf = brw_float_to_vf(inst->src[0].f);
+      int vf;
+      if (inst->src[0].type == BRW_REGISTER_TYPE_DF)
+         vf = brw_double_to_vf(inst->src[0].df);
+      else
+         vf = brw_float_to_vf(inst->src[0].f);
       if (vf == -1)
          continue;
 
@@ -369,7 +373,10 @@ vec4_visitor::opt_vector_float()
          unsigned vf;
          memcpy(&vf, imm, sizeof(vf));
          vec4_instruction *mov = MOV(inst->dst, brw_imm_vf(vf));
-         mov->dst.type = BRW_REGISTER_TYPE_F;
+         if (inst->src[0].type == BRW_REGISTER_TYPE_DF)
+            mov->dst.type = BRW_REGISTER_TYPE_DF;
+         else
+            mov->dst.type = BRW_REGISTER_TYPE_F;
          mov->dst.writemask = WRITEMASK_XYZW;
          inst->insert_after(block, mov);
          last_reg = -1;

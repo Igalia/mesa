@@ -32,6 +32,16 @@ union fu {
    } s;
 };
 
+union du {
+   double d;
+   unsigned long u;
+   struct {
+      unsigned long mantissa:52;
+      unsigned exponent:11;
+      unsigned sign:1;
+   } s;
+};
+
 int
 brw_float_to_vf(float f)
 {
@@ -72,4 +82,28 @@ brw_vf_to_float(unsigned char vf)
    fu.s.mantissa = (vf & 0xf) << (23 - 4);
 
    return fu.f;
+}
+
+int
+brw_double_to_vf(double d)
+{
+   union du du = { .d = d };
+
+   /* ±0.0f is special cased. */
+   if (d == 0.0f)
+      return du.s.sign << 7;
+
+   unsigned mantissa = du.s.mantissa >> (52 - 4);
+   unsigned exponent = du.s.exponent - (1023 - 3);
+   unsigned vf = (du.s.sign << 7) | (exponent << 4) | mantissa;
+
+   /* 0.125 would have had the same representation as 0.0, so reject it. */
+   if ((vf & 0x7f) == 0)
+      return -1;
+
+   /* Make sure the mantissa fits in 4-bits and the exponent in 3-bits. */
+   if (du.u & 0xffffffffffff || exponent > 7)
+      return -1;
+
+   return vf;
 }
