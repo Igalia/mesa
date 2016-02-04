@@ -1033,10 +1033,71 @@ vec4_visitor::optimize_predicate(nir_alu_instr *instr,
    return true;
 }
 
+/* Implements dvec3/dvec4 as a series of MOVs. Notice that channels Z/W
+ * don't fit in a single SIMD register, so MOVs from these channels need
+ * to be offset properly:
+ *
+ * 32-bit vec4 (1 SIMD register,  SIMD4x2): [XYZW|XYZW]
+ * 64-bit vec4 (2 SIMD registers, SIMD4x2): [XXYY|XXYY] [ZZWW|ZZWW]
+ *
+ */
+void
+vec4_visitor::nir_handle_large_dvec(nir_alu_instr *instr)
+{
+   assert(instr->op == nir_op_vec3 || instr->op == nir_op_vec4);
+   assert(nir_dest_bit_size(instr->dest.dest) == 64);
+
+   dst_reg dst = get_nir_dest(instr->dest.dest, nir_type_float64);
+   unsigned writemask = instr->dest.write_mask;
+   unsigned num_components = instr->op == nir_op_vec3 ? 3 : 4;
+   for (unsigned int i = 0; i < num_components; i++) {
+      unsigned channel_mask = 1 << i;
+      if (!(writemask & channel_mask))
+         continue;
+
+      dst_reg mov_dst = dst;
+
+      if (channel_mask > 3) {
+         channel_mask >>= 2;
+         mov_dst.reg_offset++;
+      }
+      mov_dst.writemask = brw_writemask_for_nir_writemask(channel_mask, 64);
+
+      src_reg src = get_nir_src(instr->src[i].src, nir_type_float64, 1);
+      src.abs = instr->src[i].abs;
+      src.negate = instr->src[i].negate;
+
+      /* Handle Z/W access in the source */
+      uint8_t new_swizzle[4] = { 0, 0, 0, 0 };
+      if (instr->src[i].swizzle[0] > 1) {
+         src.reg_offset++;
+         new_swizzle[0] = instr->src[i].swizzle[0] - 2;
+      } else {
+         new_swizzle[0] = instr->src[i].swizzle[0];
+      }
+
+      /* If the writemask is ZW we need to make sure that we have our data
+       * in ZW too, so compose the swizzle to replicate the data
+       */
+      src.swizzle =
+         brw_compose_swizzle(BRW_SWIZZLE_XYXY,
+                             brw_swizzle_for_nir_swizzle(new_swizzle, 64));
+
+      emit(MOV(mov_dst, src));
+   }
+}
+
 void
 vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 {
    vec4_instruction *inst;
+
+   /* For dvec3/dvec4 operations we need to do some special handling */
+   if ((instr->op == nir_op_vec3 || instr->op == nir_op_vec4) &&
+       nir_dest_bit_size(instr->dest.dest) == 64) {
+      nir_handle_large_dvec(instr);
+      return;
+   }
 
    nir_alu_type dst_type = nir_op_infos[instr->op].output_type;
    unsigned dst_bit_size = nir_dest_bit_size(instr->dest.dest);
@@ -1065,9 +1126,14 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
 
    case nir_op_vec2:
+      unreachable("not reached: should be handled by lower_vec_to_movs()");
+
    case nir_op_vec3:
    case nir_op_vec4:
-      unreachable("not reached: should be handled by lower_vec_to_movs()");
+      if (nir_dest_bit_size(instr->dest.dest) < 64)
+         unreachable("not reached: should be handled by lower_vec_to_movs()");
+      else
+         unreachable("not reached: should be handled by nir_handle_large_dvec()");
 
    case nir_op_i2f:
    case nir_op_u2f:
