@@ -176,6 +176,21 @@ try_coalesce(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
             return 0;
    }
 
+   /* Do not coalesce 32-bit vec3/vec4 if their sources have been generated
+    * from double instructions that produce float results. Otherwise we can
+    * end up with too large double instructions that operate on more than
+    * 2 double operands at once.
+    */
+   if (shader->options->split_doubles &&
+       (vec->op == nir_op_vec3 || vec->op == nir_op_vec4)) {
+      unsigned output_bit_size =
+         nir_alu_type_get_type_size(nir_op_infos[src_alu->op].output_type);
+      unsigned input_bit_size =
+         nir_alu_type_get_type_size(nir_op_infos[src_alu->op].input_types[0]);
+      if (output_bit_size < 64 && input_bit_size == 64)
+         return 0;
+   }
+
    /* Stash off all of the ALU instruction's swizzles. */
    uint8_t swizzles[4][4];
    for (unsigned j = 0; j < nir_op_infos[src_alu->op].num_inputs; j++)
