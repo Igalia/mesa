@@ -1803,20 +1803,56 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       unreachable("not reached: should have been lowered");
 
    case nir_op_fsign:
-      /* AND(val, 0x80000000) gives the sign bit.
-       *
-       * Predicated OR ORs 1.0 (0x3f800000) with the sign bit if val is not
-       * zero.
-       */
-      emit(CMP(dst_null_f(), op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ));
+      if (type_sz(op[0].type) < 8) {
+         /* AND(val, 0x80000000) gives the sign bit.
+          *
+          * Predicated OR ORs 1.0 (0x3f800000) with the sign bit if val is not
+          * zero.
+          */
+         emit(CMP(dst_null_f(), op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ));
 
-      op[0].type = BRW_REGISTER_TYPE_UD;
-      dst.type = BRW_REGISTER_TYPE_UD;
-      emit(AND(dst, op[0], brw_imm_ud(0x80000000u)));
+         op[0].type = BRW_REGISTER_TYPE_UD;
+         dst.type = BRW_REGISTER_TYPE_UD;
+         emit(AND(dst, op[0], brw_imm_ud(0x80000000u)));
 
-      inst = emit(OR(dst, src_reg(dst), brw_imm_ud(0x3f800000u)));
-      inst->predicate = BRW_PREDICATE_NORMAL;
-      dst.type = BRW_REGISTER_TYPE_F;
+         inst = emit(OR(dst, src_reg(dst), brw_imm_ud(0x3f800000u)));
+         inst->predicate = BRW_PREDICATE_NORMAL;
+         dst.type = BRW_REGISTER_TYPE_F;
+      } else {
+         /* For doubles we do the same but we need to consider:
+          *
+          * - We do the operation on 32-bit channels, then we select only
+          *   the channels corresponding to the high 32-bit of each DF where
+          *   the sign is
+          * - We need to produce a DF result.
+          */
+
+         /* Check for zero on all 32-bit channels */
+         emit(CMP(dst_null_f(), retype(op[0], BRW_REGISTER_TYPE_F),
+                  brw_imm_f(0.0f), BRW_CONDITIONAL_NZ));
+
+         /* AND each 32-bit channel with 0x80000000u */
+         dst_reg dst_int = retype(dst, BRW_REGISTER_TYPE_UD);
+         emit(MOV(dst_int, retype(op[0], BRW_REGISTER_TYPE_UD)));
+         emit(AND(dst_int, src_reg(dst_int), brw_imm_ud(0x80000000u)));
+
+         /* Add 1.0 to each channel, predicated to skip the case of
+          * where the channel is 0
+          */
+         inst = emit(OR(dst_int, src_reg(dst_int), brw_imm_ud(0x3f800000u)));
+         inst->predicate = BRW_PREDICATE_NORMAL;
+
+         /* Now, select the high 32-bit channels only (Y,W) and
+          * convert the result from float to double
+          */
+         src_reg src_int = src_reg(dst_int);
+         src_int.swizzle = BRW_SWIZZLE4(1, 1, 3, 3);
+         dst_int.writemask = WRITEMASK_XZ;
+         emit(MOV(dst_int, src_int));
+         src_reg src_float = retype(src_int, BRW_REGISTER_TYPE_F);
+         src_float.swizzle = BRW_SWIZZLE_NOOP;
+         emit(VEC4_OPCODE_FLOAT_TO_DOUBLE, dst, src_float);
+      }
 
       if (instr->dest.saturate) {
          inst = emit(MOV(dst, src_reg(dst)));
