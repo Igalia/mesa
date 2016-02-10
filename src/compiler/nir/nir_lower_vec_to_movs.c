@@ -181,7 +181,8 @@ try_coalesce(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
     * end up with too large double instructions that operate on more than
     * 2 double operands at once.
     */
-   if (vec->op == nir_op_vec3 || vec->op == nir_op_vec4) {
+   if (shader->options->split_doubles &&
+       (vec->op == nir_op_vec3 || vec->op == nir_op_vec4)) {
       unsigned output_bit_size =
          nir_op_infos[src_alu->op].output_type & NIR_ALU_TYPE_SIZE_MASK;
       unsigned input_bit_size =
@@ -252,7 +253,8 @@ lower_vec_to_movs_block(nir_block *block, void *void_state)
           * receive the dvec3/dvec4 operation so it can decide the best way to
           * deal with it.
           */
-         if (nir_dest_bit_size(vec->dest.dest) > 32)
+         if (shader->options->split_doubles &&
+             nir_dest_bit_size(vec->dest.dest) > 32)
             continue;
          break;
       default:

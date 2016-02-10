@@ -347,6 +347,8 @@ lower_impl(nir_function_impl *impl, void *mem_ctx)
 void
 nir_split_doubles(nir_shader *shader)
 {
+   assert(shader->options->split_doubles);
+
    nir_foreach_function(shader, function) {
       if (function->impl)
          lower_impl(function->impl, shader);
