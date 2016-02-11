@@ -288,6 +288,18 @@ try_constant_propagate(const struct brw_device_info *devinfo,
 }
 
 static bool
+is_vec4_align1(unsigned opcode)
+{
+   switch (opcode) {
+   case VEC4_OPCODE_DOUBLE_TO_FLOAT:
+   case VEC4_OPCODE_FLOAT_TO_DOUBLE:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
 try_copy_propagate(const struct brw_device_info *devinfo,
                    vec4_instruction *inst, int arg,
                    const copy_entry *entry, int attributes_per_reg)
@@ -327,6 +339,12 @@ try_copy_propagate(const struct brw_device_info *devinfo,
 
    if (has_source_modifiers &&
        inst->opcode == SHADER_OPCODE_GEN4_SCRATCH_WRITE)
+      return false;
+
+   /* Instructions that operate on vectors in ALIGN1 mode will ignore swizzles
+    * so copy-propagation won't be safe
+    */
+   if (is_vec4_align1(inst->opcode))
       return false;
 
    unsigned composed_swizzle = brw_compose_swizzle(inst->src[arg].swizzle,
