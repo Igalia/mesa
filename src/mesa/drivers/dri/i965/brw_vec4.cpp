@@ -349,6 +349,9 @@ vec4_visitor::opt_vector_float()
           inst->src[0].file != IMM)
          continue;
 
+      if (type_sz(inst->src[0].type) > 4)
+         continue;
+
       int vf = brw_float_to_vf(inst->src[0].f);
       if (vf == -1)
          continue;
