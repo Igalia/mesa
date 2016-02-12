@@ -653,31 +653,38 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
                                nir->info.num_ssbos - 1);
       }
 
-      src_reg offset_reg;
+      src_reg offset_reg = src_reg(this, glsl_type::uint_type);
       nir_const_value *const_offset = nir_src_as_const_value(instr->src[1]);
       if (const_offset) {
-         offset_reg = brw_imm_ud(const_offset->u32[0]);
+         emit(MOV(dst_reg(offset_reg), brw_imm_ud(const_offset->u32[0])));
       } else {
          offset_reg = get_nir_src(instr->src[1], 1);
       }
+
+      int num_components = instr->num_components;
+      if (nir_dest_bit_size(instr->dest) == 64)
+         num_components *= 2;
 
       /* Read the vector */
       const vec4_builder bld = vec4_builder(this).at_end()
          .annotate(current_annotation, base_ir);
 
-      src_reg read_result = emit_untyped_read(bld, surf_index, offset_reg,
-                                              1 /* dims */, 4 /* size*/,
-                                              BRW_PREDICATE_NONE);
-
-      unsigned num_components = instr->num_components;
-      if (nir_dest_bit_size(instr->dest) == 64)
-         num_components *= 2;
-
       dst_reg dest = get_nir_dest(instr->dest, BRW_REGISTER_TYPE_F);
-      read_result.type = dest.type;
-      read_result.swizzle = brw_swizzle_for_size(MIN2(num_components, 4));
-      emit(MOV(dest, read_result));
+      while (num_components > 0) {
+         src_reg read_result = emit_untyped_read(bld, surf_index, offset_reg,
+                                                 1 /* dims */, 4 /* size*/,
+                                                 BRW_PREDICATE_NONE);
 
+         read_result.type = dest.type;
+         read_result.swizzle = brw_swizzle_for_size(MIN2(num_components, 4));
+         emit(MOV(dest, read_result));
+
+         num_components -= 4;
+         if (num_components > 0) {
+            emit(ADD(dst_reg(offset_reg), offset_reg, brw_imm_ud(16)));
+            dest.reg_offset++;
+         }
+      }
       break;
    }
 
