@@ -668,9 +668,14 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       src_reg read_result = emit_untyped_read(bld, surf_index, offset_reg,
                                               1 /* dims */, 4 /* size*/,
                                               BRW_PREDICATE_NONE);
-      dst_reg dest = get_nir_dest(instr->dest);
+
+      unsigned num_components = instr->num_components;
+      if (nir_dest_bit_size(instr->dest) == 64)
+         num_components *= 2;
+
+      dst_reg dest = get_nir_dest(instr->dest, BRW_REGISTER_TYPE_F);
       read_result.type = dest.type;
-      read_result.swizzle = brw_swizzle_for_size(instr->num_components);
+      read_result.swizzle = brw_swizzle_for_size(MIN2(num_components, 4));
       emit(MOV(dest, read_result));
 
       break;
