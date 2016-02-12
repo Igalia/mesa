@@ -436,6 +436,9 @@ vec4_visitor::opt_vector_float()
          if ((inst->dst.writemask & WRITEMASK_W) != 0)
             imm[3] = vf;
 
+         if (type_sz(inst->src[0].type) > 4)
+            continue;
+
          writemask |= inst->dst.writemask;
          imm_inst[inst_count++] = inst;
 
