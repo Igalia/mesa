@@ -272,16 +272,22 @@ dst_reg_for_nir_reg(vec4_visitor *v, nir_register *nir_reg,
 dst_reg
 vec4_visitor::get_nir_dest(const nir_dest &dest)
 {
+   dst_reg dst;
    if (dest.is_ssa) {
-      dst_reg dst =
-         dst_reg(VGRF, alloc.allocate(DIV_ROUND_UP(dest.ssa.bit_size, 32)));
+      dst = dst_reg(VGRF, alloc.allocate(DIV_ROUND_UP(dest.ssa.bit_size, 32)));
+      if (dest.ssa.bit_size == 64)
+         dst.type = BRW_REGISTER_TYPE_DF;
       nir_ssa_values[dest.ssa.index] = dst;
       return dst;
    } else {
       unsigned base_offset = dest.reg.base_offset * dest.reg.reg->bit_size / 32;
-      return dst_reg_for_nir_reg(this, dest.reg.reg, base_offset,
-                                 dest.reg.indirect);
+      dst = dst_reg_for_nir_reg(this, dest.reg.reg, base_offset,
+                                dest.reg.indirect);
+      if (dest.reg.reg->bit_size == 64)
+         dst.type = BRW_REGISTER_TYPE_DF;
    }
+
+   return dst;
 }
 
 dst_reg
