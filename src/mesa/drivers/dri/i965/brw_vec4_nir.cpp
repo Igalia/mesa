@@ -824,10 +824,10 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
                                nir->info.num_ubos - 1);
       }
 
-      src_reg offset;
+      src_reg offset(this, glsl_type::uint_type);
       nir_const_value *const_offset = nir_src_as_const_value(instr->src[1]);
       if (const_offset) {
-         offset = brw_imm_ud(const_offset->u32[0] & ~15);
+         emit(MOV(dst_reg(offset), brw_imm_ud(const_offset->u32[0] & ~15)));
       } else {
          offset = get_nir_src(instr->src[1], nir_type_uint32, 1);
       }
@@ -835,22 +835,34 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       src_reg packed_consts = src_reg(this, glsl_type::vec4_type);
       packed_consts.type = dest.type;
 
-      emit_pull_constant_load_reg(dst_reg(packed_consts),
-                                  surf_index,
-                                  offset,
-                                  NULL, NULL /* before_block/inst */);
-
-      unsigned num_components = instr->num_components;
+      int num_components = instr->num_components;
       if (nir_dest_bit_size(instr->dest) == 64)
          num_components *= 2;
-      packed_consts.swizzle = brw_swizzle_for_size(MIN2(num_components, 4));
-      if (const_offset) {
-         packed_consts.swizzle += BRW_SWIZZLE4(const_offset->u32[0] % 16 / 4,
-                                               const_offset->u32[0] % 16 / 4,
-                                               const_offset->u32[0] % 16 / 4,
-                                               const_offset->u32[0] % 16 / 4);
+
+      /* Each pull constant load reads 16 bytes, so for dvec3/dvec4 loads
+       * (6/8 32-bit components) we will have to emit two loads
+       */
+      while (num_components > 0) {
+         emit_pull_constant_load_reg(dst_reg(packed_consts),
+                                     surf_index,
+                                     offset,
+                                     NULL, NULL /* before_block/inst */);
+
+         packed_consts.swizzle = brw_swizzle_for_size(MIN2(num_components, 4));
+         if (const_offset) {
+            packed_consts.swizzle += BRW_SWIZZLE4(const_offset->u32[0] % 16 / 4,
+                                                  const_offset->u32[0] % 16 / 4,
+                                                  const_offset->u32[0] % 16 / 4,
+                                                  const_offset->u32[0] % 16 / 4);
+         }
+         emit(MOV(dest, packed_consts));
+
+         num_components -= 4;
+         if (num_components > 0) {
+            dest.reg_offset++;
+            emit(ADD(dst_reg(offset), offset, brw_imm_ud(16u)));
+         }
       }
-      emit(MOV(dest, packed_consts));
       break;
    }
 
