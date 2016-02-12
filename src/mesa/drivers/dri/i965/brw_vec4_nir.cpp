@@ -795,7 +795,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       nir_const_value *const_block_index = nir_src_as_const_value(instr->src[0]);
       src_reg surf_index;
 
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_dest(instr->dest, BRW_REGISTER_TYPE_F);
 
       if (const_block_index) {
          /* The block index is a constant, so just emit the binding table entry
@@ -840,14 +840,16 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
                                   offset,
                                   NULL, NULL /* before_block/inst */);
 
-      packed_consts.swizzle = brw_swizzle_for_size(instr->num_components);
+      unsigned num_components = instr->num_components;
+      if (nir_dest_bit_size(instr->dest) == 64)
+         num_components *= 2;
+      packed_consts.swizzle = brw_swizzle_for_size(MIN2(num_components, 4));
       if (const_offset) {
          packed_consts.swizzle += BRW_SWIZZLE4(const_offset->u[0] % 16 / 4,
                                                const_offset->u[0] % 16 / 4,
                                                const_offset->u[0] % 16 / 4,
                                                const_offset->u[0] % 16 / 4);
       }
-
       emit(MOV(dest, packed_consts));
       break;
    }
