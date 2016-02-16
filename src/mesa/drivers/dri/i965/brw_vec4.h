@@ -346,6 +346,7 @@ public:
    src_reg get_indirect_offset(nir_intrinsic_instr *instr);
 
    void nir_handle_large_dvec(nir_alu_instr *instr);
+   void nir_handle_dmov(nir_alu_instr *instr);
    src_reg get_nir_alu_src(nir_alu_instr *instr, unsigned n);
 
    virtual dst_reg *make_reg_for_system_value(int location,

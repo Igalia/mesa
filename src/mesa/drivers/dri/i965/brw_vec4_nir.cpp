@@ -1133,6 +1133,61 @@ vec4_visitor::nir_handle_large_dvec(nir_alu_instr *instr)
    }
 }
 
+/* Implements dvec MOV. The nir_split_doubles pass makes it so that dvec3/4 ALU
+ * operations are broken into dvec2 instructions. However, some NIR passes like
+ * nir_lower_locals_to_regs can still inject dvec3/4 MOVs into the IR after
+ * nir_split_doubles, so handle dvec MOVs here and assume that they can handle
+ * any number of components up to 4.
+ */
+void
+vec4_visitor::nir_handle_dmov(nir_alu_instr *instr)
+{
+   vec4_instruction *inst;
+
+   assert(instr->op == nir_op_imov || instr->op == nir_op_fmov);
+   assert(nir_dest_bit_size(instr->dest.dest) == 64);
+
+   dst_reg dest = get_nir_dest(instr->dest.dest, nir_type_float64);
+   unsigned dest_reg_offset = dest.reg_offset;
+   unsigned writemask = instr->dest.write_mask;
+
+   src_reg src = get_nir_src(instr->src[0].src, nir_type_float64);
+   src.abs = instr->src[0].abs;
+   src.negate = instr->src[0].negate;
+   unsigned src_reg_offset = src.reg_offset;
+   uint8_t *src_swizzle = &instr->src[0].swizzle[0];
+
+   for (int channel = 0; channel < 4; channel++) {
+      unsigned channel_mask = 1 << channel;
+      if (!(writemask & channel_mask))
+         continue;
+
+      uint8_t swizzle[4] = { 0, 0, 0, 0 };
+      if (src_swizzle[channel] >= 2) {
+         /* Handle read from channels Z/W */
+         src.reg_offset = src_reg_offset + 1;
+         swizzle[0] = swizzle[1] = src_swizzle[channel] - 2;
+      } else {
+         src.reg_offset = src_reg_offset;
+         swizzle[0] = swizzle[1] = src_swizzle[channel];
+      }
+      src.swizzle = brw_swizzle_for_nir_swizzle(swizzle, 64);
+
+      unsigned mov_writemask;
+      if (channel >= 2) {
+         /* Handle write to channels Z/W */
+         dest.reg_offset = dest_reg_offset + 1;
+         mov_writemask = WRITEMASK_XY << (2 * (channel - 2));
+      } else {
+         mov_writemask = WRITEMASK_XY << (2 * channel);
+      }
+
+      dest.writemask = mov_writemask;
+      inst = emit(MOV(dest, src));
+      inst->saturate = instr->dest.saturate;
+   }
+}
+
 /* Gets the register for a nir alu source.
  *
  * This handles 64-bit sources as well which need special treatment because
@@ -1252,10 +1307,20 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 {
    vec4_instruction *inst;
 
-   /* For dvec3/dvec4 operations we need to do some special handling */
+   /* The nir_split_doubles pass makes it so that we never see double
+    * instructions operating on more than 2 components. The only exceptions
+    * to this are vecN instructions and MOVs, so we need to handle them
+    * specially.
+    */
    if ((instr->op == nir_op_vec3 || instr->op == nir_op_vec4) &&
        nir_dest_bit_size(instr->dest.dest) == 64) {
       nir_handle_large_dvec(instr);
+      return;
+   }
+
+   if ((instr->op == nir_op_imov || instr->op == nir_op_fmov) &&
+       nir_dest_bit_size(instr->dest.dest) == 64) {
+      nir_handle_dmov(instr);
       return;
    }
 
@@ -1273,6 +1338,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    switch (instr->op) {
    case nir_op_imov:
    case nir_op_fmov:
+      assert(nir_dest_bit_size(instr->dest.dest) < 64);
       inst = emit(MOV(dst, op[0]));
       inst->saturate = instr->dest.saturate;
       break;
