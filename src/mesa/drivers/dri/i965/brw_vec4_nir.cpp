@@ -413,7 +413,10 @@ vec4_visitor::nir_emit_load_const(nir_load_const_instr *instr)
          continue;
 
       for (unsigned j = i; j < instr->def.num_components; j++) {
-         if (instr->value.u[i] == instr->value.u[j]) {
+         if ((instr->def.bit_size == 32 &&
+              instr->value.u[i] == instr->value.u[j]) ||
+             (instr->def.bit_size == 64 &&
+              instr->value.d[i] == instr->value.d[j])) {
             writemask |= 1 << j;
          }
       }
