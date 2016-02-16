@@ -35,11 +35,12 @@
 struct constant_fold_state {
    void *mem_ctx;
    nir_function_impl *impl;
+   bool split_doubles;
    bool progress;
 };
 
 static bool
-constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
+constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx, bool split_doubles)
 {
    nir_const_value src[4];
 
@@ -80,6 +81,13 @@ constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
       /* We shouldn't have any source modifiers in the optimization loop. */
       assert(!instr->src[i].abs && !instr->src[i].negate);
    }
+
+   /* Don't generate double load_const instructions larger than a dvec2
+    * or we will undo the job of nir_split_doubles
+    */
+   if (bit_size == 64 && split_doubles &&
+       instr->dest.dest.ssa.num_components > 2)
+      return false;
 
    if (bit_size == 0)
       bit_size = 32;
@@ -176,7 +184,8 @@ constant_fold_block(nir_block *block, void *void_state)
       switch (instr->type) {
       case nir_instr_type_alu:
          state->progress |= constant_fold_alu_instr(nir_instr_as_alu(instr),
-                                                    state->mem_ctx);
+                                                    state->mem_ctx,
+                                                    state->split_doubles);
          break;
       case nir_instr_type_intrinsic:
          state->progress |=
@@ -195,12 +204,13 @@ constant_fold_block(nir_block *block, void *void_state)
 }
 
 static bool
-nir_opt_constant_folding_impl(nir_function_impl *impl)
+nir_opt_constant_folding_impl(nir_function_impl *impl, bool split_doubles)
 {
    struct constant_fold_state state;
 
    state.mem_ctx = ralloc_parent(impl);
    state.impl = impl;
+   state.split_doubles = split_doubles;
    state.progress = false;
 
    nir_foreach_block(impl, constant_fold_block, &state);
@@ -219,7 +229,8 @@ nir_opt_constant_folding(nir_shader *shader)
 
    nir_foreach_function(shader, function) {
       if (function->impl)
-         progress |= nir_opt_constant_folding_impl(function->impl);
+         progress |= nir_opt_constant_folding_impl(function->impl,
+                                                   shader->options->split_doubles);
    }
 
    return progress;
