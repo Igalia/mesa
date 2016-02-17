@@ -433,8 +433,8 @@ vec4_visitor::opt_reduce_swizzle()
          swizzle = brw_swizzle_for_size(2);
          break;
 
-      case VEC4_OPCODE_FLOAT_TO_DOUBLE:
-      case VEC4_OPCODE_DOUBLE_TO_FLOAT:
+      case VEC4_OPCODE_SINGLE_TO_DOUBLE:
+      case VEC4_OPCODE_DOUBLE_TO_SINGLE:
          swizzle = brw_swizzle_for_size(4);
          break;
 
@@ -840,8 +840,8 @@ vec4_visitor::is_dep_ctrl_unsafe(const vec4_instruction *inst)
 
    if (inst->opcode == VEC4_OPCODE_PACK_BYTES ||
        inst->opcode == VEC4_OPCODE_MOV_BYTES ||
-       inst->opcode == VEC4_OPCODE_DOUBLE_TO_FLOAT ||
-       inst->opcode == VEC4_OPCODE_FLOAT_TO_DOUBLE ||
+       inst->opcode == VEC4_OPCODE_DOUBLE_TO_SINGLE ||
+       inst->opcode == VEC4_OPCODE_SINGLE_TO_DOUBLE ||
        inst->is_math())
       return true;
 
