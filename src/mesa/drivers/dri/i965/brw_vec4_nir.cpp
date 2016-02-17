@@ -1302,6 +1302,41 @@ vec4_visitor::get_nir_alu_src(nir_alu_instr *instr, unsigned i)
    return src;
 }
 
+void
+vec4_visitor::emit_double_to_single(dst_reg dst, src_reg src, bool saturate,
+                                    brw_reg_type single_type)
+{
+   dst_reg temp = dst_reg(VGRF, alloc.allocate(1));
+   temp.type = BRW_REGISTER_TYPE_DF;
+   emit(MOV(temp, src));
+   src_reg temp_src = src_reg(temp);
+   dst_reg temp2 = dst_reg(VGRF, alloc.allocate(1));
+   temp2.type = single_type;
+   emit(VEC4_OPCODE_DOUBLE_TO_SINGLE, temp2, temp_src);
+   src_reg temp2_src = src_reg(temp2);
+   temp2_src.swizzle = BRW_SWIZZLE_XZXZ;
+   vec4_instruction *inst = emit(MOV(dst, temp2_src));
+   inst->saturate = saturate;
+}
+
+void
+vec4_visitor::emit_single_to_double(dst_reg dst, src_reg src, bool saturate,
+                                    brw_reg_type single_type)
+{
+   dst_reg temp = dst_reg(VGRF, alloc.allocate(1));
+   temp.type = single_type;
+   temp.writemask = 0x5;
+   src.swizzle = brw_compose_swizzle(BRW_SWIZZLE_XXYY, src.swizzle);
+   vec4_instruction *inst = emit(MOV(temp, src));
+   inst->saturate = saturate;
+   src_reg temp_src = src_reg(temp);
+   temp_src.swizzle = BRW_SWIZZLE_NOOP;
+   dst_reg temp2 = dst_reg(VGRF, alloc.allocate(1));
+   temp2.type = BRW_REGISTER_TYPE_DF;
+   emit(VEC4_OPCODE_SINGLE_TO_DOUBLE, temp2, temp_src);
+   src_reg temp2_src = src_reg(temp2);
+   emit(MOV(dst, temp2_src));
+}
 
 void
 vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
@@ -1365,37 +1400,15 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       inst = emit(MOV(dst, op[0]));
       break;
 
-   case nir_op_d2f: {
-      dst_reg temp = dst_reg(VGRF, alloc.allocate(1));
-      temp.type = BRW_REGISTER_TYPE_DF;
-      emit(MOV(temp, op[0]));
-      src_reg temp_src = src_reg(temp);
-      dst_reg temp2 = dst_reg(VGRF, alloc.allocate(1));
-      temp2.type = BRW_REGISTER_TYPE_F;
-      emit(VEC4_OPCODE_DOUBLE_TO_SINGLE, temp2, temp_src);
-      src_reg temp2_src = src_reg(temp2);
-      temp2_src.swizzle = BRW_SWIZZLE_XZXZ;
-      inst = emit(MOV(dst, temp2_src));
-      inst->saturate = instr->dest.saturate;
+   case nir_op_d2f:
+      emit_double_to_single(dst, op[0], instr->dest.saturate,
+                            BRW_REGISTER_TYPE_F);
       break;
-   }
 
-   case nir_op_f2d: {
-      dst_reg temp = dst_reg(VGRF, alloc.allocate(1));
-      temp.type = BRW_REGISTER_TYPE_F;
-      temp.writemask = 0x5;
-      op[0].swizzle = brw_compose_swizzle(BRW_SWIZZLE_XXYY, op[0].swizzle);
-      inst = emit(MOV(temp, op[0]));
-      inst->saturate = instr->dest.saturate;
-      src_reg temp_src = src_reg(temp);
-      temp_src.swizzle = BRW_SWIZZLE_NOOP;
-      dst_reg temp2 = dst_reg(VGRF, alloc.allocate(1));
-      temp2.type = BRW_REGISTER_TYPE_DF;
-      emit(VEC4_OPCODE_SINGLE_TO_DOUBLE, temp2, temp_src);
-      src_reg temp2_src = src_reg(temp2);
-      emit(MOV(dst, temp2_src));
+   case nir_op_f2d:
+      emit_single_to_double(dst, op[0], instr->dest.saturate,
+                            BRW_REGISTER_TYPE_F);
       break;
-   }
 
    case nir_op_iadd:
       assert(dst_bit_size < 64);
