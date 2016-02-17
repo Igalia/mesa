@@ -1858,9 +1858,9 @@ generate_code(struct brw_codegen *p,
          break;
       }
 
-      case VEC4_OPCODE_DOUBLE_TO_FLOAT: {
-         assert(src[0].type == BRW_REGISTER_TYPE_DF);
-         assert(dst.type == BRW_REGISTER_TYPE_F);
+      case VEC4_OPCODE_DOUBLE_TO_SINGLE: {
+         assert(type_sz(src[0].type) == 8);
+         assert(type_sz(dst.type) == 4);
 
          brw_set_default_access_mode(p, BRW_ALIGN_1);
          dst.hstride = BRW_HORIZONTAL_STRIDE_2;
@@ -1870,9 +1870,9 @@ generate_code(struct brw_codegen *p,
          break;
       }
 
-      case VEC4_OPCODE_FLOAT_TO_DOUBLE: {
-         assert(src[0].type == BRW_REGISTER_TYPE_F);
-         assert(dst.type == BRW_REGISTER_TYPE_DF);
+      case VEC4_OPCODE_SINGLE_TO_DOUBLE: {
+         assert(type_sz(src[0].type) == 4);
+         assert(type_sz(dst.type) == 8);
 
          brw_set_default_access_mode(p, BRW_ALIGN_1);
          src[0].vstride = BRW_VERTICAL_STRIDE_8;

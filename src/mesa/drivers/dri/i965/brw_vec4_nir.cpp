@@ -1372,7 +1372,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       src_reg temp_src = src_reg(temp);
       dst_reg temp2 = dst_reg(VGRF, alloc.allocate(1));
       temp2.type = BRW_REGISTER_TYPE_F;
-      emit(VEC4_OPCODE_DOUBLE_TO_FLOAT, temp2, temp_src);
+      emit(VEC4_OPCODE_DOUBLE_TO_SINGLE, temp2, temp_src);
       src_reg temp2_src = src_reg(temp2);
       temp2_src.swizzle = BRW_SWIZZLE_XZXZ;
       inst = emit(MOV(dst, temp2_src));
@@ -1391,7 +1391,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       temp_src.swizzle = BRW_SWIZZLE_NOOP;
       dst_reg temp2 = dst_reg(VGRF, alloc.allocate(1));
       temp2.type = BRW_REGISTER_TYPE_DF;
-      emit(VEC4_OPCODE_FLOAT_TO_DOUBLE, temp2, temp_src);
+      emit(VEC4_OPCODE_SINGLE_TO_DOUBLE, temp2, temp_src);
       src_reg temp2_src = src_reg(temp2);
       emit(MOV(dst, temp2_src));
       break;
@@ -1964,7 +1964,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
          emit(MOV(dst_int, src_int));
          src_reg src_float = retype(src_int, BRW_REGISTER_TYPE_F);
          src_float.swizzle = BRW_SWIZZLE_NOOP;
-         emit(VEC4_OPCODE_FLOAT_TO_DOUBLE, dst, src_float);
+         emit(VEC4_OPCODE_SINGLE_TO_DOUBLE, dst, src_float);
       }
 
       if (instr->dest.saturate) {
