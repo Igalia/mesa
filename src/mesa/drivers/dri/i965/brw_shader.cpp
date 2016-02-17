@@ -326,10 +326,10 @@ brw_instruction_name(enum opcode op)
       return "pack_bytes";
    case VEC4_OPCODE_UNPACK_UNIFORM:
       return "unpack_uniform";
-   case VEC4_OPCODE_DOUBLE_TO_FLOAT:
-      return "double_to_float";
-   case VEC4_OPCODE_FLOAT_TO_DOUBLE:
-      return "float_to_double";
+   case VEC4_OPCODE_DOUBLE_TO_SINGLE:
+      return "double_to_single";
+   case VEC4_OPCODE_SINGLE_TO_DOUBLE:
+      return "single_to_double";
 
    case FS_OPCODE_DDX_COARSE:
       return "ddx_coarse";
