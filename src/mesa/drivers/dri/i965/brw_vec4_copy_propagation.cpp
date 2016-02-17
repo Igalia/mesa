@@ -291,8 +291,8 @@ static bool
 is_vec4_align1(unsigned opcode)
 {
    switch (opcode) {
-   case VEC4_OPCODE_DOUBLE_TO_FLOAT:
-   case VEC4_OPCODE_FLOAT_TO_DOUBLE:
+   case VEC4_OPCODE_DOUBLE_TO_SINGLE:
+   case VEC4_OPCODE_SINGLE_TO_DOUBLE:
       return true;
    default:
       return false;
