@@ -259,6 +259,8 @@ dst_reg_for_nir_reg(vec4_visitor *v, nir_register *nir_reg,
    dst_reg reg;
 
    reg = v->nir_locals[nir_reg->index];
+   if (nir_reg->bit_size == 64)
+      base_offset *= 2;
    reg = offset(reg, base_offset);
    if (indirect) {
       reg.reladdr =
