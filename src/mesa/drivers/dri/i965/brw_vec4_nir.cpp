@@ -278,7 +278,8 @@ vec4_visitor::get_nir_dest(const nir_dest &dest)
       nir_ssa_values[dest.ssa.index] = dst;
       return dst;
    } else {
-      return dst_reg_for_nir_reg(this, dest.reg.reg, dest.reg.base_offset,
+      unsigned base_offset = dest.reg.base_offset * dest.reg.reg->bit_size / 32;
+      return dst_reg_for_nir_reg(this, dest.reg.reg, base_offset,
                                  dest.reg.indirect);
    }
 }
@@ -306,8 +307,9 @@ vec4_visitor::get_nir_src(const nir_src &src, enum brw_reg_type type,
       reg = nir_ssa_values[src.ssa->index];
    }
    else {
-     reg = dst_reg_for_nir_reg(this, src.reg.reg, src.reg.base_offset,
-                               src.reg.indirect);
+      unsigned base_offset = src.reg.base_offset * src.reg.reg->bit_size / 32;
+      reg = dst_reg_for_nir_reg(this, src.reg.reg, base_offset,
+                                src.reg.indirect);
    }
 
    reg = retype(reg, type);
