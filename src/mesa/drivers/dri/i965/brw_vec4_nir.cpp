@@ -1660,10 +1660,16 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_ball_fequal2:
    case nir_op_ball_fequal3:
    case nir_op_ball_fequal4: {
-      unsigned swiz =
-         brw_swizzle_for_size(nir_op_infos[instr->op].input_sizes[0]);
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      if (nir_src_bit_size(instr->src[0].src) == 64) {
+         size *= 2;
+         assert(size <= 4);
+      }
+      unsigned swiz = brw_swizzle_for_size(size);
 
-      emit(CMP(dst_null_d(), swizzle(op[0], swiz), swizzle(op[1], swiz),
+      emit(CMP(dst_null_d(),
+               retype(swizzle(op[0], swiz), BRW_REGISTER_TYPE_D),
+               retype(swizzle(op[1], swiz), BRW_REGISTER_TYPE_D),
                brw_conditional_for_nir_comparison(instr->op)));
       emit(MOV(dst, brw_imm_d(0)));
       inst = emit(MOV(dst, brw_imm_d(~0)));
@@ -1679,10 +1685,16 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_bany_fnequal2:
    case nir_op_bany_fnequal3:
    case nir_op_bany_fnequal4: {
-      unsigned swiz =
-         brw_swizzle_for_size(nir_op_infos[instr->op].input_sizes[0]);
+      unsigned size = nir_op_infos[instr->op].input_sizes[0];
+      if (nir_src_bit_size(instr->src[0].src) == 64) {
+         size *= 2;
+         assert(size <= 4);
+      }
+      unsigned swiz = brw_swizzle_for_size(size);
 
-      emit(CMP(dst_null_d(), swizzle(op[0], swiz), swizzle(op[1], swiz),
+      emit(CMP(dst_null_d(),
+               retype(swizzle(op[0], swiz), BRW_REGISTER_TYPE_D),
+               retype(swizzle(op[1], swiz), BRW_REGISTER_TYPE_D),
                brw_conditional_for_nir_comparison(instr->op)));
 
       emit(MOV(dst, brw_imm_d(0)));
