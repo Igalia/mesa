@@ -296,7 +296,8 @@ vec4_visitor::get_nir_dest(nir_dest dest)
       nir_ssa_values[dest.ssa.index] = dst;
       return dst;
    } else {
-      return dst_reg_for_nir_reg(this, dest.reg.reg, dest.reg.base_offset,
+      unsigned base_offset = dest.reg.base_offset * dest.reg.reg->bit_size / 32;
+      return dst_reg_for_nir_reg(this, dest.reg.reg, base_offset,
                                  dest.reg.indirect);
    }
 }
