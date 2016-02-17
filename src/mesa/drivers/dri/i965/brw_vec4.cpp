@@ -243,8 +243,8 @@ vec4_instruction::can_do_writemask(const struct brw_device_info *devinfo)
 {
    switch (opcode) {
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
-   case VEC4_OPCODE_DOUBLE_TO_FLOAT:
-   case VEC4_OPCODE_FLOAT_TO_DOUBLE:
+   case VEC4_OPCODE_DOUBLE_TO_SINGLE:
+   case VEC4_OPCODE_SINGLE_TO_DOUBLE:
    case VS_OPCODE_PULL_CONSTANT_LOAD:
    case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
    case VS_OPCODE_SET_SIMD4X2_HEADER_GEN9:
@@ -499,8 +499,8 @@ vec4_visitor::opt_reduce_swizzle()
          swizzle = brw_swizzle_for_size(2);
          break;
 
-      case VEC4_OPCODE_FLOAT_TO_DOUBLE:
-      case VEC4_OPCODE_DOUBLE_TO_FLOAT:
+      case VEC4_OPCODE_SINGLE_TO_DOUBLE:
+      case VEC4_OPCODE_DOUBLE_TO_SINGLE:
          swizzle = brw_swizzle_for_size(4);
          break;
 
