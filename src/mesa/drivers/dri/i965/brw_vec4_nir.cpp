@@ -1730,6 +1730,26 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       emit(CMP(dst, op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ));
       break;
 
+   case nir_op_d2b: {
+      /* two-argument instructions can't take 64-bit immediates */
+      dst_reg zero = dst_reg(VGRF, alloc.allocate(1));
+      zero.type = BRW_REGISTER_TYPE_DF;
+      emit(MOV(zero, brw_imm_df(0.0)));
+
+      dst_reg tmp = dst_reg(VGRF, alloc.allocate(1));
+      tmp.type = BRW_REGISTER_TYPE_DF;
+      emit(CMP(tmp, op[0], src_reg(zero), BRW_CONDITIONAL_NZ));
+
+      /* We need to convert the DF result into a boolean, that is, a zero
+       * or non-zero 32-bit value.
+       *
+       * FIXME: an integer conversion does not seem to work for some reason
+       */
+      emit_double_to_single(retype(dst, BRW_REGISTER_TYPE_F), src_reg(tmp),
+                            false, BRW_REGISTER_TYPE_F);
+      break;
+   }
+
    case nir_op_i2b:
       emit(CMP(dst, op[0], brw_imm_d(0), BRW_CONDITIONAL_NZ));
       break;
