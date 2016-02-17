@@ -267,7 +267,7 @@ vec4_visitor::SCRATCH_WRITE(const dst_reg &dst, const src_reg &src,
    vec4_instruction *inst;
 
    inst = new(mem_ctx) vec4_instruction(SHADER_OPCODE_GEN4_SCRATCH_WRITE,
-					dst, src, index);
+					dst, retype(src, BRW_REGISTER_TYPE_F), index);
    inst->base_mrf = FIRST_SPILL_MRF(devinfo->gen);
    inst->mlen = 3;
 
