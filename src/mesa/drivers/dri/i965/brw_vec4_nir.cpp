@@ -2082,7 +2082,30 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
    case nir_op_bcsel:
       enum brw_predicate predicate;
       if (!optimize_predicate(instr, &predicate)) {
-         emit(CMP(dst_null_d(), op[0], brw_imm_d(0), BRW_CONDITIONAL_NZ));
+         unsigned num_components = instr->src[0].src.is_ssa ?
+            instr->src[0].src.ssa->num_components :
+            instr->src[0].src.reg.reg->num_components;
+
+         if (op[1].type == BRW_REGISTER_TYPE_DF && num_components == 2) {
+            /* We need to adjust the swizzle of the condition to match the
+             * channels of a double SEL: the first channel is for the first
+             * component of the dvec1/2 and the second channel is for the
+             * second component of the dvec2. Because this is a double
+             * operation and each double takes two 32-bit slots, we want
+             * to reswizzle the channels in the condition to XXYY.
+             */
+            dst_reg zero = dst_reg(VGRF, alloc.allocate(1));
+            zero.type = BRW_REGISTER_TYPE_DF;
+            emit(MOV(zero, brw_imm_df(0.0)));
+
+            dst_reg temp = dst_reg(VGRF, alloc.allocate(1));
+            temp.type = BRW_REGISTER_TYPE_DF;
+            op[0].swizzle = BRW_SWIZZLE_XXYY;
+            emit(MOV(temp, retype(op[0], BRW_REGISTER_TYPE_DF)));
+            emit(CMP(dst_null_df(), src_reg(temp), src_reg(zero), BRW_CONDITIONAL_NZ));
+         } else {
+            emit(CMP(dst_null_d(), op[0], brw_imm_d(0), BRW_CONDITIONAL_NZ));
+         }
          switch (dst.writemask) {
          case WRITEMASK_X:
             predicate = BRW_PREDICATE_ALIGN16_REPLICATE_X;
