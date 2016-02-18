@@ -460,10 +460,20 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
           * parts of vgrfs so we have to do some reg_offset magic.
           */
 
-         /* Compute the offset of inst->src[arg] relative to inst->dst */
+         /* Compute the offset of inst->src[arg] relative to inst->dst
+          *
+          * If the source we are copy propagating from has a stride of 0, then
+          * we must not offset into it based on the offset of our source
+          * relative to entry->dst
+          */
          assert(entry->dst.subreg_offset == 0);
-         int rel_offset = inst->src[arg].reg_offset - entry->dst.reg_offset;
-         int rel_suboffset = inst->src[arg].subreg_offset;
+         int rel_offset, rel_suboffset;
+         if (entry->src.stride != 0) {
+            rel_offset = inst->src[arg].reg_offset - entry->dst.reg_offset;
+            rel_suboffset = inst->src[arg].subreg_offset;
+         } else {
+            rel_offset = rel_suboffset = 0;
+         }
 
          /* Compute the final register offset (in bytes) */
          int offset = entry->src.reg_offset * 32 + entry->src.subreg_offset;
