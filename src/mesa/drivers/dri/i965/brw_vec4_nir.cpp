@@ -1051,8 +1051,12 @@ vec4_visitor::optimize_predicate(nir_alu_instr *instr,
       return false;
    }
 
-   unsigned size_swizzle =
-      brw_swizzle_for_size(nir_op_infos[cmp_instr->op].input_sizes[0]);
+   unsigned size = nir_op_infos[cmp_instr->op].input_sizes[0];
+   if (nir_src_bit_size(cmp_instr->src[0].src) == 64) {
+      size *= 2;
+      assert(size <= 4);
+   }
+   unsigned size_swizzle = brw_swizzle_for_size(size);
 
    src_reg op[2];
    assert(nir_op_infos[cmp_instr->op].num_inputs == 2);
@@ -1067,7 +1071,9 @@ vec4_visitor::optimize_predicate(nir_alu_instr *instr,
       op[i].negate = cmp_instr->src[i].negate;
    }
 
-   emit(CMP(dst_null_d(), op[0], op[1],
+   emit(CMP(dst_null_d(),
+            retype(op[0], BRW_REGISTER_TYPE_D),
+            retype(op[1], BRW_REGISTER_TYPE_D),
             brw_conditional_for_nir_comparison(cmp_instr->op)));
 
    return true;
