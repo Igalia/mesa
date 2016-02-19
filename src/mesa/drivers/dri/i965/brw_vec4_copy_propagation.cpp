@@ -361,6 +361,14 @@ try_copy_propagate(const struct brw_device_info *devinfo,
        value.type == BRW_REGISTER_TYPE_UD)
       return false;
 
+   /* We can't generally copy-propagate DF negations to UD because we
+    * end up accessing the resulting UD values as signed integers instead.
+    * See also resolve_ud_negate().
+    */
+   if (value.negate && value.type == BRW_REGISTER_TYPE_DF &&
+       inst->src[arg].type == BRW_REGISTER_TYPE_UD)
+      return false;
+
    /* Don't report progress if this is a noop. */
    if (value.equals(inst->src[arg]))
       return false;
