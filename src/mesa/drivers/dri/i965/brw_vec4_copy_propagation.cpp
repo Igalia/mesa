@@ -366,6 +366,10 @@ try_copy_propagate(const struct brw_device_info *devinfo,
        value.type == BRW_REGISTER_TYPE_UD)
       return false;
 
+   if (has_source_modifiers &&
+       type_sz(value.type) > type_sz(inst->src[arg].type))
+      return false;
+
    /* Don't report progress if this is a noop. */
    if (value.equals(inst->src[arg]))
       return false;
