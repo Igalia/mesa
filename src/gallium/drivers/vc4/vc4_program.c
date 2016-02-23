@@ -885,7 +885,10 @@ ntq_emit_comparison(struct vc4_compile *c, struct qreg *dest,
         struct qreg src0 = ntq_get_alu_src(c, compare_instr, 0);
         struct qreg src1 = ntq_get_alu_src(c, compare_instr, 1);
 
-        if (nir_op_infos[compare_instr->op].input_types[0] == nir_type_float)
+        unsigned unsized_type =
+                nir_op_infos[compare_instr->op].input_types[0] &
+                NIR_ALU_TYPE_BASE_TYPE_MASK;
+        if (unsized_type == nir_type_float)
                 qir_SF(c, qir_FSUB(c, src0, src1));
         else
                 qir_SF(c, qir_SUB(c, src0, src1));
