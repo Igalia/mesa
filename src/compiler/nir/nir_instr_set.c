@@ -401,6 +401,62 @@ dest_is_ssa(nir_dest *dest, void *data)
    return dest->is_ssa;
 }
 
+static bool
+intrinsic_is_load(nir_intrinsic_instr *instr)
+{
+   switch (instr->intrinsic) {
+   case nir_intrinsic_load_ssbo:
+   case nir_intrinsic_load_shared:
+   case nir_intrinsic_image_load:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+intrinsic_is_store(nir_intrinsic_instr *instr)
+{
+   switch (instr->intrinsic) {
+   case nir_intrinsic_store_ssbo:
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_xor:
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+
+   case nir_intrinsic_store_shared:
+   case nir_intrinsic_shared_atomic_add:
+   case nir_intrinsic_shared_atomic_imin:
+   case nir_intrinsic_shared_atomic_umin:
+   case nir_intrinsic_shared_atomic_imax:
+   case nir_intrinsic_shared_atomic_umax:
+   case nir_intrinsic_shared_atomic_and:
+   case nir_intrinsic_shared_atomic_or:
+   case nir_intrinsic_shared_atomic_xor:
+   case nir_intrinsic_shared_atomic_exchange:
+   case nir_intrinsic_shared_atomic_comp_swap:
+
+   case nir_intrinsic_image_store:
+   case nir_intrinsic_image_atomic_add:
+   case nir_intrinsic_image_atomic_min:
+   case nir_intrinsic_image_atomic_max:
+   case nir_intrinsic_image_atomic_and:
+   case nir_intrinsic_image_atomic_or:
+   case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_image_atomic_exchange:
+   case nir_intrinsic_image_atomic_comp_swap:
+      return true;
+   default:
+      return false;
+   }
+}
+
 /* This function determines if uses of an instruction can safely be rewritten
  * to use another identical instruction instead. Note that this function must
  * be kept in sync with hash_instr() and nir_instrs_equal() -- only
@@ -409,7 +465,7 @@ dest_is_ssa(nir_dest *dest, void *data)
  */
 
 static bool
-instr_can_rewrite(nir_instr *instr)
+instr_can_rewrite(nir_instr *instr, bool allow_loads)
 {
    /* We only handle SSA. */
    if (!nir_foreach_dest(instr, dest_is_ssa, NULL) ||
@@ -431,11 +487,16 @@ instr_can_rewrite(nir_instr *instr)
       return true;
    }
    case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
       const nir_intrinsic_info *info =
-         &nir_intrinsic_infos[nir_instr_as_intrinsic(instr)->intrinsic];
-      return (info->flags & NIR_INTRINSIC_CAN_ELIMINATE) &&
-             (info->flags & NIR_INTRINSIC_CAN_REORDER) &&
-             info->num_variables == 0; /* not implemented yet */
+         &nir_intrinsic_infos[intrinsic->intrinsic];
+      bool can_eliminate_and_reorder =
+         (info->flags & NIR_INTRINSIC_CAN_ELIMINATE) &&
+         (info->flags & NIR_INTRINSIC_CAN_REORDER) &&
+         info->num_variables == 0; /* not implemented yet */
+      return can_eliminate_and_reorder ||
+         (allow_loads && (intrinsic_is_load(intrinsic) ||
+                          intrinsic_is_store(intrinsic)));
    }
    case nir_instr_type_call:
    case nir_instr_type_jump:
@@ -478,25 +539,29 @@ cmp_func(const void *data1, const void *data2)
    return nir_instrs_equal(data1, data2);
 }
 
-struct set *
-nir_instr_set_create(void *mem_ctx)
+struct nir_instr_set *
+nir_instr_set_create(void *mem_ctx, bool allow_loads)
 {
-   return _mesa_set_create(mem_ctx, hash_instr, cmp_func);
+   struct nir_instr_set *instr_set = ralloc(mem_ctx, struct nir_instr_set);
+   instr_set->set = _mesa_set_create(mem_ctx, hash_instr, cmp_func);
+   instr_set->allow_loads = allow_loads;
+   return instr_set;
 }
 
 void
-nir_instr_set_destroy(struct set *instr_set)
+nir_instr_set_destroy(struct nir_instr_set *instr_set)
 {
-   _mesa_set_destroy(instr_set, NULL);
+   _mesa_set_destroy(instr_set->set, NULL);
+   ralloc_free(instr_set);
 }
 
 bool
-nir_instr_set_add_or_rewrite(struct set *instr_set, nir_instr *instr)
+nir_instr_set_add_or_rewrite(struct nir_instr_set *instr_set, nir_instr *instr)
 {
-   if (!instr_can_rewrite(instr))
+   if (!instr_can_rewrite(instr, instr_set->allow_loads))
       return false;
 
-   struct set_entry *entry = _mesa_set_search(instr_set, instr);
+   struct set_entry *entry = _mesa_set_search(instr_set->set, instr);
    if (entry) {
       nir_ssa_def *def = nir_instr_get_dest_ssa_def(instr);
       nir_instr *match = (nir_instr *) entry->key;
@@ -514,18 +579,17 @@ nir_instr_set_add_or_rewrite(struct set *instr_set, nir_instr *instr)
       return true;
    }
 
-   _mesa_set_add(instr_set, instr);
+   _mesa_set_add(instr_set->set, instr);
    return false;
 }
 
 void
-nir_instr_set_remove(struct set *instr_set, nir_instr *instr)
+nir_instr_set_remove(struct nir_instr_set *instr_set, nir_instr *instr)
 {
-   if (!instr_can_rewrite(instr))
+   if (!instr_can_rewrite(instr, instr_set->allow_loads))
       return;
 
-   struct set_entry *entry = _mesa_set_search(instr_set, instr);
+   struct set_entry *entry = _mesa_set_search(instr_set->set, instr);
    if (entry)
-      _mesa_set_remove(instr_set, entry);
+      _mesa_set_remove(instr_set->set, entry);
 }
-

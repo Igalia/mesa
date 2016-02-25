@@ -39,7 +39,7 @@
  */
 
 static bool
-cse_block(nir_block *block, struct set *instr_set)
+cse_block(nir_block *block, struct nir_instr_set *instr_set)
 {
    bool progress = false;
 
@@ -64,7 +64,7 @@ cse_block(nir_block *block, struct set *instr_set)
 static bool
 nir_opt_cse_impl(nir_function_impl *impl)
 {
-   struct set *instr_set = nir_instr_set_create(NULL);
+   struct nir_instr_set *instr_set = nir_instr_set_create(NULL, false);
 
    nir_metadata_require(impl, nir_metadata_dominance);
 
