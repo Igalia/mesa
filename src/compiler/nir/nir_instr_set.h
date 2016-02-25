@@ -38,11 +38,20 @@
 
 /*@{*/
 
-/** Creates an instruction set, using a given ralloc mem_ctx */
-struct set *nir_instr_set_create(void *mem_ctx);
+struct nir_instr_set {
+   struct set *set;
+   bool allow_loads;
+};
+
+/**
+ * Creates an instruction set, using a given ralloc mem_ctx. If allow_loads
+ * is true, then side-effectful instructions like SSBO loads that can't be
+ * freely moved around can still be rewritten.
+ */
+struct nir_instr_set *nir_instr_set_create(void *mem_ctx, bool allow_loads);
 
 /** Destroys an instruction set. */
-void nir_instr_set_destroy(struct set *instr_set);
+void nir_instr_set_destroy(struct nir_instr_set *instr_set);
 
 /**
  * Adds an instruction to an instruction set if it doesn't exist, or if it
@@ -50,13 +59,13 @@ void nir_instr_set_destroy(struct set *instr_set);
  * already-inserted instruction. Returns 'true' if the uses of the instruction
  * were rewritten.
  */
-bool nir_instr_set_add_or_rewrite(struct set *instr_set, nir_instr *instr);
+bool nir_instr_set_add_or_rewrite(struct nir_instr_set *instr_set,
+                                  nir_instr *instr);
 
 /**
  * Removes an instruction from an instruction set, so that other instructions
  * won't be merged with it.
  */
-void nir_instr_set_remove(struct set *instr_set, nir_instr *instr);
+void nir_instr_set_remove(struct nir_instr_set *instr_set, nir_instr *instr);
 
 /*@}*/
-
