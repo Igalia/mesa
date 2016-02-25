@@ -2489,6 +2489,8 @@ bool nir_opt_dead_cf(nir_shader *shader);
 
 void nir_opt_gcm(nir_shader *shader);
 
+bool nir_opt_load_combine(nir_shader *shader);
+
 bool nir_opt_peephole_select(nir_shader *shader);
 
 bool nir_opt_remove_phis(nir_shader *shader);
