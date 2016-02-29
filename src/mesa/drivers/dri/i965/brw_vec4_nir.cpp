@@ -325,6 +325,9 @@ vec4_visitor::get_nir_src(nir_src src, enum brw_reg_type type,
 
    reg = retype(reg, type);
 
+   if (type_sz(type) == 8)
+      num_components *= MIN2(4, num_components * 2);
+
    src_reg reg_as_src = src_reg(reg);
    reg_as_src.swizzle = brw_swizzle_for_size(num_components);
    return reg_as_src;
