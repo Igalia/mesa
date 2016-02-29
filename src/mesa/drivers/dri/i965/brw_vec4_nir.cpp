@@ -716,12 +716,15 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
          /* Offsets are in bytes but they should always be multiples of 4 */
          assert(const_offset->u32[0] % 4 == 0);
 
-         unsigned offset = const_offset->u32[0] + shift * 4;
-         src.reg_offset = offset / 16;
-         shift = (offset % 16) / 4;
+         unsigned reg_offset = const_offset->u32[0] + shift * 4;
+         src.reg_offset = reg_offset / 16;
+         shift = (reg_offset % 16) / 4;
          src.swizzle += BRW_SWIZZLE4(shift, shift, shift, shift);
+         src.type = dest.type;
 
          emit(MOV(dest, src));
+         if (instr->num_components > 2 && nir_dest_bit_size(instr->dest) == 64)
+            emit(MOV(offset(dest, 1), offset(src, 1)));
       } else {
          src.swizzle += BRW_SWIZZLE4(shift, shift, shift, shift);
 
