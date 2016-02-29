@@ -719,7 +719,12 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
          src.reladdr = new(mem_ctx) src_reg(tmp);
       }
 
+      src.type = dest.type;
+
       emit(MOV(dest, src));
+      if (instr->num_components > 2 && nir_dest_bit_size(instr->dest) == 64)
+         emit(MOV(offset(dest, 1), offset(src, 1)));
+
       break;
    }
 
