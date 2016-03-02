@@ -43,8 +43,7 @@
 static nir_ssa_def *
 set_exponent(nir_builder *b, nir_ssa_def *src, nir_ssa_def *exp)
 {
-   /* Split into bits 0-31 and 32-63 */
-   nir_ssa_def *lo = nir_unpack_double_2x32_split_x(b, src);
+   /* The exponent is encoded in the high 32-bits */
    nir_ssa_def *hi = nir_unpack_double_2x32_split_y(b, src);
 
    /* The exponent is bits 52-62, or 20-30 of the high word, so set those bits
@@ -52,8 +51,8 @@ set_exponent(nir_builder *b, nir_ssa_def *src, nir_ssa_def *exp)
     */
    nir_ssa_def *new_hi = nir_bfi(b, nir_imm_uint(b, 0x7ff00000),
                                  exp, hi);
-   /* recombine */
-   return nir_pack_double_2x32_split(b, lo, new_hi);
+   /* recombine the high 32-bits of the double with the new exponent */
+   return nir_pack_double_2x32_split_y(b, src, new_hi);
 }
 
 static nir_ssa_def *
