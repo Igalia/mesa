@@ -274,6 +274,20 @@ di.i2 = src0.y;
 dst.x = di.d;
 """)
 
+opcode("pack_double_2x32_split_y", 0, tfloat64, [0, 0], [tfloat64, tuint32], "", """
+union {
+    double d;
+    struct {
+        uint32_t i1;
+        uint32_t i2;
+    };
+} di;
+
+di.d = src0;
+di.i1 = src1;
+dst = di.d;
+""")
+
 unop_horiz("unpack_double_2x32", 2, tuint32, 1, tfloat64, """
 union {
     double d;
