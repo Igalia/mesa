@@ -1867,6 +1867,22 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_pack_double_2x32_split_y: {
+      emit(MOV(dst, op[0]));
+
+      op[1].swizzle = brw_compose_swizzle(BRW_SWIZZLE_XXYY, op[1].swizzle);
+      dst_reg new_dst = retype(dst, BRW_REGISTER_TYPE_UD);
+
+      new_dst.writemask = 0;
+      if (instr->dest.write_mask & 1)
+         new_dst.writemask |= 0x2;
+      if (instr->dest.write_mask & 2)
+         new_dst.writemask |= 0x8;
+      emit(MOV(new_dst, op[1]));
+
+      break;
+   }
+
    case nir_op_unpack_double_2x32_split_x: {
       /* Our input is a dvec1/dvec2, and we want to get the low 32 bits of
        * each component. That corresponds to the x and z components of the
