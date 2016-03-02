@@ -1167,6 +1167,11 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       bld.emit(FS_OPCODE_PACK, result, op[0], op[1]);
       break;
 
+   case nir_op_pack_double_2x32_split_y:
+      bld.MOV(result, op[0]);
+      bld.MOV(stride(horiz_offset(retype(result, BRW_REGISTER_TYPE_UD), 1), 2), op[1]);
+      break;
+
    case nir_op_unpack_double_2x32_split_x:
       bld.MOV(result, stride(retype(op[0], BRW_REGISTER_TYPE_UD), 2));
       break;
