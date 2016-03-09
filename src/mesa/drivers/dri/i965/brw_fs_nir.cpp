@@ -812,7 +812,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
              * work.
              */
             fs_reg tmp = vgrf(glsl_type::double_type);
-            bld.MOV(tmp, brw_imm_df(0.0));
+            bld.MOV(tmp, setup_imm_df(0.0));
             fs_reg dst_tmp = vgrf(glsl_type::double_type);
             bld.CMP(dst_tmp, op[0], tmp, BRW_CONDITIONAL_NZ);
          } else {
@@ -823,7 +823,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
              * double comparisons in the general case.
              */
             fs_reg tmp = vgrf(glsl_type::double_type);
-            bld.MOV(tmp, brw_imm_df(0.0));
+            bld.MOV(tmp, setup_imm_df(0.0));
             fs_reg dst_tmp = vgrf(glsl_type::double_type);
             bld.CMP(dst_tmp, op[0], tmp, BRW_CONDITIONAL_NZ);
 
@@ -1152,7 +1152,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_d2b: {
       /* two-argument instructions can't take 64-bit immediates */
       fs_reg zero = vgrf(glsl_type::double_type);
-      bld.MOV(zero, brw_imm_df(0.0));
+      bld.MOV(zero, setup_imm_df(0.0));
       /* A SIMD16 execution needs to be split in two instructions, so use
        * a vgrf instead of the flag register as dst so instruction splitting
        * works
@@ -1453,8 +1453,10 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
       break;
 
    case 64:
-      for (unsigned i = 0; i < instr->def.num_components; i++)
-         bld.MOV(offset(reg, bld, i), brw_imm_df(instr->value.f64[i]));
+      for (unsigned i = 0; i < instr->def.num_components; i++) {
+         fs_reg tmp = setup_imm_df(instr->value.f64[i]);
+         bld.MOV(offset(reg, bld, i), tmp);
+      }
       break;
    }
 
