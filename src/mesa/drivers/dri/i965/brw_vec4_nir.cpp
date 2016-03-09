@@ -1356,6 +1356,37 @@ vec4_visitor::emit_single_to_double(dst_reg dst, src_reg src, bool saturate,
    emit(MOV(dst, temp2_src));
 }
 
+src_reg
+vec4_visitor::setup_imm_df(double v)
+{
+   assert(devinfo->gen >= 7);
+
+   if (devinfo->gen >= 8)
+      return brw_imm_df(v);
+
+   /* gen7 does not support DF immediates */
+   union {
+      double d;
+      struct {
+         uint32_t i1;
+         uint32_t i2;
+      };
+   } di;
+
+   di.d = v;
+
+   dst_reg tmp = dst_reg(VGRF, alloc.allocate(1));
+   tmp.type = BRW_REGISTER_TYPE_UD;
+   tmp.writemask = WRITEMASK_X;
+   emit(MOV(tmp, brw_imm_ud(di.i1)));
+   tmp.writemask = WRITEMASK_Y;
+   emit(MOV(tmp, brw_imm_ud(di.i2)));
+
+   src_reg tmp_as_src = src_reg(retype(tmp, BRW_REGISTER_TYPE_DF));
+   tmp_as_src.swizzle = BRW_SWIZZLE_XYXY;
+   return tmp_as_src;
+}
+
 void
 vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
 {
