@@ -615,6 +615,47 @@ fs_visitor::optimize_frontfacing_ternary(nir_alu_instr *instr,
    return true;
 }
 
+fs_reg
+fs_visitor::setup_imm_df(double v)
+{
+   assert(devinfo->gen >= 7);
+
+   if (devinfo->gen >= 8)
+      return brw_imm_df(v);
+
+   /* gen7 does not support DF immediates, so we generate a 64-bit constant by
+    * writing the low 32-bit of the constant to suboffset 0 of a VGRF and
+    * the high 32-bit to suboffset 4 and then applying a stride of 0.
+    *
+    * Alternatively, we could also produce a normal VGRF (without stride 0)
+    * by writing to all the channels in the VGRF, however, that would hit the
+    * gen7 bug where we have to split writes that span more than 1 register
+    * into instructions with a width of 4 (otherwise the write to the second
+    * register written runs into an execmask hardware bug) which isn't very
+    * nice.
+    */
+   union {
+      double d;
+      struct {
+         uint32_t i1;
+         uint32_t i2;
+      };
+   } di;
+
+   di.d = v;
+
+   fs_reg tmp = vgrf(glsl_type::uint_type);
+   fs_inst *inst = bld.MOV(tmp, brw_imm_ud(di.i1));
+   inst->force_writemask_all = true;
+   inst->exec_size = 1;
+
+   inst = bld.MOV(horiz_offset(tmp, 1), brw_imm_ud(di.i2));
+   inst->force_writemask_all = true;
+   inst->exec_size = 1;
+
+   return stride(retype(tmp, BRW_REGISTER_TYPE_DF), 0);
+}
+
 void
 fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 {
