@@ -195,6 +195,8 @@ public:
    bool lower_simd_width();
    bool opt_combine_constants();
 
+   fs_reg setup_imm_df(double v);
+
    void emit_dummy_fs();
    void emit_repclear_shader();
    fs_reg *emit_fragcoord_interpolation(bool pixel_center_integer,
