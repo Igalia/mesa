@@ -420,7 +420,7 @@ vec4_visitor::nir_emit_load_const(nir_load_const_instr *instr)
             reg.writemask |= 4;
          }
          reg.writemask |= (reg.writemask << 1);
-         emit(MOV(reg, brw_imm_df(instr->value.f64[i])));
+         emit(MOV(reg, setup_imm_df(instr->value.f64[i])));
       } else {
          emit(MOV(reg, brw_imm_d(instr->value.i32[i])));
       }
@@ -1880,7 +1880,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
       /* two-argument instructions can't take 64-bit immediates */
       dst_reg zero = dst_reg(VGRF, alloc.allocate(1));
       zero.type = BRW_REGISTER_TYPE_DF;
-      emit(MOV(zero, brw_imm_df(0.0)));
+      emit(MOV(zero, setup_imm_df(0.0)));
 
       dst_reg tmp = dst_reg(VGRF, alloc.allocate(1));
       tmp.type = BRW_REGISTER_TYPE_DF;
@@ -2218,7 +2218,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
              */
             dst_reg zero = dst_reg(VGRF, alloc.allocate(1));
             zero.type = BRW_REGISTER_TYPE_DF;
-            emit(MOV(zero, brw_imm_df(0.0)));
+            emit(MOV(zero, setup_imm_df(0.0)));
 
             dst_reg temp = dst_reg(VGRF, alloc.allocate(1));
             temp.type = BRW_REGISTER_TYPE_DF;
