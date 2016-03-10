@@ -156,6 +156,10 @@ try_constant_propagate(const struct brw_device_info *devinfo,
    if (type_sz(value.type) == 8)
       return false;
 
+   /* 64-bits immediates are not supported in generations older than gen8. */
+   if (devinfo->gen < 8 && type_sz(inst->src[arg].type) == 8)
+      return false;
+
    if (value.type == BRW_REGISTER_TYPE_VF) {
       /* The result of bit-casting the component values of a vector float
        * cannot in general be represented as an immediate.
