@@ -44,6 +44,7 @@ struct acp_entry : public exec_node {
    fs_reg dst;
    fs_reg src;
    uint8_t regs_written;
+   uint8_t regs_read;
    enum opcode opcode;
    bool saturate;
 };
@@ -768,18 +769,32 @@ fs_visitor::opt_copy_propagate_local(void *copy_prop_ctx, bblock_t *block,
       /* kill the destination from the ACP */
       if (inst->dst.file == VGRF) {
          foreach_in_list_safe(acp_entry, entry, &acp[inst->dst.nr % ACP_HASH_SIZE]) {
-	    if (inst->overwrites_reg(entry->dst)) {
-	       entry->remove();
-	    }
-	 }
+            fs_reg tmp = entry->dst;
+            for (int n = 0; n < entry->regs_written; n++) {
+               if (inst->overwrites_reg(tmp)) {
+                  entry->remove();
+                  break;
+               }
+               tmp.reg_offset++;
+            }
+         }
 
          /* Oops, we only have the chaining hash based on the destination, not
           * the source, so walk across the entire table.
           */
          for (int i = 0; i < ACP_HASH_SIZE; i++) {
             foreach_in_list_safe(acp_entry, entry, &acp[i]) {
-               if (inst->overwrites_reg(entry->src))
-                  entry->remove();
+               /* Make sure we kill the entry if this instructions overwrites
+                * _any_ of the registers that it reads
+                */
+               fs_reg tmp = entry->src;
+               for (int n = 0; n < entry->regs_read; n++) {
+                  if (inst->overwrites_reg(tmp)) {
+                     entry->remove();
+                     break;
+                  }
+                  tmp.reg_offset++;
+               }
             }
 	 }
       }
@@ -788,10 +803,11 @@ fs_visitor::opt_copy_propagate_local(void *copy_prop_ctx, bblock_t *block,
        * operand of another instruction, add it to the ACP.
        */
       if (can_propagate_from(inst)) {
-	 acp_entry *entry = ralloc(copy_prop_ctx, acp_entry);
-	 entry->dst = inst->dst;
-	 entry->src = inst->src[0];
+         acp_entry *entry = ralloc(copy_prop_ctx, acp_entry);
+         entry->dst = inst->dst;
+         entry->src = inst->src[0];
          entry->regs_written = inst->regs_written;
+         entry->regs_read = inst->regs_read(0);
          entry->opcode = inst->opcode;
          entry->saturate = inst->saturate;
          acp[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
@@ -807,6 +823,7 @@ fs_visitor::opt_copy_propagate_local(void *copy_prop_ctx, bblock_t *block,
                entry->dst.reg_offset = offset;
                entry->src = inst->src[i];
                entry->regs_written = regs_written;
+               entry->regs_read = inst->regs_read(i);
                entry->opcode = inst->opcode;
                if (!entry->dst.equals(inst->src[i])) {
                   acp[entry->dst.nr % ACP_HASH_SIZE].push_tail(entry);
