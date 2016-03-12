@@ -371,6 +371,7 @@ intelInitExtensions(struct gl_context *ctx)
    if (brw->gen >= 8) {
       ctx->Extensions.ARB_stencil_texturing = true;
       ctx->Extensions.ARB_gpu_shader_fp64 = true;
+      ctx->Extensions.ARB_vertex_attrib_64bit = true;
    }
 
    if (brw->gen >= 9) {
