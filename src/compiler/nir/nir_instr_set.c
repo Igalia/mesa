@@ -128,7 +128,8 @@ hash_intrinsic(uint32_t hash, const nir_intrinsic_instr *instr)
    if (info->has_dest)
       hash = HASH(hash, instr->dest.ssa.num_components);
 
-   assert(info->num_variables == 0);
+   /* @FIXME: image_store intrinsics don't have variables */
+   // assert(info->num_variables == 0);
 
    hash = _mesa_fnv32_1a_accumulate_block(hash, instr->const_index,
                                           info->num_indices

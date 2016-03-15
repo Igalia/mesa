@@ -41,7 +41,8 @@
 enum intrinsic_groups {
    INTRINSIC_GROUP_NONE = 0,
    INTRINSIC_GROUP_SSBO,
-   INTRINSIC_GROUP_SHARED
+   INTRINSIC_GROUP_SHARED,
+   INTRINSIC_GROUP_IMAGE
 };
 
 /* SSBO load/store */
@@ -110,6 +111,37 @@ is_load_shared(nir_intrinsic_instr *intrinsic)
    }
 }
 
+/* Image load/store */
+static bool
+is_store_image(nir_intrinsic_instr *intrinsic)
+{
+   switch (intrinsic->intrinsic) {
+   case nir_intrinsic_image_store:
+   case nir_intrinsic_image_atomic_add:
+   case nir_intrinsic_image_atomic_min:
+   case nir_intrinsic_image_atomic_max:
+   case nir_intrinsic_image_atomic_and:
+   case nir_intrinsic_image_atomic_or:
+   case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_image_atomic_exchange:
+   case nir_intrinsic_image_atomic_comp_swap:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+is_load_image(nir_intrinsic_instr *intrinsic)
+{
+   switch (intrinsic->intrinsic) {
+   case nir_intrinsic_image_load:
+      return true;
+   default:
+      return false;
+   }
+}
+
 /*
  * General load/store functions: we'll add more groups to this as needed.
  * For now we only support SSBOs.
@@ -117,20 +149,23 @@ is_load_shared(nir_intrinsic_instr *intrinsic)
 static bool
 is_store(nir_intrinsic_instr *intrinsic)
 {
-   return is_store_ssbo(intrinsic) || is_store_shared(intrinsic);
+   return is_store_ssbo(intrinsic) || is_store_shared(intrinsic) ||
+      is_store_image(intrinsic);
 }
 
 static bool
 is_load(nir_intrinsic_instr *intrinsic)
 {
-   return is_load_ssbo(intrinsic) || is_load_shared(intrinsic);
+   return is_load_ssbo(intrinsic) || is_load_shared(intrinsic) ||
+      is_load_image(intrinsic);
 }
 
 static bool
 is_memory_barrier(nir_intrinsic_instr *intrinsic)
 {
    return intrinsic->intrinsic == nir_intrinsic_memory_barrier ||
-      intrinsic->intrinsic == nir_intrinsic_memory_barrier_shared;
+      intrinsic->intrinsic == nir_intrinsic_memory_barrier_shared ||
+      intrinsic->intrinsic == nir_intrinsic_memory_barrier_image;
 }
 
 static void
@@ -150,6 +185,9 @@ intrinsic_group(nir_intrinsic_instr *intrinsic)
    else if (is_load_shared(intrinsic) ||
             is_store_shared(intrinsic))
       return INTRINSIC_GROUP_SHARED;
+   else if (is_load_image(intrinsic) ||
+            is_store_image(intrinsic))
+      return INTRINSIC_GROUP_IMAGE;
 
    return INTRINSIC_GROUP_NONE;
 }
@@ -184,6 +222,7 @@ get_load_store_address(nir_intrinsic_instr *instr,
    int const_offset_index = -1;
 
    switch (instr->intrinsic) {
+      /* SSBO */
    case nir_intrinsic_load_ssbo:
       block_index = 0;
       offset_index = 1;
@@ -191,14 +230,6 @@ get_load_store_address(nir_intrinsic_instr *instr,
    case nir_intrinsic_store_ssbo:
       block_index = 1;
       offset_index = 2;
-      break;
-   case nir_intrinsic_load_shared:
-      const_block_index = 0;
-      offset_index = 0;
-      break;
-   case nir_intrinsic_store_shared:
-      const_block_index = 0;
-      offset_index = 1;
       break;
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
@@ -213,7 +244,16 @@ get_load_store_address(nir_intrinsic_instr *instr,
       block_index = 0;
       offset_index = 1;
       break;
-      /* fall-through to shared variable atomics */
+
+      /* shared variables */
+   case nir_intrinsic_load_shared:
+      const_block_index = 0;
+      offset_index = 0;
+      break;
+   case nir_intrinsic_store_shared:
+      const_block_index = 0;
+      offset_index = 1;
+      break;
    case nir_intrinsic_shared_atomic_add:
    case nir_intrinsic_shared_atomic_imin:
    case nir_intrinsic_shared_atomic_umin:
@@ -227,6 +267,27 @@ get_load_store_address(nir_intrinsic_instr *instr,
       const_block_index = 0;
       offset_index = 0;
       break;
+
+      /* image */
+   case nir_intrinsic_image_load:
+      const_block_index = 0;
+      offset_index = 0;
+      break;
+   case nir_intrinsic_image_store:
+      const_block_index = 0;
+      offset_index = 1;
+      break;
+   case nir_intrinsic_image_atomic_add:
+   case nir_intrinsic_image_atomic_min:
+   case nir_intrinsic_image_atomic_max:
+   case nir_intrinsic_image_atomic_and:
+   case nir_intrinsic_image_atomic_or:
+   case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_image_atomic_exchange:
+   case nir_intrinsic_image_atomic_comp_swap:
+      /* @TODO */
+      break;
+
    default:
       assert(!"not implemented");
    }
@@ -452,8 +513,10 @@ load_combine_block(nir_block *block)
          if (nir_instr_set_add_or_rewrite(instr_set, instr)) {
             progress = true;
             nir_instr_remove(instr);
+            printf("progress load\n");
          } else if (rewrite_load_with_store(instr_set, intrinsic)) {
             progress = true;
+            printf("progress load-store\n");
          }
       } else if (is_store(intrinsic)) {
          /* Invalidate conflicting load/stores */
