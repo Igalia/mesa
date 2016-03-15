@@ -263,6 +263,101 @@ set_invalidate_for_store(struct nir_instr_set *instr_set,
    }
 }
 
+static unsigned
+get_store_writemask(nir_intrinsic_instr *instr)
+{
+   switch (instr->intrinsic) {
+   case nir_intrinsic_store_ssbo:
+      return instr->const_index[0];
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_xor:
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+      return 0x1;
+   default:
+      assert(!"not implemented");
+   }
+}
+
+/*
+ * Traverses the set of load/store intrinsics trying to find a previous store
+ * operation to the same block/offset which we can reuse to re-write a load
+ * from the same block/offset.
+ */
+static bool
+rewrite_load_with_store(struct nir_instr_set *instr_set,
+                        nir_intrinsic_instr *load)
+{
+   nir_ssa_def *new_def = NULL;
+
+   nir_src *load_block = NULL;
+   unsigned load_const_block = 0;
+   nir_src *load_offset = NULL;
+   unsigned load_const_offset = 0;
+   get_load_store_address(load, &load_block, &load_const_block,
+                          &load_offset, &load_const_offset);
+
+   for (struct set_entry *entry = _mesa_set_next_entry(instr_set->set, NULL);
+        entry != NULL; entry = _mesa_set_next_entry(instr_set->set, entry)) {
+
+      nir_instr *instr = (nir_instr *) entry->key;
+      if (instr->type != nir_instr_type_intrinsic)
+         continue;
+
+      nir_intrinsic_instr *store = nir_instr_as_intrinsic(instr);
+
+      /* we need to rewrite with the latest possible store, so if we
+       * have one candidate already, don't bother checking preceeding
+       * store instructions.
+       * @FIXME: is the ssa_def->index a reliable way to check the order
+       *         of instructions in the same block?
+       */
+      if (new_def && store->src[0].ssa->index <= new_def->index)
+         continue;
+
+      if (!is_store(store))
+         continue;
+
+      /* The store must write to all the channels we are loading */
+      unsigned store_writemask = get_store_writemask(store);
+      bool writes_all_channels = true;
+      for (int i = 0; i < load->num_components; i++) {
+         if (!((1 << i) & store_writemask)) {
+            writes_all_channels = false;
+            break;
+         }
+      }
+      if (!writes_all_channels)
+         continue;
+
+      /* block and offset must match */
+      if (!intrinsic_block_and_offset_match(load_block, load_const_block,
+                                            load_offset, load_const_offset,
+                                            store)) {
+         continue;
+      }
+
+      /* set this store as the new candidate to rewrite the load */
+      new_def = store->src[0].ssa;
+   }
+
+   /* rewrite the load with the found store, if any */
+   if (new_def != NULL) {
+      nir_ssa_def *def = &load->dest.ssa;
+      nir_ssa_def_rewrite_uses(def, nir_src_for_ssa(new_def));
+
+      return true;
+   }
+
+   return false;
+}
+
 static bool
 load_combine_block(nir_block *block)
 {
@@ -283,10 +378,13 @@ load_combine_block(nir_block *block)
          if (nir_instr_set_add_or_rewrite(instr_set, instr)) {
             progress = true;
             nir_instr_remove(instr);
+         } else if (rewrite_load_with_store(instr_set, intrinsic)) {
+            progress = true;
          }
       } else if (is_store(intrinsic)) {
          /* Invalidate conflicting load/stores */
          set_invalidate_for_store(instr_set, intrinsic);
+         _mesa_set_add(instr_set->set, instr);
       } else if (is_memory_barrier(intrinsic)) {
          /* If we see a memory barrier we have to invalidate all cached
           * load/store operations
