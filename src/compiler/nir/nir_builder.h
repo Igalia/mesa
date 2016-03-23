@@ -89,10 +89,11 @@ nir_ssa_undef(nir_builder *build, unsigned num_components, unsigned bit_size)
 }
 
 static inline nir_ssa_def *
-nir_build_imm(nir_builder *build, unsigned num_components, nir_const_value value)
+nir_build_imm(nir_builder *build, unsigned num_components,
+              nir_const_value value, unsigned bit_size)
 {
    nir_load_const_instr *load_const =
-      nir_load_const_instr_create(build->shader, num_components, 32);
+      nir_load_const_instr_create(build->shader, num_components, bit_size);
    if (!load_const)
       return NULL;
 
@@ -111,7 +112,7 @@ nir_imm_float(nir_builder *build, float x)
    memset(&v, 0, sizeof(v));
    v.f32[0] = x;
 
-   return nir_build_imm(build, 1, v);
+   return nir_build_imm(build, 1, v, 32);
 }
 
 static inline nir_ssa_def *
@@ -125,7 +126,7 @@ nir_imm_vec4(nir_builder *build, float x, float y, float z, float w)
    v.f32[2] = z;
    v.f32[3] = w;
 
-   return nir_build_imm(build, 4, v);
+   return nir_build_imm(build, 4, v, 32);
 }
 
 static inline nir_ssa_def *
@@ -136,7 +137,7 @@ nir_imm_int(nir_builder *build, int x)
    memset(&v, 0, sizeof(v));
    v.i32[0] = x;
 
-   return nir_build_imm(build, 1, v);
+   return nir_build_imm(build, 1, v, 32);
 }
 
 static inline nir_ssa_def *
@@ -150,14 +151,14 @@ nir_imm_ivec4(nir_builder *build, int x, int y, int z, int w)
    v.i32[2] = z;
    v.i32[3] = w;
 
-   return nir_build_imm(build, 4, v);
+   return nir_build_imm(build, 4, v, 32);
 }
 
 static inline nir_ssa_def *
 nir_imm_uint(nir_builder *build, unsigned x)
 {
    nir_const_value v = { { .u32 = {x, 0, 0, 0} } };
-   return nir_build_imm(build, 1, v);
+   return nir_build_imm(build, 1, v, 32);
 }
 
 static inline nir_ssa_def *
