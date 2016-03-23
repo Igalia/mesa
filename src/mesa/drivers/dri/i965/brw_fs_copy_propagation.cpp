@@ -411,8 +411,9 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
       return false;
 
    if (has_source_modifiers &&
-       entry->dst.type != inst->src[arg].type &&
-       !inst->can_change_types())
+       ((entry->dst.type != inst->src[arg].type &&
+         !inst->can_change_types()) ||
+        (type_sz(entry->dst.type) != type_sz(inst->src[arg].type))))
       return false;
 
    if (devinfo->gen >= 8 && (entry->src.negate || entry->src.abs) &&
