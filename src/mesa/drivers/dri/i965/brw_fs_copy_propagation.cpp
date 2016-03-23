@@ -445,8 +445,27 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
    case BAD_FILE:
    case ARF:
    case FIXED_GRF:
-      inst->src[arg].reg_offset = entry->src.reg_offset;
-      inst->src[arg].subreg_offset = entry->src.subreg_offset;
+      {
+         inst->src[arg].reg_offset = entry->src.reg_offset;
+         inst->src[arg].subreg_offset = entry->src.subreg_offset;
+
+         /* If we copy propagate from a larger type we have to be aware that
+          * the instruction might be using subreg_offset to select a particular
+          * chunk of the data in the entry. For example:
+          *
+          * mov(8) vgrf5:DF, u2<0>:DF
+          * mov(8) vgrf7:UD, vgrf5+0.4<2>:UD
+          *
+          * vgrf5+0.4<2>:UD is actually reading the high 32-bit of u2.0, so if
+          * we want to copy propagate here we have to do it from u2+0.4.
+          */
+         int type_sz_src = type_sz(inst->src[arg].type);
+         int type_sz_entry = type_sz(entry->src.type);
+         if (type_sz_entry > type_sz_src) {
+            inst->src[arg].subreg_offset +=
+               inst->src[arg].subreg_offset % type_sz_entry;
+         }
+      }
       break;
    case ATTR:
    case VGRF:
