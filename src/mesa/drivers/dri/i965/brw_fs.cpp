@@ -1844,11 +1844,30 @@ fs_visitor::convert_attr_sources_to_hw_regs(fs_inst *inst)
                    inst->src[i].nr +
                    inst->src[i].reg_offset;
 
-         unsigned width = inst->src[i].stride == 0 ? 1 : inst->exec_size;
+         unsigned exec_size;
+         /* As explained at brw_reg_from_fs_reg, From the Haswell PRM:
+          *
+          * VertStride must be used to cross GRF register boundaries. This
+          * rule implies that elements within a 'Width' cannot cross GRF
+          * boundaries.
+          *
+          * So, for registers that are large enough, we have to split the exec
+          * size in two and trust the compression state to sort it out.
+          */
+         unsigned total_size = inst->exec_size *
+                               inst->src[i].stride *
+                               type_sz(inst->src[i].type);
+         if (total_size <= 32) {
+            exec_size = inst->exec_size;
+         } else {
+            assert(total_size / 2 <= 32);
+            exec_size = inst->exec_size / 2;
+         }
+         unsigned width = inst->src[i].stride == 0 ? 1 : exec_size;
          struct brw_reg reg =
             stride(byte_offset(retype(brw_vec8_grf(grf, 0), inst->src[i].type),
                                inst->src[i].subreg_offset),
-                   inst->exec_size * inst->src[i].stride,
+                   exec_size * inst->src[i].stride,
                    width, inst->src[i].stride);
          reg.abs = inst->src[i].abs;
          reg.negate = inst->src[i].negate;
