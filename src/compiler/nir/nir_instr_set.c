@@ -129,8 +129,6 @@ hash_intrinsic(uint32_t hash, const nir_intrinsic_instr *instr)
    if (info->has_dest)
       hash = HASH(hash, instr->dest.ssa.num_components);
 
-   assert(info->num_variables == 0);
-
    hash = _mesa_fnv32_1a_accumulate_block(hash, instr->const_index,
                                           info->num_indices
                                              * sizeof(instr->const_index[0]));
@@ -366,8 +364,6 @@ nir_instrs_equal(const nir_instr *instr1, const nir_instr *instr2)
          if (!nir_srcs_equal(intrinsic1->src[i], intrinsic2->src[i]))
             return false;
       }
-
-      assert(info->num_variables == 0);
 
       for (unsigned i = 0; i < info->num_indices; i++) {
          if (intrinsic1->const_index[i] != intrinsic2->const_index[i])
