@@ -825,6 +825,7 @@ brwCreateContext(gl_api api,
    brw->bufmgr = screen->bufmgr;
 
    brw->gen = devinfo->gen;
+   fprintf(stdout, "INTEL GENERATION IS %i\n", brw->gen);
    brw->gt = devinfo->gt;
    brw->is_g4x = devinfo->is_g4x;
    brw->is_baytrail = devinfo->is_baytrail;
