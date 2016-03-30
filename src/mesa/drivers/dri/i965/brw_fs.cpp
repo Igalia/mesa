@@ -4669,6 +4669,26 @@ get_lowered_simd_width(const struct brw_device_info *devinfo,
    case SHADER_OPCODE_SIN:
    case SHADER_OPCODE_COS:
    case FS_OPCODE_PACK: {
+      unsigned type_size = inst->dst.type;
+      unsigned channels_per_grf = inst->exec_size / inst->regs_written;
+      if (devinfo->gen < 8 && inst->regs_written > 1 && inst->dst.stride > 1 &&
+          ((type_size <= 4 &&  channels_per_grf != 8) ||
+           (type_size > 4 &&  channels_per_grf != 4))) {
+         /* Pre-Gen8 EUs are hardwired to use the QtrCtrl+1 (where QtrCtrl is
+          * the 8-bit quarter of the execution mask signals specified in the
+          * instruction control fields) for the second compressed half of any
+          * single-precision instruction (for double-precision instructions
+          * it's hardwired to use NibCtrl+1), which means that the EU will
+          * apply the wrong execution controls for the second sequential GRF
+          * write if the number of channels per GRF is not exactly eight in
+          * single-precision mode (or four in double-float mode).
+          *
+          * In this situation we calculate the maximum size of the split
+          * instructions so they only ever write to a single register.
+          */
+          return inst->exec_size / inst->regs_written;
+      }
+
       /* According to the PRMs:
        *  "A. In Direct Addressing mode, a source cannot span more than 2
        *      adjacent GRF registers.
