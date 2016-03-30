@@ -355,9 +355,9 @@ namespace brw {
          assert(inst->exec_size <= 32);
          assert(inst->exec_size == dispatch_width() ||
                 force_writemask_all);
-         assert(_group == 0 || _group == 8);
+         assert(_group == 0 || _group == 4 || _group == 8 || _group == 12);
 
-         inst->force_sechalf = (_group == 8);
+         inst->force_sechalf = (_group == 8 && dispatch_width() == 8);
          inst->force_writemask_all = force_writemask_all;
          inst->annotation = annotation.str;
          inst->ir = annotation.ir;
