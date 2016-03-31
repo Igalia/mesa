@@ -400,6 +400,15 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
    if (type_sz(entry->dst.type) < type_sz(inst->src[arg].type))
       return false;
 
+   /* Bail if the instruction type is larger than the execution type of the
+    * copy and the stride of the source we would be copy propagating from
+    * has a stride other than 1. Otherwise, since the stride is in units of
+    * the type, we would be changing the region effectively sourced.
+    */
+   if (type_sz(entry->dst.type) > type_sz(inst->src[arg].type) &&
+       entry->src.stride != 1)
+      return false;
+
    /* Bail if the result of composing both strides cannot be expressed
     * as another stride. This avoids, for example, trying to transform
     * this:
