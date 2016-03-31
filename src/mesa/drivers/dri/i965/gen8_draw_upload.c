@@ -252,6 +252,17 @@ gen8_emit_vertices(struct brw_context *brw)
          break;
       }
 
+      if (input->glarray->Doubles) {
+         switch (input->glarray->Size) {
+         case 1: comp1 = BRW_VE1_COMPONENT_STORE_0;
+         case 2:
+            comp2 = BRW_VE1_COMPONENT_NOSTORE;
+            comp3 = BRW_VE1_COMPONENT_NOSTORE;
+            break;
+         case 3: comp3 = BRW_VE1_COMPONENT_STORE_0;
+         }
+      }
+
       OUT_BATCH((input->buffer << GEN6_VE0_INDEX_SHIFT) |
                 GEN6_VE0_VALID |
                 (format << BRW_VE0_FORMAT_SHIFT) |
