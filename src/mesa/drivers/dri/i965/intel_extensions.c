@@ -343,6 +343,7 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.ARB_shader_storage_buffer_object = true;
       ctx->Extensions.EXT_shader_samples_identical = true;
       ctx->Extensions.OES_texture_buffer = true;
+      ctx->Extensions.ARB_gpu_shader_fp64 = true;
 
       if (brw->can_do_pipelined_register_writes) {
          ctx->Extensions.ARB_draw_indirect = true;
@@ -370,7 +371,6 @@ intelInitExtensions(struct gl_context *ctx)
 
    if (brw->gen >= 8) {
       ctx->Extensions.ARB_stencil_texturing = true;
-      ctx->Extensions.ARB_gpu_shader_fp64 = true;
    }
 
    if (brw->gen >= 9) {
