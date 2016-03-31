@@ -3173,6 +3173,12 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       for (unsigned j = 0; j < instr->num_components; j++) {
          bld.MOV(offset(dest, bld, j), offset(src, bld, j));
       }
+      if (type_sz(src.type) == 8)
+         SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA(bld,
+                                                 offset(dest, bld, 0),
+                                                 offset(dest, bld, 0),
+                                                 instr->num_components);
+
       break;
    }
 
