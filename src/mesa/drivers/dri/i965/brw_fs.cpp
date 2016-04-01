@@ -5508,7 +5508,7 @@ fs_visitor::optimize()
    int pass_num = 0;
 
    OPT(opt_drop_redundant_mov_to_flags);
-
+   OPT(lower_pack);
    OPT(lower_simd_width);
    OPT(lower_logical_sends);
 
@@ -5546,11 +5546,6 @@ fs_visitor::optimize()
       split_virtual_grfs();
       OPT(register_coalesce);
       OPT(compute_to_mrf);
-      OPT(dead_code_eliminate);
-   }
-
-   if (OPT(lower_pack)) {
-      OPT(register_coalesce);
       OPT(dead_code_eliminate);
    }
 
