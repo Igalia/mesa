@@ -481,6 +481,12 @@ set_invalidate_for_store(struct nir_instr_set *instr_set,
          }
       }
 
+      /* @DEBUG: traces for invalidations by a store instruction */
+      printf("Store instruction:\n");
+      nir_print_instr(&store->instr, stderr); printf("\n");
+      printf("invalidates:\n");
+      nir_print_instr(&cached->instr, stderr); printf("\n------\n");
+
       nir_instr_set_remove(instr_set, (nir_instr *) entry->key);
    }
 }
@@ -585,6 +591,12 @@ rewrite_load_with_store(struct nir_instr_set *instr_set,
             continue;
       }
 
+      /* @DEBUG: traces for an image load rewritten by a previous store */
+      printf("Load instruction:\n");
+      nir_print_instr(&load->instr, stderr); printf("\n");
+      printf("rewritten by previous store:\n");
+      nir_print_instr(&store->instr, stderr); printf("\n------\n");
+
       nir_ssa_def *def = &load->dest.ssa;
       nir_ssa_def *new_def = store->src[0].ssa;
       nir_ssa_def_rewrite_uses(def, nir_src_for_ssa(new_def));
@@ -622,6 +634,12 @@ rewrite_image_load_with_load(struct nir_instr_set *instr_set,
       /* Texture object and coordinates must match */
       if (!intrinsic_image_and_coordinates_match(load, prev_load))
          continue;
+
+      /* @DEBUG: traces for an image load combined with a previous load */
+      printf("Image load instruction:\n");
+      nir_print_instr(&load->instr, stderr); printf("\n");
+      printf("combined with:\n");
+      nir_print_instr(&prev_load->instr, stderr); printf("\n------\n");
 
       nir_ssa_def *def = &load->dest.ssa;
       nir_ssa_def *new_def = &prev_load->dest.ssa;
@@ -661,6 +679,14 @@ load_combine_block(nir_block *block)
             /* Try to rewrite with a previous load */
             progress = true;
             nir_instr_remove(instr);
+
+            /* @DEBUG: traces for a load combined with a previous load */
+            nir_instr *match = nir_instr_set_get_match(instr_set, instr);
+            assert(match);
+            printf("Load instruction:\n");
+            nir_print_instr(instr, stderr); printf("\n");
+            printf("combined with:\n");
+            nir_print_instr(match, stderr); printf("\n------\n");
          } else if (rewrite_load_with_store(instr_set, intrinsic)) {
             progress = true;
          }
@@ -675,6 +701,9 @@ load_combine_block(nir_block *block)
           * load/store operations
           */
          set_clear(instr_set);
+
+         /* @DEBUG: traces for a memory barrier clearing the set */
+         printf("Set fully invalidated due to memory barrier\n------\n");
       }
    }
 

@@ -551,6 +551,23 @@ nir_instr_set_destroy(struct nir_instr_set *instr_set)
    ralloc_free(instr_set);
 }
 
+nir_instr *
+nir_instr_set_get_match(struct nir_instr_set *instr_set, nir_instr *instr)
+{
+   if (!instr_can_rewrite(instr, instr_set->allow_loads))
+      return NULL;
+
+   struct set_entry *entry = _mesa_set_search(instr_set->set, instr);
+   if (entry) {
+      nir_instr *match = (nir_instr *) entry->key;
+
+      return match;
+   }
+
+   _mesa_set_add(instr_set->set, instr);
+   return NULL;
+}
+
 bool
 nir_instr_set_add_or_rewrite(struct nir_instr_set *instr_set, nir_instr *instr)
 {

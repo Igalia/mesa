@@ -68,4 +68,11 @@ bool nir_instr_set_add_or_rewrite(struct nir_instr_set *instr_set,
  */
 void nir_instr_set_remove(struct nir_instr_set *instr_set, nir_instr *instr);
 
+/**
+ * Returns an instruction from the set, that matches the given instruction
+ * if it exists, otherwise returns NULL.
+ */
+nir_instr *nir_instr_set_get_match(struct nir_instr_set *instr_set,
+                                   nir_instr *instr);
+
 /*@}*/
