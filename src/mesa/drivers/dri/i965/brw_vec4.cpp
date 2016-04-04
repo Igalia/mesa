@@ -2107,6 +2107,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
    const unsigned *assembly = NULL;
 
    unsigned nr_attributes = _mesa_bitcount_64(prog_data->inputs_read);
+   unsigned nr_attribute_slots = 0;
 
    /* gl_VertexID and gl_InstanceID are system values, but arrive via an
     * incoming vertex attribute.  So, add an extra slot.
@@ -2117,11 +2118,23 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
         BITFIELD64_BIT(SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) |
         BITFIELD64_BIT(SYSTEM_VALUE_INSTANCE_ID))) {
       nr_attributes++;
+      nr_attribute_slots++;
    }
 
    /* gl_DrawID has its very own vec4 */
    if (shader->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_DRAW_ID)) {
       nr_attributes++;
+      nr_attribute_slots++;
+   }
+
+   GLbitfield64 processed_attributes = 0;
+   foreach_list_typed(nir_variable, var, node, &shader->inputs) {
+      /* Only interested in values not already processed */
+      if (processed_attributes & BITFIELD64_BIT(var->data.location))
+         continue;
+
+      nr_attribute_slots += glsl_count_attribute_slots(var->type, false);
+      processed_attributes |= BITFIELD64_BIT(var->data.location);
    }
 
    /* The 3DSTATE_VS documentation lists the lower bound on "Vertex URB Entry
@@ -2129,9 +2142,11 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
     * vec4 mode, the hardware appears to wedge unless we read something.
     */
    if (is_scalar)
-      prog_data->base.urb_read_length = DIV_ROUND_UP(nr_attributes, 2);
+      prog_data->base.urb_read_length =
+         DIV_ROUND_UP(nr_attribute_slots, 2);
    else
-      prog_data->base.urb_read_length = DIV_ROUND_UP(MAX2(nr_attributes, 1), 2);
+      prog_data->base.urb_read_length =
+         DIV_ROUND_UP(MAX2(nr_attribute_slots, 1), 2);
 
    prog_data->nr_attributes = nr_attributes;
 
@@ -2140,7 +2155,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
     * the larger of the two.
     */
    const unsigned vue_entries =
-      MAX2(nr_attributes, (unsigned)prog_data->base.vue_map.num_slots);
+      MAX2(nr_attribute_slots, (unsigned)prog_data->base.vue_map.num_slots);
 
    if (compiler->devinfo->gen == 6)
       prog_data->base.urb_entry_size = DIV_ROUND_UP(vue_entries, 8);
