@@ -2065,23 +2065,40 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
       nr_attributes++;
    }
 
+   unsigned nr_attribute_slots = nr_attributes;
+   GLbitfield64 processed_attributes = 0;
+
+   foreach_list_typed(nir_variable, var, node, &shader->inputs) {
+      /* Only interested in doubles not already processed */
+      if (!(shader->info.double_inputs_read & BITFIELD64_BIT(var->data.location)) ||
+          processed_attributes & BITFIELD64_BIT(var->data.location)) {
+         continue;
+      }
+      /* We already counted 1 slot */
+      int extra_slots = glsl_count_attribute_slots(var->type, false) - 1;
+      if (extra_slots) {
+         nr_attribute_slots += extra_slots;
+         processed_attributes |= BITFIELD64_BIT(var->data.location);
+      }
+   }
    /* The 3DSTATE_VS documentation lists the lower bound on "Vertex URB Entry
     * Read Length" as 1 in vec4 mode, and 0 in SIMD8 mode.  Empirically, in
     * vec4 mode, the hardware appears to wedge unless we read something.
     */
    if (is_scalar)
-      prog_data->base.urb_read_length = DIV_ROUND_UP(nr_attributes, 2);
+      prog_data->base.urb_read_length = DIV_ROUND_UP(nr_attribute_slots, 2);
    else
-      prog_data->base.urb_read_length = DIV_ROUND_UP(MAX2(nr_attributes, 1), 2);
+      prog_data->base.urb_read_length = DIV_ROUND_UP(MAX2(nr_attribute_slots, 1), 2);
 
    prog_data->nr_attributes = nr_attributes;
+   prog_data->nr_attribute_slots = nr_attribute_slots;
 
    /* Since vertex shaders reuse the same VUE entry for inputs and outputs
     * (overwriting the original contents), we need to make sure the size is
     * the larger of the two.
     */
    const unsigned vue_entries =
-      MAX2(nr_attributes, (unsigned)prog_data->base.vue_map.num_slots);
+      MAX2(nr_attribute_slots, (unsigned)prog_data->base.vue_map.num_slots);
 
    if (compiler->devinfo->gen == 6)
       prog_data->base.urb_entry_size = DIV_ROUND_UP(vue_entries, 8);
