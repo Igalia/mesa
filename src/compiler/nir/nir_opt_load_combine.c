@@ -502,6 +502,12 @@ cache_invalidate_for_store(struct cache_node *cache,
          }
       }
 
+      /* @DEBUG: traces for invalidations by a store instruction */
+      printf("Store instruction:\n");
+      nir_print_instr(&store->instr, stderr); printf("\n");
+      printf("invalidates:\n");
+      nir_print_instr(&cached->instr, stderr); printf("\n------\n");
+
       list_del(&item->list);
       ralloc_free(item);
    }
@@ -608,6 +614,12 @@ rewrite_load_with_store(struct cache_node *cache,
             continue;
       }
 
+      /* @DEBUG: traces for an image load rewritten by a previous store */
+      printf("Load instruction:\n");
+      nir_print_instr(&load->instr, stderr); printf("\n");
+      printf("rewritten by previous store:\n");
+      nir_print_instr(&store->instr, stderr); printf("\n------\n");
+
       nir_ssa_def *def = &load->dest.ssa;
       nir_ssa_def *new_def = store->src[0].ssa;
       nir_ssa_def_rewrite_uses(def, nir_src_for_ssa(new_def));
@@ -664,6 +676,12 @@ rewrite_load_with_load(struct cache_node *cache,
             continue;
       }
 
+      /* @DEBUG: traces for an image load combined with a previous load */
+      printf("Load instruction:\n");
+      nir_print_instr(&load->instr, stderr); printf("\n");
+      printf("combined with:\n");
+      nir_print_instr(&prev_load->instr, stderr); printf("\n------\n");
+
       nir_ssa_def *def = &load->dest.ssa;
       nir_ssa_def *new_def = &prev_load->dest.ssa;
       nir_ssa_def_rewrite_uses(def, nir_src_for_ssa(new_def));
@@ -711,6 +729,9 @@ load_combine_block(nir_block *block)
           * load/store operations
           */
          cache_clear(&cache);
+
+         /* @DEBUG: traces for a memory barrier clearing the set */
+         printf("Set fully invalidated due to memory barrier\n------\n");
       }
    }
 
