@@ -28,6 +28,7 @@
  */
 
 #include "nir.h"
+#include "program/prog_instruction.h"
 
 /*
  * SSBO stores won't invalidate image loads for example, so we want to
@@ -288,6 +289,30 @@ detect_memory_access_conflict(nir_intrinsic_instr *instr1,
    return false;
 }
 
+static unsigned
+get_store_writemask(nir_intrinsic_instr *instr)
+{
+   switch (instr->intrinsic) {
+   case nir_intrinsic_store_ssbo:
+      return instr->const_index[0];
+
+   case nir_intrinsic_ssbo_atomic_add:
+   case nir_intrinsic_ssbo_atomic_imin:
+   case nir_intrinsic_ssbo_atomic_umin:
+   case nir_intrinsic_ssbo_atomic_imax:
+   case nir_intrinsic_ssbo_atomic_umax:
+   case nir_intrinsic_ssbo_atomic_and:
+   case nir_intrinsic_ssbo_atomic_or:
+   case nir_intrinsic_ssbo_atomic_xor:
+   case nir_intrinsic_ssbo_atomic_exchange:
+   case nir_intrinsic_ssbo_atomic_comp_swap:
+      return WRITEMASK_X;
+
+   default:
+      assert(!"not implemented");
+   }
+}
+
 /**
  * Traverses the set of cached load/store intrinsics and invalidates all that
  * conflict with @store.
@@ -358,6 +383,71 @@ rewrite_load_with_load(struct cache_node *cache,
 }
 
 /**
+ * Traverses the set of load/store intrinsics trying to find a previous store
+ * operation to the same block/offset which we can reuse to re-write a load
+ * from the same block/offset.
+ */
+static bool
+rewrite_load_with_store(struct cache_node *cache,
+                        nir_intrinsic_instr *load)
+{
+   assert(is_load(load));
+
+   list_for_each_entry(struct cache_node, item, &cache->list, list) {
+      nir_instr *instr = item->instr;
+      assert(instr->type == nir_instr_type_intrinsic);
+      if (instr->type != nir_instr_type_intrinsic)
+         continue;
+
+      nir_intrinsic_instr *store = nir_instr_as_intrinsic(instr);
+
+      if (!is_store(store))
+         continue;
+
+      /* We cannot rewrite with atomics, because the result of these is
+       * the old value of the buffer before the atomic execution.
+       */
+      if (is_atomic(store))
+         continue;
+
+      /* Both intrinsics must access same memory area (block, offset, etc).
+       *
+       * Here. we reuse detect_memory_access_conflict(), which meets this
+       * purpose semantically, except that we need to know if the conflict
+       * happened because the blocks and offsets match.
+       */
+      bool blocks_and_offsets_match = false;
+      if (!detect_memory_access_conflict(load, store,
+                                         &blocks_and_offsets_match)) {
+         continue;
+      }
+      if (!blocks_and_offsets_match)
+         continue;
+
+      /* The store must write to all the channels we are loading */
+      unsigned store_writemask = get_store_writemask(store);
+      bool writes_all_channels = true;
+      for (int i = 0; i < load->num_components; i++) {
+         if (!((1 << i) & store_writemask)) {
+            writes_all_channels = false;
+            break;
+         }
+      }
+      if (!writes_all_channels)
+         continue;
+
+      /* rewrite the new load with the cached store instruction */
+      nir_ssa_def *def = &load->dest.ssa;
+      nir_ssa_def *new_def = store->src[0].ssa;
+      nir_ssa_def_rewrite_uses(def, nir_src_for_ssa(new_def));
+
+      return true;
+   }
+
+   return false;
+}
+
+/**
  * Traverses the set of cached load/store intrinsics, and remove those
  * whose intrinsic group matches @group.
  */
@@ -398,10 +488,15 @@ load_combine_block(nir_block *block)
          if (rewrite_load_with_load(&cache, intrinsic)) {
             nir_instr_remove(instr);
             progress = true;
+         } else if (rewrite_load_with_store(&cache, intrinsic)) {
+            progress = true;
          }
       } else if (is_store(intrinsic)) {
-         /* Invalidate conflicting load/stores */
+         /* Invalidate conflicting load/stores and add the store to the cache
+          * so we can rewrite future loads with it.
+          */
          cache_invalidate_for_store(&cache, intrinsic);
+         cache_add(&cache, instr);
       } else if (is_memory_barrier(intrinsic)) {
          /* If we see a memory barrier we have to invalidate all cached
           * load/store operations from the same intrinsic group.
