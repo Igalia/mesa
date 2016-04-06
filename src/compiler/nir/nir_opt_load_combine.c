@@ -613,9 +613,19 @@ rewrite_load_with_store(struct nir_instr_set *instr_set,
  * to eliminate the given image load.
  */
 static bool
-rewrite_image_load_with_load(struct nir_instr_set *instr_set,
-                             nir_intrinsic_instr *load)
+rewrite_load_with_load(struct nir_instr_set *instr_set,
+                       nir_intrinsic_instr *load)
 {
+   nir_src *load_block = NULL;
+   unsigned load_const_block = 0;
+   nir_src *load_offset = NULL;
+   unsigned load_const_offset = 0;
+
+   if (intrinsic_group(load) != INTRINSIC_GROUP_IMAGE) {
+      get_load_store_address(load, &load_block, &load_const_block,
+                             &load_offset, &load_const_offset);
+   }
+
    for (struct set_entry *entry = _mesa_set_next_entry(instr_set->set, NULL);
         entry != NULL; entry = _mesa_set_next_entry(instr_set->set, entry)) {
 
@@ -631,12 +641,21 @@ rewrite_image_load_with_load(struct nir_instr_set *instr_set,
       if (!intrinsic_group_match(load, prev_load))
          continue;
 
-      /* Texture object and coordinates must match */
-      if (!intrinsic_image_and_coordinates_match(load, prev_load))
-         continue;
+      if (intrinsic_group(load) != INTRINSIC_GROUP_IMAGE) {
+         /* block and offset must match */
+         if (!intrinsic_block_and_offset_match(load_block, load_const_block,
+                                               load_offset, load_const_offset,
+                                               prev_load)) {
+            continue;
+         }
+      } else {
+         /* Texture object and coordinates must match */
+         if (!intrinsic_image_and_coordinates_match(load, prev_load))
+            continue;
+      }
 
       /* @DEBUG: traces for an image load combined with a previous load */
-      printf("Image load instruction:\n");
+      printf("Load instruction:\n");
       nir_print_instr(&load->instr, stderr); printf("\n");
       printf("combined with:\n");
       nir_print_instr(&prev_load->instr, stderr); printf("\n------\n");
@@ -648,8 +667,16 @@ rewrite_image_load_with_load(struct nir_instr_set *instr_set,
       return true;
    }
 
+   _mesa_set_add(instr_set->set, &load->instr);
+
    return false;
 }
+
+struct cache_node {
+   struct list_head list;
+   nir_instr *instr;
+   uint32_t val;
+};
 
 static bool
 load_combine_block(nir_block *block)
@@ -667,26 +694,9 @@ load_combine_block(nir_block *block)
 
       nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
       if (is_load(intrinsic)) {
-         /* Image load instructions are handled differently than
-          * SSBO and shared-var loads, because instead of being defined
-          * by block/offset, they are defined by tex-obj/coordinates.
-          * So we handle those separately.
-          */
-         if (intrinsic_group(intrinsic) == INTRINSIC_GROUP_IMAGE &&
-             rewrite_image_load_with_load(instr_set, intrinsic)) {
-            progress = true;
-         } else if (nir_instr_set_add_or_rewrite(instr_set, instr)) {
-            /* Try to rewrite with a previous load */
+         if (rewrite_load_with_load(instr_set, intrinsic)) {
             progress = true;
             nir_instr_remove(instr);
-
-            /* @DEBUG: traces for a load combined with a previous load */
-            nir_instr *match = nir_instr_set_get_match(instr_set, instr);
-            assert(match);
-            printf("Load instruction:\n");
-            nir_print_instr(instr, stderr); printf("\n");
-            printf("combined with:\n");
-            nir_print_instr(match, stderr); printf("\n------\n");
          } else if (rewrite_load_with_store(instr_set, intrinsic)) {
             progress = true;
          }
