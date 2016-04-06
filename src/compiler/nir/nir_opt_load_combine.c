@@ -41,7 +41,8 @@
 enum intrinsic_groups {
    INTRINSIC_GROUP_NONE = 0,
    INTRINSIC_GROUP_SSBO,
-   INTRINSIC_GROUP_SHARED
+   INTRINSIC_GROUP_SHARED,
+   INTRINSIC_GROUP_IMAGE
 };
 
 struct cache_node {
@@ -125,6 +126,47 @@ is_load_shared(nir_intrinsic_instr *intrinsic)
    return intrinsic->intrinsic == nir_intrinsic_load_shared;
 }
 
+/* Image load/store */
+static bool
+is_atomic_image(nir_intrinsic_instr *intrinsic)
+{
+   switch (intrinsic->intrinsic) {
+   case nir_intrinsic_image_atomic_add:
+   case nir_intrinsic_image_atomic_min:
+   case nir_intrinsic_image_atomic_max:
+   case nir_intrinsic_image_atomic_and:
+   case nir_intrinsic_image_atomic_or:
+   case nir_intrinsic_image_atomic_xor:
+   case nir_intrinsic_image_atomic_exchange:
+   case nir_intrinsic_image_atomic_comp_swap:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static bool
+is_store_image(nir_intrinsic_instr *intrinsic)
+{
+   switch (intrinsic->intrinsic) {
+   case nir_intrinsic_image_store:
+      return true;
+   default:
+      return is_atomic_image(intrinsic);
+   }
+}
+
+static bool
+is_load_image(nir_intrinsic_instr *intrinsic)
+{
+   switch (intrinsic->intrinsic) {
+   case nir_intrinsic_image_load:
+      return true;
+   default:
+      return false;
+   }
+}
+
 /*
  * General load/store functions: we'll add more groups to this as needed.
  * For now we only support SSBOs.
@@ -132,19 +174,22 @@ is_load_shared(nir_intrinsic_instr *intrinsic)
 static inline bool
 is_store(nir_intrinsic_instr *intrinsic)
 {
-   return is_store_ssbo(intrinsic) || is_store_shared(intrinsic);
+   return is_store_ssbo(intrinsic) || is_store_shared(intrinsic) ||
+      is_store_image(intrinsic);
 }
 
 static inline bool
 is_load(nir_intrinsic_instr *intrinsic)
 {
-   return is_load_ssbo(intrinsic) || is_load_shared(intrinsic);
+   return is_load_ssbo(intrinsic) || is_load_shared(intrinsic) ||
+      is_load_image(intrinsic);
 }
 
 static inline bool
 is_atomic(nir_intrinsic_instr *intrinsic)
 {
-   return is_atomic_ssbo(intrinsic) || is_atomic_shared(intrinsic);
+   return is_atomic_ssbo(intrinsic) || is_atomic_shared(intrinsic)
+      || is_atomic_image(intrinsic);
 }
 
 static inline bool
@@ -152,7 +197,8 @@ is_memory_barrier(nir_intrinsic_instr *intrinsic)
 {
    return intrinsic->intrinsic == nir_intrinsic_memory_barrier ||
       intrinsic->intrinsic == nir_intrinsic_memory_barrier_buffer ||
-      intrinsic->intrinsic == nir_intrinsic_memory_barrier_shared;
+      intrinsic->intrinsic == nir_intrinsic_memory_barrier_shared ||
+      intrinsic->intrinsic == nir_intrinsic_memory_barrier_image;
 }
 
 static unsigned
@@ -162,6 +208,8 @@ intrinsic_group(nir_intrinsic_instr *intrinsic)
       return INTRINSIC_GROUP_SSBO;
    else if (is_load_shared(intrinsic) || is_store_shared(intrinsic))
       return INTRINSIC_GROUP_SHARED;
+   else if (is_load_image(intrinsic) || is_store_image(intrinsic))
+      return INTRINSIC_GROUP_IMAGE;
    else
       return INTRINSIC_GROUP_NONE;
 }
@@ -318,6 +366,92 @@ intrinsic_block_and_offset_match(nir_src *instr1_block,
    return true;
 }
 
+static inline bool
+nir_src_is_undefined(nir_src src)
+{
+   return src.is_ssa &&
+      src.ssa->parent_instr->type == nir_instr_type_ssa_undef;
+}
+
+/**
+ * Returns true if two coordinates sources of an image intrinsic match.
+ * This means that both sources are defined by ALU vec4 ops, with all
+ * 4 sources equivalent. For exmaple, consider the following snippet:
+ *
+ *   vec1 ssa_1 = undefined
+ *   vec4 ssa_2 = vec4 ssa_0, ssa_0, ssa_1, ssa_1
+ *   vec4 ssa_3 = intrinsic image_load (ssa_2, ssa_1) (itex) ()
+ *   ...
+ *   vec1 ssa_6 = undefined
+ *   vec4 ssa_7 = vec4 ssa_0, ssa_0, ssa_1, ssa_1
+ *   vec4 ssa_8 = intrinsic image_load (ssa_7, ssa_6) (itex) ()
+ *
+ * Here, ssa_2 and ssa_7 are the coordinates inside the image, and
+ * they are two different SSA definitions, so comparing them directly
+ * won't work. This function is able to detect this and check that
+ * ssa_2 and ssa_7 are indeed "equivalent"; so the pass can tell that
+ * the two image_load instructions are a match.
+ */
+static bool
+coordinates_match(nir_src *coord1, nir_src *coord2)
+{
+   assert(coord1->is_ssa);
+   assert(coord2->is_ssa);
+
+   nir_ssa_def *ssa1 = coord1->ssa;
+   nir_ssa_def *ssa2 = coord2->ssa;
+
+   nir_instr *parent1 = ssa1->parent_instr;
+   nir_instr *parent2 = ssa2->parent_instr;
+
+   /* @FIXME: by now, we assume that all coordinates into an image load/store
+    * instruction, is given by an ALU vec4 instruction. This might not be
+    * the case.
+    */
+   assert(parent1->type == nir_instr_type_alu);
+   assert(parent2->type == nir_instr_type_alu);
+
+   nir_alu_instr *alu1 = nir_instr_as_alu(parent1);
+   nir_alu_instr *alu2 = nir_instr_as_alu(parent2);
+
+   assert(alu1->op = nir_op_vec4);
+   assert(alu2->op = nir_op_vec4);
+
+   for (unsigned i = 0; i < 4; i++) {
+      if (nir_src_is_undefined(alu1->src[i].src)) {
+         if (!nir_src_is_undefined(alu2->src[i].src))
+            return false;
+      } else if (nir_src_is_undefined(alu2->src[i].src)) {
+         if (!nir_src_is_undefined(alu1->src[i].src))
+            return false;
+      } else if (!nir_srcs_equal(alu1->src[i].src, alu2->src[i].src)) {
+         return false;
+      }
+   }
+
+   return true;
+}
+
+/**
+ * Returns true if the two image instructions match, meaning their targets
+ * are the same texture object and coordinates. Otherwise returns false.
+ */
+static bool
+image_and_coordinates_match(nir_intrinsic_instr *instr1,
+                            nir_intrinsic_instr *instr2)
+{
+   assert(instr1->variables[0]);
+   assert(instr2->variables[0]);
+
+   if (instr1->variables[0]->var != instr2->variables[0]->var)
+      return false;
+
+   if (!coordinates_match(&instr1->src[0], &instr2->src[0]))
+      return false;
+
+   return true;
+}
+
 /*
  * Traverses the set of cached load/store intrinsics and invalidates all that
  * conflict with @store.
@@ -332,8 +466,11 @@ cache_invalidate_for_store(struct cache_node *cache,
    unsigned store_const_block = 0;
    nir_src *store_offset = NULL;
    unsigned store_const_offset = 0;
-   get_load_store_address(store, &store_block, &store_const_block,
-                          &store_offset, &store_const_offset);
+
+   if (intrinsic_group(store) != INTRINSIC_GROUP_IMAGE) {
+      get_load_store_address(store, &store_block, &store_const_block,
+                             &store_offset, &store_const_offset);
+   }
 
    list_for_each_entry_safe(struct cache_node, item, &cache->list, list) {
       nir_instr *instr = item->instr;
@@ -344,13 +481,25 @@ cache_invalidate_for_store(struct cache_node *cache,
       if (!intrinsic_group_match(store, cached))
          continue;
 
-      /* block and offset must match */
-      if (!intrinsic_block_and_offset_match(store_block,
-                                            store_const_block,
-                                            store_offset,
-                                            store_const_offset,
-                                            cached)) {
-         continue;
+      if (intrinsic_group(store) == INTRINSIC_GROUP_IMAGE) {
+         /* An image store instruction always invalidates any previous
+          * image load/store, regardless of texture object or coordinates.
+          * This is because the same image can be aliased with different
+          * uniforms, making it impossible to know if two image accesses
+          * operate or not on the same chunk of memory.
+          * There is also no practical way to tell that two image coordinates
+          * are equivalent, because they are currently represented by
+          * indirect, inconditionally different SSA definitions.
+          */
+      } else {
+         /* block and offset must match */
+         if (!intrinsic_block_and_offset_match(store_block,
+                                               store_const_block,
+                                               store_offset,
+                                               store_const_offset,
+                                               cached)) {
+            continue;
+         }
       }
 
       list_del(&item->list);
@@ -408,8 +557,11 @@ rewrite_load_with_store(struct cache_node *cache,
    unsigned load_const_block = 0;
    nir_src *load_offset = NULL;
    unsigned load_const_offset = 0;
-   get_load_store_address(load, &load_block, &load_const_block,
-                          &load_offset, &load_const_offset);
+
+   if (intrinsic_group(load) != INTRINSIC_GROUP_IMAGE) {
+      get_load_store_address(load, &load_block, &load_const_block,
+                             &load_offset, &load_const_offset);
+   }
 
    list_for_each_entry(struct cache_node, item, &cache->list, list) {
       nir_instr *instr = item->instr;
@@ -432,23 +584,28 @@ rewrite_load_with_store(struct cache_node *cache,
       if (!intrinsic_group_match(load, store))
          continue;
 
-      /* The store must write to all the channels we are loading */
-      unsigned store_writemask = get_store_writemask(store);
-      bool writes_all_channels = true;
-      for (int i = 0; i < load->num_components; i++) {
-         if (!((1 << i) & store_writemask)) {
-            writes_all_channels = false;
-            break;
+      if (intrinsic_group(load) != INTRINSIC_GROUP_IMAGE) {
+         /* The store must write to all the channels we are loading */
+         unsigned store_writemask = get_store_writemask(store);
+         bool writes_all_channels = true;
+         for (int i = 0; i < load->num_components; i++) {
+            if (!((1 << i) & store_writemask)) {
+               writes_all_channels = false;
+               break;
+            }
          }
-      }
-      if (!writes_all_channels)
-         continue;
+         if (!writes_all_channels)
+            continue;
 
-      /* block and offset must match */
-      if (!intrinsic_block_and_offset_match(load_block, load_const_block,
-                                            load_offset, load_const_offset,
-                                            store)) {
-         continue;
+         /* block and offset must match */
+         if (!intrinsic_block_and_offset_match(load_block, load_const_block,
+                                               load_offset, load_const_offset,
+                                               store)) {
+            continue;
+         }
+      } else {
+         if (!image_and_coordinates_match(load, store))
+            continue;
       }
 
       nir_ssa_def *def = &load->dest.ssa;
@@ -475,8 +632,11 @@ rewrite_load_with_load(struct cache_node *cache,
    unsigned load_const_block = 0;
    nir_src *load_offset = NULL;
    unsigned load_const_offset = 0;
-   get_load_store_address(load, &load_block, &load_const_block,
-                          &load_offset, &load_const_offset);
+
+   if (intrinsic_group(load) != INTRINSIC_GROUP_IMAGE) {
+      get_load_store_address(load, &load_block, &load_const_block,
+                             &load_offset, &load_const_offset);
+   }
 
    list_for_each_entry(struct cache_node, item, &cache->list, list) {
       nir_instr *instr = item->instr;
@@ -490,13 +650,18 @@ rewrite_load_with_load(struct cache_node *cache,
       if (!intrinsic_group_match(load, prev_load))
          continue;
 
-      /* block and offset must match */
-      if (!intrinsic_block_and_offset_match(load_block,
-                                            load_const_block,
-                                            load_offset,
-                                            load_const_offset,
-                                            prev_load)) {
-         continue;
+      if (intrinsic_group(load) != INTRINSIC_GROUP_IMAGE) {
+         /* block and offset must match */
+         if (!intrinsic_block_and_offset_match(load_block,
+                                               load_const_block,
+                                               load_offset,
+                                               load_const_offset,
+                                               prev_load)) {
+            continue;
+         }
+      } else {
+         if (!image_and_coordinates_match(load, prev_load))
+            continue;
       }
 
       nir_ssa_def *def = &load->dest.ssa;
