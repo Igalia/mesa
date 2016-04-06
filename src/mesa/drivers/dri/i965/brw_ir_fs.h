@@ -109,6 +109,10 @@ byte_offset(fs_reg reg, unsigned delta)
       assert(delta == 0);
    }
    reg.subreg_offset += delta % 32;
+   if (reg.subreg_offset >= 32) {
+      reg.reg_offset += reg.subreg_offset / 32;
+      reg.subreg_offset %= 32;
+   }
    return reg;
 }
 
