@@ -4779,10 +4779,37 @@ fs_visitor::lower_simd_width()
              * one half per component, because LOAD_PAYLOAD (in terms of which
              * emit_transpose is implemented) can only use the same channel
              * enable signals for all of its non-header sources.
+             *
+             * If we need to set exec_all() and the original instruction didn't
+             * have force_writemask_all set then we have to write to a
+             * temporary register and then move from there to the actual dst
+             * without exec_all() set to honor the execmask.
              */
-            emit_transpose(ibld.exec_all(inst->exec_size > copy_width)
-                               .group(copy_width, 0),
-                           inst->dst, dsts, n, dst_size, m);
+            bool force_exec_all = inst->exec_size > copy_width;
+            if (force_exec_all && !inst->force_writemask_all) {
+               fs_reg tmp_dst =
+                  fs_reg(VGRF, alloc.allocate(alloc.sizes[inst->dst.nr]));
+               tmp_dst.type = inst->dst.type;
+               emit_transpose(ibld.exec_all(true).group(copy_width, 0),
+                              tmp_dst, dsts, n, dst_size, m);
+
+               for (unsigned row = 0; row < n; row++) {
+                  for (unsigned col = 0; col < dst_size; col++) {
+                     unsigned element_offset = row * dst_size + m * col;
+                     const fs_builder tmp_bld =
+                        ibld.group(copy_width, element_offset % n);
+                     fs_reg dst = offset(inst->dst, tmp_bld, element_offset);
+                     fs_reg src = offset(tmp_dst, tmp_bld, element_offset);
+                     fs_inst *_inst = tmp_bld.MOV(dst, src);
+                     if (row * dst_size + col < inst->header_size)
+                        _inst->force_writemask_all = true;
+                  }
+               }
+            } else {
+               emit_transpose(ibld.exec_all(force_exec_all)
+                                 .group(copy_width, 0),
+                              inst->dst, dsts, n, dst_size, m);
+            }
          }
 
          inst->remove(block);
