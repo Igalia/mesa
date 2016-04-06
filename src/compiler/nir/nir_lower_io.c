@@ -118,7 +118,6 @@ get_io_offset(nir_builder *b, nir_deref_var *deref,
       if (tail->deref_type == nir_deref_type_array) {
          nir_deref_array *deref_array = nir_deref_as_array(tail);
          unsigned size = type_size(tail->type);
-
          offset = nir_iadd(b, offset,
                            nir_imm_int(b, size * deref_array->base_offset));
 

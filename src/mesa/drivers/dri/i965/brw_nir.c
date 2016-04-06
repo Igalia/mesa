@@ -23,9 +23,11 @@
 
 #include "brw_nir.h"
 #include "brw_shader.h"
+#include "compiler/glsl_types.h"
 #include "compiler/nir/glsl_to_nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "program/prog_to_nir.h"
+#include "compiler/glsl_types.h"
 
 static bool
 is_input(nir_intrinsic_instr *intrin)
@@ -218,7 +220,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
     * are loaded as one vec4 per element (or matrix column), so we use
     * type_size_vec4 here.
     */
-   nir_lower_io(nir, nir_var_shader_in, type_size_vec4);
+   nir_lower_io(nir, nir_var_shader_in, type_size_vs_input);
 
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
