@@ -564,6 +564,12 @@ cache_invalidate_for_store(struct cache_node *cache,
       nir_intrinsic_instr *cached = nir_instr_as_intrinsic(instr);
 
       if (detect_memory_access_conflict(store, cached, NULL)) {
+         /* @DEBUG: traces for invalidations by a store instruction */
+         printf("Store instruction:\n");
+         nir_print_instr(&store->instr, stderr); printf("\n");
+         printf("invalidates:\n");
+         nir_print_instr(&cached->instr, stderr); printf("\n------\n");
+
          /* remove the cached instruction from the list */
          list_del(&item->list);
          ralloc_free(item);
@@ -602,6 +608,12 @@ rewrite_load_with_load(struct cache_node *cache,
       }
 
       if (blocks_and_offsets_match) {
+         /* @DEBUG: traces for an image load combined with a previous load */
+         printf("Load instruction:\n");
+         nir_print_instr(&load->instr, stderr); printf("\n");
+         printf("combined with:\n");
+         nir_print_instr(&prev_load->instr, stderr); printf("\n------\n");
+
          /* rewrite the new load with the cached load instruction */
          nir_ssa_def *def = &load->dest.ssa;
          nir_ssa_def *new_def = &prev_load->dest.ssa;
@@ -672,6 +684,12 @@ rewrite_load_with_store(struct cache_node *cache,
             continue;
       }
 
+      /* @DEBUG: traces for an image load rewritten by a previous store */
+      printf("Load instruction:\n");
+      nir_print_instr(&load->instr, stderr); printf("\n");
+      printf("rewritten by previous store:\n");
+      nir_print_instr(&store->instr, stderr); printf("\n------\n");
+
       /* rewrite the new load with the cached store instruction */
       nir_ssa_def *def = &load->dest.ssa;
       nir_ssa_def *new_def;
@@ -704,6 +722,10 @@ cache_invalidate_for_group(struct cache_node *cache, unsigned group)
       nir_intrinsic_instr *cached = nir_instr_as_intrinsic(instr);
 
       if (group == INTRINSIC_GROUP_ALL || intrinsic_group(cached) == group) {
+         /* @DEBUG: traces for a memory barrier clearing an intrinsic group */
+         printf("Memory barrier invalidates:\n");
+         nir_print_instr(&cached->instr, stderr); printf("\n------\n");
+
          list_del(&item->list);
          ralloc_free(item);
       }
