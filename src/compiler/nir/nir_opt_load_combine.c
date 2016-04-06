@@ -25,13 +25,13 @@
  *
  */
 
+#include <nir.h>
+
 /*
  * Implements a load-combine pass for load/store instructions. Similar to a
  * CSE pass, but needs to consider invalidation of cached loads by stores
  * or memory barriers. It only works on local blocks for now.
  */
-
-#include "nir_instr_set.h"
 
 /*
  * SSBO stores won't invalidate image loads for example, so we want to
@@ -43,6 +43,11 @@ enum intrinsic_groups {
    INTRINSIC_GROUP_SSBO,
    INTRINSIC_GROUP_SHARED,
    INTRINSIC_GROUP_IMAGE
+};
+
+struct cache_node {
+   struct list_head list;
+   nir_instr *instr;
 };
 
 /* SSBO load/store */
@@ -194,14 +199,6 @@ is_memory_barrier(nir_intrinsic_instr *intrinsic)
       intrinsic->intrinsic == nir_intrinsic_memory_barrier_buffer ||
       intrinsic->intrinsic == nir_intrinsic_memory_barrier_shared ||
       intrinsic->intrinsic == nir_intrinsic_memory_barrier_image;
-}
-
-static void
-set_clear(struct nir_instr_set *instr_set)
-{
-   struct set_entry *entry;
-   set_foreach(instr_set->set, entry)
-      _mesa_set_remove(instr_set->set, entry);
 }
 
 static unsigned
@@ -441,7 +438,7 @@ intrinsic_image_and_coordinates_match(nir_intrinsic_instr *instr1,
  * conflict with @store.
  */
 static void
-set_invalidate_for_store(struct nir_instr_set *instr_set,
+set_invalidate_for_store(struct cache_node *cache,
                          nir_intrinsic_instr *store)
 {
    assert(is_store(store));
@@ -456,12 +453,10 @@ set_invalidate_for_store(struct nir_instr_set *instr_set,
                              &store_offset, &store_const_offset);
    }
 
-   for (struct set_entry *entry = _mesa_set_next_entry(instr_set->set, NULL);
-        entry != NULL; entry = _mesa_set_next_entry(instr_set->set, entry)) {
-
-      assert(((nir_instr *) entry->key)->type == nir_instr_type_intrinsic);
-      nir_intrinsic_instr *cached =
-         nir_instr_as_intrinsic((nir_instr *) entry->key);
+   list_for_each_entry_safe(struct cache_node, item, &cache->list, list) {
+      nir_instr *instr = item->instr;
+      assert(instr->type == nir_instr_type_intrinsic);
+      nir_intrinsic_instr *cached = nir_instr_as_intrinsic(instr);
 
       /* intrinsic groups must match */
       if (!intrinsic_group_match(store, cached))
@@ -487,7 +482,8 @@ set_invalidate_for_store(struct nir_instr_set *instr_set,
       printf("invalidates:\n");
       nir_print_instr(&cached->instr, stderr); printf("\n------\n");
 
-      nir_instr_set_remove(instr_set, (nir_instr *) entry->key);
+      list_del(&item->list);
+      ralloc_free(item);
    }
 }
 
@@ -532,7 +528,7 @@ get_store_writemask(nir_intrinsic_instr *instr)
  * from the same block/offset.
  */
 static bool
-rewrite_load_with_store(struct nir_instr_set *instr_set,
+rewrite_load_with_store(struct cache_node *cache,
                         nir_intrinsic_instr *load)
 {
    nir_src *load_block = NULL;
@@ -545,10 +541,8 @@ rewrite_load_with_store(struct nir_instr_set *instr_set,
                              &load_offset, &load_const_offset);
    }
 
-   for (struct set_entry *entry = _mesa_set_next_entry(instr_set->set, NULL);
-        entry != NULL; entry = _mesa_set_next_entry(instr_set->set, entry)) {
-
-      nir_instr *instr = (nir_instr *) entry->key;
+   list_for_each_entry(struct cache_node, item, &cache->list, list) {
+      nir_instr *instr = item->instr;
       if (instr->type != nir_instr_type_intrinsic)
          continue;
 
@@ -607,13 +601,32 @@ rewrite_load_with_store(struct nir_instr_set *instr_set,
    return false;
 }
 
+static inline void
+cache_add(struct cache_node *cache, nir_instr *instr)
+{
+   struct cache_node *node = ralloc(NULL, struct cache_node);
+   node->instr = instr;
+   list_addtail(&node->list, &cache->list);
+}
+
+static inline void
+cache_clear(struct cache_node *cache)
+{
+   list_for_each_entry(struct cache_node, item, &cache->list, list) {
+      ralloc_free(item);
+   }
+
+   list_empty(&cache->list);
+   list_inithead(&cache->list);
+}
+
 /**
  * Traverses the set of load/store intrinsics trying to find a previous image
  * load instruction on the same object and coordinates, that can be reused
  * to eliminate the given image load.
  */
 static bool
-rewrite_load_with_load(struct nir_instr_set *instr_set,
+rewrite_load_with_load(struct cache_node *cache,
                        nir_intrinsic_instr *load)
 {
    nir_src *load_block = NULL;
@@ -626,10 +639,8 @@ rewrite_load_with_load(struct nir_instr_set *instr_set,
                              &load_offset, &load_const_offset);
    }
 
-   for (struct set_entry *entry = _mesa_set_next_entry(instr_set->set, NULL);
-        entry != NULL; entry = _mesa_set_next_entry(instr_set->set, entry)) {
-
-      nir_instr *instr = (nir_instr *) entry->key;
+   list_for_each_entry(struct cache_node, item, &cache->list, list) {
+      nir_instr *instr = item->instr;
       if (instr->type != nir_instr_type_intrinsic)
          continue;
 
@@ -667,16 +678,10 @@ rewrite_load_with_load(struct nir_instr_set *instr_set,
       return true;
    }
 
-   _mesa_set_add(instr_set->set, &load->instr);
+   cache_add(cache, &load->instr);
 
    return false;
 }
-
-struct cache_node {
-   struct list_head list;
-   nir_instr *instr;
-   uint32_t val;
-};
 
 static bool
 load_combine_block(nir_block *block)
@@ -684,9 +689,10 @@ load_combine_block(nir_block *block)
    bool progress = false;
 
    /* This pass only works on local blocks for now, so we create and destroy
-    * the instruction set with each block.
+    * the instruction cache with each block.
     */
-   struct nir_instr_set *instr_set = nir_instr_set_create(NULL, true);
+   struct cache_node cache = {0};
+   list_inithead(&cache.list);
 
    nir_foreach_instr_safe(block, instr) {
       if (instr->type != nir_instr_type_intrinsic)
@@ -694,30 +700,30 @@ load_combine_block(nir_block *block)
 
       nir_intrinsic_instr *intrinsic = nir_instr_as_intrinsic(instr);
       if (is_load(intrinsic)) {
-         if (rewrite_load_with_load(instr_set, intrinsic)) {
+         if (rewrite_load_with_load(&cache, intrinsic)) {
             progress = true;
             nir_instr_remove(instr);
-         } else if (rewrite_load_with_store(instr_set, intrinsic)) {
+         } else if (rewrite_load_with_store(&cache, intrinsic)) {
             progress = true;
          }
       } else if (is_store(intrinsic)) {
          /* Invalidate conflicting load/stores and add the store to the set
           * so we can rewrite future loads with it.
           */
-         set_invalidate_for_store(instr_set, intrinsic);
-         _mesa_set_add(instr_set->set, instr);
+         set_invalidate_for_store(&cache, intrinsic);
+         cache_add(&cache, instr);
       } else if (is_memory_barrier(intrinsic)) {
          /* If we see a memory barrier we have to invalidate all cached
           * load/store operations
           */
-         set_clear(instr_set);
+         cache_clear(&cache);
 
          /* @DEBUG: traces for a memory barrier clearing the set */
          printf("Set fully invalidated due to memory barrier\n------\n");
       }
    }
 
-   nir_instr_set_destroy(instr_set);
+   cache_clear(&cache);
 
    for (unsigned i = 0; i < block->num_dom_children; i++) {
       nir_block *child = block->dom_children[i];
