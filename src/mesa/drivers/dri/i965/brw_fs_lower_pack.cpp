@@ -38,15 +38,34 @@ fs_visitor::lower_pack()
 
       assert(inst->dst.file == VGRF);
       assert(inst->saturate == false);
-      fs_reg dst = inst->dst;
 
       const fs_builder ibld(this, block, inst);
 
-      for (unsigned i = 0; i < inst->sources; i++) {
-         ibld.MOV(stride(horiz_offset(retype(dst, inst->src[i].type), i),
-                         inst->sources),
-                  inst->src[i]);
+      /* In gen7 we need to split multi-register single-precision writes
+       * that don't write all channels in each GRF to instructions with a
+       * width of 4 to work around a hardware bug. For this to work we need
+       * to make these writes to a temporary register with WE_all and then
+       * copy the result to the actual destination.
+       */
+      fs_reg dst;
+      bool force_all = false;
+      if (devinfo->gen >= 8) {
+         dst = inst->dst;
+      } else {
+         force_all = true;
+         dst = ibld.vgrf(BRW_REGISTER_TYPE_DF);
       }
+
+      for (unsigned i = 0; i < inst->sources; i++) {
+         fs_inst *linst =
+            ibld.MOV(stride(horiz_offset(retype(dst, inst->src[i].type), i),
+                            inst->sources),
+                     inst->src[i]);
+         linst->force_writemask_all = linst->force_writemask_all || force_all;
+      }
+
+      if (force_all)
+         ibld.MOV(inst->dst, dst);
 
       inst->remove(block);
       progress = true;
