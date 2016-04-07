@@ -274,9 +274,9 @@ fs_visitor::SHUFFLE_32BIT_LOAD_RESULT_TO_64BIT_DATA(const fs_builder &bld,
    for (unsigned i = 0; i < components; i++) {
       fs_reg component_i = horiz_offset(src_data, multiplier * 16 * i);
 
-      bld.MOV(stride(tmp, 2), component_i);
+      bld.MOV(stride(tmp, 2), component_i)->force_writemask_all = true;
       bld.MOV(stride(horiz_offset(tmp, 1), 2),
-              horiz_offset(component_i, 8 * multiplier));
+              horiz_offset(component_i, 8 * multiplier))->force_writemask_all = true;
 
       bld.MOV(horiz_offset(dst_data, multiplier * 8 * i),
               retype(tmp, BRW_REGISTER_TYPE_DF));
@@ -315,9 +315,9 @@ fs_visitor::SHUFFLE_32BIT_DATA_FOR_64BIT_WRITE(const fs_builder &bld,
    for (unsigned i = 0; i < components; i++) {
       fs_reg component_i = horiz_offset(src_data, multiplier * 16 * i);
 
-      bld.MOV(tmp, stride(component_i, 2));
+      bld.MOV(tmp, stride(component_i, 2))->force_writemask_all = true;
       bld.MOV(horiz_offset(tmp, 8 * multiplier),
-              stride(horiz_offset(component_i, 1), 2));
+              stride(horiz_offset(component_i, 1), 2))->force_writemask_all = true;
 
       bld.MOV(horiz_offset(dst_data, multiplier * 8 * i),
               retype(tmp, BRW_REGISTER_TYPE_DF));
