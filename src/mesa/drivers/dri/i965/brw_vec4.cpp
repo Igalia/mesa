@@ -2059,6 +2059,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
         BITFIELD64_BIT(SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) |
         BITFIELD64_BIT(SYSTEM_VALUE_INSTANCE_ID))) {
       nr_attributes++;
+      nr_attribute_slots++;
    }
 
    /* gl_DrawID has its very own vec4 */
