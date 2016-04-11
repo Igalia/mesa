@@ -2065,6 +2065,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
    /* gl_DrawID has its very own vec4 */
    if (shader->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_DRAW_ID)) {
       nr_attributes++;
+      nr_attribute_slots++;
    }
 
    foreach_list_typed(nir_variable, var, node, &src_shader->inputs) {
