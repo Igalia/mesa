@@ -1625,6 +1625,8 @@ typedef struct nir_shader_compiler_options {
    bool lower_fsat;
    bool lower_fsqrt;
    bool lower_fmod;
+   /** Lowers fmod when it does not supports doubles */
+   bool lower_fmod_double;
    bool lower_bitfield_extract;
    bool lower_bitfield_insert;
    bool lower_uadd_carry;
