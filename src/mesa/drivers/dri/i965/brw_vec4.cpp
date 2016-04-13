@@ -2048,7 +2048,6 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
    const unsigned *assembly = NULL;
 
    unsigned nr_attributes = _mesa_bitcount_64(prog_data->inputs_read);
-   unsigned nr_attribute_slots = 0;
 
    /* gl_VertexID and gl_InstanceID are system values, but arrive via an
     * incoming vertex attribute.  So, add an extra slot.
@@ -2059,17 +2058,28 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
         BITFIELD64_BIT(SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) |
         BITFIELD64_BIT(SYSTEM_VALUE_INSTANCE_ID))) {
       nr_attributes++;
-      nr_attribute_slots++;
    }
 
    /* gl_DrawID has its very own vec4 */
    if (shader->info.system_values_read & BITFIELD64_BIT(SYSTEM_VALUE_DRAW_ID)) {
       nr_attributes++;
-      nr_attribute_slots++;
    }
 
-   foreach_list_typed(nir_variable, var, node, &src_shader->inputs) {
-      nr_attribute_slots += glsl_count_attribute_slots(var->type, false);
+   unsigned nr_attribute_slots = nr_attributes;
+   GLbitfield64 processed_attributes = 0;
+
+   foreach_list_typed(nir_variable, var, node, &shader->inputs) {
+      /* Only interested in doubles not already processed */
+      if (!(shader->info.double_inputs_read & BITFIELD64_BIT(var->data.location)) ||
+          processed_attributes & BITFIELD64_BIT(var->data.location)) {
+         continue;
+      }
+      /* We already counted 1 slot */
+      int extra_slots = glsl_count_attribute_slots(var->type, false) - 1;
+      if (extra_slots) {
+         nr_attribute_slots += extra_slots;
+         processed_attributes |= BITFIELD64_BIT(var->data.location);
+      }
    }
    /* The 3DSTATE_VS documentation lists the lower bound on "Vertex URB Entry
     * Read Length" as 1 in vec4 mode, and 0 in SIMD8 mode.  Empirically, in
