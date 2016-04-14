@@ -38,7 +38,8 @@
 enum intrinsic_groups {
    INTRINSIC_GROUP_NONE = 0,
    INTRINSIC_GROUP_ALL,
-   INTRINSIC_GROUP_SSBO
+   INTRINSIC_GROUP_SSBO,
+   INTRINSIC_GROUP_SHARED
 };
 
 struct cache_node {
@@ -86,33 +87,71 @@ is_memory_barrier_buffer(nir_intrinsic_instr *intrinsic)
    return intrinsic->intrinsic == nir_intrinsic_memory_barrier_buffer;
 }
 
-/*
- * General load/store functions: we'll add more groups to this as needed.
- * For now we only support SSBOs.
- */
+/* Shared variable load/store */
+static bool
+is_atomic_shared(nir_intrinsic_instr *intrinsic)
+{
+   switch (intrinsic->intrinsic) {
+   case nir_intrinsic_shared_atomic_add:
+   case nir_intrinsic_shared_atomic_imin:
+   case nir_intrinsic_shared_atomic_umin:
+   case nir_intrinsic_shared_atomic_imax:
+   case nir_intrinsic_shared_atomic_umax:
+   case nir_intrinsic_shared_atomic_and:
+   case nir_intrinsic_shared_atomic_or:
+   case nir_intrinsic_shared_atomic_xor:
+   case nir_intrinsic_shared_atomic_exchange:
+   case nir_intrinsic_shared_atomic_comp_swap:
+      return true;
+   default:
+      return false;
+   }
+}
+
+static inline bool
+is_store_shared(nir_intrinsic_instr *intrinsic)
+{
+   return intrinsic->intrinsic == nir_intrinsic_store_shared ||
+      is_atomic_shared(intrinsic);
+}
+
+static inline bool
+is_load_shared(nir_intrinsic_instr *intrinsic)
+{
+   return intrinsic->intrinsic == nir_intrinsic_load_shared;
+}
+
+static inline bool
+is_memory_barrier_shared(nir_intrinsic_instr *intrinsic)
+{
+   return intrinsic->intrinsic == nir_intrinsic_memory_barrier_shared;
+}
+
+/* General intrinsic classification functions */
 static inline bool
 is_store(nir_intrinsic_instr *intrinsic)
 {
-   return is_store_ssbo(intrinsic);
+   return is_store_ssbo(intrinsic) || is_store_shared(intrinsic);
 }
 
 static inline bool
 is_load(nir_intrinsic_instr *intrinsic)
 {
-   return is_load_ssbo(intrinsic);
+   return is_load_ssbo(intrinsic) || is_load_shared(intrinsic);
 }
 
 static inline bool
 is_atomic(nir_intrinsic_instr *intrinsic)
 {
-   return is_atomic_ssbo(intrinsic);
+   return is_atomic_ssbo(intrinsic) || is_atomic_shared(intrinsic);
 }
 
 static inline bool
 is_memory_barrier(nir_intrinsic_instr *intrinsic)
 {
    return intrinsic->intrinsic == nir_intrinsic_memory_barrier ||
-      is_memory_barrier_buffer(intrinsic);
+      is_memory_barrier_buffer(intrinsic) ||
+      is_memory_barrier_shared(intrinsic);
 }
 
 static unsigned
@@ -123,6 +162,9 @@ intrinsic_group(nir_intrinsic_instr *intrinsic)
    else if (is_load_ssbo(intrinsic) || is_store_ssbo(intrinsic) ||
             is_memory_barrier_buffer(intrinsic))
       return INTRINSIC_GROUP_SSBO;
+   else if (is_load_shared(intrinsic) || is_store_shared(intrinsic) ||
+            is_memory_barrier_shared(intrinsic))
+      return INTRINSIC_GROUP_SHARED;
    else
       return INTRINSIC_GROUP_NONE;
 }
@@ -217,6 +259,40 @@ get_load_store_address(nir_intrinsic_instr *instr,
    case nir_intrinsic_ssbo_atomic_comp_swap:
       block_index = 0;
       offset_index = 1;
+      break;
+
+      /* Shared-variables memory access is defined by a direct
+       * value 'base' (const_index[0]) and an indirect SSA value 'offset'.
+       * While this is not technically a block+offset access like for SSBOs,
+       * we can map to it to reuse this function and keep code simpler.
+       * At the end, all we care about in this pass is to be able to compare
+       * the values that define the memory addressed by two given intrinsics,
+       * so that we can try to combine them.
+       * So, const_block_index here is the index into const_index array, where
+       * the 'base' is stored.
+       */
+   case nir_intrinsic_load_shared:
+      const_block_index = 0;
+      offset_index = 0;
+      break;
+
+   case nir_intrinsic_store_shared:
+      const_block_index = 0;
+      offset_index = 1;
+      break;
+
+   case nir_intrinsic_shared_atomic_add:
+   case nir_intrinsic_shared_atomic_imin:
+   case nir_intrinsic_shared_atomic_umin:
+   case nir_intrinsic_shared_atomic_imax:
+   case nir_intrinsic_shared_atomic_umax:
+   case nir_intrinsic_shared_atomic_and:
+   case nir_intrinsic_shared_atomic_or:
+   case nir_intrinsic_shared_atomic_xor:
+   case nir_intrinsic_shared_atomic_exchange:
+   case nir_intrinsic_shared_atomic_comp_swap:
+      const_block_index = 0;
+      offset_index = 0;
       break;
 
    default:
@@ -342,6 +418,9 @@ get_store_writemask(nir_intrinsic_instr *instr)
    case nir_intrinsic_store_ssbo:
       return instr->const_index[0];
 
+   case nir_intrinsic_store_shared:
+      return instr->const_index[1];
+
    case nir_intrinsic_ssbo_atomic_add:
    case nir_intrinsic_ssbo_atomic_imin:
    case nir_intrinsic_ssbo_atomic_umin:
@@ -352,6 +431,17 @@ get_store_writemask(nir_intrinsic_instr *instr)
    case nir_intrinsic_ssbo_atomic_xor:
    case nir_intrinsic_ssbo_atomic_exchange:
    case nir_intrinsic_ssbo_atomic_comp_swap:
+      /* fall-through to shared variable atomics */
+   case nir_intrinsic_shared_atomic_add:
+   case nir_intrinsic_shared_atomic_imin:
+   case nir_intrinsic_shared_atomic_umin:
+   case nir_intrinsic_shared_atomic_imax:
+   case nir_intrinsic_shared_atomic_umax:
+   case nir_intrinsic_shared_atomic_and:
+   case nir_intrinsic_shared_atomic_or:
+   case nir_intrinsic_shared_atomic_xor:
+   case nir_intrinsic_shared_atomic_exchange:
+   case nir_intrinsic_shared_atomic_comp_swap:
       return WRITEMASK_X;
 
    default:
