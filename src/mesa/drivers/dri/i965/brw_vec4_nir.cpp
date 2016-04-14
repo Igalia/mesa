@@ -459,14 +459,15 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
       /* We set EmitNoIndirectInput for VS */
       assert(const_offset);
-
-      src = src_reg(ATTR, instr->const_index[0] + const_offset->u32[0],
-                    glsl_type::uvec4_type);
-
-      dest = get_nir_dest(instr->dest, src.type);
+      dest = get_nir_dest(instr->dest);
       dest.writemask = brw_writemask_for_size(instr->num_components);
 
+      src = src_reg(ATTR, instr->const_index[0] + const_offset->u32[0],
+                    dest.type);
+      src.swizzle = brw_swizzle_for_size(instr->num_components);
+
       emit(MOV(dest, src));
+
       break;
    }
 
