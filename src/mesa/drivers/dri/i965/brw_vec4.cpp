@@ -59,6 +59,16 @@ src_reg::src_reg(enum brw_reg_file file, int nr, const glsl_type *type)
       this->type = brw_type_for_base_type(type);
 }
 
+src_reg::src_reg(enum brw_reg_file file, int nr, enum brw_reg_type type)
+{
+   init();
+
+   this->file = file;
+   this->nr = nr;
+   this->type = type;
+   this->swizzle = BRW_SWIZZLE_XYZW;
+}
+
 /** Generic unset register constructor. */
 src_reg::src_reg()
 {

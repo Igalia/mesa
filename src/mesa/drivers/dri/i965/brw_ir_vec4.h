@@ -40,6 +40,7 @@ public:
    void init();
 
    src_reg(enum brw_reg_file file, int nr, const glsl_type *type);
+   src_reg(enum brw_reg_file file, int nr, enum brw_reg_type type);
    src_reg();
    src_reg(struct ::brw_reg reg);
 
