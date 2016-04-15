@@ -208,13 +208,32 @@ gen8_emit_vertices(struct brw_context *brw)
          continue;
       }
 
-      switch (input->glarray->Size) {
-      case 0: comp0 = BRW_VE1_COMPONENT_STORE_0;
-      case 1: comp1 = BRW_VE1_COMPONENT_STORE_0;
-      case 2: comp2 = BRW_VE1_COMPONENT_STORE_0;
-      case 3: comp3 = input->glarray->Integer ? BRW_VE1_COMPONENT_STORE_1_INT
-                                              : BRW_VE1_COMPONENT_STORE_1_FLT;
-         break;
+      /* From the B-spec, structure VERTEX_ELEMENT_STATE description: "When
+       * SourceElementFormat is set to one of the *64*_PASSTHRU formats,
+       * 64-bit components are stored in the URB without any conversion. In
+       * this case, vertex elements must be written as 128 or 256 bits, with
+       * VFCOMP_STORE_0 being used to pad the output as required."
+       */
+      if (input->glarray->Doubles) {
+         switch (input->glarray->Size) {
+         case 0: comp0 = BRW_VE1_COMPONENT_STORE_0;
+         case 1: comp1 = BRW_VE1_COMPONENT_STORE_0;
+         case 2:
+            comp2 = BRW_VE1_COMPONENT_NOSTORE;
+            comp3 = BRW_VE1_COMPONENT_NOSTORE;
+            break;
+         case 3: comp3 = BRW_VE1_COMPONENT_STORE_0;
+         }
+      } else {
+         switch (input->glarray->Size) {
+         case 0: comp0 = BRW_VE1_COMPONENT_STORE_0;
+         case 1: comp1 = BRW_VE1_COMPONENT_STORE_0;
+         case 2: comp2 = BRW_VE1_COMPONENT_STORE_0;
+         case 3:
+            comp3 = input->glarray->Integer ?
+               BRW_VE1_COMPONENT_STORE_1_INT:
+               BRW_VE1_COMPONENT_STORE_1_FLT;
+         }
       }
 
       OUT_BATCH((input->buffer << GEN6_VE0_INDEX_SHIFT) |
