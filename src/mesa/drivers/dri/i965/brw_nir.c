@@ -23,6 +23,7 @@
 
 #include "brw_nir.h"
 #include "brw_shader.h"
+#include "compiler/glsl_types.h"
 #include "compiler/nir/glsl_to_nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "program/prog_to_nir.h"
@@ -217,10 +218,10 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
    }
 
    /* Now use nir_lower_io to walk dereference chains.  Attribute arrays
-    * are loaded as one vec4 per element (or matrix column), so we use
-    * type_size_vec4 here.
+    * are loaded as one vec4/dvec4 per element (or matrix column), depending if
+    * it is a double-precision type or not
     */
-   nir_lower_io(nir, nir_var_shader_in, type_size_vec4);
+   nir_lower_io(nir, nir_var_shader_in, type_size_vs_input);
 
    /* This pass needs actual constants */
    nir_opt_constant_folding(nir);
