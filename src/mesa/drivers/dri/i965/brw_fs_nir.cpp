@@ -1090,6 +1090,29 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
 
    case nir_op_pack_double_2x32_split:
+      /* Optimize the common case where we are re-packing a double with
+       * the result of a previous double unpack. In this case we can take the
+       * 32-bit value to use in the re-pack from the original double and bypass
+       * the unpack operation.
+       */
+      for (int i = 0; i < 2; i++) {
+         if (instr->src[i].src.is_ssa) {
+            nir_instr *parent_instr = instr->src[i].src.ssa->parent_instr;
+            if (parent_instr->type == nir_instr_type_alu) {
+               nir_alu_instr *alu_parent = nir_instr_as_alu(parent_instr);
+               if (alu_parent->op == nir_op_unpack_double_2x32_split_x ||
+                   alu_parent->op == nir_op_unpack_double_2x32_split_y) {
+                  op[i] = get_nir_src(alu_parent->src[0].src);
+                  op[i] = offset(retype(op[i], BRW_REGISTER_TYPE_DF), bld,
+                                 alu_parent->src[0].swizzle[channel]);
+                  op[i] = retype(op[i], BRW_REGISTER_TYPE_UD);
+                  if (alu_parent->op == nir_op_unpack_double_2x32_split_y)
+                     op[i] = horiz_offset(op[i], 1);
+                  op[i] = stride(op[i], 2);
+               }
+            }
+         }
+      }
       bld.emit(FS_OPCODE_PACK, result, op[0], op[1]);
       break;
 
