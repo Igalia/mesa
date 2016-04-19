@@ -931,12 +931,12 @@ brw_emit_vertices(struct brw_context *brw)
          if (brw->gen >= 6) {
             OUT_BATCH((input->buffer << GEN6_VE0_INDEX_SHIFT) |
                       GEN6_VE0_VALID |
-                      (format << BRW_VE0_FORMAT_SHIFT) |
+                      (upload_format << BRW_VE0_FORMAT_SHIFT) |
                       (offset << BRW_VE0_SRC_OFFSET_SHIFT));
          } else {
             OUT_BATCH((input->buffer << BRW_VE0_INDEX_SHIFT) |
                       BRW_VE0_VALID |
-                      (format << BRW_VE0_FORMAT_SHIFT) |
+                      (upload_format << BRW_VE0_FORMAT_SHIFT) |
                       (offset << BRW_VE0_SRC_OFFSET_SHIFT));
          }
 
