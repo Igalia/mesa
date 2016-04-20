@@ -1527,12 +1527,12 @@ vec4_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
 
 
 static inline struct brw_reg
-attribute_to_hw_reg(int attr, bool interleaved)
+attribute_to_hw_reg(int attr, unsigned width, bool interleaved)
 {
    if (interleaved)
       return stride(brw_vec4_grf(attr / 2, (attr % 2) * 4), 0, 4, 1);
    else
-      return brw_vec8_grf(attr, 0);
+      return brw_vecn_grf(width, attr, 0);
 }
 
 
@@ -1547,6 +1547,10 @@ attribute_to_hw_reg(int attr, bool interleaved)
  * false, then each attribute takes up a whole register, with register N
  * containing attribute N (this corresponds to the payload setup used by
  * vertex shaders, and by geometry shaders in "dual object" dispatch mode).
+ * With doubles, each attribute takes up two registers, with register N
+ * containing one half, and register N+1 the other half:
+ *     register N      |  register N+1
+ *     x.0 x.1 y.0 y.1 |  z.0 z.1 w.0 w.1
  */
 void
 vec4_visitor::lower_attributes_to_hw_regs(const int *attribute_map,
@@ -1564,7 +1568,8 @@ vec4_visitor::lower_attributes_to_hw_regs(const int *attribute_map,
           */
          assert(grf != 0);
 
-	 struct brw_reg reg = attribute_to_hw_reg(grf, interleaved);
+         unsigned width = REG_SIZE / MAX2(4, type_sz(inst->src[i].type));
+         struct brw_reg reg = attribute_to_hw_reg(grf, width, interleaved);
 	 reg.swizzle = inst->src[i].swizzle;
          reg.type = inst->src[i].type;
 	 if (inst->src[i].abs)
