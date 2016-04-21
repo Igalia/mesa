@@ -447,17 +447,26 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
    case nir_intrinsic_load_input: {
       nir_const_value *const_offset = nir_src_as_const_value(instr->src[0]);
+      int num_components = instr->num_components;
+      int local_offset = 0;
+
+      if (nir_dest_bit_size(instr->dest) == 64)
+         num_components *= 2;
 
       /* We set EmitNoIndirectInput for VS */
       assert(const_offset);
       dest = get_nir_dest(instr->dest);
-      dest.writemask = brw_writemask_for_size(instr->num_components);
-
       src = src_reg(ATTR, instr->const_index[0] + const_offset->u32[0],
                     dest.type);
-      src.swizzle = brw_swizzle_for_size(instr->num_components);
 
-      emit(MOV(dest, src));
+      do {
+         dest.writemask = brw_writemask_for_size(MIN2(num_components, 4));
+         src.swizzle = brw_swizzle_for_size(MIN2(num_components, 4));
+
+         emit(MOV(offset(dest, local_offset), offset(src, local_offset)));
+         num_components -= 4;
+         local_offset++;
+      } while (num_components > 0);
 
       break;
    }
