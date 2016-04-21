@@ -805,11 +805,19 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
          src_reg indirect = get_nir_src(instr->src[0], BRW_REGISTER_TYPE_UD, 1);
 
+         if (type_sz(dest.type) > 4)
+            dest = get_nir_dest(instr->dest, BRW_REGISTER_TYPE_UD);
+
          /* MOV_INDIRECT is going to stomp the whole thing anyway */
          dest.writemask = WRITEMASK_XYZW;
 
          emit(SHADER_OPCODE_MOV_INDIRECT, dest, src,
               indirect, brw_imm_ud(instr->const_index[1]));
+         if (instr->num_components > 2 && nir_dest_bit_size(instr->dest) == 64) {
+            emit(ADD(dst_reg(indirect), indirect, brw_imm_ud(16)));
+            emit(SHADER_OPCODE_MOV_INDIRECT, offset(dest, 1), src,
+               indirect, brw_imm_ud(instr->const_index[1]));
+         }
       }
       break;
    }
