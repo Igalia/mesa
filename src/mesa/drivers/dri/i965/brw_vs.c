@@ -112,6 +112,7 @@ brw_codegen_vs_prog(struct brw_context *brw,
 
    GLbitfield64 outputs_written = vp->program.Base.OutputsWritten;
    prog_data.inputs_read = vp->program.Base.InputsRead;
+   prog_data.double_inputs_read = vp->program.Base.DoubleInputsRead;
 
    if (key->copy_edgeflag) {
       outputs_written |= BITFIELD64_BIT(VARYING_SLOT_EDGE);
