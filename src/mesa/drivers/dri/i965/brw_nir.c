@@ -128,6 +128,32 @@ remap_vs_attrs(nir_block *block, void *closure)
 }
 
 static bool
+remap_vs_vec4_attrs(nir_block *block, void *closure)
+{
+   struct nir_shader_info *nir_info = (struct nir_shader_info *) closure;
+
+   nir_foreach_instr(block, instr) {
+      if (instr->type != nir_instr_type_intrinsic)
+         continue;
+
+      nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+
+      if (intrin->intrinsic == nir_intrinsic_load_input) {
+         /* Attributes come in a contiguous block, ordered by their
+          * gl_vert_attrib value.  That means we can compute the slot
+          * number for an attribute by masking out the enabled attributes
+          * before it and counting the bits.
+          */
+         int attr = intrin->const_index[0];
+         int slot = _mesa_bitcount_64(nir_info->inputs_read & BITFIELD64_MASK(attr));
+         int dslot = _mesa_bitcount_64(nir_info->double_inputs_read & BITFIELD64_MASK(attr));
+         intrin->const_index[0] = slot + dslot;
+      }
+   }
+   return true;
+}
+
+static bool
 remap_inputs_with_vue_map(nir_block *block, void *closure)
 {
    const struct brw_vue_map *vue_map = closure;
@@ -229,12 +255,17 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
    brw_nir_apply_attribute_workarounds(nir, use_legacy_snorm_formula,
                                        vs_attrib_wa_flags);
 
+   /* Finally, translate VERT_ATTRIB_* values into the actual registers. */
    if (is_scalar) {
-      /* Finally, translate VERT_ATTRIB_* values into the actual registers. */
-
       nir_foreach_function(nir, function) {
          if (function->impl) {
             nir_foreach_block_call(function->impl, remap_vs_attrs, &nir->info);
+         }
+      }
+   } else {
+      nir_foreach_function(nir, function) {
+         if (function->impl) {
+            nir_foreach_block_call(function->impl, remap_vs_vec4_attrs, &nir->info);
          }
       }
    }
