@@ -1857,6 +1857,12 @@ fs_visitor::convert_attr_sources_to_hw_regs(fs_inst *inst)
                    inst->src[i].nr +
                    inst->src[i].reg_offset;
 
+         if (grf >= 128) {
+            fail("Failure to register allocate.  Reduce the number of "
+                 "vertex input attributes to avoid this.");
+            return;
+         }
+
          unsigned exec_size;
          /* As explained at brw_reg_from_fs_reg, From the Haswell PRM:
           *
