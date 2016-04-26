@@ -2148,6 +2148,14 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
       prog_data->base.urb_read_length =
          DIV_ROUND_UP(MAX2(nr_attribute_slots, 1), 2);
 
+   if (is_scalar && prog_data->base.urb_read_length > 15) {
+      if (error_str)
+         *error_str = ralloc_strdup(mem_ctx,
+                                    "Too many attributes. Try to reduce the "
+                                    "number of attributes or their size");
+      return NULL;
+   }
+
    prog_data->nr_attributes = nr_attributes;
    prog_data->nr_attribute_slots = nr_attribute_slots;
 
