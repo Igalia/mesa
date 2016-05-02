@@ -2489,6 +2489,37 @@ resize_tes_inputs(struct gl_context *ctx,
 }
 
 /**
+ * From the GL 4.5 core spec, section 11.1.1 (Vertex Attributes):
+ *
+ * "A program with more than the value of MAX_VERTEX_ATTRIBS
+ *  active attribute variables may fail to link, unless
+ *  device-dependent optimizations are able to make the program
+ *  fit within available hardware resources. For the purposes
+ *  of this test, attribute variables of the type dvec3, dvec4,
+ *  dmat2x3, dmat2x4, dmat3, dmat3x4, dmat4x3, and dmat4 may
+ *  count as consuming twice as many attributes as equivalent
+ *  single-precision types. While these types use the same number
+ *  of generic attributes as their single-precision equivalents,
+ *  implementations are permitted to consume two single-precision
+ *  vectors of internal storage for each three- or four-component
+ *  double-precision vector."
+ *
+ * Returns true if three- or four-component double-precision vector consumes
+ * two single-precision vectors of internal storage
+ */
+
+static inline bool
+attribute_consumes_two_locations(struct gl_constants *constants,
+                                 ir_variable *var)
+{
+   if (var->type->without_array()->is_dual_slot_double() &&
+       constants->FP64Vector34Consumes2Locations)
+      return true;
+   else
+      return false;
+}
+
+/**
  * Find a contiguous set of available bits in a bitmask.
  *
  * \param used_mask     Bits representing used (1) and unused (0) locations
@@ -2780,27 +2811,7 @@ assign_attribute_or_color_locations(gl_shader_program *prog,
 
 	    used_locations |= (use_mask << attr);
 
-            /* From the GL 4.5 core spec, section 11.1.1 (Vertex Attributes):
-             *
-             * "A program with more than the value of MAX_VERTEX_ATTRIBS
-             *  active attribute variables may fail to link, unless
-             *  device-dependent optimizations are able to make the program
-             *  fit within available hardware resources. For the purposes
-             *  of this test, attribute variables of the type dvec3, dvec4,
-             *  dmat2x3, dmat2x4, dmat3, dmat3x4, dmat4x3, and dmat4 may
-             *  count as consuming twice as many attributes as equivalent
-             *  single-precision types. While these types use the same number
-             *  of generic attributes as their single-precision equivalents,
-             *  implementations are permitted to consume two single-precision
-             *  vectors of internal storage for each three- or four-component
-             *  double-precision vector."
-             *
-             * Mark this attribute slot as taking up twice as much space
-             * so we can count it properly against limits.  According to
-             * issue (3) of the GL_ARB_vertex_attrib_64bit behavior, this
-             * is optional behavior, but it seems preferable.
-             */
-            if (var->type->without_array()->is_dual_slot_double())
+            if (attribute_consumes_two_locations(constants, var))
                double_storage_locations |= (use_mask << attr);
 	 }
 
@@ -2873,6 +2884,25 @@ assign_attribute_or_color_locations(gl_shader_program *prog,
       to_assign[i].var->data.location = generic_base + location;
       to_assign[i].var->data.is_unmatched_generic_inout = 0;
       used_locations |= (use_mask << location);
+
+      if (attribute_consumes_two_locations(constants, to_assign[i].var))
+         double_storage_locations |= (use_mask << location);
+   }
+
+   /* Now that we have all the locations, take in account that dvec3/4 can
+    * require twice the space of single-precision vectors. Check if we run out
+    * of attribute slots.
+    */
+   if (target_index == MESA_SHADER_VERTEX) {
+      unsigned total_attribs_size =
+         _mesa_bitcount(used_locations & ((1 << max_index) - 1)) +
+         _mesa_bitcount(double_storage_locations);
+      if (total_attribs_size > max_index) {
+	 linker_error(prog,
+		      "attempt to use %d vertex attribute slots only %d available ",
+		      total_attribs_size, max_index);
+	 return false;
+      }
    }
 
    return true;
