@@ -620,6 +620,8 @@ _mesa_init_constants(struct gl_constants *consts, gl_api api)
     */
    consts->VertexID_is_zero_based = false;
 
+   consts->FP64Vector34Consumes2Locations = false;
+
    /* GL_ARB_draw_buffers */
    consts->MaxDrawBuffers = MAX_DRAW_BUFFERS;
 

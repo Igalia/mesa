@@ -3504,6 +3504,19 @@ struct gl_constants
    bool VertexID_is_zero_based;
 
    /**
+    * GL_ARB_vertex_attrib_64bit:
+    *
+    * "... attribute variables of the type dvec3, dvec4, dmat2x3, dmat2x4,
+    * dmat3, dmat3x4, dmat4x3, and dmat4 may count as consuming twice as many
+    * attributes as equivalent single-precision types.  While these types use
+    * the same number of generic attributes as their single-precision
+    * equivalents, implementations are permitted to consume two
+    * single-precision vectors of internal storage for each three- or
+    * four-component double-precision vector."
+   */
+   bool FP64Vector34Consumes2Locations;
+
+   /**
     * If the driver supports real 32-bit integers, what integer value should be
     * used for boolean true in uniform uploads?  (Usually 1 or ~0.)
     */
