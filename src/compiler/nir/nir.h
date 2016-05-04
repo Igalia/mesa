@@ -283,7 +283,7 @@ typedef struct nir_variable {
       unsigned offset;
 
       /**
-       * ARB_shader_image_load_store qualifiers.
+       * Memory qualifiers.
        */
       struct {
          bool read_only; /**< "readonly" qualifier. */
@@ -291,7 +291,12 @@ typedef struct nir_variable {
          bool coherent;
          bool _volatile;
          bool restrict_flag;
+      } memory;
 
+      /**
+       * ARB_shader_image_load_store.
+       */
+      struct {
          /** Image internal format if specified explicitly, otherwise GL_NONE. */
          GLenum format;
       } image;

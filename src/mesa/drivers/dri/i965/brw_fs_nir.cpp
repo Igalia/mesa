@@ -2935,7 +2935,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       else if (instr->intrinsic == nir_intrinsic_image_store)
          emit_image_store(bld, image, addr, src0, surf_dims, arr_dims,
-                          var->data.image.write_only ? GL_NONE : format);
+                          var->data.memory.write_only ? GL_NONE : format);
 
       else
          tmp = emit_image_atomic(bld, image, addr, src0, src1,
