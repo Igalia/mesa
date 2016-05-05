@@ -289,6 +289,13 @@ struct _mesa_glsl_parse_state {
              is_version(450, 0);
    }
 
+   bool has_shader_image_atomic_exchange_float() const
+   {
+      return (is_version(450, 320) ||
+	      ARB_ES3_1_compatibility_enable ||
+	      OES_shader_image_atomic_enable);
+   }
+
    void process_version_directive(YYLTYPE *locp, int version,
                                   const char *ident);
 

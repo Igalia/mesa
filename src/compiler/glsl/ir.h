@@ -818,6 +818,8 @@ public:
       unsigned image_volatile:1;
       unsigned image_restrict:1;
 
+      unsigned image_atomic:1;
+      unsigned image_atomic_exchange:1;
       /**
        * ARB_shader_storage_buffer_object
        */

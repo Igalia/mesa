@@ -145,6 +145,27 @@ verify_image_parameter(YYLTYPE *loc, _mesa_glsl_parse_state *state,
       return false;
    }
 
+   if (formal->data.image_atomic) {
+     if (actual->data.image_format != GL_R32UI &&
+	 actual->data.image_format != GL_R32I) {
+       _mesa_glsl_error(loc, state,
+			"atomic operations can only happen on r32ui/r32i formats.");
+       return false;
+     }
+   }
+
+   if (formal->data.image_atomic_exchange) {
+     if ((actual->data.image_format != GL_R32UI &&
+	  actual->data.image_format != GL_R32I)) {
+       /* check for the r32f special case. */
+       if (!(state->has_shader_image_atomic_exchange_float() &&
+	     actual->data.image_format == GL_R32F)) {
+	 _mesa_glsl_error(loc, state,
+			  "atomic exchange operations can only happen on r32ui/r32i formats (or r32f in GLES).");
+	 return false;
+       }
+     }
+   }
    return true;
 }
 

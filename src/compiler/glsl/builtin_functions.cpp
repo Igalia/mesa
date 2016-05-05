@@ -478,9 +478,7 @@ shader_image_atomic(const _mesa_glsl_parse_state *state)
 static bool
 shader_image_atomic_exchange_float(const _mesa_glsl_parse_state *state)
 {
-   return (state->is_version(450, 320) ||
-           state->ARB_ES3_1_compatibility_enable ||
-           state->OES_shader_image_atomic_enable);
+  return (state->has_shader_image_atomic_exchange_float());
 }
 
 static bool
@@ -5448,6 +5446,8 @@ builtin_builder::_image_prototype(const glsl_type *image_type,
    image->data.image_coherent = true;
    image->data.image_volatile = true;
    image->data.image_restrict = true;
+   image->data.image_atomic = (flags & IMAGE_FUNCTION_AVAIL_ATOMIC) != 0;
+   image->data.image_atomic_exchange = (flags & IMAGE_FUNCTION_AVAIL_ATOMIC_EXCHANGE) != 0;
 
    return sig;
 }
