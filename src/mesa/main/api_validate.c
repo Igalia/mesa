@@ -1120,9 +1120,6 @@ valid_dispatch_indirect(struct gl_context *ctx,
 {
    const uint64_t end = (uint64_t) indirect + size;
 
-   if (!check_valid_to_compute(ctx, name))
-      return GL_FALSE;
-
    /* From the OpenGL 4.3 Core Specification, Chapter 19, Compute Shaders:
     *
     * "An INVALID_VALUE error is generated if indirect is negative or is not a
@@ -1163,6 +1160,9 @@ valid_dispatch_indirect(struct gl_context *ctx,
                   "%s(DISPATCH_INDIRECT_BUFFER too small)", name);
       return GL_FALSE;
    }
+
+   if (!check_valid_to_compute(ctx, name))
+      return GL_FALSE;
 
    return GL_TRUE;
 }
