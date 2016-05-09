@@ -107,7 +107,7 @@
         <enum name="VIEW_CLASS_BPTC_UNORM"           value="0x82D2"/>
         <enum name="VIEW_CLASS_BPTC_FLOAT"           value="0x82D3"/>
 
-    <function name="GetInternalformati64v" es2="3.0">
+    <function name="GetInternalformati64v" es2="2.0">
         <param name="target" type="GLenum"/>
         <param name="internalformat" type="GLenum"/>
         <param name="pname" type="GLenum"/>
