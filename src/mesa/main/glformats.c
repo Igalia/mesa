@@ -2293,25 +2293,28 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
    case 3:
       return (ctx->API != API_OPENGL_CORE) ? GL_RGB : -1;
    case GL_RGB:
+   case GL_RGB8:
+      return GL_RGB;
    case GL_R3_G3_B2:
    case GL_RGB4:
    case GL_RGB5:
-   case GL_RGB8:
    case GL_RGB10:
    case GL_RGB12:
    case GL_RGB16:
-      return GL_RGB;
+      return _mesa_is_desktop_gl(ctx) ? GL_RGB : -1;
    case 4:
       return (ctx->API != API_OPENGL_CORE) ? GL_RGBA : -1;
    case GL_RGBA:
-   case GL_RGBA2:
    case GL_RGBA4:
    case GL_RGB5_A1:
    case GL_RGBA8:
-   case GL_RGB10_A2:
+      return GL_RGBA;
+   case GL_RGBA2:
    case GL_RGBA12:
    case GL_RGBA16:
-      return GL_RGBA;
+      return _mesa_is_desktop_gl(ctx) ? GL_RGBA : -1;
+   case GL_RGB10_A2:
+      return _mesa_is_desktop_gl(ctx) || _mesa_is_gles3(ctx) ? GL_RGBA : -1;
    default:
       ; /* fallthrough */
    }
@@ -2341,7 +2344,10 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
       case GL_DEPTH_COMPONENT:
       case GL_DEPTH_COMPONENT16:
       case GL_DEPTH_COMPONENT24:
+         return GL_DEPTH_COMPONENT;
       case GL_DEPTH_COMPONENT32:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
          return GL_DEPTH_COMPONENT;
       case GL_DEPTH_STENCIL:
       case GL_DEPTH24_STENCIL8:
@@ -2374,8 +2380,12 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
    case GL_COMPRESSED_INTENSITY:
       return GL_INTENSITY;
    case GL_COMPRESSED_RGB:
+      if (!_mesa_is_desktop_gl(ctx))
+         break;
       return GL_RGB;
    case GL_COMPRESSED_RGBA:
+      if (!_mesa_is_desktop_gl(ctx))
+         break;
       return GL_RGBA;
    default:
       ; /* fallthrough */
@@ -2426,37 +2436,57 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
 
    if (ctx->Extensions.EXT_texture_snorm) {
       switch (internalFormat) {
-      case GL_RED_SNORM:
       case GL_R8_SNORM:
-      case GL_R16_SNORM:
          return GL_RED;
-      case GL_RG_SNORM:
+      case GL_RED_SNORM:
+      case GL_R16_SNORM:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
+         return GL_RED;
       case GL_RG8_SNORM:
-      case GL_RG16_SNORM:
          return GL_RG;
-      case GL_RGB_SNORM:
+      case GL_RG_SNORM:
+      case GL_RG16_SNORM:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
+         return GL_RG;
       case GL_RGB8_SNORM:
-      case GL_RGB16_SNORM:
          return GL_RGB;
-      case GL_RGBA_SNORM:
+      case GL_RGB_SNORM:
+      case GL_RGB16_SNORM:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
+         return GL_RGB;
       case GL_RGBA8_SNORM:
+         return GL_RGBA;
+      case GL_RGBA_SNORM:
       case GL_RGBA16_SNORM:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
          return GL_RGBA;
       case GL_ALPHA_SNORM:
       case GL_ALPHA8_SNORM:
       case GL_ALPHA16_SNORM:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
          return GL_ALPHA;
       case GL_LUMINANCE_SNORM:
       case GL_LUMINANCE8_SNORM:
       case GL_LUMINANCE16_SNORM:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
          return GL_LUMINANCE;
       case GL_LUMINANCE_ALPHA_SNORM:
       case GL_LUMINANCE8_ALPHA8_SNORM:
       case GL_LUMINANCE16_ALPHA16_SNORM:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
          return GL_LUMINANCE_ALPHA;
       case GL_INTENSITY_SNORM:
       case GL_INTENSITY8_SNORM:
       case GL_INTENSITY16_SNORM:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
          return GL_INTENSITY;
       default:
          ; /* fallthrough */
@@ -2465,21 +2495,31 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
 
    if (ctx->Extensions.EXT_texture_sRGB) {
       switch (internalFormat) {
-      case GL_SRGB_EXT:
       case GL_SRGB8_EXT:
-      case GL_COMPRESSED_SRGB_EXT:
          return GL_RGB;
-      case GL_SRGB_ALPHA_EXT:
+      case GL_SRGB_EXT:
+      case GL_COMPRESSED_SRGB_EXT:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
+         return GL_RGB;
       case GL_SRGB8_ALPHA8_EXT:
+         return GL_RGBA;
+      case GL_SRGB_ALPHA_EXT:
       case GL_COMPRESSED_SRGB_ALPHA_EXT:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
          return GL_RGBA;
       case GL_SLUMINANCE_ALPHA_EXT:
       case GL_SLUMINANCE8_ALPHA8_EXT:
       case GL_COMPRESSED_SLUMINANCE_ALPHA_EXT:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
          return GL_LUMINANCE_ALPHA;
       case GL_SLUMINANCE_EXT:
       case GL_SLUMINANCE8_EXT:
       case GL_COMPRESSED_SLUMINANCE_EXT:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
          return GL_LUMINANCE;
       default:
          ; /* fallthrough */
@@ -2559,11 +2599,16 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
 	    break;
 	 /* FALLTHROUGH */
       case GL_R8:
-      case GL_R16:
       case GL_RED:
-      case GL_COMPRESSED_RED:
          return GL_RED;
-
+      case GL_COMPRESSED_RED:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
+         return GL_RED;
+      case GL_R16:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
+         return GL_RED;
       case GL_RG16F:
       case GL_RG32F:
 	 if (!ctx->Extensions.ARB_texture_float)
@@ -2580,8 +2625,11 @@ _mesa_base_tex_format(const struct gl_context *ctx, GLint internalFormat)
 	 /* FALLTHROUGH */
       case GL_RG:
       case GL_RG8:
-      case GL_RG16:
+         return GL_RG;
       case GL_COMPRESSED_RG:
+      case GL_RG16:
+         if (!_mesa_is_desktop_gl(ctx))
+            break;
          return GL_RG;
       default:
          ; /* fallthrough */
