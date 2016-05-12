@@ -619,6 +619,8 @@ brw_initialize_context_constants(struct brw_context *brw)
    ctx->Const.NativeIntegers = true;
    ctx->Const.VertexID_is_zero_based = true;
 
+   ctx->Const.FP64Vector34Consumes2Locations = true;
+
    /* Regarding the CMP instruction, the Ivybridge PRM says:
     *
     *   "For each enabled channel 0b or 1b is assigned to the appropriate flag
