@@ -1211,4 +1211,5 @@ void st_init_extensions(struct pipe_screen *screen,
     * able to version-restrict things.
     */
    extensions->OES_shader_io_blocks = extensions->ARB_ES3_1_compatibility;
+   extensions->ARB_enhanced_layouts = GL_TRUE;
 }
