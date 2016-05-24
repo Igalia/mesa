@@ -1849,6 +1849,8 @@ vec4_visitor::emit_shader_time_write(int shader_time_subindex, src_reg value)
 void
 vec4_visitor::convert_to_hw_regs()
 {
+   expand_64bit_swizzle_to_32bit();
+
    foreach_block_and_inst(block, vec4_instruction, inst, cfg) {
       for (int i = 0; i < 3; i++) {
          struct src_reg &src = inst->src[i];
@@ -2195,6 +2197,36 @@ vec4_visitor::scalarize_df()
 
    if (progress)
       invalidate_live_intervals();
+
+   return progress;
+}
+
+bool
+vec4_visitor::expand_64bit_swizzle_to_32bit()
+{
+   bool progress = false;
+
+   foreach_block_and_inst_safe(block, vec4_instruction, inst, cfg) {
+      if (is_align1_df(inst))
+         continue;
+
+      for (int arg = 0; arg < 3; arg++) {
+         if (inst->src[arg].file == BAD_FILE ||
+             inst->src[arg].file == BRW_IMMEDIATE_VALUE)
+            continue;
+
+         if (type_sz(inst->src[arg].type) < 8)
+            continue;
+
+         /* This pass assumes that we have scalarized all DF instructions */
+         assert(brw_is_single_value_swizzle(inst->src[arg].swizzle));
+
+         unsigned swizzle = BRW_GET_SWZ(inst->src[arg].swizzle, 0);
+         inst->src[arg].swizzle = BRW_SWIZZLE4(swizzle * 2, swizzle * 2 + 1,
+                                               swizzle * 2, swizzle * 2 + 1);
+         progress = true;
+      }
+   }
 
    return progress;
 }
