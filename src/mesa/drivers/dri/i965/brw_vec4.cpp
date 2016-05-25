@@ -1431,7 +1431,9 @@ vec4_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
 
    switch (inst->dst.file) {
    case VGRF:
-      fprintf(file, "vgrf%d.%d", inst->dst.nr, inst->dst.reg_offset);
+      fprintf(file, "vgrf%d", inst->dst.nr);
+      if (inst->dst.reg_offset || inst->dst.subnr)
+         fprintf(file, "+%d.%d", inst->dst.reg_offset, inst->dst.subnr);
       break;
    case FIXED_GRF:
       fprintf(file, "g%d", inst->dst.nr);
@@ -1492,6 +1494,8 @@ vec4_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
       switch (inst->src[i].file) {
       case VGRF:
          fprintf(file, "vgrf%d", inst->src[i].nr);
+         if (inst->src[i].reg_offset || inst->src[i].subnr)
+            fprintf(file, "+%d.%d", inst->src[i].reg_offset, inst->src[i].subnr);
          break;
       case FIXED_GRF:
          fprintf(file, "g%d", inst->src[i].nr);
@@ -1501,6 +1505,8 @@ vec4_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
          break;
       case UNIFORM:
          fprintf(file, "u%d", inst->src[i].nr);
+         if (inst->src[i].reg_offset || inst->src[i].subnr)
+            fprintf(file, "+%d.%d", inst->src[i].reg_offset, inst->src[i].subnr);
          break;
       case IMM:
          switch (inst->src[i].type) {
@@ -1555,12 +1561,6 @@ vec4_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
       case MRF:
          unreachable("not reached");
       }
-
-      /* Don't print .0; and only VGRFs have reg_offsets and sizes */
-      if (inst->src[i].reg_offset != 0 &&
-          inst->src[i].file == VGRF &&
-          alloc.sizes[inst->src[i].nr] != 1)
-         fprintf(file, ".%d", inst->src[i].reg_offset);
 
       if (inst->src[i].file != IMM) {
          static const char *chans[4] = {"x", "y", "z", "w"};
