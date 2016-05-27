@@ -49,8 +49,7 @@ intel_miptree_create_for_teximage(struct brw_context *brw,
    /* Figure out image dimensions at start level. */
    for (i = intelImage->base.Base.Level; i > 0; i--) {
       width <<= 1;
-      if (height != 1)
-         height <<= 1;
+      height <<= 1;
       if (intelObj->base.Target == GL_TEXTURE_3D)
          depth <<= 1;
    }
