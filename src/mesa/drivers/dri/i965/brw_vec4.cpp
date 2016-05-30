@@ -2263,6 +2263,13 @@ vec4_visitor::expand_64bit_swizzle_to_32bit()
                inst->src[arg].reg_offset += 1;
             }
             swizzle -= 2;
+         } else {
+            if ((inst->dst.writemask & WRITEMASK_ZW) &&
+                (inst->src[arg].swizzle == BRW_SWIZZLE_XXXX ||
+                 inst->src[arg].swizzle == BRW_SWIZZLE_YYYY) &&
+                 inst->src[arg].file == VGRF) {
+               inst->src[arg].force_vstride0 = true;
+            }
          }
          inst->src[arg].swizzle = BRW_SWIZZLE4(swizzle * 2, swizzle * 2 + 1,
                                                swizzle * 2, swizzle * 2 + 1);
