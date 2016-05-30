@@ -2275,6 +2275,13 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
    if (swizzle >= 2) {
       *hw_reg = suboffset(*hw_reg, 2);
       swizzle -= 2;
+   } else {
+      if ((inst->dst.writemask & WRITEMASK_ZW) &&
+          (inst->src[arg].swizzle == BRW_SWIZZLE_XXXX ||
+           inst->src[arg].swizzle == BRW_SWIZZLE_YYYY) &&
+          inst->src[arg].file == VGRF) {
+         hw_reg->vstride = BRW_VERTICAL_STRIDE_0;
+      }
    }
 
    /* Any 64-bit source with an offset at 16B is intended to address the
