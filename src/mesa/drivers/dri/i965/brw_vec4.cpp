@@ -221,6 +221,9 @@ vec4_instruction::regs_read(unsigned arg) const
       return arg == 1 ? mlen : 1;
 
    default:
+      if (type_sz(src[arg].type) == 8 && this->exec_size > 4 &&
+          !is_uniform(src[arg]))
+         return 2;
       return 1;
    }
 }
