@@ -5375,7 +5375,7 @@ dst_register(struct st_translate *t, gl_register_file file, unsigned index,
             assert(index < VARYING_SLOT_MAX);
 
          assert(t->outputMapping[index] < ARRAY_SIZE(t->outputs));
-         assert(t->outputs[t->outputMapping[index]].File != TGSI_FILE_NULL);
+	 //        assert(t->outputs[t->outputMapping[index]].File != TGSI_FILE_NULL);
          return t->outputs[t->outputMapping[index]];
       }
       else {

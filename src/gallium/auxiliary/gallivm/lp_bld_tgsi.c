@@ -344,8 +344,9 @@ lp_build_emit_fetch(
       }
    }
 
-   assert(reg->Register.Index <= bld_base->info->file_max[reg->Register.File]);
-
+   if (reg->Register.Index > bld_base->info->file_max[reg->Register.File])
+     return bld_base->base.undef;
+     
    if (bld_base->emit_fetch_funcs[reg->Register.File]) {
       res = bld_base->emit_fetch_funcs[reg->Register.File](bld_base, reg, stype,
                                                            swizzle);

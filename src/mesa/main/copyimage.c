@@ -68,12 +68,6 @@ prepare_target(struct gl_context *ctx, GLuint name, GLenum target,
                GLuint *num_samples,
                const char *dbg_prefix)
 {
-   if (name == 0) {
-      _mesa_error(ctx, GL_INVALID_VALUE,
-                  "glCopyImageSubData(%sName = %d)", dbg_prefix, name);
-      return false;
-   }
-
    /*
     * INVALID_ENUM is generated
     *  * if either <srcTarget> or <dstTarget>
@@ -105,6 +99,13 @@ prepare_target(struct gl_context *ctx, GLuint name, GLenum target,
                   _mesa_enum_to_string(target));
       return false;
    }
+
+   if (name == 0) {
+      _mesa_error(ctx, GL_INVALID_VALUE,
+                  "glCopyImageSubData(%sName = %d)", dbg_prefix, name);
+      return false;
+   }
+
 
    if (target == GL_RENDERBUFFER) {
       struct gl_renderbuffer *rb = _mesa_lookup_renderbuffer(ctx, name);

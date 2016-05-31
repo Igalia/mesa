@@ -1048,7 +1048,7 @@ ureg_emit_dst( struct ureg_program *ureg,
    union tgsi_any_token *out = get_tokens( ureg, DOMAIN_INSN, size );
    unsigned n = 0;
 
-   assert(dst.File != TGSI_FILE_NULL);
+   //   assert(dst.File != TGSI_FILE_NULL);
    assert(dst.File != TGSI_FILE_CONSTANT);
    assert(dst.File != TGSI_FILE_INPUT);
    assert(dst.File != TGSI_FILE_SAMPLER);

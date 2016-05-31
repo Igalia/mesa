@@ -413,6 +413,7 @@ st_StoreQueryResult(struct gl_context *ctx, struct gl_query_object *q,
       index = 0;
    }
 
+   if (pipe->get_query_result_resource)
    pipe->get_query_result_resource(pipe, stq->pq, wait, result_type, index,
                                    stObj->buffer, offset);
 }
