@@ -65,6 +65,9 @@
 #define PATH_MAX _MAX_PATH
 #endif
 
+static void _mesa_shader_write_subroutine_index(struct gl_context *ctx,
+                                                struct gl_linked_shader *sh);
+
 /**
  * Return mask of GLSL_x flags by examining the MESA_GLSL env var.
  */
@@ -1208,7 +1211,7 @@ use_shader_program(struct gl_context *ctx, gl_shader_stage stage,
       shProg = NULL;
 
    if (shProg)
-      _mesa_shader_program_init_subroutine_defaults(shProg);
+      _mesa_shader_program_init_subroutine_defaults(ctx, shProg);
 
    if (*target != shProg) {
       /* Program is current, flush it */
@@ -2648,27 +2651,15 @@ _mesa_UniformSubroutinesuiv(GLenum shadertype, GLsizei count,
             _mesa_error(ctx, GL_INVALID_OPERATION, "%s", api_name);
             return;
          }
+
+         ctx->SubroutineIndex[sh->Stage].IndexPtr[j] = indices[j];
       }
       i += uni_count;
    } while(i < count);
 
    FLUSH_VERTICES(ctx, _NEW_PROGRAM_CONSTANTS);
-   i = 0;
-   do {
-      struct gl_uniform_storage *uni = sh->SubroutineUniformRemapTable[i];
-      if (uni == NULL) {
-         i++;
-         continue;
-      }
 
-      int uni_count = uni->array_elements ? uni->array_elements : 1;
-
-      memcpy(&uni->storage[0], &indices[i],
-             sizeof(GLuint) * uni_count);
-
-      _mesa_propagate_uniforms_to_driver_storage(uni, 0, uni_count);
-      i += uni_count;
-   } while(i < count);
+   _mesa_shader_write_subroutine_index(ctx, sh);
 }
 
 
@@ -2710,12 +2701,7 @@ _mesa_GetUniformSubroutineuiv(GLenum shadertype, GLint location,
       return;
    }
 
-   {
-      struct gl_uniform_storage *uni = sh->SubroutineUniformRemapTable[location];
-      int offset = location - uni->opaque[stage].index;
-      memcpy(params, &uni->storage[offset],
-	     sizeof(GLuint));
-   }
+   *params = ctx->SubroutineIndex[sh->Stage].IndexPtr[location];
 }
 
 
@@ -2824,29 +2810,60 @@ find_compat_subroutine(struct gl_linked_shader *sh,
 }
 
 static void
-_mesa_shader_init_subroutine_defaults(struct gl_linked_shader *sh)
+_mesa_shader_write_subroutine_index(struct gl_context *ctx,
+                                    struct gl_linked_shader *sh)
 {
    int i, j;
 
-   for (i = 0; i < sh->NumSubroutineUniformRemapTable; i++) {
+   if (sh->NumSubroutineUniformRemapTable == 0)
+      return;
+
+   i = 0;
+   do {
       struct gl_uniform_storage *uni = sh->SubroutineUniformRemapTable[i];
       int uni_count;
       int val;
 
-      if (!uni)
+      if (!uni) {
+         i++;
          continue;
+      }
       uni_count = uni->array_elements ? uni->array_elements : 1;
-      val = find_compat_subroutine(sh, uni->type);
-
-      for (j = 0; j < uni_count; j++)
+      for (j = 0; j < uni_count; j++) {
+         val = ctx->SubroutineIndex[sh->Stage].IndexPtr[i + j];
          memcpy(&uni->storage[j], &val, sizeof(int));
+      }
 
       _mesa_propagate_uniforms_to_driver_storage(uni, 0, uni_count);
+      i += uni_count;
+   } while(i < sh->NumSubroutineUniformRemapTable);
+}
+
+static void
+_mesa_shader_init_subroutine_defaults(struct gl_context *ctx,
+                                      struct gl_linked_shader *sh)
+{
+   int i;
+
+   if (ctx->SubroutineIndex[sh->Stage].NumIndex != sh->NumSubroutineUniformRemapTable) {
+      ctx->SubroutineIndex[sh->Stage].IndexPtr = realloc(ctx->SubroutineIndex[sh->Stage].IndexPtr, sh->NumSubroutineUniformRemapTable * (sizeof(int)));
+      ctx->SubroutineIndex[sh->Stage].NumIndex = sh->NumSubroutineUniformRemapTable;
    }
+
+   for (i = 0; i < sh->NumSubroutineUniformRemapTable; i++) {
+      struct gl_uniform_storage *uni = sh->SubroutineUniformRemapTable[i];
+
+      if (!uni)
+         continue;
+      ctx->SubroutineIndex[sh->Stage].IndexPtr[i] = find_compat_subroutine(sh, uni->type);
+   }
+
+   _mesa_shader_write_subroutine_index(ctx, sh);
 }
 
 void
-_mesa_shader_program_init_subroutine_defaults(struct gl_shader_program *shProg)
+_mesa_shader_program_init_subroutine_defaults(struct gl_context *ctx,
+                                              struct gl_shader_program *shProg)
 {
    int i;
 
@@ -2857,6 +2874,6 @@ _mesa_shader_program_init_subroutine_defaults(struct gl_shader_program *shProg)
       if (!shProg->_LinkedShaders[i])
          continue;
 
-      _mesa_shader_init_subroutine_defaults(shProg->_LinkedShaders[i]);
+      _mesa_shader_init_subroutine_defaults(ctx, shProg->_LinkedShaders[i]);
    }
 }
