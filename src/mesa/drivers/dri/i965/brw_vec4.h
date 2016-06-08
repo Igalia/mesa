@@ -164,6 +164,7 @@ public:
 
    bool lower_simd_width();
    bool scalarize_df();
+   bool translate_64bit_mad_to_mul_add();
    bool expand_64bit_swizzle_to_32bit();
 
    vec4_instruction *emit(vec4_instruction *inst);
