@@ -537,10 +537,6 @@ public:
       return this->interface_type;
    }
 
-   enum glsl_interface_packing get_interface_type_packing() const
-   {
-     return this->interface_type->get_interface_packing();
-   }
    /**
     * Get the max_ifc_array_access pointer
     *

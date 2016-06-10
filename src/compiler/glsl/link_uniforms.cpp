@@ -65,7 +65,7 @@ program_resource_visitor::process(const glsl_type *type, const char *name)
 
    unsigned record_array_count = 1;
    char *name_copy = ralloc_strdup(NULL, name);
-   enum glsl_interface_packing packing = type->get_interface_packing();
+   unsigned packing = type->interface_packing;
 
    recursion(type, &name_copy, strlen(name), false, NULL, packing, false,
              record_array_count, NULL);
@@ -79,9 +79,9 @@ program_resource_visitor::process(ir_variable *var)
    const bool row_major =
       var->data.matrix_layout == GLSL_MATRIX_LAYOUT_ROW_MAJOR;
 
-   const enum glsl_interface_packing packing = var->get_interface_type() ?
-      var->get_interface_type_packing() :
-      var->type->get_interface_packing();
+   const unsigned packing = var->get_interface_type() ?
+      var->get_interface_type()->interface_packing :
+      var->type->interface_packing;
 
    const glsl_type *t =
       var->data.from_named_ifc_block ? var->get_interface_type() : var->type;
@@ -116,7 +116,7 @@ void
 program_resource_visitor::recursion(const glsl_type *t, char **name,
                                     size_t name_length, bool row_major,
                                     const glsl_type *record_type,
-                                    const enum glsl_interface_packing packing,
+                                    const unsigned packing,
                                     bool last_field,
                                     unsigned record_array_count,
                                     const glsl_struct_field *named_ifc_member)
@@ -228,7 +228,7 @@ void
 program_resource_visitor::visit_field(const glsl_type *type, const char *name,
                                       bool row_major,
                                       const glsl_type *,
-                                      const enum glsl_interface_packing,
+                                      const unsigned,
                                       bool /* last_field */)
 {
    visit_field(type, name, row_major);
@@ -243,13 +243,13 @@ program_resource_visitor::visit_field(const glsl_struct_field *field)
 
 void
 program_resource_visitor::enter_record(const glsl_type *, const char *, bool,
-                                       const enum glsl_interface_packing)
+                                       const unsigned)
 {
 }
 
 void
 program_resource_visitor::leave_record(const glsl_type *, const char *, bool,
-                                       const enum glsl_interface_packing)
+                                       const unsigned)
 {
 }
 
@@ -662,7 +662,7 @@ private:
    }
 
    virtual void enter_record(const glsl_type *type, const char *,
-                             bool row_major, const enum glsl_interface_packing packing) {
+                             bool row_major, const unsigned packing) {
       assert(type->is_record());
       if (this->buffer_block_index == -1)
          return;
@@ -675,7 +675,7 @@ private:
    }
 
    virtual void leave_record(const glsl_type *type, const char *,
-                             bool row_major, const enum glsl_interface_packing packing) {
+                             bool row_major, const unsigned packing) {
       assert(type->is_record());
       if (this->buffer_block_index == -1)
          return;
@@ -689,7 +689,7 @@ private:
 
    virtual void visit_field(const glsl_type *type, const char *name,
                             bool row_major, const glsl_type * /* record_type */,
-                            const enum glsl_interface_packing packing,
+                            const unsigned packing,
                             bool /* last_field */)
    {
       assert(!type->without_array()->is_record());
