@@ -412,11 +412,11 @@ static int si_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_GENERATE_MIPMAP:
 	case PIPE_CAP_STRING_MARKER:
 	case PIPE_CAP_QUERY_BUFFER_OBJECT:
-	case PIPE_CAP_CULL_DISTANCE:
 	case PIPE_CAP_PRIMITIVE_RESTART_FOR_PATCHES:
 	case PIPE_CAP_TGSI_VOTE:
 		return 0;
-
+	case PIPE_CAP_CULL_DISTANCE:
+		return 1;
 	case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
 		return 30;
 
