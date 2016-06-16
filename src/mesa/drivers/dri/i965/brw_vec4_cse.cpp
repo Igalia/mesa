@@ -130,6 +130,8 @@ instructions_match(vec4_instruction *a, vec4_instruction *b)
           a->dst.writemask == b->dst.writemask &&
           a->force_writemask_all == b->force_writemask_all &&
           a->regs_written == b->regs_written &&
+          a->exec_size == b->exec_size &&
+          a->group == b->group &&
           operands_match(a, b);
 }
 
@@ -181,9 +183,17 @@ vec4_visitor::opt_cse_local(bblock_t *block)
                                               entry->generator->regs_written),
                                            NULL), inst->dst.type);
 
-               for (unsigned i = 0; i < entry->generator->regs_written; ++i) {
-                  vec4_instruction *copy = MOV(offset(entry->generator->dst, i),
-                                               offset(entry->tmp, i));
+               unsigned type_scale = DIV_ROUND_UP(type_sz(entry->tmp.type), 4);
+               unsigned regs_per_mov =
+                   DIV_ROUND_UP(type_scale * entry->generator->exec_size, 8);
+               unsigned num_copy_movs =
+                  DIV_ROUND_UP(entry->generator->regs_written, regs_per_mov);
+               for (unsigned i = 0; i < num_copy_movs; ++i) {
+                  vec4_instruction *copy =
+                     MOV(offset(entry->generator->dst, i * regs_per_mov),
+                                offset(entry->tmp, i * regs_per_mov));
+                  copy->exec_size = entry->generator->exec_size;
+                  copy->group = entry->generator->group;
                   copy->force_writemask_all =
                      entry->generator->force_writemask_all;
                   entry->generator->insert_after(block, copy);
@@ -196,9 +206,17 @@ vec4_visitor::opt_cse_local(bblock_t *block)
             if (!inst->dst.is_null()) {
                assert(inst->dst.type == entry->tmp.type);
 
-               for (unsigned i = 0; i < inst->regs_written; ++i) {
-                  vec4_instruction *copy = MOV(offset(inst->dst, i),
-                                               offset(entry->tmp, i));
+               unsigned type_scale = DIV_ROUND_UP(type_sz(inst->dst.type), 4);
+               unsigned regs_per_mov =
+                   DIV_ROUND_UP(type_scale * inst->exec_size, 8);
+               unsigned num_copy_movs =
+                  DIV_ROUND_UP(inst->regs_written, regs_per_mov);
+               for (unsigned i = 0; i < num_copy_movs; ++i) {
+                  vec4_instruction *copy =
+                     MOV(offset(inst->dst, i * regs_per_mov),
+                         offset(entry->tmp, i * regs_per_mov));
+                  copy->exec_size = inst->exec_size;
+                  copy->group = inst->group;
                   copy->force_writemask_all = inst->force_writemask_all;
                   inst->insert_before(block, copy);
                }
