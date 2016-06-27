@@ -2348,7 +2348,6 @@ vec4_visitor::expand_64bit_swizzle_to_32bit()
                /* Subnr must be in units of bytes for FIXED_GRF */
                if (inst->src[arg].file == FIXED_GRF)
                   inst->src[arg].subnr *= type_sz(inst->src[arg].type);
-               inst->src[arg].force_vstride0 = true;
             } else {
                inst->src[arg].reg_offset += 1;
             }
@@ -2361,6 +2360,18 @@ vec4_visitor::expand_64bit_swizzle_to_32bit()
                inst->src[arg].force_vstride0 = true;
             }
          }
+
+         /* Any DF source with a subnr > 0 is intended to address the second
+          * half of a register and needs a vertical stride of 0 so we:
+          *
+          * 1. Don't violate register region restrictions, when execsize > 2
+          *    (we only use exec sizes of 4 and 8, so always)
+          * 2. Activate the gen7 instruction decompresion bug exploit, when
+          *    execsize == 8.
+          */
+         if (inst->src[arg].subnr)
+            inst->src[arg].force_vstride0 = true;
+
          inst->src[arg].swizzle = BRW_SWIZZLE4(swizzle * 2, swizzle * 2 + 1,
                                                swizzle * 2, swizzle * 2 + 1);
          progress = true;
