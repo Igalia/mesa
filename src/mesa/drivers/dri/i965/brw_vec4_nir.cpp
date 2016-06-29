@@ -1077,6 +1077,17 @@ void
 vec4_visitor::emit_double_to_single(dst_reg dst, src_reg src, bool saturate,
                                     brw_reg_type single_type)
 {
+   /* BDW PRM vol 15 - workarounds:
+    * DF->f format conversion for Align16 has wrong emask calculation when
+    * source is immediate.
+    */
+   if (devinfo->gen == 8 && single_type == BRW_REGISTER_TYPE_F &&
+       src.file == BRW_IMMEDIATE_VALUE) {
+      dst_reg fixed_src = dst_reg(this, glsl_type::dvec4_type);
+      emit(MOV(fixed_src, src));
+      src = src_reg(fixed_src);
+   }
+
    dst_reg temp = dst_reg(this, glsl_type::dvec4_type);
    emit(MOV(temp, src));
 
