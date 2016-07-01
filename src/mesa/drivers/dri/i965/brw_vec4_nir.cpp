@@ -437,16 +437,39 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
 
       int varying = instr->const_index[0] + const_offset->u32[0];
 
-      src = get_nir_src(instr->src[0], BRW_REGISTER_TYPE_F,
-                        instr->num_components);
+      bool is_64bit = nir_src_bit_size(instr->src[0]) == 64;
+      if (is_64bit) {
+         src_reg data;
+         src = get_nir_src(instr->src[0], BRW_REGISTER_TYPE_DF,
+                           instr->num_components);
+         data = src_reg(this, glsl_type::dvec4_type);
+         shuffle_64bit_data(dst_reg(data), src, true);
+         src = retype(data, BRW_REGISTER_TYPE_F);
+      } else {
+         src = get_nir_src(instr->src[0], BRW_REGISTER_TYPE_F,
+                           instr->num_components);
+      }
 
       if (varying >= VARYING_SLOT_VAR0) {
          unsigned c = nir_intrinsic_component(instr);
          unsigned v = varying - VARYING_SLOT_VAR0;
+
+         unsigned num_components = instr->num_components;
+         if (is_64bit)
+            num_components *= 2;
+
          output_generic_reg[v][c] = dst_reg(src);
-         output_generic_num_components[v][c] = instr->num_components;
+         output_generic_num_components[v][c] = MIN2(4, num_components);
+
+         if (is_64bit && num_components > 4) {
+            assert(num_components <= 8);
+            output_generic_reg[v + 1][c] = offset(dst_reg(src), 1);
+            output_generic_num_components[v + 1][c] = num_components - 4;
+         }
       } else {
          output_reg[varying] = dst_reg(src);
+         if (is_64bit && instr->num_components > 2)
+            output_reg[varying + 1] = offset(dst_reg(src), 1);
       }
       break;
    }
