@@ -82,13 +82,31 @@ vec4_tes_visitor::setup_payload()
          if (inst->src[i].file != ATTR)
             continue;
 
+         bool is_64bit = type_sz(inst->src[i].type) == 8;
+
          struct brw_reg grf =
             brw_vec4_grf(reg + inst->src[i].nr / 2, 4 * (inst->src[i].nr % 2));
-         grf = stride(grf, 0, 4, 1);
+         grf = stride(grf, 0, is_64bit ? 2 : 4, 1);
          grf.swizzle = inst->src[i].swizzle;
          grf.type = inst->src[i].type;
          grf.abs = inst->src[i].abs;
          grf.negate = inst->src[i].negate;
+
+         /* For 64-bit attributes we can end up with components XY in the
+          * second half of a register and components ZW in the first half
+          * of the next. Fix it up here.
+          */
+         if (is_64bit && grf.subnr > 0) {
+            /* If we ever use non-single swizzles with 64bit types this
+             * won't be so easy but for now it is all that we need to do.
+             */
+            assert(brw_is_single_value_swizzle(grf.swizzle));
+            if (grf.swizzle > BRW_SWIZZLE_YYYY) {
+               grf.subnr = 0;
+               grf.nr++;
+               grf.swizzle -= BRW_SWIZZLE_ZZZZ;
+            }
+         }
 
          inst->src[i] = grf;
       }
