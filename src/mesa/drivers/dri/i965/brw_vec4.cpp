@@ -1541,7 +1541,7 @@ vec4_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
             fprintf(file, "+%d.%d", inst->src[i].reg_offset, inst->src[i].subnr);
          break;
       case FIXED_GRF:
-         fprintf(file, "g%d", inst->src[i].nr);
+         fprintf(file, "g%d.%d", inst->src[i].nr, inst->src[i].subnr);
          break;
       case ATTR:
          fprintf(file, "attr%d", inst->src[i].nr);
