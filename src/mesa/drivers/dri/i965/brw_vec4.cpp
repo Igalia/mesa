@@ -2037,7 +2037,7 @@ vec4_visitor::convert_to_hw_regs()
  */
 static unsigned
 get_lowered_simd_width(const struct gen_device_info *devinfo,
-                       const vec4_instruction *inst)
+                       unsigned stage, const vec4_instruction *inst)
 {
    /* Do not split some instructions that require special handling */
    switch (inst->opcode) {
@@ -2071,6 +2071,14 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
          if (inst->src[i].file == BAD_FILE)
             continue;
          if (inst->size_read(i) <= REG_SIZE)
+            lowered_width = MIN2(lowered_width, 4);
+
+         /* The tessellation evaluation stage generates code with source regions
+          * that use a vstride 0 for all attributes, which makes them hit
+          * the associated instruction decompression bug in gen7. Split them
+          * to prevent this.
+          */
+         if (stage == MESA_SHADER_TESS_EVAL && inst->src[i].file == ATTR)
             lowered_width = MIN2(lowered_width, 4);
       }
    }
@@ -2113,7 +2121,8 @@ vec4_visitor::lower_simd_width()
    bool progress = false;
 
    foreach_block_and_inst_safe(block, vec4_instruction, inst, cfg) {
-      const unsigned lowered_width = get_lowered_simd_width(devinfo, inst);
+      const unsigned lowered_width =
+         get_lowered_simd_width(devinfo, stage, inst);
       assert(lowered_width <= inst->exec_size);
       if (lowered_width == inst->exec_size)
          continue;
