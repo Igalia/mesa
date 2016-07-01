@@ -2382,7 +2382,7 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
       if ((inst->dst.writemask & WRITEMASK_ZW) &&
           (inst->src[arg].swizzle == BRW_SWIZZLE_XXXX ||
            inst->src[arg].swizzle == BRW_SWIZZLE_YYYY) &&
-          inst->src[arg].file == VGRF) {
+          inst->src[arg].file != UNIFORM) {
          hw_reg->vstride = BRW_VERTICAL_STRIDE_0;
       }
    }
