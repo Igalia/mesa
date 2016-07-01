@@ -2376,9 +2376,8 @@ vec4_visitor::expand_64bit_swizzle_to_32bit()
             if ((inst->dst.writemask & WRITEMASK_ZW) &&
                 (inst->src[arg].swizzle == BRW_SWIZZLE_XXXX ||
                  inst->src[arg].swizzle == BRW_SWIZZLE_YYYY) &&
-                 inst->src[arg].file == VGRF) {
+                 inst->src[arg].file != UNIFORM)
                inst->src[arg].force_vstride0 = true;
-            }
          }
 
          /* Any DF source with a subnr > 0 is intended to address the second
