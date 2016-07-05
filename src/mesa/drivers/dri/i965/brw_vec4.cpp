@@ -1952,8 +1952,19 @@ vec4_visitor::convert_to_hw_regs()
             break;
          }
 
-         case ARF:
          case FIXED_GRF:
+            if (type_sz(src.type) == 8) {
+               reg = src.as_brw_reg();
+               reg.width = BRW_WIDTH_2;
+               if (src.force_vstride0)
+                  reg.vstride = BRW_VERTICAL_STRIDE_0;
+               else
+                  reg.vstride = BRW_VERTICAL_STRIDE_2;
+
+               break;
+            }
+            /* If type_sz(src.type) != 8, fallthrough */
+         case ARF:
          case IMM:
             continue;
 
