@@ -393,7 +393,7 @@ vec4_visitor::nir_emit_load_const(nir_load_const_instr *instr)
 
       reg.writemask = writemask;
       if (instr->def.bit_size == 64) {
-         emit(MOV(reg, brw_imm_df(instr->value.f64[i])));
+         emit(MOV(reg, setup_imm_df(instr->value.f64[i])));
       } else {
          emit(MOV(reg, brw_imm_d(instr->value.i32[i])));
       }
@@ -1845,7 +1845,7 @@ vec4_visitor::nir_emit_alu(nir_alu_instr *instr)
           */
 
          /* Check for zero */
-         emit(CMP(dst_null_df(), op[0], brw_imm_df(0.0), BRW_CONDITIONAL_NZ));
+         emit(CMP(dst_null_df(), op[0], setup_imm_df(0.0), BRW_CONDITIONAL_NZ));
 
          /* AND each high 32-bit channel with 0x80000000u */
          dst_reg tmp = dst_reg(this, glsl_type::uvec4_type);
