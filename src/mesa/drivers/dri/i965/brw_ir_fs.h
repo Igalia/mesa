@@ -349,6 +349,7 @@ public:
    bool can_change_types() const;
    bool has_side_effects() const;
    bool has_source_and_destination_hazard() const;
+   unsigned exec_data_size() const;
 
    /**
     * Return the subset of flag registers read by the instruction as a bitset
