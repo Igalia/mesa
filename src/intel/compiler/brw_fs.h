@@ -498,3 +498,17 @@ fs_reg setup_imm_df(const brw::fs_builder &bld,
 
 enum brw_barycentric_mode brw_barycentric_mode(enum glsl_interp_mode mode,
                                                nir_intrinsic_op op);
+
+static inline unsigned
+get_exec_type_size(const fs_inst *inst)
+{
+   unsigned exec_type_size = 0;
+
+   for (int i = 0; i < inst->sources; i++) {
+      if (inst->src[i].type != BAD_FILE) {
+         exec_type_size = MAX2(exec_type_size, type_sz(inst->src[i].type));
+      }
+   }
+
+   return exec_type_size;
+}
