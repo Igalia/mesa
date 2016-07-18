@@ -340,6 +340,19 @@ fs_inst::has_source_and_destination_hazard() const
    }
 }
 
+unsigned
+fs_inst::exec_data_size() const
+{
+  unsigned exec_data_size = 0;
+
+  for (int i = 0; i < this->sources; i++) {
+    if (this->src[i].type != BAD_FILE)
+      exec_data_size = MAX2(exec_data_size, type_sz(this->src[i].type));
+  }
+
+  return exec_data_size;
+}
+
 bool
 fs_inst::is_copy_payload(const brw::simple_allocator &grf_alloc) const
 {
@@ -4577,11 +4590,7 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
        !inst->force_writemask_all) {
       const unsigned channels_per_grf = inst->exec_size /
          DIV_ROUND_UP(inst->size_written, REG_SIZE);
-      unsigned exec_type_size = 0;
-      for (int i = 0; i < inst->sources; i++) {
-         if (inst->src[i].file != BAD_FILE)
-            exec_type_size = MAX2(exec_type_size, type_sz(inst->src[i].type));
-      }
+      unsigned exec_type_size = inst->exec_data_size();
       assert(exec_type_size);
 
       /* The hardware shifts exactly 8 channels per compressed half of the
