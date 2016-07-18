@@ -70,6 +70,7 @@ src_reg::src_reg(struct ::brw_reg reg) :
 {
    this->reg_offset = 0;
    this->reladdr = NULL;
+   this->force_vstride0 = false;
 }
 
 src_reg::src_reg(const dst_reg &reg) :
@@ -77,6 +78,7 @@ src_reg::src_reg(const dst_reg &reg) :
 {
    this->reladdr = reg.reladdr;
    this->swizzle = brw_swizzle_for_mask(reg.writemask);
+   this->force_vstride0 = false;
 }
 
 void

@@ -51,6 +51,7 @@ public:
    explicit src_reg(const dst_reg &reg);
 
    src_reg *reladdr;
+   bool force_vstride0;
 };
 
 static inline src_reg
