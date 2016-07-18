@@ -1183,6 +1183,19 @@ vec4_visitor::opt_register_coalesce()
                   scan_inst->dst.type == scan_inst->src[0].type))
                break;
 
+            /* Only allow coalescing between registers of the same type size.
+             * Otherwise we would need to make the pass aware of the fact that
+             * channel sizes are different for single and double precision.
+             */
+            if (type_sz(inst->src[0].type) != type_sz(scan_inst->src[0].type))
+               break;
+
+            /* Check that scan_inst writes the same amount of data that we read
+             * in the instruction
+             */
+            if (scan_inst->regs_written != inst->regs_read(0))
+               break;
+
             /* If we can't handle the swizzle, bail. */
             if (!scan_inst->can_reswizzle(devinfo, inst->dst.writemask,
                                           inst->src[0].swizzle,
@@ -1190,8 +1203,11 @@ vec4_visitor::opt_register_coalesce()
                break;
             }
 
-            /* This doesn't handle coalescing of multiple registers. */
-            if (scan_inst->regs_written > 1)
+            /* This doesn't handle coalescing writes larger than 8 channels
+             * (1 register for single-precision and two for double-precision)
+             */
+            if (DIV_ROUND_UP(REG_SIZE * scan_inst->regs_written,
+                             type_sz(scan_inst->dst.type)) > 8)
                break;
 
 	    /* Mark which channels we found unconditional writes for. */
