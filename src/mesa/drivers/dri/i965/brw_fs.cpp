@@ -2168,6 +2168,62 @@ fs_visitor::lower_constant_loads()
    invalidate_live_intervals();
 }
 
+/**
+ * When dealing with double-precision floats (DF) in IVB/VLV, we need to
+ * duplicate the regioning parameters. This means that for a DF scalar
+ * (regioning <0,1,0>) we will end up using regioning <0,2,0>. But according
+ * to General Restrictions on Regioning Parameters (Ivy PRM, Vol. 4 Part 3,
+ * page 69), if VertStride = HorzStride = 0, Width must be 1 regardless of the
+ * value of ExecSize. So we would be violating the restriction. To overcome
+ * it, this lowering step duplicates the scalar in a couple of registers,
+ * reading it as two floats to avoid the restriction.
+ */
+bool
+fs_visitor::lower_ivb_64bit_scalar()
+{
+  bool progress = false;
+
+  assert (devinfo->gen == 7 && !devinfo->is_haswell);
+
+  foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
+     if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT)
+        continue;
+    for (int i = 0; i < inst->sources; i++) {
+       if (inst->src[i].type != BRW_REGISTER_TYPE_DF ||
+           inst->src[i].stride != 0)
+        continue;
+
+      const fs_builder ibld(this, block, inst);
+      fs_reg tmp = ibld.vgrf(BRW_REGISTER_TYPE_F, dispatch_width / 4);
+      fs_reg src = retype(inst->src[i], BRW_REGISTER_TYPE_F);
+      src.abs = false;
+      src.negate = false;
+
+      /* Move the first 32 bits as a float */
+      tmp.stride = 2;
+      ibld.MOV(tmp, src);
+
+      /* Move the last 32 bits as a float */
+      src.offset += 4;
+      tmp.offset = 4;
+      ibld.MOV(tmp, src);
+
+      /* Use the new register */
+      tmp.stride = 1;
+      tmp.offset = 0;
+      tmp.abs = inst->src[i].abs;
+      tmp.negate = inst->src[i].negate;
+      inst->src[i] = retype(tmp, BRW_REGISTER_TYPE_DF);
+      progress = true;
+    }
+  }
+
+  if (progress)
+    invalidate_live_intervals();
+
+  return progress;
+}
+
 bool
 fs_visitor::opt_algebraic()
 {
@@ -5698,6 +5754,13 @@ fs_visitor::optimize()
       OPT(opt_copy_propagation);
       OPT(dead_code_eliminate);
    }
+
+   /* Lower DF scalars on IVB/VLV before lower_simd_width, as the generated
+    * code has a bug in this hardware that is fixed later in the
+    * lower_simd_width step.
+    */
+   if (devinfo->gen == 7 && !devinfo->is_haswell)
+     OPT(lower_ivb_64bit_scalar);
 
    OPT(lower_simd_width);
 
