@@ -54,13 +54,14 @@ brw_file_from_reg(fs_reg *reg)
 }
 
 static struct brw_reg
-brw_reg_from_fs_reg(fs_inst *inst, fs_reg *reg, unsigned gen, bool compressed)
+brw_reg_from_fs_reg(const struct brw_compiler *compiler, fs_inst *inst,
+                    fs_reg *reg, bool compressed)
 {
    struct brw_reg brw_reg;
 
    switch (reg->file) {
    case MRF:
-      assert((reg->nr & ~BRW_MRF_COMPR4) < BRW_MAX_MRF(gen));
+      assert((reg->nr & ~BRW_MRF_COMPR4) < BRW_MAX_MRF(compiler->devinfo->gen));
       /* Fallthrough */
    case VGRF:
       if (reg->stride == 0) {
@@ -93,6 +94,37 @@ brw_reg_from_fs_reg(fs_inst *inst, fs_reg *reg, unsigned gen, bool compressed)
          const unsigned width = MIN2(reg_width, phys_width);
          brw_reg = brw_vecn_reg(width, brw_file_from_reg(reg), reg->nr, 0);
          brw_reg = stride(brw_reg, width * reg->stride, width, reg->stride);
+         /* From the Ivy PRM (EU Changes by Processor Generation, page 13):
+          *  "Each DF (Double Float) operand uses an element size of 4 rather
+          *  than 8 and all regioning parameters are twice what the values
+          *  would be based on the true element size: ExecSize, Width,
+          *  HorzStride, and VertStride. Each DF operand uses a pair of
+          *  channels and all masking and swizzing should be adjusted
+          *  appropriately."
+          *
+          * From the Ivy PRM (Special Requirements for Handling Double
+          * Precision Data Types, page 71):
+          *  "In Align1 mode, all regioning parameters like stride, execution
+          *  size, and width must use the syntax of a pair of packed
+          *  floats. The offsets for these data types must be 64-bit
+          *  aligned. The execution size and regioning parameters are in terms
+          *  of floats."
+          *
+          * All these paragraphs summarizes that in Ivy, when handling DF,
+          * exec_size, width and vertstride must be duplicated. And Horzstride
+          * should be duplicated when it is greater than 1.
+          *
+          * It applies to Valleyview too.
+          */
+         if (compiler->devinfo->gen == 7 &&
+             !compiler->devinfo->is_haswell &&
+             type_sz(reg->type) == 8) {
+            brw_reg.width++;
+            if (brw_reg.vstride > 0)
+               brw_reg.vstride++;
+            if (brw_reg.hstride > 1)
+               brw_reg.hstride++;
+         }
       }
 
       brw_reg = retype(brw_reg, reg->type);
@@ -1542,6 +1574,11 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
       unsigned int last_insn_offset = p->next_insn_offset;
       bool multiple_instructions_emitted = false;
 
+      if (devinfo->gen == 7 && !devinfo->is_haswell &&
+          (inst->exec_data_size() == 8 || type_sz(inst->dst.type) == 8)) {
+        inst->exec_size *= 2;
+      }
+
       /* From the Broadwell PRM, Volume 7, "3D-Media-GPGPU", in the
        * "Register Region Restrictions" section: for BDW, SKL:
        *
@@ -1582,9 +1619,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
       brw_set_default_group(p, inst->group);
 
       for (unsigned int i = 0; i < inst->sources; i++) {
-         src[i] = brw_reg_from_fs_reg(inst, &inst->src[i], devinfo->gen,
-                                      compressed);
-
+         src[i] = brw_reg_from_fs_reg(compiler, inst, &inst->src[i], compressed);
 	 /* The accumulator result appears to get used for the
 	  * conditional modifier generation.  When negating a UD
 	  * value, there is a 33rd bit generated for the sign in the
@@ -1595,7 +1630,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
 		inst->src[i].type != BRW_REGISTER_TYPE_UD ||
 		!inst->src[i].negate);
       }
-      dst = brw_reg_from_fs_reg(inst, &inst->dst, devinfo->gen, compressed);
+      dst = brw_reg_from_fs_reg(compiler, inst, &inst->dst, compressed);
 
       brw_set_default_access_mode(p, BRW_ALIGN_1);
       brw_set_default_predicate_control(p, inst->predicate);
