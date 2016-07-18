@@ -2234,6 +2234,9 @@ vec4_visitor::expand_64bit_swizzle_to_32bit()
          continue;
 
       for (int arg = 0; arg < 3; arg++) {
+         /* Sanity check: we only set force_vstride0 here */
+         assert(!inst->src[arg].force_vstride0);
+
          if (inst->src[arg].file == BAD_FILE ||
              inst->src[arg].file == BRW_IMMEDIATE_VALUE)
             continue;
