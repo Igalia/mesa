@@ -2226,6 +2226,56 @@ fs_visitor::lower_constant_loads()
    invalidate_live_intervals();
 }
 
+/**
+ * When dealing with double-precision floats (DF) in Ivy, we need to duplicate
+ * the regioning parameters. This means that for a DF scalar (regioning
+ * <0,1,0>) we will end up using regioning <0,2,0>. But according to General
+ * Restrictions on Regioning Parameters (Ivy PRM, Vol. 4 Part 3, page 69), if
+ * VertStride = HorzStride = 0, Width must be 1 regardless of the value of
+ * ExecSize. So we would be violating the restriction. To overcome it, this
+ * lowering step duplicates the scalar in a couple of registers, reading it as
+ * two floats to avoid the restriction. */
+bool
+fs_visitor::lower_ivb_64bit_scalar()
+{
+  bool progress = false;
+
+  assert (devinfo->gen == 7 && !devinfo->is_haswell);
+
+  foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
+    for (int i = 0; i < inst->sources; i++) {
+       if (inst->src[i].type != BRW_REGISTER_TYPE_DF ||
+           inst->src[i].file != UNIFORM ||
+           inst->src[i].stride != 0)
+        continue;
+
+      const fs_builder ibld(this, block, inst);
+      fs_reg tmp = ibld.vgrf(BRW_REGISTER_TYPE_F, dispatch_width / 4);
+      fs_reg src = retype(inst->src[i], BRW_REGISTER_TYPE_F);
+
+      /* Move the first 32 bits as a float */
+      tmp.stride = 2;
+      ibld.MOV(tmp, src);
+
+      /* Move the last 32 bits as a float */
+      src.subreg_offset += 4;
+      tmp.subreg_offset = 4;
+      ibld.MOV(tmp, src);
+
+      /* Use the new register */
+      tmp.stride = 1;
+      tmp.subreg_offset = 0;
+      inst->src[i] = retype(tmp, BRW_REGISTER_TYPE_DF);
+      progress = true;
+    }
+  }
+
+  if (progress)
+    invalidate_live_intervals();
+
+  return progress;
+}
+
 bool
 fs_visitor::opt_algebraic()
 {
@@ -5811,6 +5861,11 @@ fs_visitor::optimize()
       OPT(opt_copy_propagate);
       OPT(dead_code_eliminate);
    }
+
+   /* Lower Df scalars on Ivy before lower_simd_width, as the generated code
+    * has a bug in Ivy that is fixed later in the lower_simd_width step */
+   if (devinfo->gen == 7 && !devinfo->is_haswell)
+     OPT(lower_ivb_64bit_scalar);
 
    OPT(lower_simd_width);
 
