@@ -500,4 +500,32 @@ fs_reg setup_imm_df(const brw::fs_builder &bld,
 enum brw_barycentric_mode brw_barycentric_mode(enum glsl_interp_mode mode,
                                                nir_intrinsic_op op);
 
+static inline enum brw_reg_type
+get_exec_type(const fs_inst *inst)
+{
+   brw_reg_type exec_type = BRW_REGISTER_TYPE_B;
+
+   for (int i = 0; i < inst->sources; i++) {
+      if (inst->src[i].type != BAD_FILE) {
+         const brw_reg_type t = get_exec_type(inst->src[i].type);
+         if (type_sz(t) > type_sz(exec_type))
+            exec_type = t;
+         else if (type_sz(t) == type_sz(exec_type) && brw_reg_type_is_floating_point(t))
+            exec_type = t;
+      }
+   }
+
+   /* TODO: We need to handle half-float conversions. */
+   assert(exec_type != BRW_REGISTER_TYPE_HF ||
+          inst->dst.type == BRW_REGISTER_TYPE_HF);
+
+   return exec_type;
+}
+
+static inline unsigned
+get_exec_type_size(const fs_inst *inst)
+{
+   return type_sz(get_exec_type(inst));
+}
+
 #endif /* BRW_FS_H */
