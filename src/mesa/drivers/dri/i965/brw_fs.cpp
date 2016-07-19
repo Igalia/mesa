@@ -4581,8 +4581,15 @@ static unsigned
 get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
                            const fs_inst *inst)
 {
+   /* Note that in IVB/VLV for instructions that handles DF, we will duplicate
+    * the exec_size. So take this value for calculus purposes.
+    */
+   unsigned exec_size = inst->exec_size;
+   if (devinfo->gen == 7 && !devinfo->is_haswell && inst->exec_data_size() == 8)
+      exec_size *= 2;
+
    /* Maximum execution size representable in the instruction controls. */
-   unsigned max_width = MIN2(32, inst->exec_size);
+   unsigned max_width = MIN2(32, exec_size);
 
    /* According to the PRMs:
     *  "A. In Direct Addressing mode, a source cannot span more than 2
@@ -4685,6 +4692,10 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
       if (channels_per_grf != (exec_type_size == 8 ? 4 : 8))
          max_width = MIN2(max_width, channels_per_grf);
    }
+
+   /* If we have duplicated exec_size, then readjust max_width if required. */
+   if (exec_size != inst->exec_size && max_width == exec_size)
+      max_width = inst->exec_size;
 
    /* Only power-of-two execution sizes are representable in the instruction
     * control fields.
