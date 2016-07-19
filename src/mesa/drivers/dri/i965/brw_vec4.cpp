@@ -2266,6 +2266,42 @@ vec4_visitor::scalarize_df()
       if (!is_double)
          continue;
 
+      /* Don't scalarize instruccions that only use identity swizzles on
+       * non-uniform registers (vstride != 0). Identity swizzles don't require
+       * any special handling and just work as intended. The only exception
+       * to this are tessellation evaluation attributes (see setup_payload()
+       * in brw_vec4_tes.cpp for details).
+       *
+       * FIXME: there are more swizzle combinations that can be allowed with
+       *        simple swizzle translations. For example, we can implement
+       *        XXZZ as XYXY, YYWW as ZWZW and YXWZ as ZWXY.
+       *
+       * FIXME: We can also exploit the vstride 0 decompression bug in gen7 to
+       *        implement some more swizzles via simple translations. For
+       *        example: XXXX as XYXY, YYYY as ZWZW (same for ZZZZ and WWWW by
+       *        using subnr), XYXY as XYZW, YXYX as ZWXY (same for ZWZW and
+       *        WZWZ using subnr).
+       *
+       * FIXME: we can go an step further and implement even more swizzle
+       *        variations using only partial scalarization.
+       *
+       * For more details see:
+       * https://bugs.freedesktop.org/show_bug.cgi?id=92760#c82
+       */
+      bool skip_lowering = true;
+      for (unsigned i = 0; i < 3; i++) {
+         if (inst->src[i].file == BAD_FILE || type_sz(inst->src[i].type) < 8)
+            continue;
+         skip_lowering = skip_lowering &&
+                         (stage != MESA_SHADER_TESS_EVAL ||
+                          inst->src[i].file != ATTR) &&
+                         inst->src[i].swizzle == BRW_SWIZZLE_XYZW &&
+                         !is_uniform(inst->src[i]);
+      }
+
+      if (skip_lowering)
+         continue;
+
       /* Generate scalar instructions for each enabled channel */
       for (unsigned chan = 0; chan < 4; chan++) {
          unsigned chan_mask = 1 << chan;
@@ -2362,7 +2398,15 @@ vec4_visitor::expand_64bit_swizzle_to_32bit()
          if (type_sz(inst->src[arg].type) < 8)
             continue;
 
-         /* This pass assumes that we have scalarized all DF instructions */
+         /* Identity swizzles (which we only let through on non-uniform
+          * registers) expand to identify swizzles too
+          */
+         if (inst->src[arg].swizzle == BRW_SWIZZLE_XYZW) {
+            assert(!is_uniform(inst->src[arg]));
+            continue;
+         }
+
+         /* If we got here the instruction should have been scalarized */
          assert(brw_is_single_value_swizzle(inst->src[arg].swizzle));
 
          /* To gain access to Z/W components we need to use subnr to select
