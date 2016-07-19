@@ -2266,6 +2266,15 @@ vec4_visitor::scalarize_df()
       if (!is_double)
          continue;
 
+      bool skip_lowering = true;
+
+      /* XY and ZW writemasks operate in 32-bit, which means that they don't
+       * have a native 64-bit representation and they should always be split.
+       */
+      if (inst->dst.writemask == WRITEMASK_XY ||
+          inst->dst.writemask == WRITEMASK_ZW)
+         skip_lowering = false;
+
       /* Don't scalarize instruccions that only use identity swizzles on
        * non-uniform registers (vstride != 0). Identity swizzles don't require
        * any special handling and just work as intended. The only exception
@@ -2288,7 +2297,6 @@ vec4_visitor::scalarize_df()
        * For more details see:
        * https://bugs.freedesktop.org/show_bug.cgi?id=92760#c82
        */
-      bool skip_lowering = true;
       for (unsigned i = 0; i < 3; i++) {
          if (inst->src[i].file == BAD_FILE || type_sz(inst->src[i].type) < 8)
             continue;
