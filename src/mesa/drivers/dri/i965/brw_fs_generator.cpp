@@ -1634,6 +1634,16 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
 		inst->src[i].type != BRW_REGISTER_TYPE_UD ||
 		!inst->src[i].negate);
       }
+      /* When converting from DF->F, we set destination's stride as 2 as an
+       * aligment requirement. But in IVB/VLV, each DF implicitly writes 2 F,
+       * being the first one the converted value. So we don't need to
+       * explicitly set stride 2, but 1.
+       */
+      if (devinfo->gen == 7 && !devinfo->is_haswell &&
+          type_sz(inst->src[0].type) > type_sz(inst->dst.type)) {
+         assert(inst->dst.stride == 2 || inst->dst.stride == 1);
+         inst->dst.stride = 1;
+      }
       dst = brw_reg_from_fs_reg(compiler, inst, &inst->dst, compressed);
 
       brw_set_default_access_mode(p, BRW_ALIGN_1);
