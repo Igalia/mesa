@@ -59,16 +59,10 @@ fs_visitor::lower_d2x()
        * So we need to allocate a temporary that's two registers, and then do
        * a strided MOV to get the lower DWord of every Qword that has the
        * result.
-       *
-       * NOTE: in Ivybridge, we do no explicitly set destiny stride to 2
-       * because te result is already strided
        */
       fs_reg temp = ibld.vgrf(inst->src[0].type, 1);
       fs_reg strided_temp = subscript(temp, inst->dst.type, 0);
-      if (devinfo->gen == 7 && !devinfo->is_haswell)
-         ibld.MOV(retype(temp, inst->dst.type), inst->src[0]);
-      else
-         ibld.MOV(strided_temp, inst->src[0]);
+      ibld.MOV(strided_temp, inst->src[0]);
       ibld.MOV(dst, strided_temp);
 
       inst->remove(block);
