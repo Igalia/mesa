@@ -4959,8 +4959,13 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
       return MIN2(8, inst->exec_size);
 
    case SHADER_OPCODE_MOV_INDIRECT:
-      /* Prior to Broadwell, we only have 8 address subregisters */
-      return MIN3(devinfo->gen >= 8 ? 16 : 8,
+      /* Prior to Broadwell, we only have 8 address subregisters. Special case
+       * for IVB/VLV and DF types: set to 4 (exec_size will be later
+       * duplicated).
+       */
+      return MIN3(devinfo->gen >= 8 ? 16 : ((devinfo->gen == 7 &&
+                                             !devinfo->is_haswell &&
+                                             inst->exec_data_size() == 8) ? 4 : 8),
                   2 * REG_SIZE / (inst->dst.stride * type_sz(inst->dst.type)),
                   inst->exec_size);
 
