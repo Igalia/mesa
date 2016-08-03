@@ -1628,7 +1628,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
       bool multiple_instructions_emitted = false;
 
       if (devinfo->gen == 7 && !devinfo->is_haswell &&
-          inst->exec_data_size() == 8) {
+          (inst->exec_data_size() == 8 || type_sz(inst->dst.type) == 8)) {
         inst->exec_size *= 2;
       }
 
