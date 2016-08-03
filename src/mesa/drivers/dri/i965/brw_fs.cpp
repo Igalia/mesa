@@ -2254,6 +2254,8 @@ fs_visitor::lower_ivb_64bit_scalar()
       const fs_builder ibld(this, block, inst);
       fs_reg tmp = ibld.vgrf(BRW_REGISTER_TYPE_F, dispatch_width / 4);
       fs_reg src = retype(inst->src[i], BRW_REGISTER_TYPE_F);
+      src.abs = false;
+      src.negate = false;
 
       /* Move the first 32 bits as a float */
       tmp.stride = 2;
@@ -2267,6 +2269,8 @@ fs_visitor::lower_ivb_64bit_scalar()
       /* Use the new register */
       tmp.stride = 1;
       tmp.subreg_offset = 0;
+      tmp.abs = inst->src[i].abs;
+      tmp.negate = inst->src[i].negate;
       inst->src[i] = retype(tmp, BRW_REGISTER_TYPE_DF);
       progress = true;
     }
