@@ -2197,6 +2197,8 @@ fs_visitor::lower_ivb_64bit_scalar()
   assert (devinfo->gen == 7 && !devinfo->is_haswell);
 
   foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
+     if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT)
+        continue;
     for (int i = 0; i < inst->sources; i++) {
        if (inst->src[i].type != BRW_REGISTER_TYPE_DF ||
            inst->src[i].stride != 0)
