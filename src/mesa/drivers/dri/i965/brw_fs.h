@@ -131,6 +131,7 @@ public:
    void validate();
    bool opt_algebraic();
    bool lower_ivb_64bit_scalar();
+   bool lower_ivb_x2d();
    bool opt_redundant_discard_jumps();
    bool opt_cse();
    bool opt_cse_local(bblock_t *block);
