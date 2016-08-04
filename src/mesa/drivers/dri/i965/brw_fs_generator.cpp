@@ -115,9 +115,7 @@ brw_reg_from_fs_reg(const struct brw_device_info *devinfo, fs_inst *inst,
           * exec_size, width and vertstride must be duplicated. And Horzstride
           * should be duplicated when it is greater than 1.
           */
-         if (devinfo->gen == 7 &&
-             !devinfo->is_haswell &&
-             type_sz(reg->type) == 8) {
+         if (devinfo->is_ivybridge && type_sz(reg->type) == 8) {
             brw_reg.width++;
             if (brw_reg.vstride > 0)
                brw_reg.vstride++;
@@ -1627,7 +1625,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
       unsigned int last_insn_offset = p->next_insn_offset;
       bool multiple_instructions_emitted = false;
 
-      if (devinfo->gen == 7 && !devinfo->is_haswell &&
+      if (devinfo->is_ivybridge &&
           (inst->exec_data_size() == 8 || type_sz(inst->dst.type) == 8)) {
         inst->exec_size *= 2;
       }
@@ -1688,7 +1686,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
        * being the first one the converted value. So we don't need to
        * explicitly set stride 2, but 1. */
       // FIXME: Probably this should be done inside brw_reg_from_fs_reg()
-      if (devinfo->gen == 7 && !devinfo->is_haswell &&
+      if (devinfo->is_ivybridge &&
           type_sz(inst->src[0].type) > type_sz(inst->dst.type)) {
          assert(inst->dst.stride == 2);
          inst->dst.stride = 1;

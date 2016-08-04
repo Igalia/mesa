@@ -2240,7 +2240,7 @@ fs_visitor::lower_ivb_64bit_scalar()
 {
   bool progress = false;
 
-  assert (devinfo->gen == 7 && !devinfo->is_haswell);
+  assert (devinfo->is_ivybridge);
 
   foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
      if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT)
@@ -4663,7 +4663,7 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
    /* Note that in IVB for instructions that handles DF, we will duplicate the
     * exec_size. So take this value for purposes of calculus */
    unsigned exec_size = inst->exec_size;
-   if (devinfo->gen == 7 && !devinfo->is_haswell && inst->exec_data_size() == 8)
+   if (devinfo->is_ivybridge && inst->exec_data_size() == 8)
       exec_size *= 2;
 
    /* Maximum execution size representable in the instruction controls. */
@@ -5069,8 +5069,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
       /* Prior to Broadwell, we only have 8 address subregisters. Special case
        * for Ivy and DF types: set to 4 (exec_size will be later
        * duplicated) */
-      return MIN3(devinfo->gen >= 8 ? 16 : ((devinfo->gen == 7 &&
-                                             !devinfo->is_haswell &&
+      return MIN3(devinfo->gen >= 8 ? 16 : ((devinfo->is_ivybridge &&
                                              inst->exec_data_size() == 8) ? 4 : 8),
                   2 * REG_SIZE / (inst->dst.stride * type_sz(inst->dst.type)),
                   inst->exec_size);
@@ -5885,7 +5884,7 @@ fs_visitor::optimize()
 
    /* Lower Df scalars on Ivy before lower_simd_width, as the generated code
     * has a bug in Ivy that is fixed later in the lower_simd_width step */
-   if (devinfo->gen == 7 && !devinfo->is_haswell)
+   if (devinfo->is_ivybridge)
      OPT(lower_ivb_64bit_scalar);
 
    OPT(lower_simd_width);

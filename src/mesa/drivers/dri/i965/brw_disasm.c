@@ -1212,7 +1212,7 @@ qtr_ctrl(FILE *file, const struct gen_device_info *devinfo, brw_inst *inst)
          string(file, " 4Q");
          break;
       }
-      if (devinfo->gen == 7 && !devinfo->is_haswell) {
+      if (devinfo->is_ivybridge) {
          int nib_ctl = brw_inst_nib_control(devinfo, inst);
          if (nib_ctl == 0)
             string(file, " 1N");
