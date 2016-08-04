@@ -5884,8 +5884,10 @@ fs_visitor::optimize()
 
    /* Lower Df scalars on Ivy before lower_simd_width, as the generated code
     * has a bug in Ivy that is fixed later in the lower_simd_width step */
-   if (devinfo->is_ivybridge)
+   if (devinfo->is_ivybridge) {
+     OPT(lower_ivb_x2d);
      OPT(lower_ivb_64bit_scalar);
+   }
 
    OPT(lower_simd_width);
 
