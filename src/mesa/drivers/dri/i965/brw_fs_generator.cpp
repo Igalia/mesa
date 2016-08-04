@@ -67,6 +67,26 @@ brw_reg_from_fs_reg(const struct brw_compiler *compiler, fs_inst *inst,
       if (reg->stride == 0) {
          brw_reg = brw_vec1_reg(brw_file_from_reg(reg), reg->nr, 0);
       } else {
+         unsigned reg_stride;
+
+         /* When converting from F->DF, in IVB/VLV the source is strided
+          * 2. But now we set it to 1 because the hardware will already double
+          * it internally.
+          */
+         if (compiler->devinfo->gen == 7 &&
+             !compiler->devinfo->is_haswell &&
+             inst->opcode == BRW_OPCODE_MOV &&
+             inst->dst.type == BRW_REGISTER_TYPE_DF &&
+             reg->file != BRW_IMMEDIATE_VALUE &&
+             (reg->type == BRW_REGISTER_TYPE_F ||
+              reg->type == BRW_REGISTER_TYPE_D ||
+              reg->type == BRW_REGISTER_TYPE_UD)) {
+            assert(reg->stride == 2);
+            reg_stride = 1;
+         } else {
+            reg_stride = reg->stride;
+         }
+
          /* From the Haswell PRM:
           *
           *  "VertStride must be used to cross GRF register boundaries. This
@@ -75,7 +95,7 @@ brw_reg_from_fs_reg(const struct brw_compiler *compiler, fs_inst *inst,
           *
           * The maximum width value that could satisfy this restriction is:
           */
-         const unsigned reg_width = REG_SIZE / (reg->stride * type_sz(reg->type));
+         const unsigned reg_width = REG_SIZE / (reg_stride * type_sz(reg->type));
 
          /* Because the hardware can only split source regions at a whole
           * multiple of width during decompression (i.e. vertically), clamp
@@ -93,7 +113,7 @@ brw_reg_from_fs_reg(const struct brw_compiler *compiler, fs_inst *inst,
           */
          const unsigned width = MIN2(reg_width, phys_width);
          brw_reg = brw_vecn_reg(width, brw_file_from_reg(reg), reg->nr, 0);
-         brw_reg = stride(brw_reg, width * reg->stride, width, reg->stride);
+         brw_reg = stride(brw_reg, width * reg_stride, width, reg_stride);
          /* From the Ivy PRM (EU Changes by Processor Generation, page 13):
           *  "Each DF (Double Float) operand uses an element size of 4 rather
           *  than 8 and all regioning parameters are twice what the values
