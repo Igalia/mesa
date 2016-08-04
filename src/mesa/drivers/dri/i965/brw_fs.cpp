@@ -5775,8 +5775,10 @@ fs_visitor::optimize()
     * code has a bug in this hardware that is fixed later in the
     * lower_simd_width step.
     */
-   if (devinfo->gen == 7 && !devinfo->is_haswell)
+   if (devinfo->gen == 7 && !devinfo->is_haswell) {
+     OPT(lower_ivb_x2d);
      OPT(lower_ivb_64bit_scalar);
+   }
 
    OPT(lower_simd_width);
 
