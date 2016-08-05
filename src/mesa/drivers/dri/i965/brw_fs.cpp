@@ -2247,7 +2247,6 @@ fs_visitor::lower_ivb_64bit_scalar()
         continue;
     for (int i = 0; i < inst->sources; i++) {
        if (inst->src[i].type != BRW_REGISTER_TYPE_DF ||
-           inst->src[i].file != UNIFORM ||
            inst->src[i].stride != 0)
         continue;
 
