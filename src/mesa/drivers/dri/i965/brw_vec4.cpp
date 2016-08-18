@@ -2246,6 +2246,35 @@ scalarize_predicate(brw_predicate predicate, unsigned writemask)
    }
 }
 
+/* 64-bit sources use regions with a width of 2. These 2 elements in each row
+ * can be addressed using 32-bit swizzles (which is what the hardware supports)
+ * but it also means that the swizzle we apply on the first two components of a
+ * dvec4 is coupled with the swizzle we use for the last 2. In other words,
+ * only some specific swizzle combinations can be natively supported.
+ */
+bool
+vec4_visitor::is_supported_64bit_region(src_reg src)
+{
+   assert(type_sz(src.type) == 8);
+
+   /* Uniform regions have a vstride=0. Because we use 2-wide rows with
+    * 64-bit regions it means that we cannot access components Z/W, so
+    * return false for any such case.
+    */
+   if (is_uniform(src) && (brw_mask_for_swizzle(src.swizzle) & 12))
+      return false;
+
+   switch (src.swizzle) {
+   case BRW_SWIZZLE_XYZW:
+      /* Tessellation evaluation attributes generate regions with a
+       * vstride of 0 that need special handling.
+       */
+      return stage != MESA_SHADER_TESS_EVAL || src.file != ATTR;
+   default:
+      return false;
+   }
+}
+
 bool
 vec4_visitor::scalarize_df()
 {
@@ -2275,11 +2304,8 @@ vec4_visitor::scalarize_df()
           inst->dst.writemask == WRITEMASK_ZW)
          skip_lowering = false;
 
-      /* Don't scalarize instruccions that only use identity swizzles on
-       * non-uniform registers (vstride != 0). Identity swizzles don't require
-       * any special handling and just work as intended. The only exception
-       * to this are tessellation evaluation attributes (see setup_payload()
-       * in brw_vec4_tes.cpp for details).
+      /* Skip the lowering for specific regioning scenarios that we can support
+       * natively.
        *
        * FIXME: there are more swizzle combinations that can be allowed with
        *        simple swizzle translations. For example, we can implement
@@ -2301,10 +2327,7 @@ vec4_visitor::scalarize_df()
          if (inst->src[i].file == BAD_FILE || type_sz(inst->src[i].type) < 8)
             continue;
          skip_lowering = skip_lowering &&
-                         (stage != MESA_SHADER_TESS_EVAL ||
-                          inst->src[i].file != ATTR) &&
-                         inst->src[i].swizzle == BRW_SWIZZLE_XYZW &&
-                         !is_uniform(inst->src[i]);
+                         is_supported_64bit_region(inst->src[i]);
       }
 
       if (skip_lowering)
@@ -2406,56 +2429,69 @@ vec4_visitor::expand_64bit_swizzle_to_32bit()
          if (type_sz(inst->src[arg].type) < 8)
             continue;
 
-         /* Identity swizzles (which we only let through on non-uniform
-          * registers) expand to identify swizzles too
-          */
-         if (inst->src[arg].swizzle == BRW_SWIZZLE_XYZW) {
-            assert(!is_uniform(inst->src[arg]));
-            continue;
-         }
+         assert(brw_is_single_value_swizzle(inst->src[arg].swizzle) ||
+                is_supported_64bit_region(inst->src[arg]));
 
-         /* If we got here the instruction should have been scalarized */
-         assert(brw_is_single_value_swizzle(inst->src[arg].swizzle));
+         if (is_supported_64bit_region(inst->src[arg])) {
+            /* We only set subnr > 0 in cases that need scalarization */
+            assert(inst->src[arg].subnr == 0);
 
-         /* To gain access to Z/W components we need to use subnr to select
-          * the second half of the DF regiter and then use a X/Y swizzle to
-          * select Z/W respetively.
-          */
-         unsigned swizzle = BRW_GET_SWZ(inst->src[arg].swizzle, 0);
-         if (swizzle >= 2) {
-            /* Uniforms work in units of a vec4, so to select the second
-             * half of a dvec3/4 uniform, increase reg_offset by one.
+            /* Supported 64-bit swizzles are those such that their first two
+             * components, when expanded to 32-bit swizzles, match the semantics
+             * of the original 64-bit swizzle with 2-wide row regioning.
              */
-            if (inst->src[arg].file != UNIFORM) {
-               inst->src[arg].subnr = 2;
-               /* Subnr must be in units of bytes for FIXED_GRF */
-               if (inst->src[arg].file == FIXED_GRF)
-                  inst->src[arg].subnr *= type_sz(inst->src[arg].type);
-            } else {
-               inst->src[arg].reg_offset += 1;
-            }
-            swizzle -= 2;
+            unsigned swizzle0 = BRW_GET_SWZ(inst->src[arg].swizzle, 0);
+            unsigned swizzle1 = BRW_GET_SWZ(inst->src[arg].swizzle, 1);
+            inst->src[arg].swizzle =
+               BRW_SWIZZLE4(swizzle0 * 2, swizzle0 * 2 + 1,
+                            swizzle1 * 2, swizzle1 * 2 + 1);
          } else {
-            if ((inst->dst.writemask & WRITEMASK_ZW) &&
-                (inst->src[arg].swizzle == BRW_SWIZZLE_XXXX ||
-                 inst->src[arg].swizzle == BRW_SWIZZLE_YYYY) &&
-                 inst->src[arg].file != UNIFORM)
+            /* If we got here then we have an unsupported swizzle and the
+             * instruction should have been scalarized.
+             */
+            assert(brw_is_single_value_swizzle(inst->src[arg].swizzle));
+            unsigned swizzle = BRW_GET_SWZ(inst->src[arg].swizzle, 0);
+
+            /* To gain access to Z/W components we need to use subnr to select
+             * the second half of the DF regiter and then use a X/Y swizzle to
+             * select Z/W respetively.
+             */
+            if (swizzle >= 2) {
+               /* Uniforms work in units of a vec4, so to select the second
+                * half of a dvec3/4 uniform, increase reg_offset by one.
+                */
+               if (inst->src[arg].file != UNIFORM) {
+                  inst->src[arg].subnr = 2;
+                  /* Subnr must be in units of bytes for FIXED_GRF */
+                  if (inst->src[arg].file == FIXED_GRF)
+                     inst->src[arg].subnr *= type_sz(inst->src[arg].type);
+               } else {
+                  inst->src[arg].reg_offset += 1;
+               }
+               swizzle -= 2;
+            } else {
+               if ((inst->dst.writemask & WRITEMASK_ZW) &&
+                   (inst->src[arg].swizzle == BRW_SWIZZLE_XXXX ||
+                    inst->src[arg].swizzle == BRW_SWIZZLE_YYYY) &&
+                    inst->src[arg].file != UNIFORM)
+                  inst->src[arg].force_vstride0 = true;
+            }
+
+            /* Any DF source with a subnr > 0 is intended to address the second
+             * half of a register and needs a vertical stride of 0 so we:
+             *
+             * 1. Don't violate register region restrictions, when execsize > 2
+             *    (we only use exec sizes of 4 and 8, so always)
+             * 2. Activate the gen7 instruction decompresion bug exploit, when
+             *    execsize == 8.
+             */
+            if (inst->src[arg].subnr)
                inst->src[arg].force_vstride0 = true;
+
+            inst->src[arg].swizzle = BRW_SWIZZLE4(swizzle * 2, swizzle * 2 + 1,
+                                                  swizzle * 2, swizzle * 2 + 1);
          }
 
-         /* Any DF source with a subnr > 0 is intended to address the second
-          * half of a register and needs a vertical stride of 0 so we:
-          *
-          * 1. Don't violate register region restrictions, when execsize > 2
-          *    (we only use exec sizes of 4 and 8, so always)
-          * 2. Activate the gen7 instruction decompresion bug exploit, when
-          *    execsize == 8.
-          */
-         if (inst->src[arg].subnr)
-            inst->src[arg].force_vstride0 = true;
-
-         inst->src[arg].swizzle = BRW_SWIZZLE4(swizzle * 2, swizzle * 2 + 1,
-                                               swizzle * 2, swizzle * 2 + 1);
          progress = true;
       }
    }
