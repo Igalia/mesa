@@ -2270,6 +2270,12 @@ vec4_visitor::is_supported_64bit_region(src_reg src)
        * vstride of 0 that need special handling.
        */
       return stage != MESA_SHADER_TESS_EVAL || src.file != ATTR;
+
+   case BRW_SWIZZLE_XXZZ:
+   case BRW_SWIZZLE_YYWW:
+   case BRW_SWIZZLE_YXWZ:
+      return true;
+
    default:
       return false;
    }
@@ -2306,10 +2312,6 @@ vec4_visitor::scalarize_df()
 
       /* Skip the lowering for specific regioning scenarios that we can support
        * natively.
-       *
-       * FIXME: there are more swizzle combinations that can be allowed with
-       *        simple swizzle translations. For example, we can implement
-       *        XXZZ as XYXY, YYWW as ZWZW and YXWZ as ZWXY.
        *
        * FIXME: We can also exploit the vstride 0 decompression bug in gen7 to
        *        implement some more swizzles via simple translations. For
