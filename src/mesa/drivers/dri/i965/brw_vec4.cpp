@@ -2246,6 +2246,29 @@ scalarize_predicate(brw_predicate predicate, unsigned writemask)
    }
 }
 
+/* Gen7 has a hardware decompression bug that we can exploit to represent
+ * handful of additional swizzles natively.
+ */
+static bool
+is_gen7_supported_64bit_swizzle(vec4_instruction *inst, unsigned arg)
+{
+   /* These require to exploit the hardware decompression bug, so we need
+    * the instruction to be 8-wide
+    */
+   if (inst->exec_size < 8)
+      return false;
+
+   switch (inst->src[arg].swizzle) {
+   case BRW_SWIZZLE_XXXX:
+   case BRW_SWIZZLE_YYYY:
+   case BRW_SWIZZLE_ZZZZ:
+   case BRW_SWIZZLE_WWWW:
+      return true;
+   default:
+      return false;
+   }
+}
+
 /* 64-bit sources use regions with a width of 2. These 2 elements in each row
  * can be addressed using 32-bit swizzles (which is what the hardware supports)
  * but it also means that the swizzle we apply on the first two components of a
@@ -2253,8 +2276,9 @@ scalarize_predicate(brw_predicate predicate, unsigned writemask)
  * only some specific swizzle combinations can be natively supported.
  */
 bool
-vec4_visitor::is_supported_64bit_region(src_reg src)
+vec4_visitor::is_supported_64bit_region(vec4_instruction *inst, unsigned arg)
 {
+   const src_reg &src = inst->src[arg];
    assert(type_sz(src.type) == 8);
 
    /* Uniform regions have a vstride=0. Because we use 2-wide rows with
@@ -2277,7 +2301,7 @@ vec4_visitor::is_supported_64bit_region(src_reg src)
       return true;
 
    default:
-      return false;
+      return devinfo->gen == 7 && is_gen7_supported_64bit_swizzle(inst, arg);
    }
 }
 
@@ -2313,12 +2337,6 @@ vec4_visitor::scalarize_df()
       /* Skip the lowering for specific regioning scenarios that we can support
        * natively.
        *
-       * FIXME: We can also exploit the vstride 0 decompression bug in gen7 to
-       *        implement some more swizzles via simple translations. For
-       *        example: XXXX as XYXY, YYYY as ZWZW (same for ZZZZ and WWWW by
-       *        using subnr), XYXY as XYZW, YXYX as ZWXY (same for ZWZW and
-       *        WZWZ using subnr).
-       *
        * FIXME: we can go an step further and implement even more swizzle
        *        variations using only partial scalarization.
        *
@@ -2328,8 +2346,7 @@ vec4_visitor::scalarize_df()
       for (unsigned i = 0; i < 3; i++) {
          if (inst->src[i].file == BAD_FILE || type_sz(inst->src[i].type) < 8)
             continue;
-         skip_lowering = skip_lowering &&
-                         is_supported_64bit_region(inst->src[i]);
+         skip_lowering = skip_lowering && is_supported_64bit_region(inst, i);
       }
 
       if (skip_lowering)
@@ -2432,12 +2449,10 @@ vec4_visitor::expand_64bit_swizzle_to_32bit()
             continue;
 
          assert(brw_is_single_value_swizzle(inst->src[arg].swizzle) ||
-                is_supported_64bit_region(inst->src[arg]));
+                is_supported_64bit_region(inst, arg));
 
-         if (is_supported_64bit_region(inst->src[arg])) {
-            /* We only set subnr > 0 in cases that need scalarization */
-            assert(inst->src[arg].subnr == 0);
-
+         if (is_supported_64bit_region(inst, arg) &&
+             !is_gen7_supported_64bit_swizzle(inst, arg)) {
             /* Supported 64-bit swizzles are those such that their first two
              * components, when expanded to 32-bit swizzles, match the semantics
              * of the original 64-bit swizzle with 2-wide row regioning.
@@ -2449,7 +2464,9 @@ vec4_visitor::expand_64bit_swizzle_to_32bit()
                             swizzle1 * 2, swizzle1 * 2 + 1);
          } else {
             /* If we got here then we have an unsupported swizzle and the
-             * instruction should have been scalarized.
+             * instruction should have been scalarized or we have a
+             * gen7-exclusively supported swizzle via de force_vstride0 exploit.
+             * Either way we get a single-value swizzle.
              */
             assert(brw_is_single_value_swizzle(inst->src[arg].swizzle));
             unsigned swizzle = BRW_GET_SWZ(inst->src[arg].swizzle, 0);
