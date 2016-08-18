@@ -2254,10 +2254,6 @@ scalarize_predicate(brw_predicate predicate, unsigned writemask)
  * dvec4 is coupled with the swizzle we use for the last 2. In other words,
  * only some specific swizzle combinations can be natively supported.
  *
- * FIXME: there are more swizzle combinations that can be allowed with
- *        simple swizzle translations. For example, we can implement
- *        XXZZ as XYXY, YYWW as ZWZW and YXWZ as ZWXY.
- *
  * FIXME: We can also exploit the vstride 0 decompression bug in gen7 to
  *        implement some more swizzles via simple translations. For
  *        example: XXXX as XYXY, YYYY as ZWZW (same for ZZZZ and WWWW by
@@ -2288,6 +2284,9 @@ vec4_visitor::is_supported_64bit_region(src_reg src)
 
    switch (src.swizzle) {
    case BRW_SWIZZLE_XYZW:
+   case BRW_SWIZZLE_XXZZ:
+   case BRW_SWIZZLE_YYWW:
+   case BRW_SWIZZLE_YXWZ:
       return true;
    default:
       return false;
