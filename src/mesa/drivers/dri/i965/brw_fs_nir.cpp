@@ -3822,17 +3822,18 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
             (instr->num_components - 1) * type_sz(dest.type);
 
          fs_reg indirect_chv_high_32bit;
-         bool is_chv_bxt_64bit =
-            (devinfo->is_cherryview || devinfo->is_broxton) &&
-            type_sz(dest.type) == 8;
-         if (is_chv_bxt_64bit) {
+         bool is_ivb_byt_chv_bxt_64bit =
+            (devinfo->is_cherryview || devinfo->is_broxton ||
+             devinfo->is_ivybridge || devinfo->is_baytrail) &&
+           type_sz(dest.type) == 8;
+         if (is_ivb_byt_chv_bxt_64bit) {
             indirect_chv_high_32bit = vgrf(glsl_type::uint_type);
             /* Calculate indirect address to read high 32 bits */
             bld.ADD(indirect_chv_high_32bit, indirect, brw_imm_ud(4));
          }
 
          for (unsigned j = 0; j < instr->num_components; j++) {
-            if (!is_chv_bxt_64bit) {
+            if (!is_ivb_byt_chv_bxt_64bit) {
                bld.emit(SHADER_OPCODE_MOV_INDIRECT,
                         offset(dest, bld, j), offset(src, bld, j),
                         indirect, brw_imm_ud(read_size));
