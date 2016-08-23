@@ -440,18 +440,29 @@ fs_generator::generate_mov_indirect(fs_inst *inst,
       brw_MOV(p, dst, reg);
    } else {
       /* Prior to Broadwell, there are only 8 address registers. */
-      assert(inst->exec_size == 8 || devinfo->gen >= 8);
+      assert(inst->exec_size == 8 || devinfo->gen >= 8 ||
+             (devinfo->gen == 7 && inst->exec_size < 8 &&
+              (type_sz(reg.type) == 8 || type_sz(dst.type) == 8)));
 
       /* We use VxH indirect addressing, clobbering a0.0 through a0.7. */
       struct brw_reg addr = vec8(brw_address_reg(0));
 
-      /* The destination stride of an instruction (in bytes) must be greater
-       * than or equal to the size of the rest of the instruction.  Since the
-       * address register is of type UW, we can't use a D-type instruction.
-       * In order to get around this, re retype to UW and use a stride.
-       */
-      indirect_byte_offset =
-         retype(spread(indirect_byte_offset, 2), BRW_REGISTER_TYPE_UW);
+      if (devinfo->gen != 7 || devinfo->is_haswell || type_sz(reg.type) != 8) {
+         /* The destination stride of an instruction (in bytes) must be greater
+          * than or equal to the size of the rest of the instruction.  Since the
+          * address register is of type UW, we can't use a D-type instruction.
+          * In order to get around this, re retype to UW and use a stride.
+          */
+         indirect_byte_offset =
+            retype(spread(indirect_byte_offset, 2), BRW_REGISTER_TYPE_UW);
+      } else {
+         /* In Ivybridge/Baytrail, when it operates with DF operands, we
+          * cannot double the stride, since the hardware will do it
+          * internally. Tested empirically.
+          */
+         indirect_byte_offset =
+            retype(indirect_byte_offset, BRW_REGISTER_TYPE_UW);
+      }
 
       /* There are a number of reasons why we don't use the base offset here.
        * One reason is that the field is only 9 bits which means we can only
