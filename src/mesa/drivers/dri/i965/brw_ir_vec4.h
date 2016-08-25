@@ -69,6 +69,40 @@ offset(src_reg reg, unsigned delta)
    return reg;
 }
 
+static inline void
+add_horiz_offset(backend_reg *reg, unsigned delta)
+{
+   switch (reg->file) {
+   case BAD_FILE:
+      break;
+   case MRF:
+   case VGRF:
+   case ATTR:
+   case UNIFORM: {
+      reg->offset += delta * type_sz(reg->type);
+      assert(reg->offset % 16 == 0);
+      break;
+   }
+   case ARF:
+   case FIXED_GRF: {
+      const unsigned suboffset = reg->subnr + delta * type_sz(reg->type);
+      reg->nr += suboffset / REG_SIZE;
+      reg->subnr = suboffset % REG_SIZE;
+      assert(reg->subnr % 16 == 0);
+      break;
+   }
+   default:
+      assert(delta == 0);
+   }
+}
+
+static inline src_reg
+horiz_offset(src_reg reg, unsigned delta)
+{
+   add_horiz_offset(&reg, delta);
+   return reg;
+}
+
 /**
  * Reswizzle a given source register.
  * \sa brw_swizzle().
@@ -135,6 +169,13 @@ offset(dst_reg reg, unsigned delta)
    assert(delta == 0 ||
           (reg.file != ARF && reg.file != FIXED_GRF && reg.file != IMM));
    reg.offset += delta * (reg.file == UNIFORM ? 16 : REG_SIZE);
+   return reg;
+}
+
+static inline dst_reg
+horiz_offset(dst_reg reg, unsigned delta)
+{
+   add_horiz_offset(&reg, delta);
    return reg;
 }
 
