@@ -272,7 +272,7 @@ intelInitExtensions(struct gl_context *ctx)
 
    if (brw->gen >= 8)
       ctx->Const.GLSLVersion = 440;
-   else if (brw->is_haswell)
+   else if (brw->gen >= 7)
       ctx->Const.GLSLVersion = 400;
    else if (brw->gen >= 6)
       ctx->Const.GLSLVersion = 330;
