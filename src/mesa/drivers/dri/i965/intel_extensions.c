@@ -204,6 +204,7 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.ARB_derivative_control = true;
       ctx->Extensions.ARB_framebuffer_no_attachments = true;
       ctx->Extensions.ARB_gpu_shader5 = true;
+      ctx->Extensions.ARB_gpu_shader_fp64 = true;
       ctx->Extensions.ARB_shader_atomic_counters = true;
       ctx->Extensions.ARB_shader_atomic_counter_ops = true;
       ctx->Extensions.ARB_shader_clock = true;
@@ -217,9 +218,6 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.EXT_shader_samples_identical = true;
       ctx->Extensions.OES_primitive_bounding_box = true;
       ctx->Extensions.OES_texture_buffer = true;
-
-      if (brw->is_haswell)
-         ctx->Extensions.ARB_gpu_shader_fp64 = true;
 
       if (can_do_pipelined_register_writes(brw->screen)) {
          ctx->Extensions.ARB_draw_indirect = true;
@@ -264,7 +262,6 @@ intelInitExtensions(struct gl_context *ctx)
    }
 
    if (brw->gen >= 8) {
-      ctx->Extensions.ARB_gpu_shader_fp64 = true;
       ctx->Extensions.ARB_shader_precision = true;
       ctx->Extensions.ARB_vertex_attrib_64bit = true;
       ctx->Extensions.ARB_ES3_2_compatibility = true;
