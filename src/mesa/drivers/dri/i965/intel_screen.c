@@ -1447,7 +1447,8 @@ set_max_gl_versions(struct intel_screen *screen,
       break;
    case 7:
       dri_screen->max_gl_core_version =
-         screen->devinfo.is_haswell && can_do_pipelined_register_writes ? 42 : 33;
+         can_do_pipelined_register_writes ?
+         (screen->devinfo.is_haswell ? 42 : 40) : 33;
       dri_screen->max_gl_compat_version = 30;
       dri_screen->max_gl_es1_version = 11;
       dri_screen->max_gl_es2_version = screen->devinfo.is_haswell ? 31 : 30;
