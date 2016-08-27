@@ -28,6 +28,7 @@
 #include "program/prog_instruction.h"
 #include "program/prog_statevars.h"
 #include "util/bitscan.h"
+#include <float.h>
 
 using namespace ir_builder;
 
@@ -101,7 +102,7 @@ blend_colorburn(ir_variable *src, ir_variable *dst)
     *   1 - min(1,(1-Cd)/Cs), if Cd < 1 and Cs > 0
     *   0, if Cd < 1 and Cs <= 0
     */
-   return csel(gequal(dst, imm3(1)), imm3(1),
+   return csel(gequal(dst, imm3(1 - FLT_EPSILON)), imm3(1),
                csel(lequal(src, imm3(0)), imm3(0),
                     sub(imm3(1), min2(imm3(1), div(sub(imm3(1), dst), src)))));
 }
