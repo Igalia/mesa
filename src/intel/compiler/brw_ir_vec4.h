@@ -404,6 +404,20 @@ regs_read(const vec4_instruction *inst, unsigned i)
                        reg_size);
 }
 
+static inline unsigned
+get_exec_type_size(const vec4_instruction *inst)
+{
+   unsigned exec_type_size = 0;
+
+   for (int i = 0; i < 3; i++) {
+      if (inst->src[i].type != BAD_FILE) {
+         exec_type_size = MAX2(exec_type_size, type_sz(inst->src[i].type));
+      }
+   }
+
+   return exec_type_size;
+}
+
 } /* namespace brw */
 
 #endif
