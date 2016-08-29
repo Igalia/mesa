@@ -2092,6 +2092,10 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
       if (inst->opcode == BRW_OPCODE_SEL && type_sz(inst->dst.type) == 8)
          lowered_width = MIN2(lowered_width, 4);
 
+      if (devinfo->gen == 7 && !devinfo->is_haswell &&
+          (get_exec_type_size(inst) == 8 || type_sz(inst->dst.type) == 8))
+         lowered_width = MIN2(lowered_width, 4);
+
       /* HSW PRM, 3D Media GPGPU Engine, Region Alignment Rules for Direct
        * Register Addressing:
        *
@@ -2199,7 +2203,8 @@ vec4_visitor::lower_simd_width()
                inst->insert_before(block, copy);
             }
          } else {
-            dst = horiz_offset(inst->dst, channel_offset);
+            if (inst->dst.file != ARF)
+               dst = horiz_offset(inst->dst, channel_offset);
          }
          linst->dst = dst;
 
