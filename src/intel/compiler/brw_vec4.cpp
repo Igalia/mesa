@@ -2093,6 +2093,16 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
       if (inst->opcode == BRW_OPCODE_SEL && type_sz(inst->dst.type) == 8)
          lowered_width = MIN2(lowered_width, 4);
 
+      /* IvyBridge can manage a maximum of 4 DFs per SIMD4x2 instruction,
+       * as we need to duplicate the instruction's exec_size at generation time
+       * to work with doubles. No matter if it has force_writemask_all enabled
+       * or disabled (the latter is affected by compressed instruction bug in
+       * gen7, which is another reason to force this limit).
+       */
+      if (devinfo->gen == 7 && !devinfo->is_haswell &&
+          (get_exec_type_size(inst) == 8 || type_sz(inst->dst.type) == 8))
+         lowered_width = MIN2(lowered_width, 4);
+
       /* HSW PRM, 3D Media GPGPU Engine, Region Alignment Rules for Direct
        * Register Addressing:
        *
