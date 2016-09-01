@@ -376,7 +376,7 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
 
    for (unsigned i = 0; i < this->alloc.count; i++) {
       spill_costs[i] = 0.0;
-      no_spill[i] = alloc.sizes[i] != 1;
+      no_spill[i] = alloc.sizes[i] != 1 && alloc.sizes[i] != 2;
    }
 
    /* Calculate costs for spilling nodes.  Call it a cost of 1 per
@@ -395,6 +395,17 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
                if (inst->src[i].reladdr ||
                    inst->src[i].offset % REG_SIZE != 0)
                   no_spill[inst->src[i].nr] = true;
+
+               /* We don't support unspills of partial DF reads.
+                *
+                * A partial DF read (exec_size < 8) only reads data for one of
+                * the two SIMD4x2 threads but our SIMD4x2 scratch read messages
+                * always expect to read data for both threads from memory which
+                * they will shuffle into proper 64-bit for each thread
+                * immediately after reading from memory.
+                */
+               if (type_sz(inst->src[i].type) == 8 && inst->exec_size < 8)
+                  no_spill[inst->src[i].nr] = true;
             }
          }
       }
@@ -402,6 +413,16 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
       if (inst->dst.file == VGRF) {
          spill_costs[inst->dst.nr] += loop_scale;
          if (inst->dst.reladdr || inst->dst.offset % REG_SIZE != 0)
+            no_spill[inst->dst.nr] = true;
+
+         /* We don't support spills of partial DF writes.
+          *
+          * A partial DF write (exec_size < 8) only writes data for one of
+          * the two SIMD4x2 threads but our SIMD4x2 scratch write messages
+          * will write data for both threads which they will shuffle before
+          * writing to memory.
+          */
+         if (type_sz(inst->dst.type) == 8 && inst->exec_size < 8)
             no_spill[inst->dst.nr] = true;
       }
 
@@ -450,8 +471,9 @@ vec4_visitor::choose_spill_reg(struct ra_graph *g)
 void
 vec4_visitor::spill_reg(int spill_reg_nr)
 {
-   assert(alloc.sizes[spill_reg_nr] == 1);
-   unsigned int spill_offset = last_scratch++;
+   assert(alloc.sizes[spill_reg_nr] == 1 || alloc.sizes[spill_reg_nr] == 2);
+   unsigned int spill_offset = last_scratch;
+   last_scratch += alloc.sizes[spill_reg_nr];
 
    /* Generate spill/unspill instructions for the objects being spilled. */
    int scratch_reg = -1;
@@ -465,12 +487,14 @@ vec4_visitor::spill_reg(int spill_reg_nr)
                 * for consecutive instructions that read different channels of
                 * the same vec4.
                 */
-               scratch_reg = alloc.allocate(1);
+               scratch_reg = alloc.allocate(alloc.sizes[spill_reg_nr]);
                src_reg temp = inst->src[i];
                temp.nr = scratch_reg;
+               temp.offset = 0;
                temp.swizzle = BRW_SWIZZLE_XYZW;
                emit_scratch_read(block, inst,
                                  dst_reg(temp), inst->src[i], spill_offset);
+               temp.offset = inst->src[i].offset;
             }
             assert(scratch_reg != -1);
             inst->src[i].nr = scratch_reg;
