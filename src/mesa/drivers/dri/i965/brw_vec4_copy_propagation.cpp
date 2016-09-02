@@ -292,6 +292,7 @@ is_align1_opcode(unsigned opcode)
 {
    switch (opcode) {
    case VEC4_OPCODE_DOUBLE_TO_SINGLE:
+   case VEC4_OPCODE_DOUBLE_TO_SINGLE_IVB:
    case VEC4_OPCODE_SINGLE_TO_DOUBLE:
    case VEC4_OPCODE_PICK_LOW_32BIT:
    case VEC4_OPCODE_PICK_HIGH_32BIT:

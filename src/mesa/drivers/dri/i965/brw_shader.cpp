@@ -319,6 +319,8 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "unpack_uniform";
    case VEC4_OPCODE_DOUBLE_TO_SINGLE:
       return "double_to_single";
+   case VEC4_OPCODE_DOUBLE_TO_SINGLE_IVB:
+      return "double_to_single_ivb";
    case VEC4_OPCODE_SINGLE_TO_DOUBLE:
       return "single_to_double";
    case VEC4_OPCODE_PICK_LOW_32BIT:

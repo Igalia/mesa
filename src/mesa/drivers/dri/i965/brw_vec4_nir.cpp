@@ -1182,7 +1182,14 @@ vec4_visitor::emit_double_to_single(dst_reg dst, src_reg src, bool saturate,
 
    dst_reg temp2 = dst_reg(this, glsl_type::dvec4_type);
    temp2 = retype(temp2, single_type);
-   emit(VEC4_OPCODE_DOUBLE_TO_SINGLE, temp2, src_reg(temp))->regs_written = 2;
+
+   if (devinfo->is_ivybridge) {
+      dst_reg temp3 = dst_reg(this, glsl_type::dvec4_type);
+      temp3 = retype(temp3, single_type);
+      emit(VEC4_OPCODE_DOUBLE_TO_SINGLE_IVB, temp2, src_reg(temp), src_reg(temp3));
+   } else {
+      emit(VEC4_OPCODE_DOUBLE_TO_SINGLE, temp2, src_reg(temp))->regs_written = 2;
+   }
 
    vec4_instruction *inst = emit(MOV(dst, src_reg(temp2)));
    inst->saturate = saturate;

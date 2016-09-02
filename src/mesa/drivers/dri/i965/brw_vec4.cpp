@@ -194,6 +194,7 @@ vec4_instruction::has_source_and_destination_hazard() const
    case TCS_OPCODE_SET_INPUT_URB_OFFSETS:
    case TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
    case TES_OPCODE_ADD_INDIRECT_URB_OFFSET:
+   case VEC4_OPCODE_DOUBLE_TO_SINGLE_IVB:
       return true;
    default:
       /* 8-wide compressed DF operations are executed as two 4-wide operations,
@@ -255,6 +256,7 @@ vec4_instruction::can_do_writemask(const struct gen_device_info *devinfo)
    switch (opcode) {
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
    case VEC4_OPCODE_DOUBLE_TO_SINGLE:
+   case VEC4_OPCODE_DOUBLE_TO_SINGLE_IVB:
    case VEC4_OPCODE_SINGLE_TO_DOUBLE:
    case VEC4_OPCODE_PICK_LOW_32BIT:
    case VEC4_OPCODE_PICK_HIGH_32BIT:
@@ -530,6 +532,7 @@ vec4_visitor::opt_reduce_swizzle()
 
       case VEC4_OPCODE_SINGLE_TO_DOUBLE:
       case VEC4_OPCODE_DOUBLE_TO_SINGLE:
+      case VEC4_OPCODE_DOUBLE_TO_SINGLE_IVB:
       case VEC4_OPCODE_PICK_LOW_32BIT:
       case VEC4_OPCODE_PICK_HIGH_32BIT:
       case VEC4_OPCODE_SET_LOW_32BIT:
@@ -2086,7 +2089,8 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
       if (inst->opcode == BRW_OPCODE_SEL && type_sz(inst->dst.type) == 8)
          lowered_width = MIN2(lowered_width, 4);
 
-      if (devinfo->is_ivybridge && inst->exec_data_size() == 8)
+      if (devinfo->is_ivybridge && inst->exec_data_size() == 8 &&
+          inst->opcode != VEC4_OPCODE_DOUBLE_TO_SINGLE_IVB)
          lowered_width = MIN2(lowered_width, 4);
 
       /* HSW PRM, 3D Media GPGPU Engine, Region Alignment Rules for Direct
@@ -2238,6 +2242,7 @@ is_align1_df(vec4_instruction *inst)
 {
    switch (inst->opcode) {
       case VEC4_OPCODE_DOUBLE_TO_SINGLE:
+      case VEC4_OPCODE_DOUBLE_TO_SINGLE_IVB:
       case VEC4_OPCODE_SINGLE_TO_DOUBLE:
       case VEC4_OPCODE_PICK_LOW_32BIT:
       case VEC4_OPCODE_PICK_HIGH_32BIT:

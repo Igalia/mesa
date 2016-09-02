@@ -1932,6 +1932,70 @@ generate_code(struct brw_codegen *p,
          break;
       }
 
+      case VEC4_OPCODE_DOUBLE_TO_SINGLE_IVB: {
+         assert(type_sz(src[0].type) == 8);
+         assert(type_sz(src[1].type) == 4);
+         assert(type_sz(dst.type) == 4);
+         assert(devinfo->is_ivybridge);
+
+         brw_set_default_access_mode(p, BRW_ALIGN_1);
+
+         /* When converting from DF->F, we set destiny's stride as 2 as an
+          * aligment requirement. But in Ivy, each DF implicitly writes 2 F,
+          * being the first one the converted value. So we don't need to
+          * explicitly set stride 2, but 1.
+          */
+         dst.hstride = BRW_HORIZONTAL_STRIDE_1;
+         dst.width = BRW_WIDTH_4;
+         src[0].vstride = BRW_VERTICAL_STRIDE_4;
+         src[0].width = BRW_WIDTH_4;
+         brw_MOV(p, dst, src[0]);
+
+         struct brw_reg dst_as_src = dst;
+         /* As we have set horizontal stride 1 instead of 2, we need
+          * to fix it here to have the expected value.
+          */
+         dst_as_src.hstride = BRW_HORIZONTAL_STRIDE_2;
+         dst.hstride = BRW_HORIZONTAL_STRIDE_1;
+         dst.width = BRW_WIDTH_8;
+         brw_MOV(p, dst, dst_as_src);
+
+         /* Second vertex's DF */
+         brw_set_default_mask_control(p, true);
+         struct brw_reg temp3 = src[1];
+         /* When converting from DF->F, we set destiny's stride as 2 as an
+          * aligment requirement. But in Ivy, each DF implicitly writes 2 F,
+          * being the first one the converted value. So we don't need to
+          * explicitly set stride 2, but 1.
+          */
+         temp3.hstride = BRW_HORIZONTAL_STRIDE_1;
+         temp3.width = BRW_WIDTH_4;
+         src[0].nr += 1;
+         src[0].vstride = BRW_VERTICAL_STRIDE_4;
+         src[0].width = BRW_WIDTH_4;
+         brw_MOV(p, temp3, src[0]);
+
+         dst_as_src = temp3;
+         /* As we have set horizontal stride 1 instead of 2, we need
+          * to fix it here to have the expected value.
+          */
+         dst_as_src.hstride = BRW_HORIZONTAL_STRIDE_2;
+         dst_as_src.vstride = BRW_VERTICAL_STRIDE_8;
+         temp3.hstride = BRW_HORIZONTAL_STRIDE_1;
+         temp3.width = BRW_WIDTH_8;
+         brw_MOV(p, temp3, dst_as_src);
+
+
+         dst.subnr = 4 * 4;
+         brw_set_default_mask_control(p, inst->force_writemask_all);
+         brw_set_default_group(p, 4);
+         struct brw_inst *insn = brw_MOV(p, dst, src[1]);
+         brw_inst_set_exec_size(p->devinfo, insn, BRW_EXECUTE_4);
+
+         brw_set_default_access_mode(p, BRW_ALIGN_16);
+         break;
+      }
+
       case VEC4_OPCODE_SINGLE_TO_DOUBLE: {
          assert(type_sz(src[0].type) == 4);
          assert(type_sz(dst.type) == 8);
@@ -1946,8 +2010,13 @@ generate_code(struct brw_codegen *p,
          src[0].width = BRW_WIDTH_4;
          brw_MOV(p, tmp, src[0]);
 
-         tmp.vstride = BRW_VERTICAL_STRIDE_8;
-         tmp.hstride = BRW_HORIZONTAL_STRIDE_2;
+         if (devinfo->is_ivybridge) {
+            tmp.vstride = BRW_VERTICAL_STRIDE_4;
+            tmp.hstride = BRW_HORIZONTAL_STRIDE_1;
+         } else {
+            tmp.vstride = BRW_VERTICAL_STRIDE_8;
+            tmp.hstride = BRW_HORIZONTAL_STRIDE_2;
+         }
          tmp.width = BRW_WIDTH_4;
          brw_MOV(p, dst, tmp);
 
