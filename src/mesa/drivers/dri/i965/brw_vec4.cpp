@@ -2644,6 +2644,7 @@ vec4_visitor::run()
       return false;
 
    OPT(translate_64bit_mad_to_mul_add);
+   OPT(scalarize_df);
 
    setup_payload();
 
@@ -2676,11 +2677,6 @@ vec4_visitor::run()
    }
 
 
-   /* We want to run this after spilling because 64-bit (un)spills need to
-    * emit code to shuffle 64-bit data for the 32-bit scratch read/write
-    * messages that can produce unsupported 64-bit swizzle regions.
-    */
-   OPT(scalarize_df);
 
    opt_schedule_instructions();
 
