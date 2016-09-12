@@ -1983,6 +1983,7 @@ vec4_visitor::convert_to_hw_regs()
          case BAD_FILE:
             /* Probably unused. */
             reg = brw_null_reg();
+            reg.type = src.type;
             break;
 
          case MRF:
@@ -2033,6 +2034,7 @@ vec4_visitor::convert_to_hw_regs()
 
       case BAD_FILE:
          reg = brw_null_reg();
+         reg.type = dst.type;
          break;
 
       case IMM:
@@ -2205,6 +2207,8 @@ vec4_visitor::lower_simd_width()
          } else {
             if (inst->dst.file != ARF)
                dst = horiz_offset(inst->dst, channel_offset);
+            else
+               dst.type = inst->dst.type;
          }
          linst->dst = dst;
 
