@@ -417,8 +417,7 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
                 * they will shuffle into proper 64-bit for each thread
                 * immediately after reading from memory.
                 */
-               if (type_sz(inst->src[i].type) == 8 && inst->exec_size < 8 &&
-                   (!devinfo->is_ivybridge || inst->exec_size < 4))
+               if (type_sz(inst->src[i].type) == 8 && inst->exec_size < 8)
                   no_spill[inst->src[i].nr] = true;
             }
 
@@ -446,8 +445,7 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
           * will write data for both threads which they will shuffle before
           * writing to memory.
           */
-         if (type_sz(inst->dst.type) == 8 && inst->exec_size < 8 &&
-             (!devinfo->is_ivybridge || inst->exec_size < 4))
+         if (type_sz(inst->dst.type) == 8 && inst->exec_size < 8)
             no_spill[inst->dst.nr] = true;
 
          /* DOUBLE_TO_SINGLE opcodes are setup so that they use a dst register
