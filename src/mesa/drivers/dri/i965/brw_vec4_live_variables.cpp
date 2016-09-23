@@ -78,7 +78,8 @@ vec4_live_variables::setup_def_use()
 	    if (inst->src[i].file == VGRF) {
                for (unsigned j = 0; j < DIV_ROUND_UP(inst->size_read(i), 16); j++) {
                   for (int c = 0; c < 4; c++) {
-                     const unsigned v = var_from_reg(alloc, inst->src[i], c, j);
+                     const unsigned v =
+                        var_from_reg(alloc, inst->src[i], c, j, false);
                      if (!BITSET_TEST(bd->def, v))
                         BITSET_SET(bd->use, v);
                   }
@@ -101,7 +102,8 @@ vec4_live_variables::setup_def_use()
             for (unsigned i = 0; i < DIV_ROUND_UP(inst->size_written, 16); i++) {
                for (int c = 0; c < 4; c++) {
                   if (inst->dst.writemask & (1 << c)) {
-                     const unsigned v = var_from_reg(alloc, inst->dst, c, i);
+                     const unsigned v =
+                        var_from_reg(alloc, inst->dst, c, i, false);
                      if (!BITSET_TEST(bd->use, v))
                         BITSET_SET(bd->def, v);
                   }
@@ -257,7 +259,8 @@ vec4_visitor::calculate_live_intervals()
 	 if (inst->src[i].file == VGRF) {
             for (unsigned j = 0; j < DIV_ROUND_UP(inst->size_read(i), 16); j++) {
                for (int c = 0; c < 4; c++) {
-                  const unsigned v = var_from_reg(alloc, inst->src[i], c, j);
+                  const unsigned v =
+                     var_from_reg(alloc, inst->src[i], c, j, false);
                   start[v] = MIN2(start[v], ip);
                   end[v] = ip;
                }
@@ -269,7 +272,8 @@ vec4_visitor::calculate_live_intervals()
          for (unsigned i = 0; i < DIV_ROUND_UP(inst->size_written, 16); i++) {
             for (int c = 0; c < 4; c++) {
                if (inst->dst.writemask & (1 << c)) {
-                  const unsigned v = var_from_reg(alloc, inst->dst, c, i);
+                  const unsigned v =
+                     var_from_reg(alloc, inst->dst, c, i, false);
                   start[v] = MIN2(start[v], ip);
                   end[v] = ip;
                }
