@@ -1223,6 +1223,11 @@ vec4_visitor::opt_register_coalesce()
                }
             }
 
+            /* Disallow partial register writes. */
+            if (scan_inst->exec_size < 8 &&
+                type_sz(scan_inst->src[0].type) == 4)
+               break;
+
             /* This doesn't handle saturation on the instruction we
              * want to coalesce away if the register types do not match.
              * But if scan_inst is a non type-converting 'mov', we can fix
