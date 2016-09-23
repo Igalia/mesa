@@ -2203,9 +2203,15 @@ vec4_visitor::lower_simd_width()
          linst->group = channel_offset;
          linst->size_written = size_written;
 
+         /* When spliting double_to_single() in Ivybridge, the second part
+          * should use in a temporal register. Later we will move the values
+          * to the second half of the original destination, so we get all the
+          * results in the same register. We use d2f_pass to detect this case.
+          */
+         bool d2f_pass = (inst->opcode == VEC4_OPCODE_FROM_DOUBLE && n > 0);
          /* Compute split dst region */
          dst_reg dst;
-         if (needs_temp) {
+         if (needs_temp || d2f_pass) {
             unsigned num_regs = DIV_ROUND_UP(size_written, REG_SIZE);
             dst = retype(dst_reg(VGRF, alloc.allocate(num_regs)),
                          inst->dst.type);
@@ -2238,9 +2244,12 @@ vec4_visitor::lower_simd_width()
          /* If we used a temporary to store the result of the split
           * instruction, copy the result to the original destination
           */
-         if (needs_temp) {
-            vec4_instruction *mov =
-               MOV(offset(inst->dst, lowered_width, n), src_reg(dst));
+         if (needs_temp || d2f_pass) {
+            vec4_instruction *mov;
+            if (d2f_pass)
+               mov = MOV(horiz_offset(inst->dst, n * type_sz(inst->dst.type)), src_reg(dst));
+            else
+               mov = MOV(offset(inst->dst, lowered_width, n), src_reg(dst));
             mov->exec_size = lowered_width;
             mov->group = channel_offset;
             mov->size_written = size_written;
