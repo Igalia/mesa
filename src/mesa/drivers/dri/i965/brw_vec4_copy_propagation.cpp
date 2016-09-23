@@ -499,7 +499,8 @@ vec4_visitor::opt_copy_propagation(bool do_constant_prop)
 
          /* We only handle register-aligned single GRF copies. */
          if (inst->size_read(i) != REG_SIZE ||
-             inst->src[i].offset % REG_SIZE)
+             inst->src[i].offset % REG_SIZE ||
+             inst->dst.offset % REG_SIZE)
             continue;
 
          const unsigned reg = (alloc.offsets[inst->src[i].nr] +
