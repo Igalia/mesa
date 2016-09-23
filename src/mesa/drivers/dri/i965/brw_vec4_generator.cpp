@@ -1532,6 +1532,7 @@ generate_code(struct brw_codegen *p,
              is_ivb_df);
 
       assert(inst->group % 8 == 0 ||
+             (inst->exec_size == 4 && inst->group % 4 == 0) ||
              inst->dst.type == BRW_REGISTER_TYPE_DF ||
              inst->src[0].type == BRW_REGISTER_TYPE_DF ||
              inst->src[1].type == BRW_REGISTER_TYPE_DF ||
