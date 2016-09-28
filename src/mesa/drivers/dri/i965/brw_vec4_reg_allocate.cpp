@@ -407,7 +407,7 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
                spill_costs[inst->src[i].nr] +=
                   loop_scale * spill_cost_for_type(inst->src[i].type);
                if (inst->src[i].reladdr ||
-                   inst->src[i].offset % REG_SIZE != 0)
+                   inst->src[i].offset >= REG_SIZE)
                   no_spill[inst->src[i].nr] = true;
 
                /* We don't support unspills of partial DF reads.
@@ -436,7 +436,7 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
       if (inst->dst.file == VGRF) {
          spill_costs[inst->dst.nr] +=
             loop_scale * spill_cost_for_type(inst->dst.type);
-         if (inst->dst.reladdr || inst->dst.offset % REG_SIZE != 0)
+         if (inst->dst.reladdr || inst->dst.offset >= REG_SIZE)
             no_spill[inst->dst.nr] = true;
 
          /* We don't support spills of partial DF writes.
