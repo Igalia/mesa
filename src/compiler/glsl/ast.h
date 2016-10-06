@@ -378,7 +378,7 @@ public:
    bool process_qualifier_constant(struct _mesa_glsl_parse_state *state,
                                    const char *qual_indentifier,
                                    unsigned *value, bool can_be_zero,
-                                   bool must_match = false);
+                                   bool must_match = true);
 
    void merge_qualifier(ast_layout_expression *l_expr)
    {
