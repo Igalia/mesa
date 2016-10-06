@@ -2927,7 +2927,7 @@ layout_defaults:
    {
       $$ = NULL;
       if (!state->in_qualifier->
-             merge_in_qualifier(& @1, state, $1, $$, true)) {
+             merge_in_qualifier(& @1, state, $1, $$)) {
          YYERROR;
       }
       if (!state->in_qualifier->push_to_global(& @1, state)) {
@@ -2938,7 +2938,7 @@ layout_defaults:
    {
       $$ = NULL;
       if (!state->out_qualifier->
-             merge_out_qualifier(& @1, state, $1, $$, true)) {
+             merge_out_qualifier(& @1, state, $1, $$)) {
          YYERROR;
       }
       if (!state->out_qualifier->push_to_global(& @1, state)) {

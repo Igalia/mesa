@@ -359,7 +359,7 @@ bool
 ast_type_qualifier::merge_out_qualifier(YYLTYPE *loc,
                                         _mesa_glsl_parse_state *state,
                                         const ast_type_qualifier &q,
-                                        ast_node* &node, bool create_node)
+                                        ast_node* &node)
 {
    void *mem_ctx = state;
    const bool r = this->merge_qualifier(loc, state, q, false);
@@ -393,9 +393,7 @@ ast_type_qualifier::merge_out_qualifier(YYLTYPE *loc,
       valid_out_mask.flags.q.max_vertices = 1;
       valid_out_mask.flags.q.prim_type = 1;
    } else if (state->stage == MESA_SHADER_TESS_CTRL) {
-      if (create_node) {
-         node = new(mem_ctx) ast_tcs_output_layout(*loc);
-      }
+      node = new(mem_ctx) ast_tcs_output_layout(*loc);
       valid_out_mask.flags.q.vertices = 1;
       valid_out_mask.flags.q.explicit_xfb_buffer = 1;
       valid_out_mask.flags.q.xfb_buffer = 1;
@@ -432,7 +430,7 @@ bool
 ast_type_qualifier::merge_in_qualifier(YYLTYPE *loc,
                                        _mesa_glsl_parse_state *state,
                                        const ast_type_qualifier &q,
-                                       ast_node* &node, bool create_node)
+                                       ast_node* &node)
 {
    void *mem_ctx = state;
    bool create_gs_ast = false;
@@ -576,12 +574,10 @@ ast_type_qualifier::merge_in_qualifier(YYLTYPE *loc,
       state->cs_input_local_size_variable_specified = true;
    }
 
-   if (create_node) {
-      if (create_gs_ast) {
-         node = new(mem_ctx) ast_gs_input_layout(*loc, q.prim_type);
-      } else if (create_cs_ast) {
-         node = new(mem_ctx) ast_cs_input_layout(*loc, q.local_size);
-      }
+   if (create_gs_ast) {
+      node = new(mem_ctx) ast_gs_input_layout(*loc, q.prim_type);
+   } else if (create_cs_ast) {
+      node = new(mem_ctx) ast_cs_input_layout(*loc, q.local_size);
    }
 
    return true;
