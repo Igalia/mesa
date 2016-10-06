@@ -262,29 +262,10 @@ ast_type_qualifier::merge_qualifier(YYLTYPE *loc,
          }
       }
 
-      if (q.flags.q.explicit_xfb_stride)
+      if (q.flags.q.explicit_xfb_stride) {
+         this->flags.q.xfb_stride = 1;
+         this->flags.q.explicit_xfb_stride = 1;
          this->xfb_stride = q.xfb_stride;
-
-      /* Merge all we xfb_stride qualifiers into the global out */
-      if (q.flags.q.explicit_xfb_stride || this->flags.q.xfb_stride) {
-
-         /* Set xfb_stride flag to 0 to avoid adding duplicates every time
-          * there is a merge.
-          */
-         this->flags.q.xfb_stride = 0;
-
-         unsigned buff_idx;
-         if (process_qualifier_constant(state, loc, "xfb_buffer",
-                                        this->xfb_buffer, &buff_idx)) {
-            if (state->out_qualifier->out_xfb_stride[buff_idx]
-                && !is_single_layout_merge && !is_multiple_layouts_merge) {
-               state->out_qualifier->out_xfb_stride[buff_idx]->merge_qualifier(
-                  new(state) ast_layout_expression(*loc, this->xfb_stride));
-            } else {
-               state->out_qualifier->out_xfb_stride[buff_idx] =
-                  new(state) ast_layout_expression(*loc, this->xfb_stride);
-            }
-         }
       }
    }
 
@@ -600,6 +581,29 @@ ast_type_qualifier::merge_in_qualifier(YYLTYPE *loc,
          node = new(mem_ctx) ast_gs_input_layout(*loc, q.prim_type);
       } else if (create_cs_ast) {
          node = new(mem_ctx) ast_cs_input_layout(*loc, q.local_size);
+      }
+   }
+
+   return true;
+}
+
+bool
+ast_type_qualifier::push_to_global(YYLTYPE *loc,
+                                   _mesa_glsl_parse_state *state)
+{
+   if (this->flags.q.xfb_stride) {
+      this->flags.q.xfb_stride = 0;
+
+      unsigned buff_idx;
+      if (process_qualifier_constant(state, loc, "xfb_buffer",
+                                     this->xfb_buffer, &buff_idx)) {
+         if (state->out_qualifier->out_xfb_stride[buff_idx]) {
+            state->out_qualifier->out_xfb_stride[buff_idx]->merge_qualifier(
+               new(state) ast_layout_expression(*loc, this->xfb_stride));
+         } else {
+            state->out_qualifier->out_xfb_stride[buff_idx] =
+               new(state) ast_layout_expression(*loc, this->xfb_stride);
+         }
       }
    }
 

@@ -838,6 +838,10 @@ declaration:
    }
    | interface_block
    {
+      ast_interface_block *block = (ast_interface_block *) $1;
+      if (!block->layout.push_to_global(& @1, state)) {
+         YYERROR;
+      }
       $$ = $1;
    }
    ;
@@ -913,6 +917,9 @@ parameter_declaration:
    {
       $$ = $2;
       $$->type->qualifier = $1;
+      if (!$$->type->qualifier.push_to_global(& @1, state)) {
+         YYERROR;
+      }
    }
    | parameter_qualifier parameter_type_specifier
    {
@@ -922,6 +929,9 @@ parameter_declaration:
       $$->type = new(ctx) ast_fully_specified_type();
       $$->type->set_location_range(@1, @2);
       $$->type->qualifier = $1;
+      if (!$$->type->qualifier.push_to_global(& @1, state)) {
+         YYERROR;
+      }
       $$->type->specifier = $2;
    }
    ;
@@ -1137,6 +1147,9 @@ fully_specified_type:
       $$ = new(ctx) ast_fully_specified_type();
       $$->set_location_range(@1, @2);
       $$->qualifier = $1;
+      if (!$$->qualifier.push_to_global(& @1, state)) {
+         YYERROR;
+      }
       $$->specifier = $2;
       if ($$->specifier->structure != NULL &&
           $$->specifier->structure->is_declaration) {
@@ -2883,12 +2896,20 @@ layout_defaults:
              merge_qualifier(& @1, state, $1, false)) {
          YYERROR;
       }
+      if (!state->default_uniform_qualifier->
+             push_to_global(& @1, state)) {
+         YYERROR;
+      }
    }
    | layout_buffer_defaults
    {
       $$ = NULL;
       if (!state->default_shader_storage_qualifier->
              merge_qualifier(& @1, state, $1, false)) {
+         YYERROR;
+      }
+      if (!state->default_shader_storage_qualifier->
+             push_to_global(& @1, state)) {
          YYERROR;
       }
 
@@ -2909,12 +2930,18 @@ layout_defaults:
              merge_in_qualifier(& @1, state, $1, $$, true)) {
          YYERROR;
       }
+      if (!state->in_qualifier->push_to_global(& @1, state)) {
+         YYERROR;
+      }
    }
    | layout_out_defaults
    {
       $$ = NULL;
       if (!state->out_qualifier->
              merge_out_qualifier(& @1, state, $1, $$, true)) {
+         YYERROR;
+      }
+      if (!state->out_qualifier->push_to_global(& @1, state)) {
          YYERROR;
       }
    }
