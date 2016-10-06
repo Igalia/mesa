@@ -382,7 +382,7 @@ public:
 
    void merge_qualifier(ast_layout_expression *l_expr)
    {
-      layout_const_expressions.append_list(&l_expr->layout_const_expressions);
+      layout_const_expressions.prepend_list(&l_expr->layout_const_expressions);
    }
 
    exec_list layout_const_expressions;
@@ -751,7 +751,8 @@ struct ast_type_qualifier {
    bool merge_qualifier(YYLTYPE *loc,
 			_mesa_glsl_parse_state *state,
                         const ast_type_qualifier &q,
-                        bool is_single_layout_merge);
+                        bool is_single_layout_merge,
+                        bool is_multiple_layouts_merge = false);
 
    bool merge_out_qualifier(YYLTYPE *loc,
                            _mesa_glsl_parse_state *state,
