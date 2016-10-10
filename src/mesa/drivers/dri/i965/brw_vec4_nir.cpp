@@ -1212,6 +1212,12 @@ vec4_visitor::emit_conversion_to_double(dst_reg dst, src_reg src,
 src_reg
 vec4_visitor::setup_imm_df(double v)
 {
+   return setup_imm_df(v, NULL, NULL);
+}
+
+src_reg
+vec4_visitor::setup_imm_df(double v, struct bblock_t *block, brw::vec4_instruction *inst)
+{
    assert(devinfo->gen >= 7);
 
    if (devinfo->gen >= 8)
@@ -1222,7 +1228,10 @@ vec4_visitor::setup_imm_df(double v)
     */
    if (devinfo->is_haswell) {
       dst_reg dst = retype(dst_reg(VGRF, alloc.allocate(2)), BRW_REGISTER_TYPE_DF);
-      emit(DIM(dst, brw_imm_df(v)))->force_writemask_all = true;
+      if (block)
+         emit_before(block, inst, DIM(dst, brw_imm_df(v)))->force_writemask_all = true;
+      else
+         emit(DIM(dst, brw_imm_df(v)))->force_writemask_all = true;
       return swizzle(src_reg(retype(dst, BRW_REGISTER_TYPE_DF)), BRW_SWIZZLE_XXXX);
    }
 
@@ -1247,10 +1256,17 @@ vec4_visitor::setup_imm_df(double v)
    const dst_reg tmp =
       retype(dst_reg(VGRF, alloc.allocate(2)), BRW_REGISTER_TYPE_UD);
    for (int n = 0; n < 2; n++) {
-      emit(MOV(writemask(offset(tmp, 8, n), WRITEMASK_X), brw_imm_ud(di.i1)))
-         ->force_writemask_all = true;
-      emit(MOV(writemask(offset(tmp, 8, n), WRITEMASK_Y), brw_imm_ud(di.i2)))
-         ->force_writemask_all = true;
+      if (block) {
+         emit_before(block, inst, MOV(writemask(offset(tmp, 8, n), WRITEMASK_X), brw_imm_ud(di.i1)))
+            ->force_writemask_all = true;
+         emit_before(block, inst, MOV(writemask(offset(tmp, 8, n), WRITEMASK_Y), brw_imm_ud(di.i2)))
+            ->force_writemask_all = true;
+      } else {
+         emit(MOV(writemask(offset(tmp, 8, n), WRITEMASK_X), brw_imm_ud(di.i1)))
+            ->force_writemask_all = true;
+         emit(MOV(writemask(offset(tmp, 8, n), WRITEMASK_Y), brw_imm_ud(di.i2)))
+            ->force_writemask_all = true;
+      }
    }
 
    return swizzle(src_reg(retype(tmp, BRW_REGISTER_TYPE_DF)), BRW_SWIZZLE_XXXX);
