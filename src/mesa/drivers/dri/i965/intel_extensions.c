@@ -205,7 +205,7 @@ intelInitExtensions(struct gl_context *ctx)
    if (brw->gen >= 8)
       ctx->Const.GLSLVersion = 450;
    else if (brw->is_haswell && brw->can_do_pipelined_register_writes)
-      ctx->Const.GLSLVersion = 400;
+      ctx->Const.GLSLVersion = 420;
    else if (brw->gen >= 6)
       ctx->Const.GLSLVersion = 330;
    else
