@@ -291,7 +291,7 @@ intelInitExtensions(struct gl_context *ctx)
       ctx->Extensions.OES_primitive_bounding_box = true;
       ctx->Extensions.OES_texture_buffer = true;
 
-      if (brw->is_haswell) {
+      if (brw->gen >= 8 || brw->is_haswell) {
          ctx->Extensions.ARB_gpu_shader_fp64 = true;
          ctx->Extensions.ARB_vertex_attrib_64bit = true;
       }
@@ -336,9 +336,7 @@ intelInitExtensions(struct gl_context *ctx)
    }
 
    if (brw->gen >= 8) {
-      ctx->Extensions.ARB_gpu_shader_fp64 = true;
       ctx->Extensions.ARB_shader_precision = true;
-      ctx->Extensions.ARB_vertex_attrib_64bit = true;
       ctx->Extensions.ARB_ES3_2_compatibility = true;
       ctx->Extensions.OES_geometry_shader = true;
       ctx->Extensions.OES_texture_cube_map_array = true;
