@@ -1445,7 +1445,8 @@ set_max_gl_versions(struct intel_screen *screen)
       dri_screen->max_gl_es2_version = has_astc ? 32 : 31;
       break;
    case 7:
-      dri_screen->max_gl_core_version = 33;
+      dri_screen->max_gl_core_version =
+         screen->devinfo.is_haswell && screen->cmd_parser_version >= 7 ? 40 : 33;
       dri_screen->max_gl_compat_version = 30;
       dri_screen->max_gl_es1_version = 11;
       dri_screen->max_gl_es2_version = screen->devinfo.is_haswell ? 31 : 30;
@@ -1650,6 +1651,11 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
       screen->winsys_msaa_samples_override = -1;
    }
 
+   if (intel_get_param(screen, I915_PARAM_CMD_PARSER_VERSION,
+                       &screen->cmd_parser_version) < 0) {
+      screen->cmd_parser_version = 0;
+   }
+
    set_max_gl_versions(screen);
 
    /* Notification of GPU resets requires hardware contexts and a kernel new
@@ -1669,11 +1675,6 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
 
       screen->has_context_reset_notification =
          (ret != -1 || errno != EINVAL);
-   }
-
-   if (intel_get_param(screen, I915_PARAM_CMD_PARSER_VERSION,
-                       &screen->cmd_parser_version) < 0) {
-      screen->cmd_parser_version = 0;
    }
 
    /* Haswell requires command parser version 6 in order to write to the
