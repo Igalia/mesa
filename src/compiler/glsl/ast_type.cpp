@@ -201,6 +201,12 @@ ast_type_qualifier::merge_qualifier(YYLTYPE *loc,
       return false;
    }
 
+   if (is_multiple_layouts_merge && !state->has_420pack_or_es31()) {
+      _mesa_glsl_error(loc, state,
+                       "duplicate layout(...) qualifiers");
+      return false;
+   }
+
    if (q.flags.q.prim_type) {
       if (this->flags.q.prim_type && this->prim_type != q.prim_type) {
          _mesa_glsl_error(loc, state,
