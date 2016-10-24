@@ -723,10 +723,11 @@ static void r600_texture_alloc_cmask_separate(struct r600_common_screen *rscreen
 }
 
 static unsigned r600_texture_get_htile_size(struct r600_common_screen *rscreen,
-					    struct r600_texture *rtex)
+					    struct r600_texture *rtex,
+					    unsigned *base_align)
 {
 	unsigned cl_width, cl_height, width, height;
-	unsigned slice_elements, slice_bytes, pipe_interleave_bytes, base_align;
+	unsigned slice_elements, slice_bytes, pipe_interleave_bytes;
 	unsigned num_pipes = rscreen->info.num_tile_pipes;
 
 	if (rscreen->chip_class <= EVERGREEN &&
@@ -788,7 +789,7 @@ static unsigned r600_texture_get_htile_size(struct r600_common_screen *rscreen,
 	slice_bytes = slice_elements * 4;
 
 	pipe_interleave_bytes = rscreen->info.pipe_interleave_bytes;
-	base_align = num_pipes * pipe_interleave_bytes;
+	*base_align = num_pipes * pipe_interleave_bytes;
 
 	rtex->htile.pitch = width;
 	rtex->htile.height = height;
@@ -796,20 +797,22 @@ static unsigned r600_texture_get_htile_size(struct r600_common_screen *rscreen,
 	rtex->htile.yalign = cl_height * 8;
 
 	return (util_max_layer(&rtex->resource.b.b, 0) + 1) *
-		align(slice_bytes, base_align);
+		align(slice_bytes, *base_align);
 }
 
 static void r600_texture_allocate_htile(struct r600_common_screen *rscreen,
 					struct r600_texture *rtex)
 {
-	unsigned htile_size = r600_texture_get_htile_size(rscreen, rtex);
+	unsigned alignment = 0;
+	unsigned htile_size = r600_texture_get_htile_size(rscreen, rtex,
+							  &alignment);
 
 	if (!htile_size)
 		return;
 
 	rtex->htile_buffer = (struct r600_resource*)
-			     pipe_buffer_create(&rscreen->b, PIPE_BIND_CUSTOM,
-						PIPE_USAGE_DEFAULT, htile_size);
+		r600_aligned_buffer_create(&rscreen->b, 0, PIPE_USAGE_DEFAULT,
+					   htile_size, alignment);
 	if (rtex->htile_buffer == NULL) {
 		/* this is not a fatal error as we can still keep rendering
 		 * without htile buffer */
