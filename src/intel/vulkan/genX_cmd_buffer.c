@@ -1194,10 +1194,10 @@ void genX(CmdEndRenderPass)(
 }
 
 static void
-emit_ps_depth_count(struct anv_batch *batch,
+emit_ps_depth_count(struct anv_cmd_buffer *cmd_buffer,
                     struct anv_bo *bo, uint32_t offset)
 {
-   anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
+   anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
       pc.DestinationAddressType  = DAT_PPGTT;
       pc.PostSyncOperation       = WritePSDepthCount;
       pc.DepthStallEnable        = true;
@@ -1206,10 +1206,10 @@ emit_ps_depth_count(struct anv_batch *batch,
 }
 
 static void
-emit_query_availability(struct anv_batch *batch,
+emit_query_availability(struct anv_cmd_buffer *cmd_buffer,
                         struct anv_bo *bo, uint32_t offset)
 {
-   anv_batch_emit(batch, GENX(PIPE_CONTROL), pc) {
+   anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pc) {
       pc.DestinationAddressType  = DAT_PPGTT;
       pc.PostSyncOperation       = WriteImmediateData;
       pc.Address                 = (struct anv_address) { bo, offset };
@@ -1242,7 +1242,7 @@ void genX(CmdBeginQuery)(
 
    switch (pool->type) {
    case VK_QUERY_TYPE_OCCLUSION:
-      emit_ps_depth_count(&cmd_buffer->batch, &pool->bo,
+      emit_ps_depth_count(cmd_buffer, &pool->bo,
                           query * sizeof(struct anv_query_pool_slot));
       break;
 
@@ -1262,10 +1262,10 @@ void genX(CmdEndQuery)(
 
    switch (pool->type) {
    case VK_QUERY_TYPE_OCCLUSION:
-      emit_ps_depth_count(&cmd_buffer->batch, &pool->bo,
+      emit_ps_depth_count(cmd_buffer, &pool->bo,
                           query * sizeof(struct anv_query_pool_slot) + 8);
 
-      emit_query_availability(&cmd_buffer->batch, &pool->bo,
+      emit_query_availability(cmd_buffer, &pool->bo,
                               query * sizeof(struct anv_query_pool_slot) + 16);
       break;
 
@@ -1311,7 +1311,7 @@ void genX(CmdWriteTimestamp)(
       break;
    }
 
-   emit_query_availability(&cmd_buffer->batch, &pool->bo, query + 16);
+   emit_query_availability(cmd_buffer, &pool->bo, query + 16);
 }
 
 #if GEN_GEN > 7 || GEN_IS_HASWELL
