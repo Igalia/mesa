@@ -1202,6 +1202,9 @@ emit_ps_depth_count(struct anv_cmd_buffer *cmd_buffer,
       pc.PostSyncOperation       = WritePSDepthCount;
       pc.DepthStallEnable        = true;
       pc.Address                 = (struct anv_address) { bo, offset };
+
+      if (GEN_GEN == 9 && cmd_buffer->device->info.gt == 4)
+         pc.CommandStreamerStallEnable = true;
    }
 }
 
@@ -1307,6 +1310,9 @@ void genX(CmdWriteTimestamp)(
          pc.DestinationAddressType  = DAT_PPGTT,
          pc.PostSyncOperation       = WriteTimestamp,
          pc.Address = (struct anv_address) { &pool->bo, offset };
+
+         if (GEN_GEN == 9 && cmd_buffer->device->info.gt == 4)
+            pc.CommandStreamerStallEnable = true;
       }
       break;
    }
