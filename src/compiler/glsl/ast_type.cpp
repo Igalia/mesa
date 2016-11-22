@@ -116,6 +116,72 @@ bool ast_type_qualifier::has_memory() const
           || this->flags.q.write_only;
 }
 
+static bool
+validate_prim_type(YYLTYPE *loc,
+                   _mesa_glsl_parse_state *state,
+                   const ast_type_qualifier &qualifier,
+                   const ast_type_qualifier &new_qualifier)
+{
+   /* Input layout qualifiers can be specified multiple
+    * times in separate declarations, as long as they match.
+    */
+   if (qualifier.flags.q.prim_type && new_qualifier.flags.q.prim_type
+       && qualifier.prim_type != new_qualifier.prim_type) {
+      _mesa_glsl_error(loc, state,
+                       "conflicting input primitive %s specified",
+                       state->stage == MESA_SHADER_GEOMETRY ?
+                       "type" : "mode");
+      return false;
+   }
+
+   return true;
+}
+
+static bool
+validate_vertex_spacing(YYLTYPE *loc,
+                        _mesa_glsl_parse_state *state,
+                        const ast_type_qualifier &qualifier,
+                        const ast_type_qualifier &new_qualifier)
+{
+   if (qualifier.flags.q.vertex_spacing && new_qualifier.flags.q.vertex_spacing
+       && qualifier.vertex_spacing != new_qualifier.vertex_spacing) {
+      _mesa_glsl_error(loc, state,
+                       "conflicting vertex spacing specified");
+      return false;
+   }
+
+   return true;
+}
+
+static bool
+validate_ordering(YYLTYPE *loc,
+                  _mesa_glsl_parse_state *state,
+                  const ast_type_qualifier &qualifier,
+                  const ast_type_qualifier &new_qualifier)
+{
+   if (qualifier.flags.q.ordering && new_qualifier.flags.q.ordering
+       && qualifier.ordering != new_qualifier.ordering) {
+      _mesa_glsl_error(loc, state,
+                       "conflicting ordering specified");
+      return false;
+   }
+
+   return true;
+}
+
+static bool
+validate_point_mode(YYLTYPE *loc,
+                    _mesa_glsl_parse_state *state,
+                    const ast_type_qualifier &qualifier,
+                    const ast_type_qualifier &new_qualifier)
+{
+   /* Point mode can only be true if the flag is set. */
+   assert (!qualifier.flags.q.point_mode || !new_qualifier.flags.q.point_mode
+           || (qualifier.point_mode && new_qualifier.point_mode));
+
+   return true;
+}
+
 /**
  * This function merges duplicate layout identifiers.
  *
@@ -207,14 +273,7 @@ ast_type_qualifier::merge_qualifier(YYLTYPE *loc,
       return false;
    }
 
-   if (q.flags.q.prim_type) {
-      if (this->flags.q.prim_type && this->prim_type != q.prim_type) {
-         _mesa_glsl_error(loc, state,
-                          "conflicting input primitive %s specified",
-                          state->stage == MESA_SHADER_GEOMETRY ?
-                          "type" : "mode");
-         return false;
-      }
+   if (q.flags.q.prim_type && validate_prim_type(loc, state, *this, q)) {
       this->flags.q.prim_type = 1;
       this->prim_type = q.prim_type;
    }
@@ -293,27 +352,18 @@ ast_type_qualifier::merge_qualifier(YYLTYPE *loc,
       }
    }
 
-   if (q.flags.q.vertex_spacing) {
-      if (this->flags.q.vertex_spacing && this->vertex_spacing != q.vertex_spacing) {
-         _mesa_glsl_error(loc, state, "conflicting vertex spacing used");
-         return false;
-      }
+   if (q.flags.q.vertex_spacing
+       && validate_vertex_spacing(loc, state, *this, q)) {
       this->flags.q.vertex_spacing = 1;
       this->vertex_spacing = q.vertex_spacing;
    }
 
-   if (q.flags.q.ordering) {
-      if (this->flags.q.ordering && this->ordering != q.ordering) {
-         _mesa_glsl_error(loc, state, "conflicting ordering used");
-         return false;
-      }
+   if (q.flags.q.ordering && validate_ordering(loc, state, *this, q)) {
       this->flags.q.ordering = 1;
       this->ordering = q.ordering;
    }
 
-   if (q.flags.q.point_mode) {
-      /* Point mode can only be true if the flag is set. */
-      assert (!this->flags.q.point_mode || (this->point_mode && q.point_mode));
+   if (q.flags.q.point_mode && validate_point_mode(loc, state, *this, q)) {
       this->flags.q.point_mode = 1;
       this->point_mode = q.point_mode;
    }
@@ -548,38 +598,10 @@ ast_type_qualifier::validate_in_qualifier(YYLTYPE *loc,
     * error against the default global input qualifier as soon as we can, with
     * the closest error location in the shader.
     */
-
-   /* Input layout qualifiers can be specified multiple
-    * times in separate declarations, as long as they match.
-    */
-   if (state->in_qualifier->flags.q.prim_type && this->flags.q.prim_type
-       && state->in_qualifier->prim_type != this->prim_type) {
-      r = false;
-      _mesa_glsl_error(loc, state,
-                       "conflicting input primitive %s specified",
-                       state->stage == MESA_SHADER_GEOMETRY ?
-                       "type" : "mode");
-   }
-
-   if (state->in_qualifier->flags.q.vertex_spacing
-       && this->flags.q.vertex_spacing
-       && state->in_qualifier->vertex_spacing != this->vertex_spacing) {
-      r = false;
-      _mesa_glsl_error(loc, state,
-                       "conflicting vertex spacing specified");
-   }
-
-   if (state->in_qualifier->flags.q.ordering && this->flags.q.ordering
-       && state->in_qualifier->ordering != this->ordering) {
-      r = false;
-      _mesa_glsl_error(loc, state,
-                       "conflicting ordering specified");
-   }
-
-   /* Point mode can only be true if the flag is set. */
-   assert (!state->in_qualifier->flags.q.point_mode
-           || !this->flags.q.point_mode
-           || (state->in_qualifier->point_mode && this->point_mode));
+   r &= validate_prim_type(loc, state, *state->in_qualifier, *this);
+   r &= validate_vertex_spacing(loc, state, *state->in_qualifier, *this);
+   r &= validate_ordering(loc, state, *state->in_qualifier, *this);
+   r &= validate_point_mode(loc, state, *state->in_qualifier, *this);
 
    return r;
 }
