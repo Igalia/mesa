@@ -199,6 +199,7 @@ ast_type_qualifier::merge_qualifier(YYLTYPE *loc,
                                     bool is_single_layout_merge,
                                     bool is_multiple_layouts_merge)
 {
+   bool r = true;
    ast_type_qualifier ubo_mat_mask;
    ubo_mat_mask.flags.i = 0;
    ubo_mat_mask.flags.q.row_major = 1;
@@ -273,7 +274,8 @@ ast_type_qualifier::merge_qualifier(YYLTYPE *loc,
       return false;
    }
 
-   if (q.flags.q.prim_type && validate_prim_type(loc, state, *this, q)) {
+   if (q.flags.q.prim_type) {
+      r &= validate_prim_type(loc, state, *this, q);
       this->flags.q.prim_type = 1;
       this->prim_type = q.prim_type;
    }
@@ -352,18 +354,20 @@ ast_type_qualifier::merge_qualifier(YYLTYPE *loc,
       }
    }
 
-   if (q.flags.q.vertex_spacing
-       && validate_vertex_spacing(loc, state, *this, q)) {
+   if (q.flags.q.vertex_spacing) {
+      r &= validate_vertex_spacing(loc, state, *this, q);
       this->flags.q.vertex_spacing = 1;
       this->vertex_spacing = q.vertex_spacing;
    }
 
-   if (q.flags.q.ordering && validate_ordering(loc, state, *this, q)) {
+   if (q.flags.q.ordering) {
+      r &= validate_ordering(loc, state, *this, q);
       this->flags.q.ordering = 1;
       this->ordering = q.ordering;
    }
 
-   if (q.flags.q.point_mode && validate_point_mode(loc, state, *this, q)) {
+   if (q.flags.q.point_mode) {
+      r &= validate_point_mode(loc, state, *this, q);
       this->flags.q.point_mode = 1;
       this->point_mode = q.point_mode;
    }
@@ -424,7 +428,7 @@ ast_type_qualifier::merge_qualifier(YYLTYPE *loc,
       this->image_base_type = q.image_base_type;
    }
 
-   return true;
+   return r;
 }
 
 bool
