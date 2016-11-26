@@ -461,16 +461,15 @@ static void *si_create_blend_state_mode(struct pipe_context *ctx,
 			S_028760_ALPHA_COMB_FCN(V_028760_OPT_COMB_BLEND_DISABLED);
 
 		/* Only set dual source blending for MRT0 to avoid a hang. */
-		if (i >= 1 && blend->dual_src_blend)
+		if (i >= 1 && blend->dual_src_blend) {
+			si_pm4_set_reg(pm4, R_028780_CB_BLEND0_CONTROL + i * 4, blend_cntl);
 			continue;
-
-		if (!state->rt[j].colormask)
-			continue;
+		}
 
 		/* cb_render_state will disable unused ones */
 		blend->cb_target_mask |= (unsigned)state->rt[j].colormask << (4 * i);
 
-		if (!state->rt[j].blend_enable) {
+		if (!state->rt[j].colormask || !state->rt[j].blend_enable) {
 			si_pm4_set_reg(pm4, R_028780_CB_BLEND0_CONTROL + i * 4, blend_cntl);
 			continue;
 		}
