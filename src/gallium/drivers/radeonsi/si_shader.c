@@ -5865,6 +5865,9 @@ void si_shader_binary_read_config(struct radeon_shader_binary *binary,
 			conf->scratch_bytes_per_wave =
 				G_00B860_WAVESIZE(value) * 256 * 4 * 1;
 			break;
+		case 0x4:
+		case 0x8:
+			break; /* just spilling stats, not important */
 		default:
 			{
 				static bool printed;
