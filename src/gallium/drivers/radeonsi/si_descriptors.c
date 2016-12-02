@@ -311,6 +311,7 @@ static void si_set_sampler_view(struct si_context *sctx,
 				unsigned slot, struct pipe_sampler_view *view)
 {
 	struct si_sampler_view *rview = (struct si_sampler_view*)view;
+	uint32_t *desc = views->desc.list + slot * 16;
 
 	if (view && view->texture && view->texture->target != PIPE_BUFFER &&
 	    G_008F28_COMPRESSION_EN(rview->state[6]) &&
@@ -346,9 +347,14 @@ static void si_set_sampler_view(struct si_context *sctx,
 		views->desc.enabled_mask |= 1u << slot;
 	} else {
 		pipe_sampler_view_reference(&views->views[slot], NULL);
-		memcpy(views->desc.list + slot*16, null_texture_descriptor, 8*4);
+		memcpy(desc, null_texture_descriptor, 8*4);
 		/* Only clear the lower dwords of FMASK. */
-		memcpy(views->desc.list + slot*16 + 8, null_texture_descriptor, 4*4);
+		memcpy(desc + 8, null_texture_descriptor, 4*4);
+		/* Re-set the sampler state if we are transitioning from FMASK. */
+		if (views->sampler_states[slot])
+			memcpy(desc + 12,
+			       views->sampler_states[slot], 4*4);
+
 		views->desc.enabled_mask &= ~(1u << slot);
 	}
 
