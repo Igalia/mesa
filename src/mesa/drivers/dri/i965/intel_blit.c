@@ -487,14 +487,6 @@ can_fast_copy_blit(struct brw_context *brw,
    if (brw->gen < 9)
       return false;
 
-   /* Enable fast copy blit only if the surfaces are Yf/Ys tiled.
-    * FIXME: Based on performance data, remove this condition later to
-    * enable for all types of surfaces.
-    */
-   if (src_tr_mode == INTEL_MIPTREE_TRMODE_NONE &&
-       dst_tr_mode == INTEL_MIPTREE_TRMODE_NONE)
-      return false;
-
    if (logic_op != GL_COPY)
       return false;
 
