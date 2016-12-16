@@ -1431,7 +1431,8 @@ intel_screen_make_configs(__DRIscreen *dri_screen)
 }
 
 static void
-set_max_gl_versions(struct intel_screen *screen)
+set_max_gl_versions(struct intel_screen *screen,
+                    bool can_do_pipelined_register_writes)
 {
    __DRIscreen *dri_screen = screen->driScrnPriv;
    const bool has_astc = screen->devinfo.gen >= 9;
@@ -1446,7 +1447,7 @@ set_max_gl_versions(struct intel_screen *screen)
       break;
    case 7:
       dri_screen->max_gl_core_version =
-         screen->devinfo.is_haswell && screen->cmd_parser_version >= 7 ? 40 : 33;
+         screen->devinfo.is_haswell && can_do_pipelined_register_writes ? 40 : 33;
       dri_screen->max_gl_compat_version = 30;
       dri_screen->max_gl_es1_version = 11;
       dri_screen->max_gl_es2_version = screen->devinfo.is_haswell ? 31 : 30;
@@ -1656,7 +1657,10 @@ __DRIconfig **intelInitScreen2(__DRIscreen *dri_screen)
       screen->cmd_parser_version = 0;
    }
 
-   set_max_gl_versions(screen);
+   bool can_do_pipelined_register_writes =
+         brw_can_do_pipelined_register_writes(dri_screen);
+
+   set_max_gl_versions(screen, can_do_pipelined_register_writes);
 
    /* Notification of GPU resets requires hardware contexts and a kernel new
     * enough to support DRM_IOCTL_I915_GET_RESET_STATS.  If the ioctl is

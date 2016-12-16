@@ -1811,6 +1811,9 @@ void brw_query_internal_format(struct gl_context *ctx, GLenum target,
                                GLenum internalFormat, GLenum pname,
                                GLint *params);
 
+/* brw_check_register_writes.c */
+int brw_can_do_pipelined_register_writes(__DRIscreen *dri_screen);
+
 #ifdef __cplusplus
 }
 #endif
