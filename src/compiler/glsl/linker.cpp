@@ -962,7 +962,7 @@ cross_validate_globals(struct gl_shader_program *prog,
           *  opaque-uniform name.  However, it is not an error to specify a
           *  binding on some but not all declarations for the same name"
           */
-         if (var->data.explicit_binding) {
+         if (var->type->contains_opaque() && var->data.explicit_binding) {
             if (existing->data.explicit_binding &&
                 var->data.binding != existing->data.binding) {
                linker_error(prog, "explicit bindings for %s "
