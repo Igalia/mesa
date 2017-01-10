@@ -1577,11 +1577,6 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
       unsigned int last_insn_offset = p->next_insn_offset;
       bool multiple_instructions_emitted = false;
 
-      if (devinfo->gen == 7 && !devinfo->is_haswell &&
-          (get_exec_type_size(inst) == 8 || type_sz(inst->dst.type) == 8)) {
-        inst->exec_size *= 2;
-      }
-
       /* From the Broadwell PRM, Volume 7, "3D-Media-GPGPU", in the
        * "Register Region Restrictions" section: for BDW, SKL:
        *
@@ -1644,10 +1639,17 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
       brw_set_default_saturate(p, inst->saturate);
       brw_set_default_mask_control(p, inst->force_writemask_all);
       brw_set_default_acc_write_control(p, inst->writes_accumulator);
-      brw_set_default_exec_size(p, cvt(inst->exec_size) - 1);
 
       assert(inst->force_writemask_all || inst->exec_size >= 4);
       assert(inst->force_writemask_all || inst->group % inst->exec_size == 0);
+
+      if (devinfo->gen == 7 && !devinfo->is_haswell &&
+          (get_exec_type_size(inst) == 8 || type_sz(inst->dst.type) == 8)) {
+         inst->exec_size *= 2;
+      }
+
+      brw_set_default_exec_size(p, cvt(inst->exec_size) - 1);
+
       assert(inst->base_mrf + inst->mlen <= BRW_MAX_MRF(devinfo->gen));
       assert(inst->mlen <= BRW_MAX_MSG_LENGTH);
 
