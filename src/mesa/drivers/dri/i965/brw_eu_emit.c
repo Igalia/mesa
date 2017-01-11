@@ -444,9 +444,16 @@ brw_set_src0(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
             brw_inst_set_src0_width(devinfo, inst, BRW_WIDTH_1);
             brw_inst_set_src0_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_0);
 	 } else {
-            brw_inst_set_src0_hstride(devinfo, inst, reg.hstride);
-            brw_inst_set_src0_width(devinfo, inst, reg.width);
-            brw_inst_set_src0_vstride(devinfo, inst, reg.vstride);
+            if (devinfo->gen == 7 && !devinfo->is_haswell &&
+                reg.type == BRW_REGISTER_TYPE_DF && has_scalar_region(reg)) {
+               brw_inst_set_src0_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_0);
+               brw_inst_set_src0_width(devinfo, inst, BRW_WIDTH_2);
+               brw_inst_set_src0_hstride(devinfo, inst, BRW_HORIZONTAL_STRIDE_1);
+            } else {
+               brw_inst_set_src0_vstride(devinfo, inst, reg.vstride);
+               brw_inst_set_src0_width(devinfo, inst, reg.width);
+               brw_inst_set_src0_hstride(devinfo, inst, reg.hstride);
+            }
 	 }
       } else {
          brw_inst_set_src0_da16_swiz_x(devinfo, inst,
@@ -526,9 +533,16 @@ brw_set_src1(struct brw_codegen *p, brw_inst *inst, struct brw_reg reg)
             brw_inst_set_src1_width(devinfo, inst, BRW_WIDTH_1);
             brw_inst_set_src1_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_0);
 	 } else {
-            brw_inst_set_src1_hstride(devinfo, inst, reg.hstride);
-            brw_inst_set_src1_width(devinfo, inst, reg.width);
-            brw_inst_set_src1_vstride(devinfo, inst, reg.vstride);
+            if (devinfo->gen == 7 && !devinfo->is_haswell &&
+                reg.type == BRW_REGISTER_TYPE_DF && has_scalar_region(reg)) {
+               brw_inst_set_src1_vstride(devinfo, inst, BRW_VERTICAL_STRIDE_0);
+               brw_inst_set_src1_width(devinfo, inst, BRW_WIDTH_2);
+               brw_inst_set_src1_hstride(devinfo, inst, BRW_HORIZONTAL_STRIDE_1);
+            } else {
+               brw_inst_set_src1_vstride(devinfo, inst, reg.vstride);
+               brw_inst_set_src1_width(devinfo, inst, reg.width);
+               brw_inst_set_src1_hstride(devinfo, inst, reg.hstride);
+            }
 	 }
       } else {
          brw_inst_set_src1_da16_swiz_x(devinfo, inst,
