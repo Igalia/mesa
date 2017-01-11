@@ -4516,6 +4516,11 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
             const unsigned reg_count = DIV_ROUND_UP(inst->size_written, REG_SIZE);
             max_width = MIN2(max_width, inst->exec_size / reg_count);
          }
+
+         if (type_sz(inst->src[i].type) == 8 &&
+             ((inst->size_read(i) != 0 && inst->size_read(i) <= REG_SIZE) ||
+              is_uniform(inst->src[i])))
+            max_width = MIN2(max_width, 4);
       }
    }
 
