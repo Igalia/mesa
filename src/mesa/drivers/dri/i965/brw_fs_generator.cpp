@@ -145,6 +145,15 @@ brw_reg_from_fs_reg(const struct gen_device_info *devinfo, fs_inst *inst,
       unreachable("not reached");
    }
 
+   if (devinfo->gen == 7 && !devinfo->is_haswell &&
+       type_sz(reg->type) == 8 &&
+       brw_reg.vstride == BRW_VERTICAL_STRIDE_0 &&
+       brw_reg.width == BRW_WIDTH_1 &&
+       brw_reg.hstride == BRW_HORIZONTAL_STRIDE_0) {
+      brw_reg.width = BRW_WIDTH_2;
+      brw_reg.hstride = BRW_HORIZONTAL_STRIDE_1;
+   }
+
    return brw_reg;
 }
 
