@@ -294,7 +294,7 @@ nv50_clear_render_target(struct pipe_context *pipe,
    PUSH_DATAf(push, color->f[2]);
    PUSH_DATAf(push, color->f[3]);
 
-   if (nouveau_pushbuf_space(push, 32 + sf->depth, 1, 0))
+   if (nouveau_pushbuf_space(push, 64 + sf->depth, 1, 0))
       return;
 
    PUSH_REFN(push, bo, mt->base.domain | NOUVEAU_BO_WR);
@@ -388,7 +388,7 @@ nv50_clear_depth_stencil(struct pipe_context *pipe,
       mode |= NV50_3D_CLEAR_BUFFERS_S;
    }
 
-   if (nouveau_pushbuf_space(push, 32 + sf->depth, 1, 0))
+   if (nouveau_pushbuf_space(push, 64 + sf->depth, 1, 0))
       return;
 
    PUSH_REFN(push, bo, mt->base.domain | NOUVEAU_BO_WR);
@@ -742,7 +742,7 @@ nv50_clear_buffer(struct pipe_context *pipe,
    PUSH_DATAf(push, color.f[2]);
    PUSH_DATAf(push, color.f[3]);
 
-   if (nouveau_pushbuf_space(push, 32, 1, 0))
+   if (nouveau_pushbuf_space(push, 64, 1, 0))
       return;
 
    PUSH_REFN(push, buf->bo, buf->domain | NOUVEAU_BO_WR);
