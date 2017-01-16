@@ -5683,13 +5683,6 @@ fs_visitor::optimize()
       OPT(dead_code_eliminate);
    }
 
-   /* Lower DF scalars on IVB/BYT before lower_simd_width, as the generated
-    * code has a bug in this hardware that is fixed later in the
-    * lower_simd_width step.
-    */
-   if (devinfo->gen == 7 && !devinfo->is_haswell)
-     OPT(lower_ivb_x2d);
-
    OPT(lower_simd_width);
 
    /* After SIMD lowering just in case we had to unroll the EOT send. */
