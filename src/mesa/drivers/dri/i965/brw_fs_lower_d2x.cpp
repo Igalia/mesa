@@ -33,15 +33,8 @@ fs_visitor::lower_d2x()
    bool progress = false;
 
    foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
-      if (inst->opcode != BRW_OPCODE_MOV)
-         continue;
-
-      if (inst->dst.type != BRW_REGISTER_TYPE_F &&
-          inst->dst.type != BRW_REGISTER_TYPE_D &&
-          inst->dst.type != BRW_REGISTER_TYPE_UD)
-         continue;
-
-      if (inst->src[0].type != BRW_REGISTER_TYPE_DF)
+      if (get_exec_type_size(inst) != 8 ||
+          type_sz(inst->dst.type) >= get_exec_type_size(inst))
          continue;
 
       assert(inst->dst.file == VGRF);
@@ -59,10 +52,12 @@ fs_visitor::lower_d2x()
        * So we need to allocate a temporary that's two registers, and then do
        * a strided MOV to get the lower DWord of every Qword that has the
        * result.
+       *
+       * This pass legalizes all the DF conversions to narrower types.
        */
       fs_reg temp = ibld.vgrf(inst->src[0].type, 1);
       fs_reg strided_temp = subscript(temp, inst->dst.type, 0);
-      ibld.MOV(strided_temp, inst->src[0]);
+      ibld.emit(inst->opcode, strided_temp, inst->src[0], inst->src[1], inst->src[2]);
       ibld.MOV(dst, strided_temp);
 
       inst->remove(block);
