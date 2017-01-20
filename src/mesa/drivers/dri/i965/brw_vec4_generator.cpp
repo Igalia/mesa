@@ -2025,6 +2025,7 @@ generate_code(struct brw_codegen *p,
          assert(type_sz(dst.type) == 8);
 
          brw_set_default_access_mode(p, BRW_ALIGN_1);
+         brw_set_default_exec_size(p, BRW_EXECUTE_4);
 
          dst = retype(dst, BRW_REGISTER_TYPE_UD);
          if (inst->opcode == VEC4_OPCODE_SET_HIGH_32BIT)
@@ -2037,6 +2038,7 @@ generate_code(struct brw_codegen *p,
          src[0].hstride = BRW_HORIZONTAL_STRIDE_1;
          brw_MOV(p, dst, src[0]);
 
+         brw_set_default_exec_size(p, BRW_EXECUTE_8);
          brw_set_default_access_mode(p, BRW_ALIGN_16);
          break;
       }
