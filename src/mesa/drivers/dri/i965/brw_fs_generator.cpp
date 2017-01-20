@@ -55,7 +55,7 @@ brw_file_from_reg(fs_reg *reg)
 
 static struct brw_reg
 brw_reg_from_fs_reg(const struct gen_device_info *devinfo, fs_inst *inst,
-                    fs_reg *reg, bool compressed)
+                    fs_reg *reg, bool is_dst, bool compressed)
 {
    struct brw_reg brw_reg;
 
@@ -94,34 +94,48 @@ brw_reg_from_fs_reg(const struct gen_device_info *devinfo, fs_inst *inst,
          const unsigned width = MIN2(reg_width, phys_width);
          brw_reg = brw_vecn_reg(width, brw_file_from_reg(reg), reg->nr, 0);
          brw_reg = stride(brw_reg, width * reg->stride, width, reg->stride);
-         /* From the IvyBridge PRM (EU Changes by Processor Generation, page 13):
-          *  "Each DF (Double Float) operand uses an element size of 4 rather
-          *   than 8 and all regioning parameters are twice what the values
-          *   would be based on the true element size: ExecSize, Width,
-          *   HorzStride, and VertStride. Each DF operand uses a pair of
-          *   channels and all masking and swizzing should be adjusted
-          *   appropriately."
-          *
-          * From the IvyBridge PRM (Special Requirements for Handling Double
-          * Precision Data Types, page 71):
-          *  "In Align1 mode, all regioning parameters like stride, execution
-          *   size, and width must use the syntax of a pair of packed
-          *   floats. The offsets for these data types must be 64-bit
-          *   aligned. The execution size and regioning parameters are in terms
-          *   of floats."
-          *
-          * Summarized: when handling DF-typed arguments, ExecSize,
-          * VertStride, and Width must be doubled, and HorzStride must be
-          * doubled when the region is not scalar.
-          *
-          * It applies to BayTrail too.
-          */
-         if (devinfo->gen == 7 && !devinfo->is_haswell &&
-             type_sz(reg->type) == 8) {
-            brw_reg.width++;
-            if (brw_reg.vstride > 0)
-               brw_reg.vstride++;
-            assert(brw_reg.hstride == BRW_HORIZONTAL_STRIDE_1);
+
+         if (devinfo->gen == 7 && !devinfo->is_haswell) {
+            /* From the IvyBridge PRM (EU Changes by Processor Generation, page 13):
+             *  "Each DF (Double Float) operand uses an element size of 4 rather
+             *   than 8 and all regioning parameters are twice what the values
+             *   would be based on the true element size: ExecSize, Width,
+             *   HorzStride, and VertStride. Each DF operand uses a pair of
+             *   channels and all masking and swizzing should be adjusted
+             *   appropriately."
+             *
+             * From the IvyBridge PRM (Special Requirements for Handling Double
+             * Precision Data Types, page 71):
+             *  "In Align1 mode, all regioning parameters like stride, execution
+             *   size, and width must use the syntax of a pair of packed
+             *   floats. The offsets for these data types must be 64-bit
+             *   aligned. The execution size and regioning parameters are in terms
+             *   of floats."
+             *
+             * Summarized: when handling DF-typed arguments, ExecSize,
+             * VertStride, and Width must be doubled, and HorzStride must be
+             * doubled when the region is not scalar.
+             *
+             * It applies to BayTrail too.
+             */
+            if (type_sz(reg->type) == 8) {
+               brw_reg.width++;
+               if (brw_reg.vstride > 0)
+                  brw_reg.vstride++;
+               assert(brw_reg.hstride == BRW_HORIZONTAL_STRIDE_1);
+            }
+
+            /* When converting from DF->F, we set destination's stride as 2 as an
+             * because each d2f conversion implicitly writes 2 F,
+             * being the first one the converted value. IVB/BYT already set
+             * stride = 2 implicitly, so we must set it to 1 explicitly to avoid
+             * ending up with stride = 4.
+             */
+            if (is_dst && get_exec_type_size(inst) == 8 &&
+                type_sz(reg->type) < 8) {
+               assert(brw_reg.hstride == BRW_HORIZONTAL_STRIDE_2);
+               brw_reg.hstride = BRW_HORIZONTAL_STRIDE_1;
+            }
          }
       }
 
@@ -1626,7 +1640,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
 
       for (unsigned int i = 0; i < inst->sources; i++) {
          src[i] = brw_reg_from_fs_reg(devinfo, inst,
-                                      &inst->src[i], compressed);
+                                      &inst->src[i], false, compressed);
 	 /* The accumulator result appears to get used for the
 	  * conditional modifier generation.  When negating a UD
 	  * value, there is a 33rd bit generated for the sign in the
@@ -1638,7 +1652,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
 		!inst->src[i].negate);
       }
       dst = brw_reg_from_fs_reg(devinfo, inst,
-                                &inst->dst, compressed);
+                                &inst->dst, true, compressed);
 
       brw_set_default_access_mode(p, BRW_ALIGN_1);
       brw_set_default_predicate_control(p, inst->predicate);
