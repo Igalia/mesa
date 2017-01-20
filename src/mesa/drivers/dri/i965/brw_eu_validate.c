@@ -466,6 +466,10 @@ general_restrictions_based_on_operand_types(const struct gen_device_info *devinf
       brw_hw_reg_type_to_size(devinfo, exec_type, BRW_GENERAL_REGISTER_FILE);
    unsigned dst_type_size = brw_element_size(devinfo, inst, dst);
 
+   if (devinfo->gen == 7 && !devinfo->is_haswell &&
+       exec_type_size == 8 && dst_type_size == 4)
+      dst_type_size = 8;
+
    if (exec_type_size > dst_type_size) {
       ERROR_IF(dst_stride * dst_type_size != exec_type_size,
                "Destination stride must be equal to the ratio of the sizes of "
@@ -574,6 +578,10 @@ general_restrictions_on_region_parameters(const struct gen_device_info *devinfo,
          DO_SRC(1);
       }
 #undef DO_SRC
+
+      if (devinfo->gen == 7 && !devinfo->is_haswell &&
+          element_size == 8)
+         element_size = 4;
 
       /* ExecSize must be greater than or equal to Width. */
       ERROR_IF(exec_size < width, "ExecSize must be greater than or equal "
@@ -790,6 +798,10 @@ region_alignment_rules(const struct gen_device_info *devinfo,
 
    if (error_msg.str)
       return error_msg;
+
+   if (devinfo->gen == 7 && !devinfo->is_haswell &&
+       element_size == 8)
+      element_size = 4;
 
    align1_access_mask(dst_access_mask, exec_size, element_size, subreg,
                       exec_size == 1 ? 0 : exec_size * stride,
