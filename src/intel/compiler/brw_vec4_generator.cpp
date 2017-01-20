@@ -1539,7 +1539,15 @@ generate_code(struct brw_codegen *p,
              inst->src[2].type == BRW_REGISTER_TYPE_DF);
 
       unsigned exec_size = inst->exec_size;
-      if (is_ivb_df && inst->exec_size < 8)
+      /* There are some instructions where the destination is 64-bit
+       * but we retype it to a smaller type. In that case, we cannot
+       * double the exec_size.
+       */
+      if (is_ivb_df && inst->exec_size < 8 &&
+          inst->opcode != VEC4_OPCODE_PICK_LOW_32BIT &&
+          inst->opcode != VEC4_OPCODE_PICK_HIGH_32BIT &&
+          inst->opcode != VEC4_OPCODE_SET_LOW_32BIT &&
+          inst->opcode != VEC4_OPCODE_SET_HIGH_32BIT)
          exec_size *= 2;
 
       brw_set_default_exec_size(p, cvt(exec_size) - 1);
