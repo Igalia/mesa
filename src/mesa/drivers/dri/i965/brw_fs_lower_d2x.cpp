@@ -33,17 +33,9 @@ fs_visitor::lower_d2x()
    bool progress = false;
 
    foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
-      if (inst->opcode != BRW_OPCODE_MOV)
-         continue;
-
-      if (inst->dst.type != BRW_REGISTER_TYPE_F &&
-          inst->dst.type != BRW_REGISTER_TYPE_D &&
-          inst->dst.type != BRW_REGISTER_TYPE_UD)
-         continue;
-
-      if (inst->src[0].type != BRW_REGISTER_TYPE_DF &&
-          inst->src[0].type != BRW_REGISTER_TYPE_UQ &&
-          inst->src[0].type != BRW_REGISTER_TYPE_Q)
+      if (get_exec_type_size(inst) != 8 ||
+          type_sz(inst->dst.type) >= get_exec_type_size(inst) ||
+          inst->dst.stride > 1)
          continue;
 
       assert(inst->dst.file == VGRF);
@@ -61,13 +53,46 @@ fs_visitor::lower_d2x()
        * So we need to allocate a temporary that's two registers, and then do
        * a strided MOV to get the lower DWord of every Qword that has the
        * result.
+       *
+       * This pass legalizes all the DF conversions to narrower types.
        */
-      fs_reg temp = ibld.vgrf(inst->src[0].type, 1);
-      fs_reg strided_temp = subscript(temp, inst->dst.type, 0);
-      ibld.MOV(strided_temp, inst->src[0]);
-      ibld.MOV(dst, strided_temp);
+      switch (inst->opcode) {
+      case SHADER_OPCODE_MOV_INDIRECT:
+      case BRW_OPCODE_MOV: {
+         fs_reg temp = ibld.vgrf(inst->src[0].type, 1);
+         fs_reg strided_temp = subscript(temp, inst->dst.type, 0);
+         /* We clone the original instruction as we are going to modify it
+          * and emit another one after it.
+          */
+         fs_inst *strided_inst = new(ibld.shader->mem_ctx) fs_inst(*inst);
+         strided_inst->dst = strided_temp;
+         /* As it is an strided destination, we write n-times more
+          * being n the size difference between source and destination types.
+          */
+         strided_inst->size_written *= (type_sz(inst->src[0].type) / type_sz(inst->dst.type));
+         ibld.emit(strided_inst);
+         ibld.MOV(dst, strided_temp);
+         /* Remove original instruction, now that is superseded. */
+         inst->remove(block);
+         break;
+      }
+      case BRW_OPCODE_SEL: {
+         fs_reg temp0 = ibld.vgrf(inst->src[0].type, 1);
+         fs_reg strided_temp0 = subscript(temp0, inst->dst.type, 0);
+         fs_reg temp1 = ibld.vgrf(inst->src[1].type, 1);
+         fs_reg strided_temp1 = subscript(temp1, inst->dst.type, 0);
 
-      inst->remove(block);
+         /* Let's convert the operands to the destination type first */
+         ibld.MOV(strided_temp0, inst->src[0]);
+         ibld.MOV(strided_temp1, inst->src[1]);
+         inst->src[0] = strided_temp0;
+         inst->src[1] = strided_temp1;
+         break;
+      }
+      default:
+         /* FIXME: If this is not a supported instruction, then we need to support it. */
+         unreachable("Not supported instruction");
+      }
       progress = true;
    }
 
