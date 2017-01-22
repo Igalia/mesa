@@ -2031,8 +2031,20 @@ _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
       case ir_type_variable: {
          ir_variable *const var = (ir_variable *) ir;
 
-         if (var->data.mode != ir_var_temporary)
+         if (var->data.mode != ir_var_temporary) {
             shader->symbols->add_variable(var);
+
+            const glsl_type *iface = var->get_interface_type();
+            if (iface) {
+               const glsl_type *entry = state->symbols->get_interface(iface->name, ir_var_shader_in);
+               if (entry)
+                  shader->symbols->add_interface(iface->name, entry, ir_var_shader_in);
+
+               entry = state->symbols->get_interface(iface->name, ir_var_shader_out);
+               if (entry)
+                  shader->symbols->add_interface(iface->name, entry, ir_var_shader_out);
+            }
+         }
          break;
       }
       default:

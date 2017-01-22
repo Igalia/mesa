@@ -376,10 +376,42 @@ validate_interstage_inout_blocks(struct gl_shader_program *prog,
    /* Verify that the consumer's input interfaces match. */
    foreach_in_list(ir_instruction, node, consumer->ir) {
       ir_variable *var = node->as_variable();
-      if (!var || !var->get_interface_type() || var->data.mode != ir_var_shader_in)
+      if (!var || !var->get_interface_type())
          continue;
 
       ir_variable *producer_def = definitions.lookup(var);
+
+      /* Check that all built-in block re-declarations are compatible
+       * across shaders: From OpenGL Shading Language 4.5, section
+       * "7.1 Built-In Language Variables", page 130 of the PDF:
+       *
+       *    "If multiple shaders using members of a built-in block belonging
+       *     to the same interface are linked together in the same program,
+       *     they must all redeclare the built-in block in the same way, as
+       *     described in section 4.3.9 “Interface Blocks” for interface-block
+       *     matching, or a link-time error will result."
+       */
+      const glsl_type *consumer_iface =
+         consumer->symbols->get_interface(var->get_interface_type()->name,
+                                          ir_var_shader_in);
+
+      const glsl_type *producer_iface = NULL;
+      if (producer_def && producer_def->get_interface_type()) {
+         producer_iface =
+            producer->symbols->get_interface(producer_def->get_interface_type()->name,
+                                             ir_var_shader_out);
+      }
+
+      if (producer_iface && consumer_iface &&
+          strstr(producer_iface->name, "gl_") == producer_iface->name &&
+          interstage_member_mismatch(prog, consumer_iface, producer_iface)) {
+         linker_error(prog, "Incompatible or missing gl_PerVertex re-declaration"
+                      "in consecutive shaders");
+         return;
+      }
+
+      if (var->data.mode != ir_var_shader_in)
+         continue;
 
       /* The producer doesn't generate this input: fail to link. Skip built-in
        * 'gl_in[]' since that may not be present if the producer does not
