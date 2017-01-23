@@ -5071,6 +5071,47 @@ emit_zip(const fs_builder &lbld, bblock_t *block, fs_inst *inst)
 }
 
 bool
+fs_visitor::lower_ivb_df_mov_indirect()
+{
+   bool progress = false;
+
+   assert(devinfo->gen == 7 && !devinfo->is_haswell);
+
+   foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
+      if (devinfo->gen != 7 || devinfo->is_haswell ||
+          inst->opcode != SHADER_OPCODE_MOV_INDIRECT ||
+          type_sz(inst->dst.type) != 8)
+         continue;
+      const fs_builder ibld(this, block, inst);
+
+      /* When doing a DF indirect MOV, IVB will consider the indirect offsets
+       * as a pointers to 32-bit data size elements. Because of that, we need
+       * to build the correct values from the provided ones (which are pointers
+       * to 64-bit data size elements).
+       *
+       * This behavior was discovered empirically, PRM doesn't say anything.
+       */
+      fs_reg indirect_high_32bit = vgrf(glsl_type::uint_type);
+      /* Calculate indirect offsets to read high 32 bits */
+      ibld.ADD(indirect_high_32bit, inst->src[1], brw_imm_ud(4));
+
+      /* Copy the indirect offset values in the even channels
+       * including 0. */
+      fs_reg indirect_offset = ibld.vgrf(BRW_REGISTER_TYPE_UD, 4);
+      indirect_offset = retype(indirect_offset, BRW_REGISTER_TYPE_DF);
+      ibld.MOV(subscript(indirect_offset, BRW_REGISTER_TYPE_UD, 0), inst->src[1]);
+      /* Now copy the indirect offsets to read high 32 bits in the odd
+       * channels.
+       */
+      ibld.MOV(subscript(indirect_offset, BRW_REGISTER_TYPE_UD, 1), indirect_high_32bit);
+      inst->src[1] = retype(indirect_offset, BRW_REGISTER_TYPE_UD);
+      progress = true;
+   }
+
+   return progress;
+}
+
+bool
 fs_visitor::lower_simd_width()
 {
    bool progress = false;
@@ -5119,6 +5160,18 @@ fs_visitor::lower_simd_width()
             split_inst.dst = emit_zip(lbld, block, inst);
             split_inst.size_written =
                split_inst.dst.component_size(lower_width) * dst_size;
+
+            if (devinfo->gen == 7 && !devinfo->is_haswell &&
+                inst->opcode == SHADER_OPCODE_MOV_INDIRECT &&
+                type_sz(inst->dst.type) == 8) {
+               assert(lower_width == 4);
+               fs_reg indirect_offset = vgrf(glsl_type::uint_type);
+               const fs_builder ubld = bld.at(block, inst).exec_all()
+                                       .group(8, 0);
+
+               ubld.MOV(indirect_offset, horiz_offset(inst->src[1], 8*i));
+               split_inst.src[1] = indirect_offset;
+            }
 
             lbld.emit(split_inst);
          }
@@ -5699,6 +5752,9 @@ fs_visitor::optimize()
       OPT(opt_copy_propagation);
       OPT(dead_code_eliminate);
    }
+
+   if (devinfo->gen == 7 && !devinfo->is_haswell)
+      OPT(lower_ivb_df_mov_indirect);
 
    OPT(lower_simd_width);
 

@@ -439,11 +439,11 @@ fs_generator::generate_mov_indirect(fs_inst *inst,
       reg.subnr = imm_byte_offset % REG_SIZE;
       brw_MOV(p, dst, reg);
    } else {
+      bool ivb_df_mov_indirect =
+         devinfo->gen == 7 && !devinfo->is_haswell && inst->exec_size < 8 &&
+         (type_sz(reg.type) == 8 || type_sz(dst.type) == 8);
       /* Prior to Broadwell, there are only 8 address registers. */
-      assert(inst->exec_size == 8 || devinfo->gen >= 8 ||
-             (devinfo->gen == 7 && !devinfo->is_haswell &&
-              inst->exec_size < 8 &&
-              (type_sz(reg.type) == 8 || type_sz(dst.type) == 8)));
+      assert(inst->exec_size == 8 || devinfo->gen >= 8 || ivb_df_mov_indirect);
 
       /* We use VxH indirect addressing, clobbering a0.0 through a0.7. */
       struct brw_reg addr = vec8(brw_address_reg(0));
@@ -455,6 +455,15 @@ fs_generator::generate_mov_indirect(fs_inst *inst,
        */
       indirect_byte_offset =
          retype(spread(indirect_byte_offset, 2), BRW_REGISTER_TYPE_UW);
+
+      /* For DF MOV INDIRECT on IVB, the number of address registers is doubled
+       * because the HW considers them as pointers to 32-bit data values.
+       * To avoid having problems with the mask in the addition, we force the
+       * writemask to all channels. Afterwards, the emitted indirect mov will
+       * use the proper execution mask flags.
+       */
+      if (ivb_df_mov_indirect)
+         brw_set_default_mask_control(p, true);
 
       /* There are a number of reasons why we don't use the base offset here.
        * One reason is that the field is only 9 bits which means we can only
@@ -482,6 +491,10 @@ fs_generator::generate_mov_indirect(fs_inst *inst,
        * of case-by-case work.  It's just not worth it.
        */
       brw_ADD(p, addr, indirect_byte_offset, brw_imm_uw(imm_byte_offset));
+
+      if (ivb_df_mov_indirect)
+         brw_set_default_mask_control(p, inst->force_writemask_all);
+
       struct brw_reg ind_src = brw_VxH_indirect(0, 0);
 
       brw_inst *mov = brw_MOV(p, dst, retype(ind_src, dst.type));

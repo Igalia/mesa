@@ -165,6 +165,7 @@ public:
    bool lower_integer_multiplication();
    bool lower_minmax();
    bool lower_simd_width();
+   bool lower_ivb_df_mov_indirect();
    bool opt_combine_constants();
 
    void emit_dummy_fs();
