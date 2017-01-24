@@ -440,7 +440,10 @@ fs_generator::generate_mov_indirect(fs_inst *inst,
       brw_MOV(p, dst, reg);
    } else {
       /* Prior to Broadwell, there are only 8 address registers. */
-      assert(inst->exec_size == 8 || devinfo->gen >= 8);
+      assert(inst->exec_size == 8 || devinfo->gen >= 8 ||
+             (devinfo->gen == 7 && !devinfo->is_haswell &&
+              inst->exec_size < 8 &&
+              (type_sz(reg.type) == 8 || type_sz(dst.type) == 8)));
 
       /* We use VxH indirect addressing, clobbering a0.0 through a0.7. */
       struct brw_reg addr = vec8(brw_address_reg(0));
