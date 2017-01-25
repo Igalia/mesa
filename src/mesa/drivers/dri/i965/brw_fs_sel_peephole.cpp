@@ -167,6 +167,8 @@ fs_visitor::opt_peephole_sel()
              then_mov[i]->force_writemask_all != else_mov[i]->force_writemask_all ||
              then_mov[i]->is_partial_write() ||
              else_mov[i]->is_partial_write() ||
+             type_sz(then_mov[i]->dst.type) != type_sz(then_mov[i]->src[0].type) ||
+             type_sz(else_mov[i]->dst.type) != type_sz(else_mov[i]->src[0].type) ||
              then_mov[i]->conditional_mod != BRW_CONDITIONAL_NONE ||
              else_mov[i]->conditional_mod != BRW_CONDITIONAL_NONE) {
             movs = i;
