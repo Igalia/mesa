@@ -86,6 +86,7 @@ __vk_errorf(VkResult error, const char *file, int line, const char *format, ...)
 
    /* Extension errors */
    ERROR_CASE(VK_ERROR_OUT_OF_DATE_KHR)
+   ERROR_CASE(VK_ERROR_OUT_OF_POOL_MEMORY_KHR)
 
    default:
       assert(!"Unknown error");
