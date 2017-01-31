@@ -1859,8 +1859,7 @@ set_push_pull_constant_loc(unsigned uniform, int *chunk_start, bool contiguous,
                            unsigned *num_pull_constants,
                            const unsigned max_push_components,
                            const unsigned max_chunk_size,
-                           struct brw_stage_prog_data *stage_prog_data,
-                           bool force_pull)
+                           struct brw_stage_prog_data *stage_prog_data)
 {
    /* This is the first live uniform in the chunk */
    if (*chunk_start < 0)
@@ -1877,9 +1876,9 @@ set_push_pull_constant_loc(unsigned uniform, int *chunk_start, bool contiguous,
        * Vulkan driver, push constants are explicitly exposed via the API
        * so we push everything.  In GL, we only push small arrays.
        */
-      if (!force_pull && (stage_prog_data->pull_param == NULL ||
+      if (stage_prog_data->pull_param == NULL ||
           (*num_push_constants + chunk_size <= max_push_components &&
-           chunk_size <= max_chunk_size))) {
+           chunk_size <= max_chunk_size)) {
          assert(*num_push_constants + chunk_size <= max_push_components);
          for (unsigned j = *chunk_start; j <= uniform; j++)
             push_constant_loc[j] = (*num_push_constants)++;
@@ -2001,22 +2000,16 @@ fs_visitor::assign_constant_locations()
 
    int chunk_start = -1;
 
-   bool is_ivy_byt = devinfo->gen == 7 && !devinfo->is_haswell;
-
    /* First push 64-bit uniforms to ensure they are properly aligned */
    for (unsigned u = 0; u < uniforms; u++) {
       if (!is_live[u] || !is_live_64bit[u])
          continue;
-      /* In IVB/BYT, we force doubles to be copied to pull constant buffer
-       * because non-uniform control flow doesn't work properly with
-       * SIMD16's MOV Indirect (used to load the uniform if it is in
-       * the push constant buffer).
-       */
+
       set_push_pull_constant_loc(u, &chunk_start, contiguous[u],
                                  push_constant_loc, pull_constant_loc,
                                  &num_push_constants, &num_pull_constants,
                                  max_push_components, max_chunk_size,
-                                 stage_prog_data, is_ivy_byt);
+                                 stage_prog_data);
 
    }
 
@@ -2033,7 +2026,7 @@ fs_visitor::assign_constant_locations()
                                  push_constant_loc, pull_constant_loc,
                                  &num_push_constants, &num_pull_constants,
                                  max_push_components, max_chunk_size,
-                                 stage_prog_data, false);
+                                 stage_prog_data);
    }
 
    /* Add the CS local thread ID uniform at the end of the push constants */
