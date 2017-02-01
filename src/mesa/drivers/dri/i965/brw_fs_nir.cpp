@@ -3861,12 +3861,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
             indirect_chv_high_32bit = vgrf(glsl_type::uint_type);
             /* Calculate indirect address to read high 32 bits */
             bld.ADD(indirect_chv_high_32bit, indirect, brw_imm_ud(4));
-            /* Read source as 32-bit data in IVB/BYT */
-            if (devinfo->is_ivybridge || devinfo->is_baytrail) {
-               src = retype(src, BRW_REGISTER_TYPE_UD);
-               read_size = instr->const_index[1] -
-                  (instr->num_components - 1) * 4;
-            }
          }
 
          for (unsigned j = 0; j < instr->num_components; j++) {
