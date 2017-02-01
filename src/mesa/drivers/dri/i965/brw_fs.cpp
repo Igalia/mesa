@@ -1947,7 +1947,16 @@ fs_visitor::assign_constant_locations()
             for (unsigned j = constant_nr; j < last; j++) {
                is_live[j] = true;
                contiguous[j] = true;
-               if (type_sz(inst->src[i].type) == 8) {
+               /* In IVB, we changed the DF MOV_INDIRECT source to
+                * read two 32-bits data per DF. However, the uniform
+                * has the same size.
+                */
+               bool is_ivb_df_mov_indirect =
+                  devinfo->gen == 7 && !devinfo->is_haswell &&
+                  inst->dst.stride == 2 &&
+                  inst->dst.type == BRW_REGISTER_TYPE_UD &&
+                  inst->src[0].type == BRW_REGISTER_TYPE_UD;
+               if (type_sz(inst->src[i].type) == 8 || is_ivb_df_mov_indirect) {
                   is_live_64bit[j] = true;
                }
             }
@@ -2123,7 +2132,20 @@ fs_visitor::lower_constant_loads()
       if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT &&
           inst->src[0].file == UNIFORM) {
 
-         unsigned location = inst->src[0].nr + inst->src[0].offset / 4;
+         /* In IVB, we changed the DF MOV_INDIRECT source to
+          * two 32-bit MOV INDIRECTs in order to read two 32-bits data
+          * per DF. However, when loading the DF uniform through a
+          * VARYING_PULL_CONST_LOAD uniform, we need to fix the offset
+          * by multiplying it by two as it refers to the DF offset.
+          */
+         bool is_ivb_df_mov_indirect =
+            devinfo->gen == 7 && !devinfo->is_haswell &&
+            inst->dst.stride == 2 &&
+            inst->dst.type == BRW_REGISTER_TYPE_UD &&
+            inst->src[0].type == BRW_REGISTER_TYPE_UD;
+         unsigned mul = is_ivb_df_mov_indirect ? 2 : 1;
+
+         unsigned location = inst->src[0].nr + mul * inst->src[0].offset / 4;
          if (location >= uniforms)
             continue; /* Out of bounds access */
 
