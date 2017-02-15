@@ -379,6 +379,15 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
 	case PIPE_CAP_TGSI_FS_FBFETCH:
 	case PIPE_CAP_INT64:
+	case PIPE_CAP_INT64_DIVMOD:
+		return 0;
+
+	case PIPE_CAP_DOUBLES:
+		if (rscreen->b.family == CHIP_ARUBA ||
+		    rscreen->b.family == CHIP_CAYMAN ||
+		    rscreen->b.family == CHIP_CYPRESS ||
+		    rscreen->b.family == CHIP_HEMLOCK)
+			return 1;
 		return 0;
 
 	case PIPE_CAP_MAX_SHADER_PATCH_VARYINGS:
@@ -555,7 +564,6 @@ static int r600_get_shader_param(struct pipe_screen* pscreen, unsigned shader, e
 	case PIPE_SHADER_CAP_SUPPORTED_IRS:
 		return 0;
 	case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
-	case PIPE_SHADER_CAP_DOUBLES:
 		if (rscreen->b.family == CHIP_ARUBA ||
 		    rscreen->b.family == CHIP_CAYMAN ||
 		    rscreen->b.family == CHIP_CYPRESS ||
@@ -735,6 +743,6 @@ struct pipe_screen *r600_screen_create(struct radeon_winsys *ws)
 	if (rscreen->b.debug_flags & DBG_TEST_DMA)
 		r600_test_dma(&rscreen->b);
 
-	r600_query_fix_enabled_rb_mask(rscreen);
+	r600_query_fix_enabled_rb_mask(&rscreen->b);
 	return &rscreen->b.b;
 }

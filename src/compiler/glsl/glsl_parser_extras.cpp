@@ -83,6 +83,7 @@ _mesa_glsl_parse_state::_mesa_glsl_parse_state(struct gl_context *_ctx,
    this->forced_language_version = ctx->Const.ForceGLSLVersion;
    this->zero_init = ctx->Const.GLSLZeroInit;
    this->gl_version = 20;
+   this->compat_shader = true;
    this->es_shader = false;
    this->ARB_texture_rectangle_enable = true;
 
@@ -370,6 +371,7 @@ _mesa_glsl_parse_state::process_version_directive(YYLTYPE *locp, int version,
                                                   const char *ident)
 {
    bool es_token_present = false;
+   bool compat_token_present = false;
    if (ident) {
       if (strcmp(ident, "es") == 0) {
          es_token_present = true;
@@ -379,8 +381,12 @@ _mesa_glsl_parse_state::process_version_directive(YYLTYPE *locp, int version,
              * a core profile shader since that's the only profile we support.
              */
          } else if (strcmp(ident, "compatibility") == 0) {
-            _mesa_glsl_error(locp, this,
-                             "the compatibility profile is not supported");
+            compat_token_present = true;
+
+            if (this->ctx->API != API_OPENGL_COMPAT) {
+               _mesa_glsl_error(locp, this,
+                                "the compatibility profile is not supported");
+            }
          } else {
             _mesa_glsl_error(locp, this,
                              "\"%s\" is not a valid shading language profile; "
@@ -411,6 +417,9 @@ _mesa_glsl_parse_state::process_version_directive(YYLTYPE *locp, int version,
       this->language_version = this->forced_language_version;
    else
       this->language_version = version;
+
+   this->compat_shader = compat_token_present ||
+                         (!this->es_shader && this->language_version < 140);
 
    bool supported = false;
    for (unsigned i = 0; i < this->num_supported_versions; i++) {
@@ -675,6 +684,7 @@ static const _mesa_glsl_extension _mesa_glsl_supported_extensions[] = {
    EXT(AMD_vertex_shader_viewport_index),
    EXT(ANDROID_extension_pack_es31a),
    EXT(EXT_blend_func_extended),
+   EXT(EXT_frag_depth),
    EXT(EXT_draw_buffers),
    EXT(EXT_clip_cull_distance),
    EXT(EXT_geometry_point_size),
@@ -1911,7 +1921,7 @@ do_late_parsing_checks(struct _mesa_glsl_parse_state *state)
 
 void
 _mesa_glsl_compile_shader(struct gl_context *ctx, struct gl_shader *shader,
-                          bool dump_ast, bool dump_hir)
+                          bool dump_ast, bool dump_hir, bool force_recompile)
 {
    struct _mesa_glsl_parse_state *state =
       new(shader) _mesa_glsl_parse_state(ctx, shader->Stage, shader);

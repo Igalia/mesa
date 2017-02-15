@@ -34,6 +34,7 @@
 #include "util/u_format_s3tc.h"
 #include "util/u_memory.h"
 #include "util/u_resource.h"
+#include "util/u_upload_mgr.h"
 
 /* Initialize an external atom (owned by ../radeon). */
 static void
@@ -1762,6 +1763,19 @@ static uint32_t si_translate_buffer_dataformat(struct pipe_screen *screen,
 			return V_008F0C_BUF_DATA_FORMAT_32_32_32_32;
 		}
 		break;
+	case 64:
+		/* Legacy double formats. */
+		switch (desc->nr_channels) {
+		case 1: /* 1 load */
+			return V_008F0C_BUF_DATA_FORMAT_32_32;
+		case 2: /* 1 load */
+			return V_008F0C_BUF_DATA_FORMAT_32_32_32_32;
+		case 3: /* 3 loads */
+			return V_008F0C_BUF_DATA_FORMAT_32_32;
+		case 4: /* 2 loads */
+			return V_008F0C_BUF_DATA_FORMAT_32_32_32_32;
+		}
+		break;
 	}
 
 	return V_008F0C_BUF_DATA_FORMAT_INVALID;
@@ -2371,7 +2385,8 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 	 */
 	sctx->b.flags |= SI_CONTEXT_INV_VMEM_L1 |
 			 SI_CONTEXT_INV_GLOBAL_L2 |
-			 SI_CONTEXT_FLUSH_AND_INV_FRAMEBUFFER |
+			 SI_CONTEXT_FLUSH_AND_INV_CB |
+			 SI_CONTEXT_FLUSH_AND_INV_DB |
 			 SI_CONTEXT_CS_PARTIAL_FLUSH;
 
 	/* Take the maximum of the old and new count. If the new count is lower,
@@ -3350,12 +3365,15 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 		return NULL;
 
 	v->count = count;
+	v->desc_list_byte_size = align(count * 16, SI_CPDMA_ALIGNMENT);
+
 	for (i = 0; i < count; ++i) {
 		const struct util_format_description *desc;
 		const struct util_format_channel_description *channel;
 		unsigned data_format, num_format;
 		int first_non_void;
 		unsigned vbo_index = elements[i].vertex_buffer_index;
+		unsigned char swizzle[4];
 
 		if (vbo_index >= SI_NUM_VERTEX_BUFFERS) {
 			FREE(v);
@@ -3372,13 +3390,8 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 		data_format = si_translate_buffer_dataformat(ctx->screen, desc, first_non_void);
 		num_format = si_translate_buffer_numformat(ctx->screen, desc, first_non_void);
 		channel = first_non_void >= 0 ? &desc->channel[first_non_void] : NULL;
+		memcpy(swizzle, desc->swizzle, sizeof(swizzle));
 
-		v->rsrc_word3[i] = S_008F0C_DST_SEL_X(si_map_swizzle(desc->swizzle[0])) |
-				   S_008F0C_DST_SEL_Y(si_map_swizzle(desc->swizzle[1])) |
-				   S_008F0C_DST_SEL_Z(si_map_swizzle(desc->swizzle[2])) |
-				   S_008F0C_DST_SEL_W(si_map_swizzle(desc->swizzle[3])) |
-				   S_008F0C_NUM_FORMAT(num_format) |
-				   S_008F0C_DATA_FORMAT(data_format);
 		v->format_size[i] = desc->block.bits / 8;
 
 		/* The hardware always treats the 2-bit alpha channel as
@@ -3418,7 +3431,42 @@ static void *si_create_vertex_elements(struct pipe_context *ctx,
 					v->fix_fetch |= (uint64_t)SI_FIX_FETCH_RGBA_32_USCALED << (4 * i);
 				}
 			}
+		} else if (channel && channel->size == 64 &&
+			   channel->type == UTIL_FORMAT_TYPE_FLOAT) {
+			switch (desc->nr_channels) {
+			case 1:
+			case 2:
+				v->fix_fetch |= (uint64_t)SI_FIX_FETCH_RG_64_FLOAT << (4 * i);
+				swizzle[0] = PIPE_SWIZZLE_X;
+				swizzle[1] = PIPE_SWIZZLE_Y;
+				swizzle[2] = desc->nr_channels == 2 ? PIPE_SWIZZLE_Z : PIPE_SWIZZLE_0;
+				swizzle[3] = desc->nr_channels == 2 ? PIPE_SWIZZLE_W : PIPE_SWIZZLE_0;
+				break;
+			case 3:
+				v->fix_fetch |= (uint64_t)SI_FIX_FETCH_RGB_64_FLOAT << (4 * i);
+				swizzle[0] = PIPE_SWIZZLE_X; /* 3 loads */
+				swizzle[1] = PIPE_SWIZZLE_Y;
+				swizzle[2] = PIPE_SWIZZLE_0;
+				swizzle[3] = PIPE_SWIZZLE_0;
+				break;
+			case 4:
+				v->fix_fetch |= (uint64_t)SI_FIX_FETCH_RGBA_64_FLOAT << (4 * i);
+				swizzle[0] = PIPE_SWIZZLE_X; /* 2 loads */
+				swizzle[1] = PIPE_SWIZZLE_Y;
+				swizzle[2] = PIPE_SWIZZLE_Z;
+				swizzle[3] = PIPE_SWIZZLE_W;
+				break;
+			default:
+				assert(0);
+			}
 		}
+
+		v->rsrc_word3[i] = S_008F0C_DST_SEL_X(si_map_swizzle(swizzle[0])) |
+				   S_008F0C_DST_SEL_Y(si_map_swizzle(swizzle[1])) |
+				   S_008F0C_DST_SEL_Z(si_map_swizzle(swizzle[2])) |
+				   S_008F0C_DST_SEL_W(si_map_swizzle(swizzle[3])) |
+				   S_008F0C_NUM_FORMAT(num_format) |
+				   S_008F0C_DATA_FORMAT(data_format);
 
 		/* We work around the fact that 8_8_8 and 16_16_16 data formats
 		 * do not exist by using the corresponding 4-component formats.
@@ -3467,14 +3515,28 @@ static void si_set_vertex_buffers(struct pipe_context *ctx,
 		for (i = 0; i < count; i++) {
 			const struct pipe_vertex_buffer *src = buffers + i;
 			struct pipe_vertex_buffer *dsti = dst + i;
-			struct pipe_resource *buf = src->buffer;
 
-			pipe_resource_reference(&dsti->buffer, buf);
-			dsti->buffer_offset = src->buffer_offset;
-			dsti->stride = src->stride;
-			r600_context_add_resource_size(ctx, buf);
-			if (buf)
-				r600_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
+			if (unlikely(src->user_buffer)) {
+				/* Zero-stride attribs only. */
+				assert(src->stride == 0);
+
+				/* Assume the attrib has 4 dwords like the vbo
+				 * module. This is also a good upper bound. */
+				u_upload_data(sctx->b.b.stream_uploader, 0, 16, 16,
+					      src->user_buffer,
+					      &dsti->buffer_offset,
+					      &dsti->buffer);
+				dsti->stride = 0;
+			} else {
+				struct pipe_resource *buf = src->buffer;
+
+				pipe_resource_reference(&dsti->buffer, buf);
+				dsti->buffer_offset = src->buffer_offset;
+				dsti->stride = src->stride;
+				r600_context_add_resource_size(ctx, buf);
+				if (buf)
+					r600_resource(buf)->bind_history |= PIPE_BIND_VERTEX_BUFFER;
+			}
 		}
 	} else {
 		for (i = 0; i < count; i++) {
@@ -3574,7 +3636,8 @@ static void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
 	}
 
 	if (flags & PIPE_BARRIER_FRAMEBUFFER)
-		sctx->b.flags |= SI_CONTEXT_FLUSH_AND_INV_FRAMEBUFFER;
+		sctx->b.flags |= SI_CONTEXT_FLUSH_AND_INV_CB |
+				 SI_CONTEXT_FLUSH_AND_INV_DB;
 
 	if (flags & (PIPE_BARRIER_FRAMEBUFFER |
 		     PIPE_BARRIER_INDIRECT_BUFFER))

@@ -874,8 +874,6 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
          val->type->type = glsl_sampler_type(dim, is_shadow, is_array,
                                              glsl_get_base_type(sampled_type));
       } else if (sampled == 2) {
-         assert((dim == GLSL_SAMPLER_DIM_SUBPASS ||
-                 dim == GLSL_SAMPLER_DIM_SUBPASS_MS) || format);
          assert(!is_shadow);
          val->type->type = glsl_image_type(dim, is_array,
                                            glsl_get_base_type(sampled_type));
@@ -2334,15 +2332,30 @@ vtn_vector_construct(struct vtn_builder *b, unsigned num_components,
    nir_alu_instr *vec = create_vec(b->shader, num_components,
                                    srcs[0]->bit_size);
 
+   /* From the SPIR-V 1.1 spec for OpCompositeConstruct:
+    *
+    *    "When constructing a vector, there must be at least two Constituent
+    *    operands."
+    */
+   assert(num_srcs >= 2);
+
    unsigned dest_idx = 0;
    for (unsigned i = 0; i < num_srcs; i++) {
       nir_ssa_def *src = srcs[i];
+      assert(dest_idx + src->num_components <= num_components);
       for (unsigned j = 0; j < src->num_components; j++) {
          vec->src[dest_idx].src = nir_src_for_ssa(src);
          vec->src[dest_idx].swizzle[0] = j;
          dest_idx++;
       }
    }
+
+   /* From the SPIR-V 1.1 spec for OpCompositeConstruct:
+    *
+    *    "When constructing a vector, the total number of components in all
+    *    the operands must equal the number of components in Result Type."
+    */
+   assert(dest_idx == num_components);
 
    nir_builder_instr_insert(&b->nb, &vec->instr);
 
@@ -2651,7 +2664,6 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityMinLod:
       case SpvCapabilityTransformFeedback:
       case SpvCapabilityStorageImageReadWithoutFormat:
-      case SpvCapabilityStorageImageWriteWithoutFormat:
          vtn_warn("Unsupported SPIR-V capability: %s",
                   spirv_capability_to_string(cap));
          break;
@@ -2681,6 +2693,14 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityTessellation:
       case SpvCapabilityTessellationPointSize:
          spv_check_supported(tessellation, cap);
+         break;
+
+      case SpvCapabilityDrawParameters:
+         spv_check_supported(draw_parameters, cap);
+         break;
+
+      case SpvCapabilityStorageImageWriteWithoutFormat:
+         spv_check_supported(image_write_without_format, cap);
          break;
 
       default:

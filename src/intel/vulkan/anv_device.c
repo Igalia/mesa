@@ -33,6 +33,7 @@
 #include "anv_private.h"
 #include "util/strtod.h"
 #include "util/debug.h"
+#include "util/vk_util.h"
 
 #include "genxml/gen7_pack.h"
 
@@ -272,6 +273,10 @@ static const VkExtensionProperties device_extensions[] = {
       .extensionName = VK_KHR_MAINTENANCE1_EXTENSION_NAME,
       .specVersion = 1,
    },
+   {
+      .extensionName = VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
+      .specVersion = 1,
+   }
 };
 
 static void *
@@ -480,7 +485,7 @@ void anv_GetPhysicalDeviceFeatures(
       .shaderStorageImageExtendedFormats        = true,
       .shaderStorageImageMultisample            = false,
       .shaderStorageImageReadWithoutFormat      = false,
-      .shaderStorageImageWriteWithoutFormat     = false,
+      .shaderStorageImageWriteWithoutFormat     = true,
       .shaderUniformBufferArrayDynamicIndexing  = true,
       .shaderSampledImageArrayDynamicIndexing   = true,
       .shaderStorageBufferArrayDynamicIndexing  = true,
@@ -507,10 +512,10 @@ void anv_GetPhysicalDeviceFeatures2KHR(
 {
    anv_GetPhysicalDeviceFeatures(physicalDevice, &pFeatures->features);
 
-   for (struct anv_common *c = pFeatures->pNext; c != NULL; c = c->pNext) {
-      switch (c->sType) {
+   vk_foreach_struct(ext, pFeatures->pNext) {
+      switch (ext->sType) {
       default:
-         anv_debug_ignored_stype(c->sType);
+         anv_debug_ignored_stype(ext->sType);
          break;
       }
    }
@@ -562,8 +567,8 @@ void anv_GetPhysicalDeviceProperties(
       .maxDescriptorSetSampledImages            = 256,
       .maxDescriptorSetStorageImages            = 256,
       .maxDescriptorSetInputAttachments         = 256,
-      .maxVertexInputAttributes                 = 32,
-      .maxVertexInputBindings                   = 32,
+      .maxVertexInputAttributes                 = MAX_VBS,
+      .maxVertexInputBindings                   = MAX_VBS,
       .maxVertexInputAttributeOffset            = 2047,
       .maxVertexInputBindingStride              = 2048,
       .maxVertexOutputComponents                = 128,
@@ -665,10 +670,10 @@ void anv_GetPhysicalDeviceProperties2KHR(
 {
    anv_GetPhysicalDeviceProperties(physicalDevice, &pProperties->properties);
 
-   for (struct anv_common *c = pProperties->pNext; c != NULL; c = c->pNext) {
-      switch (c->sType) {
+   vk_foreach_struct(ext, pProperties->pNext) {
+      switch (ext->sType) {
       default:
-         anv_debug_ignored_stype(c->sType);
+         anv_debug_ignored_stype(ext->sType);
          break;
       }
    }
@@ -742,11 +747,10 @@ void anv_GetPhysicalDeviceQueueFamilyProperties2KHR(
    anv_get_queue_family_properties(phys_dev,
          &pQueueFamilyProperties->queueFamilyProperties);
 
-   for (struct anv_common *c = pQueueFamilyProperties->pNext;
-        c != NULL; c = c->pNext) {
-      switch (c->sType) {
+   vk_foreach_struct(ext, pQueueFamilyProperties->pNext) {
+      switch (ext->sType) {
       default:
-         anv_debug_ignored_stype(c->sType);
+         anv_debug_ignored_stype(ext->sType);
          break;
       }
    }
@@ -811,11 +815,10 @@ void anv_GetPhysicalDeviceMemoryProperties2KHR(
    anv_GetPhysicalDeviceMemoryProperties(physicalDevice,
                                          &pMemoryProperties->memoryProperties);
 
-   for (struct anv_common *c = pMemoryProperties->pNext;
-        c != NULL; c = c->pNext) {
-      switch (c->sType) {
+   vk_foreach_struct(ext, pMemoryProperties->pNext) {
+      switch (ext->sType) {
       default:
-         anv_debug_ignored_stype(c->sType);
+         anv_debug_ignored_stype(ext->sType);
          break;
       }
    }
@@ -1550,11 +1553,12 @@ VkResult anv_InvalidateMappedMemoryRanges(
 }
 
 void anv_GetBufferMemoryRequirements(
-    VkDevice                                    device,
+    VkDevice                                    _device,
     VkBuffer                                    _buffer,
     VkMemoryRequirements*                       pMemoryRequirements)
 {
    ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
+   ANV_FROM_HANDLE(anv_device, device, _device);
 
    /* The Vulkan spec (git aaed022) says:
     *
@@ -1563,20 +1567,21 @@ void anv_GetBufferMemoryRequirements(
     *    only if the memory type `i` in the VkPhysicalDeviceMemoryProperties
     *    structure for the physical device is supported.
     *
-    * We support exactly one memory type.
+    * We support exactly one memory type on LLC, two on non-LLC.
     */
-   pMemoryRequirements->memoryTypeBits = 1;
+   pMemoryRequirements->memoryTypeBits = device->info.has_llc ? 1 : 3;
 
    pMemoryRequirements->size = buffer->size;
    pMemoryRequirements->alignment = 16;
 }
 
 void anv_GetImageMemoryRequirements(
-    VkDevice                                    device,
+    VkDevice                                    _device,
     VkImage                                     _image,
     VkMemoryRequirements*                       pMemoryRequirements)
 {
    ANV_FROM_HANDLE(anv_image, image, _image);
+   ANV_FROM_HANDLE(anv_device, device, _device);
 
    /* The Vulkan spec (git aaed022) says:
     *
@@ -1585,9 +1590,9 @@ void anv_GetImageMemoryRequirements(
     *    only if the memory type `i` in the VkPhysicalDeviceMemoryProperties
     *    structure for the physical device is supported.
     *
-    * We support exactly one memory type.
+    * We support exactly one memory type on LLC, two on non-LLC.
     */
-   pMemoryRequirements->memoryTypeBits = 1;
+   pMemoryRequirements->memoryTypeBits = device->info.has_llc ? 1 : 3;
 
    pMemoryRequirements->size = image->size;
    pMemoryRequirements->alignment = image->alignment;

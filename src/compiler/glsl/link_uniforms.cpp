@@ -535,7 +535,7 @@ private:
             const char *str_end;
             while((str_start = strchr(name_copy, '[')) &&
                   (str_end = strchr(name_copy, ']'))) {
-               memmove(str_start, str_end + 1, 1 + strlen(str_end));
+               memmove(str_start, str_end + 1, 1 + strlen(str_end + 1));
             }
 
             unsigned index = 0;
@@ -1264,6 +1264,10 @@ link_assign_uniform_storage(struct gl_context *ctx,
 #endif
 
    link_setup_uniform_remap_tables(ctx, prog);
+
+   /* Set shader cache fields */
+   prog->data->NumUniformDataSlots = num_data_slots;
+   prog->data->UniformDataSlots = data;
 
    link_set_uniform_initializers(prog, boolean_true);
 }

@@ -31,10 +31,6 @@
 #pragma warning(disable: 4800 4146 4244 4267 4355 4996)
 #endif
 
-#include "jit_api.h"
-#include "JitManager.h"
-#include "fetch_jit.h"
-
 #pragma push_macro("DEBUG")
 #undef DEBUG
 
@@ -56,6 +52,10 @@
 #endif
 
 #pragma pop_macro("DEBUG")
+
+#include "JitManager.h"
+#include "jit_api.h"
+#include "fetch_jit.h"
 
 #include "core/state.h"
 
@@ -88,7 +88,7 @@ JitManager::JitManager(uint32_t simdWidth, const char *arch, const char* core)
     tOpts.AllowFPOpFusion = FPOpFusion::Fast;
     tOpts.NoInfsFPMath = false;
     tOpts.NoNaNsFPMath = false;
-    tOpts.UnsafeFPMath = true;
+    tOpts.UnsafeFPMath = false;
 #if defined(_DEBUG)
 #if LLVM_VERSION_MAJOR == 3 && LLVM_VERSION_MINOR < 7
     tOpts.NoFramePointerElim = true;
@@ -133,8 +133,6 @@ JitManager::JitManager(uint32_t simdWidth, const char *arch, const char* core)
     mInt8Ty = Type::getInt8Ty(mContext);
     mInt32Ty = Type::getInt32Ty(mContext);   // int type
     mInt64Ty = Type::getInt64Ty(mContext);   // int type
-    mV4FP32Ty = StructType::get(mContext, std::vector<Type*>(4, mFP32Ty), false); // vector4 float type (represented as structure)
-    mV4Int32Ty = StructType::get(mContext, std::vector<Type*>(4, mInt32Ty), false); // vector4 int type
 
     // fetch function signature
     // typedef void(__cdecl *PFN_FETCH_FUNC)(SWR_FETCH_CONTEXT& fetchInfo, simdvertex& out);
@@ -147,8 +145,8 @@ JitManager::JitManager(uint32_t simdWidth, const char *arch, const char* core)
     mSimtFP32Ty = VectorType::get(mFP32Ty, mVWidth);
     mSimtInt32Ty = VectorType::get(mInt32Ty, mVWidth);
 
-    mSimdVectorTy = StructType::get(mContext, std::vector<Type*>(4, mSimtFP32Ty), false);
-    mSimdVectorInt32Ty = StructType::get(mContext, std::vector<Type*>(4, mSimtInt32Ty), false);
+    mSimdVectorTy = ArrayType::get(mSimtFP32Ty, 4);
+    mSimdVectorInt32Ty = ArrayType::get(mSimtInt32Ty, 4);
 
 #if defined(_WIN32)
     // explicitly instantiate used symbols from potentially staticly linked libs
@@ -192,9 +190,9 @@ void JitManager::SetupNewModule()
 
 //////////////////////////////////////////////////////////////////////////
 /// @brief Create new LLVM module from IR.
-bool JitManager::SetupModuleFromIR(const uint8_t *pIR)
+bool JitManager::SetupModuleFromIR(const uint8_t *pIR, size_t length)
 {
-    std::unique_ptr<MemoryBuffer> pMem = MemoryBuffer::getMemBuffer(StringRef((const char*)pIR), "");
+    std::unique_ptr<MemoryBuffer> pMem = MemoryBuffer::getMemBuffer(StringRef((const char*)pIR, length), "");
 
     SMDiagnostic Err;
     std::unique_ptr<Module> newModule = parseIR(pMem.get()->getMemBufferRef(), Err, mContext);

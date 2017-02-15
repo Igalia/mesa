@@ -195,13 +195,15 @@ CodeEmitterNVC0::srcAddr32(const ValueRef& src, int pos, int shr)
 
 void CodeEmitterNVC0::defId(const ValueDef& def, const int pos)
 {
-   code[pos / 32] |= (def.get() ? DDATA(def).id : 63) << (pos % 32);
+   code[pos / 32] |= (def.get() && def.getFile() != FILE_FLAGS ? DDATA(def).id : 63) << (pos % 32);
 }
 
-void CodeEmitterNVC0::defId(const Instruction *insn, int d, int pos)
+void CodeEmitterNVC0::defId(const Instruction *insn, int d, const int pos)
 {
-   int r = insn->defExists(d) ? DDATA(insn->def(d)).id : 63;
-   code[pos / 32] |= r << (pos % 32);
+   if (insn->defExists(d))
+      defId(insn->def(d), pos);
+   else
+      code[pos / 32] |= 63 << (pos % 32);
 }
 
 bool CodeEmitterNVC0::isLIMM(const ValueRef& ref, DataType ty)
@@ -716,11 +718,11 @@ CodeEmitterNVC0::emitUADD(const Instruction *i)
    if (i->encSize == 8) {
       if (isLIMM(i->src(1), TYPE_U32)) {
          emitForm_A(i, HEX64(08000000, 00000002));
-         if (i->defExists(1))
+         if (i->flagsDef >= 0)
             code[1] |= 1 << 26; // write carry
       } else {
          emitForm_A(i, HEX64(48000000, 00000003));
-         if (i->defExists(1))
+         if (i->flagsDef >= 0)
             code[1] |= 1 << 16; // write carry
       }
       code[0] |= addOp;
@@ -1011,13 +1013,18 @@ CodeEmitterNVC0::emitMINMAX(const Instruction *i)
    if (i->ftz)
       op |= 1 << 5;
    else
-   if (!isFloatType(i->dType))
+   if (!isFloatType(i->dType)) {
       op |= isSignedType(i->dType) ? 0x23 : 0x03;
+      op |= i->subOp << 6;
+   }
    if (i->dType == TYPE_F64)
       op |= 0x01;
 
    emitForm_A(i, op);
    emitNegAbs12(i);
+
+   if (i->flagsDef >= 0)
+      code[1] |= 1 << 16;
 }
 
 void
@@ -1189,6 +1196,8 @@ CodeEmitterNVC0::emitSET(const CmpInstruction *i)
 
    if (i->ftz)
       code[1] |= 1 << 27;
+   if (i->flagsSrc >= 0)
+      code[0] |= 1 << 6;
 
    emitCondCode(i->setCond, 32 + 23);
    emitNegAbs12(i);

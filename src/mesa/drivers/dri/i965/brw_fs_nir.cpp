@@ -644,6 +644,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    switch (instr->op) {
    case nir_op_i2f:
    case nir_op_u2f:
+   case nir_op_i642d:
+   case nir_op_u642d:
       if (optimize_extract_to_float(instr, result))
          return;
       inst = bld.MOV(result, op[0]);
@@ -687,6 +689,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_d2f:
    case nir_op_d2i:
    case nir_op_d2u:
+   case nir_op_i642f:
+   case nir_op_u642f:
+   case nir_op_u2i32:
+   case nir_op_i2i32:
+   case nir_op_u2u32:
+   case nir_op_i2u32:
       if (instr->op == nir_op_b2i64) {
          bld.MOV(result, negate(op[0]));
       } else {
@@ -701,7 +709,14 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
 
    case nir_op_fsign: {
-      if (type_sz(op[0].type) < 8) {
+      if (op[0].abs) {
+         /* Straightforward since the source can be assumed to be
+          * non-negative.
+          */
+         set_condmod(BRW_CONDITIONAL_NZ, bld.MOV(result, op[0]));
+         set_predicate(BRW_PREDICATE_NORMAL, bld.MOV(result, brw_imm_f(1.0f)));
+
+      } else if (type_sz(op[0].type) < 8) {
          /* AND(val, 0x80000000) gives the sign bit.
           *
           * Predicated OR ORs 1.0 (0x3f800000) with the sign bit if val is not
@@ -1079,15 +1094,26 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_f2b:
       bld.CMP(result, op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ);
       break;
+
+   case nir_op_i642b:
    case nir_op_d2b: {
       /* two-argument instructions can't take 64-bit immediates */
-      fs_reg zero = vgrf(glsl_type::double_type);
+      fs_reg zero;
+      fs_reg tmp;
+
+      if (instr->op == nir_op_d2b) {
+         zero = vgrf(glsl_type::double_type);
+         tmp = vgrf(glsl_type::double_type);
+      } else {
+         zero = vgrf(glsl_type::int64_t_type);
+         tmp = vgrf(glsl_type::int64_t_type);
+      }
+
       bld.MOV(zero, setup_imm_df(bld, 0.0));
       /* A SIMD16 execution needs to be split in two instructions, so use
        * a vgrf instead of the flag register as dst so instruction splitting
        * works
        */
-      fs_reg tmp = vgrf(glsl_type::double_type);
       bld.CMP(tmp, op[0], zero, BRW_CONDITIONAL_NZ);
       bld.MOV(result, subscript(tmp, BRW_REGISTER_TYPE_UD, 0));
       break;

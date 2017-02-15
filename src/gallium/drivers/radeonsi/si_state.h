@@ -35,7 +35,7 @@
 
 #define SI_MAX_ATTRIBS			16
 #define SI_NUM_VERTEX_BUFFERS		SI_MAX_ATTRIBS
-#define SI_NUM_SAMPLERS			24 /* OpenGL textures units per shader */
+#define SI_NUM_SAMPLERS			32 /* OpenGL textures units per shader */
 #define SI_NUM_CONST_BUFFERS		16
 #define SI_NUM_IMAGES			16
 #define SI_NUM_SHADER_BUFFERS		16
@@ -100,6 +100,8 @@ struct si_vertex_element
 {
 	unsigned			count;
 	unsigned			first_vb_use_mask;
+	/* Vertex buffer descriptor list size aligned for optimal prefetch. */
+	unsigned			desc_list_byte_size;
 
 	/* Two bits per attribute indicating the size of each vector component
 	 * in bytes if the size 3-workaround must be applied.
@@ -152,6 +154,7 @@ union si_state_atoms {
 		struct r600_atom *viewports;
 		struct r600_atom *stencil_ref;
 		struct r600_atom *spi_map;
+		struct r600_atom *scratch_state;
 	} s;
 	struct r600_atom *array[0];
 };

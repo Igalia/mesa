@@ -225,22 +225,15 @@ make_surface(const struct anv_device *dev,
             /* For images created without MUTABLE_FORMAT_BIT set, we know that
              * they will always be used with the original format.  In
              * particular, they will always be used with a format that
-             * supports color compression.  This means that it's safe to just
-             * leave compression on at all times for these formats.
+             * supports color compression.  If it's never used as a storage
+             * image, then it will only be used through the sampler or the as
+             * a render target.  This means that it's safe to just leave
+             * compression on at all times for these formats.
              */
-            if (!(vk_info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) &&
-                isl_format_supports_lossless_compression(&dev->info, format)) {
-               if (vk_info->usage & VK_IMAGE_USAGE_STORAGE_BIT) {
-                  /*
-                   * For now, we leave compression off for anything that may
-                   * be used as a storage image.  This is because accessing
-                   * storage images may involve ccs-incompatible views or even
-                   * untyped messages which don't support compression at all.
-                   */
-                  anv_finishme("Enable CCS for storage images");
-               } else {
-                  image->aux_usage = ISL_AUX_USAGE_CCS_E;
-               }
+            if (!(vk_info->usage & VK_IMAGE_USAGE_STORAGE_BIT) &&
+                !(vk_info->flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) &&
+                isl_format_supports_ccs_e(&dev->info, format)) {
+               image->aux_usage = ISL_AUX_USAGE_CCS_E;
             }
          }
       }
@@ -590,13 +583,31 @@ anv_CreateImageView(VkDevice _device,
    /* NOTE: This one needs to go last since it may stomp isl_view.format */
    if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT) {
       iview->storage_surface_state = alloc_surface_state(device);
+      iview->writeonly_storage_surface_state = alloc_surface_state(device);
+
+      struct isl_view view = iview->isl;
+      view.usage |= ISL_SURF_USAGE_STORAGE_BIT;
+
+      /* Write-only accesses always used a typed write instruction and should
+       * therefore use the real format.
+       */
+      isl_surf_fill_state(&device->isl_dev,
+                          iview->writeonly_storage_surface_state.map,
+                          .surf = &surface->isl,
+                          .view = &view,
+                          .aux_surf = &image->aux_surface.isl,
+                          .aux_usage = surf_usage,
+                          .mocs = device->default_mocs);
 
       if (isl_has_matching_typed_storage_image_format(&device->info,
                                                       format.isl_format)) {
-         struct isl_view view = iview->isl;
-         view.usage |= ISL_SURF_USAGE_STORAGE_BIT;
+         /* Typed surface reads support a very limited subset of the shader
+          * image formats.  Translate it into the closest format the hardware
+          * supports.
+          */
          view.format = isl_lower_storage_image_format(&device->info,
                                                       format.isl_format);
+
          isl_surf_fill_state(&device->isl_dev,
                              iview->storage_surface_state.map,
                              .surf = &surface->isl,
@@ -615,10 +626,13 @@ anv_CreateImageView(VkDevice _device,
                                 &iview->storage_image_param,
                                 &surface->isl, &iview->isl);
 
-      if (!device->info.has_llc)
+      if (!device->info.has_llc) {
          anv_state_clflush(iview->storage_surface_state);
+         anv_state_clflush(iview->writeonly_storage_surface_state);
+      }
    } else {
       iview->storage_surface_state.alloc_size = 0;
+      iview->writeonly_storage_surface_state.alloc_size = 0;
    }
 
    *pView = anv_image_view_to_handle(iview);
@@ -644,6 +658,11 @@ anv_DestroyImageView(VkDevice _device, VkImageView _iview,
    if (iview->storage_surface_state.alloc_size > 0) {
       anv_state_pool_free(&device->surface_state_pool,
                           iview->storage_surface_state);
+   }
+
+   if (iview->writeonly_storage_surface_state.alloc_size > 0) {
+      anv_state_pool_free(&device->surface_state_pool,
+                          iview->writeonly_storage_surface_state);
    }
 
    vk_free2(&device->alloc, pAllocator, iview);
@@ -689,6 +708,7 @@ anv_CreateBufferView(VkDevice _device,
 
    if (buffer->usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
       view->storage_surface_state = alloc_surface_state(device);
+      view->writeonly_storage_surface_state = alloc_surface_state(device);
 
       enum isl_format storage_format =
          isl_has_matching_typed_storage_image_format(&device->info,
@@ -702,11 +722,18 @@ anv_CreateBufferView(VkDevice _device,
                                     (storage_format == ISL_FORMAT_RAW ? 1 :
                                      isl_format_get_layout(storage_format)->bpb / 8));
 
+      /* Write-only accesses should use the original format. */
+      anv_fill_buffer_surface_state(device, view->writeonly_storage_surface_state,
+                                    view->format,
+                                    view->offset, view->range,
+                                    isl_format_get_layout(view->format)->bpb / 8);
+
       isl_buffer_fill_image_param(&device->isl_dev,
                                   &view->storage_image_param,
                                   view->format, view->range);
    } else {
       view->storage_surface_state = (struct anv_state){ 0 };
+      view->writeonly_storage_surface_state = (struct anv_state){ 0 };
    }
 
    *pView = anv_buffer_view_to_handle(view);
@@ -731,6 +758,10 @@ anv_DestroyBufferView(VkDevice _device, VkBufferView bufferView,
    if (view->storage_surface_state.alloc_size > 0)
       anv_state_pool_free(&device->surface_state_pool,
                           view->storage_surface_state);
+
+   if (view->writeonly_storage_surface_state.alloc_size > 0)
+      anv_state_pool_free(&device->surface_state_pool,
+                          view->writeonly_storage_surface_state);
 
    vk_free2(&device->alloc, pAllocator, view);
 }

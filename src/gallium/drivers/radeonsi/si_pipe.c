@@ -334,6 +334,7 @@ static int si_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 
 	switch (param) {
 	/* Supported features (boolean caps). */
+	case PIPE_CAP_ACCELERATED:
 	case PIPE_CAP_TWO_SIDED_STENCIL:
 	case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
 	case PIPE_CAP_ANISOTROPIC_FILTER:
@@ -414,8 +415,15 @@ static int si_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_TGSI_ARRAY_COMPONENTS:
 	case PIPE_CAP_TGSI_CAN_READ_OUTPUTS:
 	case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
-	case PIPE_CAP_INT64:
+	case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
+	case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
 		return 1;
+
+	case PIPE_CAP_DOUBLES:
+		return HAVE_LLVM >= 0x0307;
+	case PIPE_CAP_INT64:
+	case PIPE_CAP_INT64_DIVMOD:
+		return HAVE_LLVM >= 0x0309;
 
 	case PIPE_CAP_RESOURCE_FROM_USER_MEMORY:
 		return !SI_BIG_ENDIAN && sscreen->b.info.has_userptr;
@@ -438,7 +446,10 @@ static int si_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT:
 	case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
 	case PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS:
+	case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
+	case PIPE_CAP_MAX_VERTEX_STREAMS:
 		return 4;
+
 	case PIPE_CAP_SHADER_BUFFER_OFFSET_ALIGNMENT:
 		return HAVE_LLVM >= 0x0309 ? 4 : 0;
 
@@ -451,10 +462,8 @@ static int si_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_MAX_TEXTURE_BUFFER_SIZE:
 		return MIN2(sscreen->b.info.max_alloc_size, INT_MAX);
 
-	case PIPE_CAP_BUFFER_SAMPLER_VIEW_RGBA_ONLY:
-		return 0;
-
 	/* Unsupported features. */
+	case PIPE_CAP_BUFFER_SAMPLER_VIEW_RGBA_ONLY:
 	case PIPE_CAP_TGSI_FS_COORD_ORIGIN_LOWER_LEFT:
 	case PIPE_CAP_TGSI_CAN_COMPACT_CONSTANTS:
 	case PIPE_CAP_USER_VERTEX_BUFFERS:
@@ -467,6 +476,7 @@ static int si_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 	case PIPE_CAP_NATIVE_FENCE_FD:
 	case PIPE_CAP_TGSI_FS_FBFETCH:
 	case PIPE_CAP_TGSI_MUL_ZERO_WINS:
+	case PIPE_CAP_UMA:
 		return 0;
 
 	case PIPE_CAP_QUERY_BUFFER_OBJECT:
@@ -484,22 +494,15 @@ static int si_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 		return PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_R600;
 
 	/* Stream output. */
-	case PIPE_CAP_MAX_STREAM_OUTPUT_BUFFERS:
-		return sscreen->b.has_streamout ? 4 : 0;
-	case PIPE_CAP_STREAM_OUTPUT_PAUSE_RESUME:
-	case PIPE_CAP_STREAM_OUTPUT_INTERLEAVE_BUFFERS:
-		return sscreen->b.has_streamout ? 1 : 0;
 	case PIPE_CAP_MAX_STREAM_OUTPUT_SEPARATE_COMPONENTS:
 	case PIPE_CAP_MAX_STREAM_OUTPUT_INTERLEAVED_COMPONENTS:
-		return sscreen->b.has_streamout ? 32*4 : 0;
+		return 32*4;
 
 	/* Geometry shader output. */
 	case PIPE_CAP_MAX_GEOMETRY_OUTPUT_VERTICES:
 		return 1024;
 	case PIPE_CAP_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS:
 		return 4095;
-	case PIPE_CAP_MAX_VERTEX_STREAMS:
-		return 4;
 
 	case PIPE_CAP_MAX_VERTEX_ATTRIB_STRIDE:
 		return 2048;
@@ -515,13 +518,11 @@ static int si_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 		/* textures support 8192, but layered rendering supports 2048 */
 		return 2048;
 
-	/* Render targets. */
-	case PIPE_CAP_MAX_RENDER_TARGETS:
-		return 8;
-
+	/* Viewports and render targets. */
 	case PIPE_CAP_MAX_VIEWPORTS:
 		return R600_MAX_VIEWPORTS;
 	case PIPE_CAP_VIEWPORT_SUBPIXEL_BITS:
+	case PIPE_CAP_MAX_RENDER_TARGETS:
 		return 8;
 
 	/* Timer queries, present when the clock frequency is non zero. */
@@ -544,12 +545,8 @@ static int si_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 		return ATI_VENDOR_ID;
 	case PIPE_CAP_DEVICE_ID:
 		return sscreen->b.info.pci_id;
-	case PIPE_CAP_ACCELERATED:
-		return 1;
 	case PIPE_CAP_VIDEO_MEMORY:
 		return sscreen->b.info.vram_size >> 20;
-	case PIPE_CAP_UMA:
-		return 0;
 	case PIPE_CAP_PCI_GROUP:
 		return sscreen->b.info.pci_domain;
 	case PIPE_CAP_PCI_BUS:
@@ -591,8 +588,6 @@ static int si_get_shader_param(struct pipe_screen* pscreen, unsigned shader, enu
 
 			return ir;
 		}
-		case PIPE_SHADER_CAP_DOUBLES:
-			return HAVE_LLVM >= 0x0307;
 
 		case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE: {
 			uint64_t max_const_buffer_size;
@@ -654,9 +649,6 @@ static int si_get_shader_param(struct pipe_screen* pscreen, unsigned shader, enu
 	case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
 	case PIPE_SHADER_CAP_TGSI_ANY_INOUT_DECL_RANGE:
 		return 1;
-
-	case PIPE_SHADER_CAP_DOUBLES:
-		return HAVE_LLVM >= 0x0307;
 
 	case PIPE_SHADER_CAP_INDIRECT_INPUT_ADDR:
 		/* TODO: Indirection of geometry shader input dimension is not

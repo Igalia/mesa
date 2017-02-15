@@ -109,6 +109,7 @@ private:
    void emitBFIND(const Instruction *);
    void emitPERMT(const Instruction *);
    void emitShift(const Instruction *);
+   void emitShift64(const Instruction *);
 
    void emitSFnOp(const Instruction *, uint8_t subOp);
 
@@ -197,7 +198,7 @@ void CodeEmitterGK110::srcAddr32(const ValueRef& src, const int pos)
 
 void CodeEmitterGK110::defId(const ValueDef& def, const int pos)
 {
-   code[pos / 32] |= (def.get() ? DDATA(def).id : GK110_GPR_ZERO) << (pos % 32);
+   code[pos / 32] |= (def.get() && def.getFile() != FILE_FLAGS ? DDATA(def).id : GK110_GPR_ZERO) << (pos % 32);
 }
 
 bool CodeEmitterGK110::isLIMM(const ValueRef& ref, DataType ty, bool mod)
@@ -702,7 +703,7 @@ CodeEmitterGK110::emitUADD(const Instruction *i)
       if (addOp & 2)
          code[1] |= 1 << 27;
 
-      assert(!i->defExists(1));
+      assert(i->flagsDef < 0);
       assert(i->flagsSrc < 0);
 
       SAT_(39);
@@ -713,7 +714,7 @@ CodeEmitterGK110::emitUADD(const Instruction *i)
 
       code[1] |= addOp << 19;
 
-      if (i->defExists(1))
+      if (i->flagsDef >= 0)
          code[1] |= 1 << 18; // write carry
       if (i->flagsSrc >= 0)
          code[1] |= 1 << 14; // add carry
@@ -936,6 +937,24 @@ CodeEmitterGK110::emitShift(const Instruction *i)
 }
 
 void
+CodeEmitterGK110::emitShift64(const Instruction *i)
+{
+   if (i->op == OP_SHR) {
+      emitForm_21(i, 0x27c, 0xc7c);
+      if (isSignedType(i->sType))
+         code[1] |= 0x100;
+      if (i->subOp & NV50_IR_SUBOP_SHIFT_HIGH)
+         code[1] |= 1 << 19;
+   } else {
+      emitForm_21(i, 0xdfc, 0xf7c);
+   }
+   code[1] |= 0x200;
+
+   if (i->subOp & NV50_IR_SUBOP_SHIFT_WRAP)
+      code[1] |= 1 << 21;
+}
+
+void
 CodeEmitterGK110::emitPreOp(const Instruction *i)
 {
    emitForm_C(i, 0x248, 0x2);
@@ -993,6 +1012,9 @@ CodeEmitterGK110::emitMINMAX(const Instruction *i)
    if (i->dType == TYPE_S32)
       code[1] |= 1 << 19;
    code[1] |= (i->op == OP_MIN) ? 0x1c00 : 0x3c00; // [!]pt
+   code[1] |= i->subOp << 14;
+   if (i->flagsDef >= 0)
+      code[1] |= i->subOp << 18;
 
    FTZ_(2f);
    ABS_(31, 0);
@@ -1139,6 +1161,8 @@ CodeEmitterGK110::emitSET(const CmpInstruction *i)
    } else {
       code[1] |= 0x7 << 10;
    }
+   if (i->flagsSrc >= 0)
+      code[1] |= 1 << 14;
    emitCondCode(i->setCond,
                 isFloatType(i->sType) ? 0x33 : 0x34,
                 isFloatType(i->sType) ? 0xf : 0x7);
@@ -1158,6 +1182,8 @@ CodeEmitterGK110::emitSLCT(const CmpInstruction *i)
    } else {
       emitForm_21(i, 0x1a0, 0xb20);
       emitCondCode(cc, 0x34, 0x7);
+      if (i->dType == TYPE_S32)
+         code[1] |= 1 << 19;
    }
 }
 
@@ -2468,7 +2494,10 @@ CodeEmitterGK110::emitInstruction(Instruction *insn)
       break;
    case OP_SHL:
    case OP_SHR:
-      emitShift(insn);
+      if (typeSizeof(insn->sType) == 8)
+         emitShift64(insn);
+      else
+         emitShift(insn);
       break;
    case OP_SET:
    case OP_SET_AND:

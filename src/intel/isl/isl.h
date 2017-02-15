@@ -1040,10 +1040,20 @@ bool isl_format_supports_filtering(const struct gen_device_info *devinfo,
                                    enum isl_format format);
 bool isl_format_supports_vertex_fetch(const struct gen_device_info *devinfo,
                                       enum isl_format format);
-bool isl_format_supports_lossless_compression(const struct gen_device_info *devinfo,
-                                              enum isl_format format);
+bool isl_format_supports_typed_writes(const struct gen_device_info *devinfo,
+                                      enum isl_format format);
+bool isl_format_supports_typed_reads(const struct gen_device_info *devinfo,
+                                     enum isl_format format);
+bool isl_format_supports_ccs_d(const struct gen_device_info *devinfo,
+                               enum isl_format format);
+bool isl_format_supports_ccs_e(const struct gen_device_info *devinfo,
+                               enum isl_format format);
 bool isl_format_supports_multisampling(const struct gen_device_info *devinfo,
                                        enum isl_format format);
+
+bool isl_formats_are_ccs_e_compatible(const struct gen_device_info *devinfo,
+                                      enum isl_format format1,
+                                      enum isl_format format2);
 
 bool isl_format_has_unorm_channel(enum isl_format fmt) ATTRIBUTE_CONST;
 bool isl_format_has_snorm_channel(enum isl_format fmt) ATTRIBUTE_CONST;

@@ -161,6 +161,7 @@ private:
    void emitISETP();
    void emitSHL();
    void emitSHR();
+   void emitSHF();
    void emitPOPC();
    void emitBFI();
    void emitBFE();
@@ -251,7 +252,8 @@ CodeEmitterGM107::emitInsn(uint32_t hi, bool pred)
 void
 CodeEmitterGM107::emitGPR(int pos, const Value *val)
 {
-   emitField(pos, 8, val ? val->reg.data.id : 255);
+   emitField(pos, 8, val && !val->inFile(FILE_FLAGS) ?
+             val->reg.data.id : 255);
 }
 
 void
@@ -1867,6 +1869,7 @@ CodeEmitterGM107::emitIMNMX()
 
    emitField(0x30, 1, isSignedType(insn->dType));
    emitCC   (0x2f);
+   emitField(0x2b, 2, insn->subOp);
    emitField(0x2a, 1, insn->op == OP_MAX);
    emitPRED (0x27);
    emitGPR  (0x08, insn->src(0));
@@ -2066,6 +2069,47 @@ CodeEmitterGM107::emitSHR()
    emitCC   (0x2f);
    emitX    (0x2c);
    emitField(0x27, 1, insn->subOp == NV50_IR_SUBOP_SHIFT_WRAP);
+   emitGPR  (0x08, insn->src(0));
+   emitGPR  (0x00, insn->def(0));
+}
+
+void
+CodeEmitterGM107::emitSHF()
+{
+   unsigned type;
+
+   switch (insn->src(1).getFile()) {
+   case FILE_GPR:
+      emitInsn(insn->op == OP_SHL ? 0x5bf80000 : 0x5cf80000);
+      emitGPR(0x14, insn->src(1));
+      break;
+   case FILE_IMMEDIATE:
+      emitInsn(insn->op == OP_SHL ? 0x36f80000 : 0x38f80000);
+      emitIMMD(0x14, 19, insn->src(1));
+      break;
+   default:
+      assert(!"bad src1 file");
+      break;
+   }
+
+   switch (insn->sType) {
+   case TYPE_U64:
+      type = 2;
+      break;
+   case TYPE_S64:
+      type = 3;
+      break;
+   default:
+      type = 0;
+      break;
+   }
+
+   emitField(0x32, 1, !!(insn->subOp & NV50_IR_SUBOP_SHIFT_WRAP));
+   emitX    (0x31);
+   emitField(0x30, 1, !!(insn->subOp & NV50_IR_SUBOP_SHIFT_HIGH));
+   emitCC   (0x2f);
+   emitGPR  (0x27, insn->src(2));
+   emitField(0x25, 2, type);
    emitGPR  (0x08, insn->src(0));
    emitGPR  (0x00, insn->def(0));
 }
@@ -2494,7 +2538,7 @@ CodeEmitterGM107::emitATOMS()
 
    emitField(0x34, 4, subOp);
    emitGPR  (0x14, insn->src(1));
-   emitADDR (0x08, 0x12, 22, 0, insn->src(0));
+   emitADDR (0x08, 0x1e, 22, 2, insn->src(0));
    emitGPR  (0x00, insn->def(0));
 }
 
@@ -3168,10 +3212,16 @@ CodeEmitterGM107::emitInstruction(Instruction *i)
       }
       break;
    case OP_SHL:
-      emitSHL();
+      if (typeSizeof(insn->sType) == 8)
+         emitSHF();
+      else
+         emitSHL();
       break;
    case OP_SHR:
-      emitSHR();
+      if (typeSizeof(insn->sType) == 8)
+         emitSHF();
+      else
+         emitSHR();
       break;
    case OP_POPCNT:
       emitPOPC();

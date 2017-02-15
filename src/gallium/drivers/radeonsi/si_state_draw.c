@@ -432,7 +432,8 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 	key.u.multi_instances_smaller_than_primgroup =
 		info->indirect ||
 		(info->instance_count > 1 &&
-		 si_num_prims_for_vertices(info) < primgroup_size);
+		 (info->count_from_stream_output ||
+		  si_num_prims_for_vertices(info) < primgroup_size));
 	key.u.primitive_restart = info->primitive_restart;
 	key.u.count_from_stream_output = info->count_from_stream_output != NULL;
 
@@ -452,30 +453,12 @@ static unsigned si_get_ia_multi_vgt_param(struct si_context *sctx,
 		    G_028AA8_SWITCH_ON_EOI(ia_multi_vgt_param) &&
 		    (info->indirect ||
 		     (info->instance_count > 1 &&
-		      si_num_prims_for_vertices(info) <= 1)))
+		      (info->count_from_stream_output ||
+		       si_num_prims_for_vertices(info) <= 1))))
 			sctx->b.flags |= SI_CONTEXT_VGT_FLUSH;
 	}
 
 	return ia_multi_vgt_param;
-}
-
-static void si_emit_scratch_reloc(struct si_context *sctx)
-{
-	struct radeon_winsys_cs *cs = sctx->b.gfx.cs;
-
-	if (!sctx->emit_scratch_reloc)
-		return;
-
-	radeon_set_context_reg(cs, R_0286E8_SPI_TMPRING_SIZE,
-			       sctx->spi_tmpring_size);
-
-	if (sctx->scratch_buffer) {
-		radeon_add_to_buffer_list(&sctx->b, &sctx->b.gfx,
-				      sctx->scratch_buffer, RADEON_USAGE_READWRITE,
-				      RADEON_PRIO_SCRATCH_BUFFER);
-
-	}
-	sctx->emit_scratch_reloc = false;
 }
 
 /* rast_prim is the primitive type after GS. */
@@ -766,7 +749,8 @@ void si_emit_cache_flush(struct si_context *sctx)
 	struct radeon_winsys_cs *cs = rctx->gfx.cs;
 	uint32_t cp_coher_cntl = 0;
 
-	if (rctx->flags & SI_CONTEXT_FLUSH_AND_INV_FRAMEBUFFER)
+	if (rctx->flags & (SI_CONTEXT_FLUSH_AND_INV_CB |
+			   SI_CONTEXT_FLUSH_AND_INV_DB))
 		sctx->b.num_fb_cache_flushes++;
 
 	/* SI has a bug that it always flushes ICACHE and KCACHE if either
@@ -797,23 +781,18 @@ void si_emit_cache_flush(struct si_context *sctx)
 		if (rctx->chip_class == VI)
 			r600_gfx_write_event_eop(rctx, V_028A90_FLUSH_AND_INV_CB_DATA_TS,
 						 0, 0, NULL, 0, 0, 0);
+
+		/* Flush CMASK/FMASK/DCC. SURFACE_SYNC will wait for idle. */
+		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
+		radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_AND_INV_CB_META) | EVENT_INDEX(0));
 	}
 	if (rctx->flags & SI_CONTEXT_FLUSH_AND_INV_DB) {
 		cp_coher_cntl |= S_0085F0_DB_ACTION_ENA(1) |
 				 S_0085F0_DB_DEST_BASE_ENA(1);
-	}
 
-	if (rctx->flags & SI_CONTEXT_FLUSH_AND_INV_CB_META) {
-		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
-		radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_AND_INV_CB_META) | EVENT_INDEX(0));
-		/* needed for wait for idle in SURFACE_SYNC */
-		assert(rctx->flags & SI_CONTEXT_FLUSH_AND_INV_CB);
-	}
-	if (rctx->flags & SI_CONTEXT_FLUSH_AND_INV_DB_META) {
+		/* Flush HTILE. SURFACE_SYNC will wait for idle. */
 		radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
 		radeon_emit(cs, EVENT_TYPE(V_028A90_FLUSH_AND_INV_DB_META) | EVENT_INDEX(0));
-		/* needed for wait for idle in SURFACE_SYNC */
-		assert(rctx->flags & SI_CONTEXT_FLUSH_AND_INV_DB);
 	}
 
 	/* Wait for shader engines to go idle.
@@ -974,7 +953,7 @@ void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 	struct si_context *sctx = (struct si_context *)ctx;
 	struct si_state_rasterizer *rs = sctx->queued.named.rasterizer;
 	struct pipe_index_buffer ib = {};
-	unsigned mask, dirty_fb_counter, dirty_tex_counter, rast_prim;
+	unsigned mask, dirty_tex_counter, rast_prim;
 
 	if (likely(!info->indirect)) {
 		/* SI-CI treat instance_count==0 as instance_count==1. There is
@@ -1003,21 +982,15 @@ void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 		return;
 	}
 
-	/* Re-emit the framebuffer state if needed. */
-	dirty_fb_counter = p_atomic_read(&sctx->b.screen->dirty_fb_counter);
-	if (unlikely(dirty_fb_counter != sctx->b.last_dirty_fb_counter)) {
-		sctx->b.last_dirty_fb_counter = dirty_fb_counter;
+	/* Recompute and re-emit the texture resource states if needed. */
+	dirty_tex_counter = p_atomic_read(&sctx->b.screen->dirty_tex_counter);
+	if (unlikely(dirty_tex_counter != sctx->b.last_dirty_tex_counter)) {
+		sctx->b.last_dirty_tex_counter = dirty_tex_counter;
 		sctx->framebuffer.dirty_cbufs |=
 			((1 << sctx->framebuffer.state.nr_cbufs) - 1);
 		sctx->framebuffer.dirty_zsbuf = true;
 		sctx->framebuffer.do_update_surf_dirtiness = true;
 		si_mark_atom_dirty(sctx, &sctx->framebuffer.atom);
-	}
-
-	/* Invalidate & recompute texture descriptors if needed. */
-	dirty_tex_counter = p_atomic_read(&sctx->b.screen->dirty_tex_descriptor_counter);
-	if (unlikely(dirty_tex_counter != sctx->b.last_dirty_tex_descriptor_counter)) {
-		sctx->b.last_dirty_tex_descriptor_counter = dirty_tex_counter;
 		si_update_all_texture_descriptors(sctx);
 	}
 
@@ -1081,7 +1054,8 @@ void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 			si_get_draw_start_count(sctx, info, &start, &count);
 			start_offset = start * ib.index_size;
 
-			u_upload_alloc(sctx->b.uploader, start_offset, count * 2, 256,
+			u_upload_alloc(ctx->stream_uploader, start_offset,
+                                       count * 2, 256,
 				       &out_offset, &out_buffer, &ptr);
 			if (!out_buffer) {
 				pipe_resource_reference(&ib.buffer, NULL);
@@ -1104,7 +1078,8 @@ void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 			si_get_draw_start_count(sctx, info, &start, &count);
 			start_offset = start * ib.index_size;
 
-			u_upload_data(sctx->b.uploader, start_offset, count * ib.index_size,
+			u_upload_data(ctx->stream_uploader, start_offset,
+                                      count * ib.index_size,
 				      256, (char*)ib.user_buffer + start_offset,
 				      &ib.offset, &ib.buffer);
 			if (!ib.buffer)
@@ -1121,22 +1096,21 @@ void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 		r600_resource(ib.buffer)->TC_L2_dirty = false;
 	}
 
-	if (info->indirect && r600_resource(info->indirect)->TC_L2_dirty) {
-		sctx->b.flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
-		r600_resource(info->indirect)->TC_L2_dirty = false;
-	}
-
-	if (info->indirect_params &&
-	    r600_resource(info->indirect_params)->TC_L2_dirty) {
-		sctx->b.flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
-		r600_resource(info->indirect_params)->TC_L2_dirty = false;
-	}
-
-	/* Add buffer sizes for memory checking in need_cs_space. */
-	if (sctx->emit_scratch_reloc && sctx->scratch_buffer)
-		r600_context_add_resource_size(ctx, &sctx->scratch_buffer->b.b);
-	if (info->indirect)
+	if (info->indirect) {
+		/* Add the buffer size for memory checking in need_cs_space. */
 		r600_context_add_resource_size(ctx, info->indirect);
+
+		if (r600_resource(info->indirect)->TC_L2_dirty) {
+			sctx->b.flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
+			r600_resource(info->indirect)->TC_L2_dirty = false;
+		}
+
+		if (info->indirect_params &&
+		    r600_resource(info->indirect_params)->TC_L2_dirty) {
+			sctx->b.flags |= SI_CONTEXT_WRITEBACK_GLOBAL_L2;
+			r600_resource(info->indirect_params)->TC_L2_dirty = false;
+		}
+	}
 
 	si_need_cs_space(sctx);
 
@@ -1174,14 +1148,11 @@ void si_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info)
 	}
 	sctx->dirty_states = 0;
 
-	si_emit_scratch_reloc(sctx);
 	si_emit_rasterizer_prim_state(sctx);
 	si_emit_draw_registers(sctx, info);
 
 	si_ce_pre_draw_synchronization(sctx);
-
 	si_emit_draw_packets(sctx, info, &ib);
-
 	si_ce_post_draw_synchronization(sctx);
 
 	if (sctx->trace_buf)

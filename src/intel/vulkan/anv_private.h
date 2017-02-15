@@ -87,7 +87,7 @@ extern "C" {
  */
 #define ANV_HZ_FC_VAL 1.0f
 
-#define MAX_VBS         32
+#define MAX_VBS         31
 #define MAX_SETS         8
 #define MAX_RTS          8
 #define MAX_VIEWPORTS   16
@@ -95,6 +95,9 @@ extern "C" {
 #define MAX_PUSH_CONSTANTS_SIZE 128
 #define MAX_DYNAMIC_BUFFERS 16
 #define MAX_IMAGES 8
+
+#define ANV_SVGS_VB_INDEX    MAX_VBS
+#define ANV_DRAWID_VB_INDEX (MAX_VBS + 1)
 
 #define anv_printflike(a, b) __attribute__((__format__(__printf__, a, b)))
 
@@ -950,6 +953,9 @@ struct anv_pipeline_binding {
 
    /* Input attachment index (relative to the subpass) */
    uint8_t input_attachment_index;
+
+   /* For a storage image, whether it is write-only */
+   bool write_only;
 };
 
 struct anv_pipeline_layout {
@@ -1161,6 +1167,20 @@ struct anv_cmd_state {
    struct anv_state                             samplers[MESA_SHADER_STAGES];
    struct anv_dynamic_state                     dynamic;
    bool                                         need_query_wa;
+
+   /**
+    * Whether or not the gen8 PMA fix is enabled.  We ensure that, at the top
+    * of any command buffer it is disabled by disabling it in EndCommandBuffer
+    * and before invoking the secondary in ExecuteCommands.
+    */
+   bool                                         pma_fix_enabled;
+
+   /**
+    * Whether or not we know for certain that HiZ is enabled for the current
+    * subpass.  If, for whatever reason, we are unsure as to whether HiZ is
+    * enabled or not, this will be false.
+    */
+   bool                                         hiz_enabled;
 
    /**
     * Array length is anv_cmd_state::pass::attachment_count. Array content is
@@ -1465,7 +1485,12 @@ struct anv_pipeline {
 
    uint32_t                                     cs_right_mask;
 
+   bool                                         writes_depth;
+   bool                                         depth_test_enable;
+   bool                                         writes_stencil;
+   bool                                         stencil_test_enable;
    bool                                         depth_clamp_enable;
+   bool                                         kill_pixel;
 
    struct {
       uint32_t                                  sf[7];
@@ -1552,6 +1577,21 @@ anv_get_isl_format(const struct gen_device_info *devinfo, VkFormat vk_format,
    return anv_get_format(devinfo, vk_format, aspect, tiling).isl_format;
 }
 
+static inline struct isl_swizzle
+anv_swizzle_for_render(struct isl_swizzle swizzle)
+{
+   /* Sometimes the swizzle will have alpha map to one.  We do this to fake
+    * RGB as RGBA for texturing
+    */
+   assert(swizzle.a == ISL_CHANNEL_SELECT_ONE ||
+          swizzle.a == ISL_CHANNEL_SELECT_ALPHA);
+
+   /* But it doesn't matter what we render to that channel */
+   swizzle.a = ISL_CHANNEL_SELECT_ALPHA;
+
+   return swizzle;
+}
+
 void
 anv_pipeline_setup_l3_config(struct anv_pipeline *pipeline, bool needs_slm);
 
@@ -1613,7 +1653,7 @@ struct anv_image {
    /**
     * For color images, this is the aux usage for this image when not used as a
     * color attachment.
-    * 
+    *
     * For depth/stencil images, this is set to ISL_AUX_USAGE_HIZ if the image
     * has a HiZ buffer.
     */
@@ -1665,8 +1705,13 @@ struct anv_image_view {
    /** RENDER_SURFACE_STATE when using image as a sampler surface. */
    struct anv_state sampler_surface_state;
 
-   /** RENDER_SURFACE_STATE when using image as a storage image. */
+   /**
+    * RENDER_SURFACE_STATE when using image as a storage image. Separate states
+    * for write-only and readable, using the real format for write-only and the
+    * lowered format for readable.
+    */
    struct anv_state storage_surface_state;
+   struct anv_state writeonly_storage_surface_state;
 
    struct brw_image_param storage_image_param;
 };
@@ -1697,6 +1742,7 @@ struct anv_buffer_view {
 
    struct anv_state surface_state;
    struct anv_state storage_surface_state;
+   struct anv_state writeonly_storage_surface_state;
 
    struct brw_image_param storage_image_param;
 };
@@ -1848,11 +1894,6 @@ void anv_dump_finish(void);
 
 void anv_dump_add_framebuffer(struct anv_cmd_buffer *cmd_buffer,
                               struct anv_framebuffer *fb);
-
-struct anv_common {
-    VkStructureType sType;
-    struct anv_common *pNext;
-};
 
 #define ANV_DEFINE_HANDLE_CASTS(__anv_type, __VkType)                      \
                                                                            \

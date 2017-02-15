@@ -503,7 +503,8 @@ void anv_CmdBlitImage(
          blorp_blit(&batch, &src, src_res->mipLevel, src_z,
                     src_format.isl_format, src_format.swizzle,
                     &dst, dst_res->mipLevel, dst_z,
-                    dst_format.isl_format, dst_format.swizzle,
+                    dst_format.isl_format,
+                    anv_swizzle_for_render(dst_format.swizzle),
                     src_x0, src_y0, src_x1, src_y1,
                     dst_x0, dst_y0, dst_x1, dst_y1,
                     gl_filter, flip_x, flip_y);
@@ -1216,7 +1217,8 @@ anv_cmd_buffer_clear_subpass(struct anv_cmd_buffer *cmd_buffer)
          cmd_buffer->state.pending_pipe_bits |=
             ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT | ANV_PIPE_CS_STALL_BIT;
       } else {
-         blorp_clear(&batch, &surf, iview->isl.format, iview->isl.swizzle,
+         blorp_clear(&batch, &surf, iview->isl.format,
+                     anv_swizzle_for_render(iview->isl.swizzle),
                      iview->isl.base_level,
                      iview->isl.base_array_layer, fb->layers,
                      render_area.offset.x, render_area.offset.y,
@@ -1448,9 +1450,15 @@ ccs_resolve_attachment(struct anv_cmd_buffer *cmd_buffer,
          resolve_op = BLORP_FAST_CLEAR_OP_RESOLVE_FULL;
       } else if (att_state->fast_clear) {
          /* We don't know what to do with clear colors outside the render
-          * pass.  We need a partial resolve.
+          * pass.  We need a partial resolve. Only transparent black is
+          * built into the surface state object and thus no resolve is
+          * required for this case.
           */
-         resolve_op = BLORP_FAST_CLEAR_OP_RESOLVE_PARTIAL;
+         if (att_state->clear_value.color.uint32[0] ||
+             att_state->clear_value.color.uint32[1] ||
+             att_state->clear_value.color.uint32[2] ||
+             att_state->clear_value.color.uint32[3])
+            resolve_op = BLORP_FAST_CLEAR_OP_RESOLVE_PARTIAL;
       } else {
          /* The image "natively" supports all the compression we care about
           * and we don't need to resolve at all.  If this is the case, we also

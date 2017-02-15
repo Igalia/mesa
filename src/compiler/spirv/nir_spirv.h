@@ -48,6 +48,8 @@ struct nir_spirv_supported_extensions {
    bool float64;
    bool image_ms_array;
    bool tessellation;
+   bool draw_parameters;
+   bool image_write_without_format;
 };
 
 nir_function *spirv_to_nir(const uint32_t *words, size_t word_count,

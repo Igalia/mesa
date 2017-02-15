@@ -208,7 +208,9 @@ nv30_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
    case PIPE_CAP_TGSI_FS_FBFETCH:
    case PIPE_CAP_TGSI_MUL_ZERO_WINS:
+   case PIPE_CAP_DOUBLES:
    case PIPE_CAP_INT64:
+   case PIPE_CAP_INT64_DIVMOD:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:
@@ -299,7 +301,6 @@ nv30_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
       case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
       case PIPE_SHADER_CAP_SUBROUTINES:
       case PIPE_SHADER_CAP_INTEGERS:
-      case PIPE_SHADER_CAP_DOUBLES:
       case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
@@ -348,7 +349,6 @@ nv30_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
       case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
       case PIPE_SHADER_CAP_SUBROUTINES:
       case PIPE_SHADER_CAP_INTEGERS:
-      case PIPE_SHADER_CAP_DOUBLES:
       case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:

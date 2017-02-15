@@ -298,11 +298,6 @@ static void r600_texture_init_metadata(struct r600_texture *rtex,
 	metadata->scanout = (surface->flags & RADEON_SURF_SCANOUT) != 0;
 }
 
-static void r600_dirty_all_framebuffer_states(struct r600_common_screen *rscreen)
-{
-	p_atomic_inc(&rscreen->dirty_fb_counter);
-}
-
 static void r600_eliminate_fast_color_clear(struct r600_common_context *rctx,
 					    struct r600_texture *rtex)
 {
@@ -341,7 +336,7 @@ static void r600_texture_discard_cmask(struct r600_common_screen *rscreen,
 	    r600_resource_reference(&rtex->cmask_buffer, NULL);
 
 	/* Notify all contexts about the change. */
-	r600_dirty_all_framebuffer_states(rscreen);
+	p_atomic_inc(&rscreen->dirty_tex_counter);
 	p_atomic_inc(&rscreen->compressed_colortex_counter);
 }
 
@@ -365,7 +360,7 @@ static bool r600_texture_discard_dcc(struct r600_common_screen *rscreen,
 	rtex->dcc_offset = 0;
 
 	/* Notify all contexts about the change. */
-	r600_dirty_all_framebuffer_states(rscreen);
+	p_atomic_inc(&rscreen->dirty_tex_counter);
 	return true;
 }
 
@@ -480,8 +475,7 @@ static void r600_degrade_tile_mode_to_linear(struct r600_common_context *rctx,
 
 	r600_texture_reference(&new_tex, NULL);
 
-	r600_dirty_all_framebuffer_states(rctx->screen);
-	p_atomic_inc(&rctx->screen->dirty_tex_descriptor_counter);
+	p_atomic_inc(&rctx->screen->dirty_tex_counter);
 }
 
 static boolean r600_texture_get_handle(struct pipe_screen* screen,
@@ -1419,8 +1413,7 @@ static void r600_texture_invalidate_storage(struct r600_common_context *rctx,
 	rtex->cmask.base_address_reg =
 		(rtex->resource.gpu_address + rtex->cmask.offset) >> 8;
 
-	r600_dirty_all_framebuffer_states(rscreen);
-	p_atomic_inc(&rscreen->dirty_tex_descriptor_counter);
+	p_atomic_inc(&rscreen->dirty_tex_counter);
 
 	rctx->num_alloc_tex_transfer_bytes += rtex->size;
 }
@@ -1441,6 +1434,7 @@ static void *r600_texture_transfer_map(struct pipe_context *ctx,
 	bool use_staging_texture = false;
 
 	assert(!(texture->flags & R600_RESOURCE_FLAG_TRANSFER));
+	assert(box->width && box->height && box->depth);
 
 	/* Depth textures use staging unconditionally. */
 	if (!rtex->is_depth) {
@@ -1463,8 +1457,8 @@ static void *r600_texture_transfer_map(struct pipe_context *ctx,
 		/* Tiled textures need to be converted into a linear texture for CPU
 		 * access. The staging texture is always linear and is placed in GART.
 		 *
-		 * Reading from VRAM is slow, always use the staging texture in
-		 * this case.
+		 * Reading from VRAM or GTT WC is slow, always use the staging
+		 * texture in this case.
 		 *
 		 * Use the staging texture for uploads if the underlying BO
 		 * is busy.
@@ -1472,8 +1466,9 @@ static void *r600_texture_transfer_map(struct pipe_context *ctx,
 		if (!rtex->surface.is_linear)
 			use_staging_texture = true;
 		else if (usage & PIPE_TRANSFER_READ)
-			use_staging_texture = (rtex->resource.domains &
-					       RADEON_DOMAIN_VRAM) != 0;
+			use_staging_texture =
+				rtex->resource.domains & RADEON_DOMAIN_VRAM ||
+				rtex->resource.flags & RADEON_FLAG_GTT_WC;
 		/* Write & linear only: */
 		else if (r600_rings_is_buffer_referenced(rctx, rtex->resource.buf,
 							 RADEON_USAGE_READWRITE) ||
@@ -2403,8 +2398,7 @@ static void si_set_optimal_micro_tile_mode(struct r600_common_screen *rscreen,
 
 	rtex->surface.micro_tile_mode = rtex->last_msaa_resolve_target_micro_mode;
 
-	p_atomic_inc(&rscreen->dirty_fb_counter);
-	p_atomic_inc(&rscreen->dirty_tex_descriptor_counter);
+	p_atomic_inc(&rscreen->dirty_tex_counter);
 }
 
 void evergreen_do_fast_color_clear(struct r600_common_context *rctx,

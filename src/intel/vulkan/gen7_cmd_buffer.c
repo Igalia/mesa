@@ -212,6 +212,10 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
          .BackfaceStencilTestMask = d->stencil_compare_mask.back & 0xff,
          .BackfaceStencilWriteMask = d->stencil_write_mask.back & 0xff,
+
+         .StencilBufferWriteEnable =
+            (d->stencil_write_mask.front || d->stencil_write_mask.back) &&
+            pipeline->writes_stencil,
       };
       GENX(DEPTH_STENCIL_STATE_pack)(NULL, depth_stencil_dw, &depth_stencil);
 
@@ -254,6 +258,13 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 
    cmd_buffer->state.dirty = 0;
+}
+
+void
+genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer,
+                                bool enable)
+{
+   /* The NP PMA fix doesn't exist on gen7 */
 }
 
 void genX(CmdSetEvent)(

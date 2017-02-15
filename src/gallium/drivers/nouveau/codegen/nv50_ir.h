@@ -175,6 +175,7 @@ enum operation
 #define NV50_IR_SUBOP_LDC_IS       2
 #define NV50_IR_SUBOP_LDC_ISL      3
 #define NV50_IR_SUBOP_SHIFT_WRAP   1
+#define NV50_IR_SUBOP_SHIFT_HIGH   2
 #define NV50_IR_SUBOP_EMU_PRERET   1
 #define NV50_IR_SUBOP_TEXBAR(n)    n
 #define NV50_IR_SUBOP_MOV_FINAL    1
@@ -250,6 +251,10 @@ enum operation
 #define NV50_IR_SUBOP_VOTE_ALL 0
 #define NV50_IR_SUBOP_VOTE_ANY 1
 #define NV50_IR_SUBOP_VOTE_UNI 2
+
+#define NV50_IR_SUBOP_MINMAX_LOW  1
+#define NV50_IR_SUBOP_MINMAX_MED  2
+#define NV50_IR_SUBOP_MINMAX_HIGH 3
 
 enum DataType
 {
@@ -657,7 +662,7 @@ public:
    inline const Symbol *asSym() const;
    inline const ImmediateValue *asImm() const;
 
-   inline bool inFile(DataFile f) { return reg.file == f; }
+   inline bool inFile(DataFile f) const { return reg.file == f; }
 
    static inline Value *get(Iterator&);
 

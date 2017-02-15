@@ -183,6 +183,8 @@ struct etna_compile {
    unsigned labels_count, labels_sz;
    struct etna_compile_label *labels;
 
+   unsigned num_loops;
+
    /* Code generation */
    int inst_ptr; /* current instruction pointer */
    uint32_t code[ETNA_MAX_INSTRUCTIONS * ETNA_INST_SIZE];
@@ -1021,7 +1023,7 @@ label_mark_use(struct etna_compile *c, struct etna_compile_label *label)
 static struct etna_compile_frame *
 find_frame(struct etna_compile *c, enum etna_compile_frame_type type)
 {
-   for (unsigned sp = c->frame_sp; sp >= 0; sp--)
+   for (int sp = c->frame_sp; sp >= 0; sp--)
       if (c->frame_stack[sp].type == type)
          return &c->frame_stack[sp];
 
@@ -1166,6 +1168,8 @@ trans_loop_bgn(const struct instr_translater *t, struct etna_compile *c,
    f->lbl_loop_end = alloc_new_label(c);
 
    label_place(c, f->lbl_loop_bgn);
+
+   c->num_loops++;
 }
 
 static void
@@ -1444,7 +1448,42 @@ static void
 trans_trig(const struct instr_translater *t, struct etna_compile *c,
            const struct tgsi_full_instruction *inst, struct etna_inst_src *src)
 {
-   if (c->specs->has_sin_cos_sqrt) {
+   if (c->specs->has_new_sin_cos) { /* Alternative SIN/COS */
+      /* On newer chips alternative SIN/COS instructions are implemented,
+       * which:
+       * - Need their input scaled by 1/pi instead of 2/pi
+       * - Output an x and y component, which need to be multiplied to
+       *   get the result
+       */
+      /* TGSI lowering should deal with SCS */
+      assert(inst->Instruction.Opcode != TGSI_OPCODE_SCS);
+
+      struct etna_native_reg temp = etna_compile_get_inner_temp(c); /* only using .xyz */
+      emit_inst(c, &(struct etna_inst) {
+         .opcode = INST_OPCODE_MUL,
+         .sat = 0,
+         .dst = etna_native_to_dst(temp, INST_COMPS_Z),
+         .src[0] = src[0], /* any swizzling happens here */
+         .src[1] = alloc_imm_f32(c, 1.0f / M_PI),
+      });
+      emit_inst(c, &(struct etna_inst) {
+         .opcode = inst->Instruction.Opcode == TGSI_OPCODE_COS
+                    ? INST_OPCODE_COS
+                    : INST_OPCODE_SIN,
+         .sat = 0,
+         .dst = etna_native_to_dst(temp, INST_COMPS_X | INST_COMPS_Y),
+         .src[2] = etna_native_to_src(temp, SWIZZLE(Z, Z, Z, Z)),
+         .tex = { .amode=1 }, /* Unknown bit needs to be set */
+      });
+      emit_inst(c, &(struct etna_inst) {
+         .opcode = INST_OPCODE_MUL,
+         .sat = inst->Instruction.Saturate,
+         .dst = convert_dst(c, &inst->Dst[0]),
+         .src[0] = etna_native_to_src(temp, SWIZZLE(X, X, X, X)),
+         .src[1] = etna_native_to_src(temp, SWIZZLE(Y, Y, Y, Y)),
+      });
+
+   } else if (c->specs->has_sin_cos_sqrt) {
       /* TGSI lowering should deal with SCS */
       assert(inst->Instruction.Opcode != TGSI_OPCODE_SCS);
 
@@ -2383,6 +2422,7 @@ etna_compile_shader(const struct etna_specs *specs,
    shader->processor = c->info.processor;
    shader->code_size = c->inst_ptr * 4;
    shader->code = mem_dup(c->code, c->inst_ptr * 16);
+   shader->num_loops = c->num_loops;
    shader->num_temps = c->next_free_native;
    shader->vs_pos_out_reg = -1;
    shader->vs_pointsize_out_reg = -1;
@@ -2420,6 +2460,7 @@ etna_dump_shader(const struct etna_shader *shader)
 
    etna_disasm(shader->code, shader->code_size, PRINT_RAW);
 
+   printf("num loops: %i\n", shader->num_loops);
    printf("num temps: %i\n", shader->num_temps);
    printf("num const: %i\n", shader->uniforms.const_count);
    printf("immediates:\n");

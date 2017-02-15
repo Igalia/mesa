@@ -1859,7 +1859,7 @@ adjust_split_source_coords(const struct blt_axis *orig,
    split_coords->src1 = orig->src1 + (scale >= 0.0 ? delta1 : delta0);
 }
 
-static const struct isl_extent2d
+static struct isl_extent2d
 get_px_size_sa(const struct isl_surf *surf)
 {
    static const struct isl_extent2d one_to_one = { .w = 1, .h = 1 };
@@ -2395,11 +2395,17 @@ blorp_copy(struct blorp_batch *batch,
    }
 
    if (params.src.aux_usage == ISL_AUX_USAGE_CCS_E) {
+      assert(isl_formats_are_ccs_e_compatible(batch->blorp->isl_dev->info,
+                                              src_surf->surf->format,
+                                              params.src.view.format));
       params.src.clear_color =
          bitcast_color_value_to_uint(params.src.clear_color, src_fmtl);
    }
 
    if (params.dst.aux_usage == ISL_AUX_USAGE_CCS_E) {
+      assert(isl_formats_are_ccs_e_compatible(batch->blorp->isl_dev->info,
+                                              dst_surf->surf->format,
+                                              params.dst.view.format));
       params.dst.clear_color =
          bitcast_color_value_to_uint(params.dst.clear_color, dst_fmtl);
    }

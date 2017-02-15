@@ -28,10 +28,8 @@
 #include "sid.h"
 #include "radeon/r600_cs.h"
 
-/* Alignment for optimal performance. */
-#define CP_DMA_ALIGNMENT	32
 /* The max number of bytes to copy per packet. */
-#define CP_DMA_MAX_BYTE_COUNT	((1 << 21) - CP_DMA_ALIGNMENT)
+#define CP_DMA_MAX_BYTE_COUNT	((1 << 21) - SI_CPDMA_ALIGNMENT)
 
 /* Set this if you want the ME to wait until CP DMA is done.
  * It should be set on the last CP DMA packet. */
@@ -117,8 +115,7 @@ static unsigned get_flush_flags(struct si_context *sctx, enum r600_coherency coh
 		       SI_CONTEXT_INV_VMEM_L1 |
 		       (sctx->b.chip_class == SI ? SI_CONTEXT_INV_GLOBAL_L2 : 0);
 	case R600_COHERENCY_CB_META:
-		return SI_CONTEXT_FLUSH_AND_INV_CB |
-		       SI_CONTEXT_FLUSH_AND_INV_CB_META;
+		return SI_CONTEXT_FLUSH_AND_INV_CB;
 	}
 }
 
@@ -268,9 +265,9 @@ static void si_cp_dma_realign_engine(struct si_context *sctx, unsigned size,
 {
 	uint64_t va;
 	unsigned dma_flags = 0;
-	unsigned scratch_size = CP_DMA_ALIGNMENT * 2;
+	unsigned scratch_size = SI_CPDMA_ALIGNMENT * 2;
 
-	assert(size < CP_DMA_ALIGNMENT);
+	assert(size < SI_CPDMA_ALIGNMENT);
 
 	/* Use the scratch buffer as the dummy buffer. The 3D engine should be
 	 * idle at this point.
@@ -283,7 +280,8 @@ static void si_cp_dma_realign_engine(struct si_context *sctx, unsigned size,
 					   PIPE_USAGE_DEFAULT, scratch_size);
 		if (!sctx->scratch_buffer)
 			return;
-		sctx->emit_scratch_reloc = true;
+
+		si_mark_atom_dirty(sctx, &sctx->scratch_state);
 	}
 
 	si_cp_dma_prepare(sctx, &sctx->scratch_buffer->b.b,
@@ -291,7 +289,7 @@ static void si_cp_dma_realign_engine(struct si_context *sctx, unsigned size,
 			  is_first, &dma_flags);
 
 	va = sctx->scratch_buffer->gpu_address;
-	si_emit_cp_dma(sctx, va, va + CP_DMA_ALIGNMENT, size, dma_flags,
+	si_emit_cp_dma(sctx, va, va + SI_CPDMA_ALIGNMENT, size, dma_flags,
 		       R600_COHERENCY_SHADER);
 }
 
@@ -333,15 +331,15 @@ void si_copy_buffer(struct si_context *sctx,
 		 * just to align the internal counter. Otherwise, the DMA engine
 		 * would slow down by an order of magnitude for following copies.
 		 */
-		if (size % CP_DMA_ALIGNMENT)
-			realign_size = CP_DMA_ALIGNMENT - (size % CP_DMA_ALIGNMENT);
+		if (size % SI_CPDMA_ALIGNMENT)
+			realign_size = SI_CPDMA_ALIGNMENT - (size % SI_CPDMA_ALIGNMENT);
 
 		/* If the copy begins unaligned, we must start copying from the next
 		 * aligned block and the skipped part should be copied after everything
 		 * else has been copied. Only the src alignment matters, not dst.
 		 */
-		if (src_offset % CP_DMA_ALIGNMENT) {
-			skipped_size = CP_DMA_ALIGNMENT - (src_offset % CP_DMA_ALIGNMENT);
+		if (src_offset % SI_CPDMA_ALIGNMENT) {
+			skipped_size = SI_CPDMA_ALIGNMENT - (src_offset % SI_CPDMA_ALIGNMENT);
 			/* The main part will be skipped if the size is too small. */
 			skipped_size = MIN2(skipped_size, size);
 			size -= skipped_size;
@@ -436,7 +434,7 @@ static void cik_emit_prefetch_L2(struct si_context *sctx, struct r600_atom *atom
 	if (sctx->vertex_buffer_pointer_dirty) {
 		cik_prefetch_TC_L2_async(sctx, &sctx->vertex_buffers.buffer->b.b,
 					 sctx->vertex_buffers.buffer_offset,
-					 sctx->vertex_elements->count * 16);
+					 sctx->vertex_elements->desc_list_byte_size);
 	}
 	if (si_pm4_state_changed(sctx, ps))
 		cik_prefetch_shader_async(sctx, sctx->queued.named.ps);

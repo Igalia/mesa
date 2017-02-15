@@ -62,6 +62,7 @@ static const struct debug_named_value debug_options[] = {
    {"flush_all",      ETNA_DBG_FLUSH_ALL, "Flush after every rendered primitive"},
    {"zero",           ETNA_DBG_ZERO, "Zero all resources after allocation"},
    {"draw_stall",     ETNA_DBG_DRAW_STALL, "Stall FE/PE after each rendered primitive"},
+   {"shaderdb",       ETNA_DBG_SHADERDB, "Enable shaderdb output"},
    DEBUG_NAMED_VALUE_END
 };
 
@@ -241,7 +242,9 @@ etna_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
    case PIPE_CAP_TGSI_FS_FBFETCH:
    case PIPE_CAP_TGSI_MUL_ZERO_WINS:
+   case PIPE_CAP_DOUBLES:
    case PIPE_CAP_INT64:
+   case PIPE_CAP_INT64_DIVMOD:
       return 0;
 
    /* Stream output. */
@@ -415,7 +418,6 @@ etna_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
       return PIPE_SHADER_IR_TGSI;
    case PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE:
       return 4096;
-   case PIPE_SHADER_CAP_DOUBLES:
    case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
@@ -471,8 +473,11 @@ etna_screen_is_format_supported(struct pipe_screen *pscreen,
       return FALSE;
 
    if (usage & PIPE_BIND_RENDER_TARGET) {
-      /* if render target, must be RS-supported format */
-      if (translate_rs_format(format) != ETNA_NO_MATCH) {
+      /* If render target, must be RS-supported format that is not rb swapped.
+       * Exposing rb swapped (or other swizzled) formats for rendering would
+       * involve swizzing in the pixel shader.
+       */
+      if (translate_rs_format(format) != ETNA_NO_MATCH && !translate_rs_format_rb_swap(format)) {
          /* Validate MSAA; number of samples must be allowed, and render target
           * must have MSAA'able format. */
          if (sample_count > 1) {
@@ -619,15 +624,33 @@ etna_get_specs(struct etna_screen *screen)
       screen->model >= 0x1000 || screen->model == 0x880;
    screen->specs.npot_tex_any_wrap =
       VIV_FEATURE(screen, chipMinorFeatures1, NON_POWER_OF_TWO);
+   screen->specs.has_new_sin_cos =
+      VIV_FEATURE(screen, chipMinorFeatures3, HAS_FAST_TRANSCENDENTALS);
 
-   if (instruction_count > 256) { /* unified instruction memory? */
+   if (VIV_FEATURE(screen, chipMinorFeatures3, INSTRUCTION_CACHE)) {
+      /* GC3000 - this core is capable of loading shaders from
+       * memory. It can also run shaders from registers, as a fallback, but
+       * "max_instructions" does not have the correct value. It has place for
+       * 2*256 instructions just like GC2000, but the offsets are slightly
+       * different.
+       */
       screen->specs.vs_offset = 0xC000;
-      screen->specs.ps_offset = 0xD000; /* like vivante driver */
+      /* State 08000-0C000 mirrors 0C000-0E000, and the Vivante driver uses
+       * this mirror for writing PS instructions, probably safest to do the
+       * same.
+       */
+      screen->specs.ps_offset = 0x8000 + 0x1000;
       screen->specs.max_instructions = 256;
    } else {
-      screen->specs.vs_offset = 0x4000;
-      screen->specs.ps_offset = 0x6000;
-      screen->specs.max_instructions = instruction_count / 2;
+      if (instruction_count > 256) { /* unified instruction memory? */
+         screen->specs.vs_offset = 0xC000;
+         screen->specs.ps_offset = 0xD000; /* like vivante driver */
+         screen->specs.max_instructions = 256;
+      } else {
+         screen->specs.vs_offset = 0x4000;
+         screen->specs.ps_offset = 0x6000;
+         screen->specs.max_instructions = instruction_count / 2;
+      }
    }
 
    if (VIV_FEATURE(screen, chipMinorFeatures1, HALTI0)) {

@@ -424,7 +424,9 @@ svga_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY:
    case PIPE_CAP_TGSI_FS_FBFETCH:
    case PIPE_CAP_TGSI_MUL_ZERO_WINS:
+   case PIPE_CAP_DOUBLES:
    case PIPE_CAP_INT64:
+   case PIPE_CAP_INT64_DIVMOD:
       return 0;
    }
 
@@ -498,7 +500,6 @@ vgpu9_get_shader_param(struct pipe_screen *screen, unsigned shader,
          return PIPE_SHADER_IR_TGSI;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
          return 0;
-      case PIPE_SHADER_CAP_DOUBLES:
       case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
@@ -561,7 +562,6 @@ vgpu9_get_shader_param(struct pipe_screen *screen, unsigned shader,
          return PIPE_SHADER_IR_TGSI;
       case PIPE_SHADER_CAP_SUPPORTED_IRS:
          return 0;
-      case PIPE_SHADER_CAP_DOUBLES:
       case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
       case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:
@@ -657,7 +657,6 @@ vgpu10_get_shader_param(struct pipe_screen *screen, unsigned shader,
       return PIPE_SHADER_IR_TGSI;
    case PIPE_SHADER_CAP_SUPPORTED_IRS:
          return 0;
-   case PIPE_SHADER_CAP_DOUBLES:
    case PIPE_SHADER_CAP_TGSI_DROUND_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_DFRACEXP_DLDEXP_SUPPORTED:
    case PIPE_SHADER_CAP_TGSI_FMA_SUPPORTED:

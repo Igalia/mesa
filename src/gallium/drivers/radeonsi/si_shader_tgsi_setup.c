@@ -1273,6 +1273,14 @@ void si_llvm_context_init(struct si_shader_context *ctx,
 						ctx->gallivm.context);
 	LLVMSetTarget(ctx->gallivm.module, "amdgcn--");
 
+#if HAVE_LLVM >= 0x0309
+	LLVMTargetDataRef data_layout = LLVMCreateTargetDataLayout(tm);
+	char *data_layout_str = LLVMCopyStringRepOfTargetData(data_layout);
+	LLVMSetDataLayout(ctx->gallivm.module, data_layout_str);
+	LLVMDisposeTargetData(data_layout);
+	LLVMDisposeMessage(data_layout_str);
+#endif
+
 	bool unsafe_fpmath = (sscreen->b.debug_flags & DBG_UNSAFE_MATH) != 0;
 	ctx->gallivm.builder = lp_create_builder(ctx->gallivm.context,
 						 unsafe_fpmath);

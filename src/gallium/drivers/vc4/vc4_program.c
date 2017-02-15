@@ -116,9 +116,9 @@ indirect_uniform_load(struct vc4_compile *c, nir_intrinsic_instr *intr)
 
         /* Clamp to [0, array size).  Note that MIN/MAX are signed. */
         indirect_offset = qir_MAX(c, indirect_offset, qir_uniform_ui(c, 0));
-        indirect_offset = qir_MIN(c, indirect_offset,
-                                  qir_uniform_ui(c, (range->dst_offset +
-                                                     range->size - 4)));
+        indirect_offset = qir_MIN_NOIMM(c, indirect_offset,
+                                        qir_uniform_ui(c, (range->dst_offset +
+                                                           range->size - 4)));
 
         qir_ADD_dest(c, qir_reg(QFILE_TEX_S_DIRECT, 0),
                      indirect_offset,
@@ -382,7 +382,7 @@ ntq_emit_txf(struct vc4_compile *c, nir_tex_instr *instr)
 
         /* Perform the clamping required by kernel validation. */
         addr = qir_MAX(c, addr, qir_uniform_ui(c, 0));
-        addr = qir_MIN(c, addr,  qir_uniform_ui(c, size - 4));
+        addr = qir_MIN_NOIMM(c, addr, qir_uniform_ui(c, size - 4));
 
         qir_ADD_dest(c, qir_reg(QFILE_TEX_S_DIRECT, 0),
                      addr, qir_uniform(c, QUNIFORM_TEXTURE_MSAA_ADDR, unit));
@@ -1511,7 +1511,7 @@ emit_vert_end(struct vc4_compile *c,
 static void
 emit_coord_end(struct vc4_compile *c)
 {
-        struct qreg rcp_w = qir_RCP(c, c->outputs[c->output_position_index + 3]);
+        struct qreg rcp_w = ntq_rcp(c, c->outputs[c->output_position_index + 3]);
 
         emit_stub_vpm_read(c);
 
@@ -2699,8 +2699,7 @@ vc4_update_compiled_fs(struct vc4_context *vc4, uint8_t prim_mode)
         }
         if (job->msaa) {
                 key->msaa = vc4->rasterizer->base.multisample;
-                key->sample_coverage = (vc4->rasterizer->base.multisample &&
-                                        vc4->sample_mask != (1 << VC4_MAX_SAMPLES) - 1);
+                key->sample_coverage = (vc4->sample_mask != (1 << VC4_MAX_SAMPLES) - 1);
                 key->sample_alpha_to_coverage = vc4->blend->alpha_to_coverage;
                 key->sample_alpha_to_one = vc4->blend->alpha_to_one;
         }
