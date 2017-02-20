@@ -885,6 +885,13 @@ cross_validate_globals(struct gl_shader_program *prog,
       if (var->type->contains_subroutine())
          continue;
 
+      /* Don't cross validate interface instances. These are only relevant
+       * inside a shader. The cross validation is done at the Interface Block
+       * name level.
+       */
+      if (var->type->is_interface())
+         continue;
+
       /* Don't cross validate temporaries that are at global scope.  These
        * will eventually get pulled into the shaders 'main'.
        */
