@@ -1181,6 +1181,7 @@ interstage_cross_validate_uniform_blocks(struct gl_shader_program *prog,
             for (unsigned k = 0; k <= i; k++) {
                delete[] InterfaceBlockStageIndex[k];
             }
+            *num_blks = 0;
             return false;
          }
 
