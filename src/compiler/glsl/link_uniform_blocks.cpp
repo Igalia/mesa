@@ -156,6 +156,7 @@ private:
       } else {
          alignment = type->std140_base_alignment(v->RowMajor);
          size = type_for_size->std140_size(v->RowMajor);
+         printf("Size: %d.\n", size);
       }
 
       this->offset = glsl_align(this->offset, alignment);
