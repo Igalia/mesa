@@ -1257,8 +1257,16 @@ anv_cmd_buffer_execbuf(struct anv_device *device,
    struct anv_execbuf execbuf;
    anv_execbuf_init(&execbuf);
 
-   adjust_relocations_from_state_pool(ss_pool, &cmd_buffer->surface_relocs,
-                                      cmd_buffer->last_ss_pool_center);
+   /* Remember if we have adjusted the relocation offsets so we only ever do
+    * this once
+    */
+   struct anv_cmd_state *state = &cmd_buffer->state;
+   if (!state->adjusted_relocation_offsets) {
+       adjust_relocations_from_state_pool(ss_pool, &cmd_buffer->surface_relocs,
+                                          cmd_buffer->last_ss_pool_center);
+      state->adjusted_relocation_offsets = true;
+   }
+
    VkResult result =
       anv_execbuf_add_bo(&execbuf, &ss_pool->bo, &cmd_buffer->surface_relocs,
                          &cmd_buffer->pool->alloc);

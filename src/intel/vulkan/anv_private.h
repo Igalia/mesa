@@ -1342,6 +1342,12 @@ struct anv_cmd_state {
     */
    struct anv_state                             null_surface_state;
 
+   /**
+    * A flag indicating whether we have adjusted relation offsets for this
+    * command buffer.
+    */
+   bool                                         adjusted_relocation_offsets;
+
    struct {
       struct anv_buffer *                       index_buffer;
       uint32_t                                  index_type; /**< 3DSTATE_INDEX_BUFFER.IndexFormat */

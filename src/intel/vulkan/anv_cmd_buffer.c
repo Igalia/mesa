@@ -142,6 +142,7 @@ anv_cmd_state_reset(struct anv_cmd_buffer *cmd_buffer)
    state->need_query_wa = true;
    state->pma_fix_enabled = false;
    state->hiz_enabled = false;
+   state->adjusted_relocation_offsets = false;
 
    if (state->attachments != NULL) {
       vk_free(&cmd_buffer->pool->alloc, state->attachments);
@@ -198,6 +199,7 @@ static VkResult anv_create_cmd_buffer(
    cmd_buffer->pool = pool;
    cmd_buffer->level = level;
    cmd_buffer->state.attachments = NULL;
+   cmd_buffer->state.adjusted_relocation_offsets = false;
 
    result = anv_cmd_buffer_init_batch_bo_chain(cmd_buffer);
    if (result != VK_SUCCESS)
