@@ -366,6 +366,7 @@ vec4_visitor::nir_emit_load_const(nir_load_const_instr *instr)
       reg.type = BRW_REGISTER_TYPE_D;
    }
 
+   const vec4_builder ibld = vec4_builder(this).at_end();
    unsigned remaining = brw_writemask_for_size(instr->def.num_components);
 
    /* @FIXME: consider emitting vector operations to save some MOVs in
@@ -389,7 +390,7 @@ vec4_visitor::nir_emit_load_const(nir_load_const_instr *instr)
 
       reg.writemask = writemask;
       if (instr->def.bit_size == 64) {
-         emit(MOV(reg, setup_imm_df(instr->value.f64[i])));
+         emit(MOV(reg, setup_imm_df(ibld, instr->value.f64[i])));
       } else {
          emit(MOV(reg, brw_imm_d(instr->value.i32[i])));
       }
@@ -1209,7 +1210,7 @@ vec4_visitor::emit_conversion_to_double(dst_reg dst, src_reg src,
 }
 
 src_reg
-vec4_visitor::setup_imm_df(double v)
+vec4_visitor::setup_imm_df(const vec4_builder &bld, double v)
 {
    assert(devinfo->gen >= 7);
 
@@ -1220,8 +1221,9 @@ vec4_visitor::setup_imm_df(double v)
     * instruction allows to set the 64-bit immediate value.
     */
    if (devinfo->is_haswell) {
+      const vec4_builder ubld = bld.exec_all();
       dst_reg dst = retype(dst_reg(VGRF, alloc.allocate(2)), BRW_REGISTER_TYPE_DF);
-      emit(DIM(dst, brw_imm_df(v)))->force_writemask_all = true;
+      ubld.emit(DIM(dst, brw_imm_df(v)));
       return swizzle(src_reg(retype(dst, BRW_REGISTER_TYPE_DF)), BRW_SWIZZLE_XXXX);
    }
 
@@ -1243,13 +1245,12 @@ vec4_visitor::setup_imm_df(double v)
     * XXXX so any access to the VGRF only reads the constant data in these
     * channels.
     */
+   const vec4_builder ubld = bld.exec_all();
    const dst_reg tmp =
       retype(dst_reg(VGRF, alloc.allocate(2)), BRW_REGISTER_TYPE_UD);
    for (int n = 0; n < 2; n++) {
-      emit(MOV(writemask(offset(tmp, 8, n), WRITEMASK_X), brw_imm_ud(di.i1)))
-         ->force_writemask_all = true;
-      emit(MOV(writemask(offset(tmp, 8, n), WRITEMASK_Y), brw_imm_ud(di.i2)))
-         ->force_writemask_all = true;
+      ubld.emit(MOV(writemask(offset(tmp, 8, n), WRITEMASK_X), brw_imm_ud(di.i1)));
+      ubld.emit(MOV(writemask(offset(tmp, 8, n), WRITEMASK_Y), brw_imm_ud(di.i2)));
    }
 
    return swizzle(src_reg(retype(tmp, BRW_REGISTER_TYPE_DF)), BRW_SWIZZLE_XXXX);
