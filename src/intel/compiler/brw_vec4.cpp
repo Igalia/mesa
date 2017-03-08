@@ -2198,6 +2198,7 @@ vec4_visitor::lower_simd_width()
          linst->group = channel_offset;
          linst->size_written = size_written;
 
+         bool d2f_pass = (inst->opcode == VEC4_OPCODE_FROM_DOUBLE && n > 0);
          /* Compute split dst region */
          dst_reg dst;
          if (needs_temp) {
@@ -2212,7 +2213,11 @@ vec4_visitor::lower_simd_width()
                inst->insert_before(block, copy);
             }
          } else {
-            dst = horiz_offset(inst->dst, channel_offset);
+            /* d2x conversion is done with a destination's stride of 2. We need
+             * to take into account when splitting it.
+             */
+            unsigned stride = d2f_pass ? 2 : 1;
+            dst = horiz_offset(inst->dst, stride * channel_offset);
          }
          linst->dst = dst;
 
