@@ -194,7 +194,28 @@ offset(dst_reg reg, unsigned width, unsigned delta)
 static inline dst_reg
 horiz_offset(dst_reg reg, unsigned delta)
 {
-   return byte_offset(reg, delta * type_sz(reg.type));
+   switch (reg.file) {
+   case BAD_FILE:
+   case UNIFORM:
+   case IMM:
+      /* These only have a single component that is implicitly splatted.  A
+       * horizontal offset should be a harmless no-op.
+       * XXX - Handle vector immediates correctly.
+       */
+      return reg;
+   case VGRF:
+   case MRF:
+   case ATTR:
+      return byte_offset(reg, delta * type_sz(reg.type));
+   case ARF:
+   case FIXED_GRF:
+      if (reg.is_null()) {
+         return reg;
+      } else {
+         return byte_offset(reg, delta * type_sz(reg.type));
+      }
+   }
+   unreachable("Invalid register file");
 }
 
 static inline dst_reg
