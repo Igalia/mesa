@@ -456,7 +456,9 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
           * dst we see a 32-bit destination and emit a scratch write that
           * allocates a single spill register.
           */
-         if (inst->opcode == VEC4_OPCODE_FROM_DOUBLE)
+         if (inst->opcode == VEC4_OPCODE_DOUBLE_TO_F32 ||
+             inst->opcode == VEC4_OPCODE_DOUBLE_TO_D32 ||
+             inst->opcode == VEC4_OPCODE_DOUBLE_TO_U32)
             no_spill[inst->dst.nr] = true;
 
          /* We can't spill registers that mix 32-bit and 64-bit access (that
