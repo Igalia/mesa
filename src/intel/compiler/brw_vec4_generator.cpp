@@ -2041,7 +2041,8 @@ generate_code(struct brw_codegen *p,
          dst = spread(dst, 2);
 
          src[0] = retype(src[0], BRW_REGISTER_TYPE_UD);
-         src[0].vstride = BRW_VERTICAL_STRIDE_4;
+         if (src[0].file == BRW_GENERAL_REGISTER_FILE)
+            src[0].vstride = BRW_VERTICAL_STRIDE_4;
          src[0].width = BRW_WIDTH_4;
          src[0].hstride = BRW_HORIZONTAL_STRIDE_1;
          brw_MOV(p, dst, src[0]);
