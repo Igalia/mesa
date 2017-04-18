@@ -1960,9 +1960,7 @@ vec4_visitor::convert_to_hw_regs()
          }
 
          case UNIFORM: {
-            unsigned width = REG_SIZE / 2 / MAX2(4, type_sz(src.type));
-            if (devinfo->gen == 7 && !devinfo->is_haswell)
-               width = 4;
+            const unsigned width = REG_SIZE / 2 / MAX2(4, type_sz(src.type));
             reg = stride(byte_offset(brw_vec4_grf(
                                         prog_data->base.dispatch_grf_start_reg +
                                         src.nr / 2, src.nr % 2 * 4),
