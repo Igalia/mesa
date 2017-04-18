@@ -2038,7 +2038,7 @@ generate_code(struct brw_codegen *p,
          dst = retype(dst, BRW_REGISTER_TYPE_UD);
          if (inst->opcode == VEC4_OPCODE_SET_HIGH_32BIT)
             dst = suboffset(dst, 1);
-         dst = spread(dst, 2);
+         dst.hstride = BRW_HORIZONTAL_STRIDE_2;
 
          src[0] = retype(src[0], BRW_REGISTER_TYPE_UD);
          src[0].vstride = BRW_VERTICAL_STRIDE_4;
