@@ -387,6 +387,14 @@ try_copy_propagate(const struct gen_device_info *devinfo,
    if (is_align1_opcode(inst->opcode) && composed_swizzle != BRW_SWIZZLE_XYZW)
       return false;
 
+   /* Instructions that operate on vectors in ALIGN1 mode will apply specific
+    * region parameters to operate with the sources. We cannot copy-propagate
+    * them if they are not virtual GRF because we can break some regioning
+    * rules.
+    */
+   if (is_align1_opcode(inst->opcode) && value.file != VGRF)
+      return false;
+
    if (inst->is_3src(devinfo) &&
        (value.file == UNIFORM ||
         (value.file == ATTR && attributes_per_reg != 1)) &&
