@@ -583,16 +583,43 @@ vec4_visitor::split_uniform_registers()
    }
 }
 
+/* This function returns the register number where we placed the uniform */
+static int
+set_push_constant_loc(const int nr_uniforms, int *new_uniform_count,
+                      const int src, const int size,
+                      int *new_loc, int *new_chan,
+                      int *new_chans_used)
+{
+   int dst;
+   /* Find the lowest place we can slot this uniform in. */
+   for (dst = *new_uniform_count; dst < nr_uniforms; dst++) {
+      if (new_chans_used[dst] + size <= 4)
+         break;
+   }
+
+   assert(dst < nr_uniforms);
+
+   new_loc[src] = dst;
+   new_chan[src] = new_chans_used[dst];
+
+   *new_uniform_count = MAX2(*new_uniform_count, dst + 1);
+   return dst;
+}
+
 void
 vec4_visitor::pack_uniform_registers()
 {
    uint8_t chans_used[this->uniforms];
    int new_loc[this->uniforms];
    int new_chan[this->uniforms];
+   bool is_aligned_to_dvec4[this->uniforms];
+   int new_chans_used[this->uniforms];
 
    memset(chans_used, 0, sizeof(chans_used));
    memset(new_loc, 0, sizeof(new_loc));
    memset(new_chan, 0, sizeof(new_chan));
+   memset(new_chans_used, 0, sizeof(new_chans_used));
+   memset(is_aligned_to_dvec4, 0, sizeof(is_aligned_to_dvec4));
 
    /* Find which uniform vectors are actually used by the program.  We
     * expect unused vector elements when we've moved array access out
@@ -631,10 +658,13 @@ vec4_visitor::pack_uniform_registers()
 
             unsigned channel = BRW_GET_SWZ(inst->src[i].swizzle, c) + 1;
             unsigned used = MAX2(chans_used[reg], channel * channel_size);
-            if (used <= 4)
+            if (used <= 4) {
                chans_used[reg] = used;
-            else
+            } else {
+               is_aligned_to_dvec4[reg] = true;
+               is_aligned_to_dvec4[reg + 1] = true;
                chans_used[reg + 1] = used - 4;
+            }
          }
       }
 
@@ -659,42 +689,56 @@ vec4_visitor::pack_uniform_registers()
 
    int new_uniform_count = 0;
 
+   /* As the uniforms are going to be reordered, take the data from a temporary
+    * copy of the original param[].
+    */
+   gl_constant_value **param = ralloc_array(NULL, gl_constant_value*,
+                                            stage_prog_data->nr_params);
+   memcpy(param, stage_prog_data->param,
+          sizeof(gl_constant_value*) * stage_prog_data->nr_params);
+
    /* Now, figure out a packing of the live uniform vectors into our
-    * push constants.
+    * push constants. Start with dvec{3,4} because they are aligned to
+    * dvec4 size (2 vec4).
     */
    for (int src = 0; src < uniforms; src++) {
       int size = chans_used[src];
 
-      if (size == 0)
+      if (size == 0 || !is_aligned_to_dvec4[src])
          continue;
 
-      int dst;
-      /* Find the lowest place we can slot this uniform in. */
-      for (dst = 0; dst < src; dst++) {
-         if (chans_used[dst] + size <= 4)
-            break;
-      }
-
-      if (src == dst) {
-         new_loc[src] = dst;
-         new_chan[src] = 0;
-      } else {
-         new_loc[src] = dst;
-         new_chan[src] = chans_used[dst];
-
+      int dst = set_push_constant_loc(uniforms, &new_uniform_count,
+                                      src, size, new_loc, new_chan,
+                                      new_chans_used);
+      if (dst != src) {
          /* Move the references to the data */
          for (int j = 0; j < size; j++) {
             stage_prog_data->param[dst * 4 + new_chan[src] + j] =
-               stage_prog_data->param[src * 4 + j];
+               param[src * 4 + j];
          }
-
-         chans_used[dst] += size;
-         chans_used[src] = 0;
       }
-
-      new_uniform_count = MAX2(new_uniform_count, dst + 1);
    }
 
+   /* Continue with the rest of data, which is aligned to vec4. */
+   for (int src = 0; src < uniforms; src++) {
+      int size = chans_used[src];
+
+      if (size == 0 || is_aligned_to_dvec4[src])
+         continue;
+
+      int dst = set_push_constant_loc(uniforms, &new_uniform_count,
+                                      src, size, new_loc, new_chan,
+                                      new_chans_used);
+      if (dst != src) {
+         /* Move the references to the data */
+         for (int j = 0; j < size; j++) {
+            stage_prog_data->param[dst * 4 + new_chan[src] + j] =
+               param[src * 4 + j];
+         }
+      }
+   }
+
+   ralloc_free(param);
    this->uniforms = new_uniform_count;
 
    /* Now, update the instructions for our repacked uniforms. */
