@@ -863,6 +863,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
          unsigned offset = const_offset->u32[0] + shift * 4;
          src.offset = ROUND_DOWN_TO(offset, 16);
          shift = (offset % 16) / 4;
+         src.swizzle = brw_swizzle_for_size(instr->num_components);
          src.swizzle += BRW_SWIZZLE4(shift, shift, shift, shift);
 
          emit(MOV(dest, src));
