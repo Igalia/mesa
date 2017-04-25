@@ -1937,8 +1937,6 @@ generate_code(struct brw_codegen *p,
 
          dst.hstride = BRW_HORIZONTAL_STRIDE_2;
          dst.width = BRW_WIDTH_4;
-         src[0].vstride = BRW_VERTICAL_STRIDE_4;
-         src[0].width = BRW_WIDTH_4;
          brw_MOV(p, dst, src[0]);
 
          struct brw_reg dst_as_src = dst;
@@ -1989,9 +1987,7 @@ generate_code(struct brw_codegen *p,
          src[0] = retype(src[0], BRW_REGISTER_TYPE_UD);
          if (inst->opcode == VEC4_OPCODE_PICK_HIGH_32BIT)
             src[0] = suboffset(src[0], 1);
-         src[0].vstride = BRW_VERTICAL_STRIDE_8;
-         src[0].width = BRW_WIDTH_4;
-         src[0].hstride = BRW_HORIZONTAL_STRIDE_2;
+         src[0] = spread(src[0], 2);
          brw_MOV(p, dst, src[0]);
 
          brw_set_default_access_mode(p, BRW_ALIGN_16);
@@ -2014,9 +2010,6 @@ generate_code(struct brw_codegen *p,
          dst.hstride = BRW_HORIZONTAL_STRIDE_2;
 
          src[0] = retype(src[0], BRW_REGISTER_TYPE_UD);
-         src[0].vstride = BRW_VERTICAL_STRIDE_4;
-         src[0].width = BRW_WIDTH_4;
-         src[0].hstride = BRW_HORIZONTAL_STRIDE_1;
          brw_MOV(p, dst, src[0]);
 
          brw_set_default_access_mode(p, BRW_ALIGN_16);
