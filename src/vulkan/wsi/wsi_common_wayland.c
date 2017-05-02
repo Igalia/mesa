@@ -507,6 +507,8 @@ struct wsi_wl_swapchain {
    struct wsi_wl_display *                      display;
    struct wl_event_queue *                      queue;
    struct wl_surface *                          surface;
+   struct wl_drm *                              drm_wrapper;
+   struct wl_callback *                         frame;
 
    VkExtent2D                                   extent;
    VkFormat                                     vk_format;
@@ -587,6 +589,7 @@ frame_handle_done(void *data, struct wl_callback *callback, uint32_t serial)
 {
    struct wsi_wl_swapchain *chain = data;
 
+   chain->frame = NULL;
    chain->fifo_ready = true;
 
    wl_callback_destroy(callback);
@@ -616,9 +619,8 @@ wsi_wl_swapchain_queue_present(struct wsi_swapchain *wsi_chain,
    wl_surface_damage(chain->surface, 0, 0, INT32_MAX, INT32_MAX);
 
    if (chain->base.present_mode == VK_PRESENT_MODE_FIFO_KHR) {
-      struct wl_callback *frame = wl_surface_frame(chain->surface);
-      wl_proxy_set_queue((struct wl_proxy *)frame, chain->queue);
-      wl_callback_add_listener(frame, &frame_listener, chain);
+      chain->frame = wl_surface_frame(chain->surface);
+      wl_callback_add_listener(chain->frame, &frame_listener, chain);
       chain->fifo_ready = false;
    }
 
@@ -667,7 +669,7 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
    if (result != VK_SUCCESS)
       return result;
 
-   image->buffer = wl_drm_create_prime_buffer(chain->display->drm,
+   image->buffer = wl_drm_create_prime_buffer(chain->drm_wrapper,
                                               fd, /* name */
                                               chain->extent.width,
                                               chain->extent.height,
@@ -680,7 +682,6 @@ wsi_wl_image_init(struct wsi_wl_swapchain *chain,
    if (!image->buffer)
       goto fail_image;
 
-   wl_proxy_set_queue((struct wl_proxy *)image->buffer, chain->queue);
    wl_buffer_add_listener(image->buffer, &buffer_listener, image);
 
    return VK_SUCCESS;
@@ -699,11 +700,22 @@ wsi_wl_swapchain_destroy(struct wsi_swapchain *wsi_chain,
    struct wsi_wl_swapchain *chain = (struct wsi_wl_swapchain *)wsi_chain;
 
    for (uint32_t i = 0; i < chain->image_count; i++) {
-      if (chain->images[i].buffer)
+      if (chain->images[i].buffer) {
+         wl_buffer_destroy(chain->images[i].buffer);
          chain->base.image_fns->free_wsi_image(chain->base.device, pAllocator,
                                                chain->images[i].image,
                                                chain->images[i].memory);
+      }
    }
+
+   if (chain->frame)
+      wl_callback_destroy(chain->frame);
+   if (chain->surface)
+      wl_proxy_wrapper_destroy(chain->surface);
+   if (chain->drm_wrapper)
+      wl_proxy_wrapper_destroy(chain->drm_wrapper);
+   if (chain->queue)
+      wl_event_queue_destroy(chain->queue);
 
    vk_free(pAllocator, chain);
 
@@ -733,6 +745,16 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    if (chain == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
+   /* Mark a bunch of stuff as NULL.  This way we can just call
+    * destroy_swapchain for cleanup.
+    */
+   for (uint32_t i = 0; i < num_images; i++)
+      chain->images[i].buffer = NULL;
+   chain->queue = NULL;
+   chain->surface = NULL;
+   chain->drm_wrapper = NULL;
+   chain->frame = NULL;
+
    bool alpha = pCreateInfo->compositeAlpha ==
                       VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
 
@@ -743,24 +765,13 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
    chain->base.queue_present = wsi_wl_swapchain_queue_present;
    chain->base.image_fns = image_fns;
    chain->base.present_mode = pCreateInfo->presentMode;
-   chain->surface = surface->surface;
    chain->extent = pCreateInfo->imageExtent;
    chain->vk_format = pCreateInfo->imageFormat;
    chain->drm_format = wl_drm_format_for_vk_format(chain->vk_format, alpha);
 
-   chain->fifo_ready = true;
-
    chain->image_count = num_images;
 
-   /* Mark a bunch of stuff as NULL.  This way we can just call
-    * destroy_swapchain for cleanup.
-    */
-   for (uint32_t i = 0; i < chain->image_count; i++)
-      chain->images[i].buffer = NULL;
-   chain->queue = NULL;
-
-   chain->display = wsi_wl_get_display(wsi_device,
-                                       surface->display);
+   chain->display = wsi_wl_get_display(wsi_device, surface->display);
    if (!chain->display) {
       result = VK_ERROR_INITIALIZATION_FAILED;
       goto fail;
@@ -771,6 +782,21 @@ wsi_wl_surface_create_swapchain(VkIcdSurfaceBase *icd_surface,
       result = VK_ERROR_INITIALIZATION_FAILED;
       goto fail;
    }
+
+   chain->surface = wl_proxy_create_wrapper(surface->surface);
+   if (!chain->surface) {
+      result = VK_ERROR_INITIALIZATION_FAILED;
+      goto fail;
+   }
+   wl_proxy_set_queue((struct wl_proxy *) chain->surface, chain->queue);
+   chain->drm_wrapper = wl_proxy_create_wrapper(chain->display->drm);
+   if (!chain->drm_wrapper) {
+      result = VK_ERROR_INITIALIZATION_FAILED;
+      goto fail;
+   }
+   wl_proxy_set_queue((struct wl_proxy *) chain->drm_wrapper, chain->queue);
+
+   chain->fifo_ready = true;
 
    for (uint32_t i = 0; i < chain->image_count; i++) {
       result = wsi_wl_image_init(chain, &chain->images[i],
