@@ -26,6 +26,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/mman.h>
 
 #include "anv_private.h"
 #include "util/debug.h"
@@ -358,7 +359,7 @@ VkResult anv_BindImageMemory(
    if (image->aux_surface.isl.size > 0) {
 
       /* The offset and size must be a multiple of 4K or else the
-       * anv_gem_mmap call below will return NULL.
+       * anv_gem_mmap call below will fail.
        */
       assert((image->offset + image->aux_surface.offset) % 4096 == 0);
       assert(image->aux_surface.isl.size % 4096 == 0);
@@ -374,11 +375,8 @@ VkResult anv_BindImageMemory(
                                image->aux_surface.isl.size,
                                device->info.has_llc ? 0 : I915_MMAP_WC);
 
-      /* If anv_gem_mmap returns NULL, it's likely that the kernel was
-       * not able to find space on the host to create a proper mapping.
-       */
-      if (map == NULL)
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
+      if (map == MAP_FAILED)
+         return vk_error(VK_ERROR_MEMORY_MAP_FAILED);
 
       memset(map, 0, image->aux_surface.isl.size);
 
