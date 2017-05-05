@@ -291,6 +291,7 @@ void si_init_config(struct radv_physical_device *physical_device,
 		raster_config_1 = 0x0000002a;
 		break;
 	case CHIP_POLARIS11:
+	case CHIP_POLARIS12:
 		raster_config = 0x16000012;
 		raster_config_1 = 0x00000000;
 		break;
