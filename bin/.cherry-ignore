@@ -89,3 +89,19 @@ f52e63069a3fad23e03d42306a42bd20f0159da3 swr: move msaa resolve to generalized S
 5ff48581119258214801de24a327bdd6a29e0ccc radv/meta: fix restoring a push descriptor set
 # fixes:  Fixes earlier commit 126d5ad which did not land in branch.
 9da104593386f6e8ddec8f0d9d288aceb8908fe1 radv: fix regression in descriptor set freeing.
+# stable: Fixes earlier commit 4d30024238e which did not land in
+#         branch.
+d884d1a6540ec0f60768c30df47f0228a37ea61c vc4: Only build the NEON code on arm32.
+# stable: Fixes earlier commit 6403e376511 which did not land in
+#         branch.
+6f21b5601cc1260eac53f65c8941b3aa66d0f5e9 i965: Solve Android native fence fd double close
+# stable: Depends on earlier commit 5f99c490089 which did not land in
+#         branch.
+0549ea15ec380f3ca6df76ce53ff4c30bfc21dbf radeonsi: fix primitive ID in fragment shader when using tessellation
+# stable: Depends on earlier commit 9fd9a7d0ba3 which did not land in
+#         branch.
+b84b631c6381d9b36bca5d0e7cc67dd23af188c1 radeonsi: load patch_id for TES-as-ES when exporting for PS
+# stable: The bug that they fixed is probably more benign than a
+#         possible assertion in the X server.
+19b61799e3d06795d783b34fdbbf8474ef1e9a7c st/mesa: don't cast the incomplete framebufer to st_framebuffer
+2f0450c627e5158d49aa1320eed9a5f6cb184838 radeonsi: add new vega10 pci ids
