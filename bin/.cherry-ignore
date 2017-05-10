@@ -48,3 +48,42 @@ f282ace67862c0633d0a8135e4808867740d0d39 i965: remove i965_symbols_test referenc
 # fixes: reported only because referes to fixes in 2 commits, but they
 #        are not in stable.
 a6840efc096bd26e92bcee1a50515d845988a2f9 anv: provide required gem stubs for the tests
+# stable: 17.1 nomination only.
+65e0c3fba74ee98cacadbba4bd005b930609b65e radeonsi/gfx9: fix texture buffer objects and image buffers with IDXEN==0
+5c94779585e24e8bd1bd41707521584af4251de3 radeonsi/gfx9: fix most things wrong with shader images
+482e6b07cc6ce4b2ceac8188be19dbf252eaecde radeonsi/gfx9: fix 1D array shader images
+8e8570a9e8bae7f4d3ad623475dfadc715a828d7 radeonsi/gfx9: add a workaround for viewing a slice of 3D as a 2D image
+60a20e6879e4ce0911b12848ffd9e372f096590e radeonsi/gfx9: set MAX_PRIMGRP_IN_WAVE in the correct register
+80814819c28353a38c03d4cdba39983b8cf260ac radeonsi/gfx9: don't set deprecated field PARTIAL_ES_WAVE_ON
+f466683cb07796fa89f96ef87a6f076218ae6db8 radeonsi/gfx9: fix gl_ViewportIndex
+283a1d1e27b5456cfda848a54b9d74be0993e038 radeonsi/gfx9: make some PA & DB registers match the closed Vulkan driver
+# stable: 17.1 nomination only. Fixes earlier commit 651ec926fc1 which
+# 	  did not land in branch.
+c43b4bc85eddba8bc31665cfee5928bed8343516 anv: Don't place scratch buffers above the 32-bit boundary
+# stable: 17.1 nomination only. Disk cache doesn't feature yet in branch.
+ce412371513c90bf9156f22c3567ee57750ef264 disk_cache: reduce default cache size to 5% of filesystem
+4e1f3afea9bdeddb0d21f00d25319bce580d80c3 disk_cache: use block size rather than file size
+22fa3d90a92c1628215d0f5fccbe1116d4f5147f util/disk_cache: remove percentage based max cache limit
+# stable: 17.1 nomination only. Fixes earlier commit 68d6d097f15 which
+# 	  did not land in branch.
+69e6eab6533ff48f72223cd21ef640242c52598b winsys/amdgpu: fix Polaris12 (RX 550) breakage
+# stable: 17.1 nomination only. Contributes to earlier commit
+# 	  3f0d69af20e which did not land in branch.
+2add79a73291e40621081b9a12938ac1931b9e96 radv: apply the tess+GS hang workaround to Polaris12 as well
+# stable: 17.1 nomination only. Reverts earlier commit
+#         c5bf7cb52942cb7df9f5d73746ffbf3c102d12cc which did not land
+#         in branch.
+1456da91c8a14f77dd347981e2bc95e0644e0fd2 Revert "mesa: Require mipmap completeness for glCopyImageSubData(), sometimes."
+# stable: 17.1 nomination only. Fixes a crash triggered by earlier
+#         commit 7c3b8ed87859bfdfb985d21685115a729f9cd138 which did
+#         not land in branch.
+bc074a45180eddf30ea723bbdf89895e2c7684ca i965: Don't try to unmap NULL program cache BO.
+# stable: 17.1 nomination only. Fixes a regression caused by commit
+#         bdd644976952 which did not land in branch.
+854ed47f3e1501e4cc87bf9f19c6d4a1ad2bab08 radeonsi: mark fast-cleared textures as compressed when dirtying
+# stable: 17.1 nomination only. MSAA was enabled by 1832ef6cd9b which
+#         did not land in branch.
+f52e63069a3fad23e03d42306a42bd20f0159da3 swr: move msaa resolve to generalized StoreTile
+# stable: 17.1 nomination only. 17.0 doesn't support
+#         VK_KHR_push_descriptor, so it doesn't need this patch.
+5ff48581119258214801de24a327bdd6a29e0ccc radv/meta: fix restoring a push descriptor set
