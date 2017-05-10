@@ -87,3 +87,5 @@ f52e63069a3fad23e03d42306a42bd20f0159da3 swr: move msaa resolve to generalized S
 # stable: 17.1 nomination only. 17.0 doesn't support
 #         VK_KHR_push_descriptor, so it doesn't need this patch.
 5ff48581119258214801de24a327bdd6a29e0ccc radv/meta: fix restoring a push descriptor set
+# fixes:  Fixes earlier commit 126d5ad which did not land in branch.
+9da104593386f6e8ddec8f0d9d288aceb8908fe1 radv: fix regression in descriptor set freeing.
