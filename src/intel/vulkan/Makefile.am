@@ -93,7 +93,20 @@ VULKAN_SOURCES = \
 	$(VULKAN_GENERATED_FILES) \
 	$(VULKAN_FILES)
 
-VULKAN_LIB_DEPS =
+VULKAN_LIB_DEPS = \
+	libvulkan_common.la \
+	$(top_builddir)/src/vulkan/wsi/libvulkan_wsi.la \
+	$(top_builddir)/src/mesa/drivers/dri/i965/libi965_compiler.la \
+	$(top_builddir)/src/compiler/nir/libnir.la \
+	$(top_builddir)/src/util/libmesautil.la \
+	$(top_builddir)/src/intel/common/libintel_common.la \
+	$(top_builddir)/src/intel/isl/libisl.la \
+	$(top_builddir)/src/intel/blorp/libblorp.la \
+	$(PER_GEN_LIBS) \
+	$(PTHREAD_LIBS) \
+	$(DLOPEN_LIBS) \
+	-lm
+
 
 if HAVE_PLATFORM_X11
 AM_CPPFLAGS += \
@@ -122,20 +135,6 @@ endif
 
 noinst_LTLIBRARIES += libvulkan_common.la
 libvulkan_common_la_SOURCES = $(VULKAN_SOURCES)
-
-VULKAN_LIB_DEPS += \
-	libvulkan_common.la \
-	$(top_builddir)/src/vulkan/wsi/libvulkan_wsi.la \
-	$(top_builddir)/src/mesa/drivers/dri/i965/libi965_compiler.la \
-	$(top_builddir)/src/compiler/nir/libnir.la \
-	$(top_builddir)/src/util/libmesautil.la \
-	$(top_builddir)/src/intel/common/libintel_common.la \
-	$(top_builddir)/src/intel/isl/libisl.la \
-	$(top_builddir)/src/intel/blorp/libblorp.la \
-	$(PER_GEN_LIBS) \
-	$(PTHREAD_LIBS) \
-	$(DLOPEN_LIBS) \
-	-lm
 
 nodist_EXTRA_libvulkan_intel_la_SOURCES = dummy.cpp
 libvulkan_intel_la_SOURCES = $(VULKAN_GEM_FILES)
