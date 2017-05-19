@@ -57,8 +57,21 @@ VULKAN_SOURCES = \
 	$(VULKAN_GENERATED_FILES) \
 	$(VULKAN_FILES)
 
-VULKAN_LIB_DEPS =
-
+VULKAN_LIB_DEPS = \
+	libvulkan_common.la \
+	$(top_builddir)/src/vulkan/wsi/libvulkan_wsi.la \
+	$(top_builddir)/src/amd/common/libamd_common.la \
+	$(top_builddir)/src/amd/addrlib/libamdgpu_addrlib.la \
+	$(top_builddir)/src/compiler/nir/libnir.la \
+	$(top_builddir)/src/util/libmesautil.la \
+	$(LLVM_LIBS) \
+	$(LIBELF_LIBS) \
+	$(PTHREAD_LIBS) \
+	$(AMDGPU_LIBS) \
+	$(LIBDRM_LIBS) \
+	$(PTHREAD_LIBS) \
+	$(DLOPEN_LIBS) \
+	-lm
 
 if HAVE_PLATFORM_X11
 AM_CPPFLAGS += \
@@ -89,22 +102,6 @@ endif
 
 noinst_LTLIBRARIES = libvulkan_common.la
 libvulkan_common_la_SOURCES = $(VULKAN_SOURCES)
-
-VULKAN_LIB_DEPS += \
-	libvulkan_common.la \
-	$(top_builddir)/src/vulkan/wsi/libvulkan_wsi.la \
-	$(top_builddir)/src/amd/common/libamd_common.la \
-	$(top_builddir)/src/amd/addrlib/libamdgpu_addrlib.la \
-	$(top_builddir)/src/compiler/nir/libnir.la \
-	$(top_builddir)/src/util/libmesautil.la \
-	$(LLVM_LIBS) \
-	$(LIBELF_LIBS) \
-	$(PTHREAD_LIBS) \
-	$(AMDGPU_LIBS) \
-	$(LIBDRM_LIBS) \
-	$(PTHREAD_LIBS) \
-	$(DLOPEN_LIBS) \
-	-lm
 
 nodist_EXTRA_libvulkan_radeon_la_SOURCES = dummy.cpp
 libvulkan_radeon_la_SOURCES = $(VULKAN_GEM_FILES)
