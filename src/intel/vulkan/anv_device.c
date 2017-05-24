@@ -408,6 +408,14 @@ anv_physical_device_finish(struct anv_physical_device *device)
 
 static const VkExtensionProperties global_extensions[] = {
    {
+      .extensionName = VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
+      .specVersion = 1,
+   },
+   {
+      .extensionName = VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
+      .specVersion = 1,
+   },
+   {
       .extensionName = VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
       .specVersion = 1,
    },
@@ -437,19 +445,27 @@ static const VkExtensionProperties global_extensions[] = {
       .specVersion = 6,
    },
 #endif
-   {
-      .extensionName = VK_KHX_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME,
-      .specVersion = 1,
-   },
-   {
-      .extensionName = VK_KHX_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME,
-      .specVersion = 1,
-   },
 };
 
 static const VkExtensionProperties device_extensions[] = {
    {
       .extensionName = VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,
+      .specVersion = 1,
+   },
+   {
+      .extensionName = VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME,
+      .specVersion = 1,
+   },
+   {
+      .extensionName = VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+      .specVersion = 1,
+   },
+   {
+      .extensionName = VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
+      .specVersion = 1,
+   },
+   {
+      .extensionName = VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
       .specVersion = 1,
    },
    {
@@ -475,22 +491,6 @@ static const VkExtensionProperties device_extensions[] = {
    {
       .extensionName = VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       .specVersion = 68,
-   },
-   {
-      .extensionName = VK_KHX_EXTERNAL_MEMORY_EXTENSION_NAME,
-      .specVersion = 1,
-   },
-   {
-      .extensionName = VK_KHX_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
-      .specVersion = 1,
-   },
-   {
-      .extensionName = VK_KHX_EXTERNAL_SEMAPHORE_EXTENSION_NAME,
-      .specVersion = 1,
-   },
-   {
-      .extensionName = VK_KHX_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
-      .specVersion = 1,
    },
    {
       .extensionName = VK_KHX_MULTIVIEW_EXTENSION_NAME,
@@ -918,9 +918,9 @@ void anv_GetPhysicalDeviceProperties2KHR(
          break;
       }
 
-      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHX: {
-         VkPhysicalDeviceIDPropertiesKHX *id_props =
-            (VkPhysicalDeviceIDPropertiesKHX *)ext;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES_KHR: {
+         VkPhysicalDeviceIDPropertiesKHR *id_props =
+            (VkPhysicalDeviceIDPropertiesKHR *)ext;
          memcpy(id_props->deviceUUID, pdevice->device_uuid, VK_UUID_SIZE);
          memcpy(id_props->driverUUID, pdevice->driver_uuid, VK_UUID_SIZE);
          /* The LUID is for Windows. */
@@ -1571,8 +1571,8 @@ VkResult anv_AllocateMemory(
    mem->map = NULL;
    mem->map_size = 0;
 
-   const VkImportMemoryFdInfoKHX *fd_info =
-      vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_FD_INFO_KHX);
+   const VkImportMemoryFdInfoKHR *fd_info =
+      vk_find_struct_const(pAllocateInfo->pNext, IMPORT_MEMORY_FD_INFO_KHR);
 
    /* The Vulkan spec permits handleType to be 0, in which case the struct is
     * ignored.
@@ -1582,7 +1582,7 @@ VkResult anv_AllocateMemory(
        * just a GEM buffer.
        */
       assert(fd_info->handleType ==
-             VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHX);
+             VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR);
 
       result = anv_bo_cache_import(device, &device->bo_cache,
                                    fd_info->fd, pAllocateInfo->allocationSize,
@@ -1614,28 +1614,28 @@ VkResult anv_AllocateMemory(
    return result;
 }
 
-VkResult anv_GetMemoryFdKHX(
+VkResult anv_GetMemoryFdKHR(
     VkDevice                                    device_h,
-    const VkMemoryGetFdInfoKHX*                 pGetFdInfo,
+    const VkMemoryGetFdInfoKHR*                 pGetFdInfo,
     int*                                        pFd)
 {
    ANV_FROM_HANDLE(anv_device, dev, device_h);
    ANV_FROM_HANDLE(anv_device_memory, mem, pGetFdInfo->memory);
 
-   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHX);
+   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR);
 
    /* We support only one handle type. */
    assert(pGetFdInfo->handleType ==
-          VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHX);
+          VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHR);
 
    return anv_bo_cache_export(dev, &dev->bo_cache, mem->bo, pFd);
 }
 
-VkResult anv_GetMemoryFdPropertiesKHX(
+VkResult anv_GetMemoryFdPropertiesKHR(
     VkDevice                                    device_h,
-    VkExternalMemoryHandleTypeFlagBitsKHX       handleType,
+    VkExternalMemoryHandleTypeFlagBitsKHR       handleType,
     int                                         fd,
-    VkMemoryFdPropertiesKHX*                    pMemoryFdProperties)
+    VkMemoryFdPropertiesKHR*                    pMemoryFdProperties)
 {
    /* The valid usage section for this function says:
     *
@@ -1643,7 +1643,7 @@ VkResult anv_GetMemoryFdPropertiesKHX(
     *
     * Since we only handle opaque handles for now, there are no FD properties.
     */
-   return VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX;
+   return VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR;
 }
 
 void anv_FreeMemory(

@@ -528,9 +528,9 @@ VkResult anv_CreateSemaphore(
    if (semaphore == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   const VkExportSemaphoreCreateInfoKHX *export =
-      vk_find_struct_const(pCreateInfo->pNext, EXPORT_SEMAPHORE_CREATE_INFO_KHX);
-    VkExternalSemaphoreHandleTypeFlagsKHX handleTypes =
+   const VkExportSemaphoreCreateInfoKHR *export =
+      vk_find_struct_const(pCreateInfo->pNext, EXPORT_SEMAPHORE_CREATE_INFO_KHR);
+    VkExternalSemaphoreHandleTypeFlagsKHR handleTypes =
       export ? export->handleTypes : 0;
 
    if (handleTypes == 0) {
@@ -539,8 +539,8 @@ VkResult anv_CreateSemaphore(
        * queue, a dummy no-op semaphore is a perfectly valid implementation.
        */
       semaphore->permanent.type = ANV_SEMAPHORE_TYPE_DUMMY;
-   } else if (handleTypes & VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHX) {
-      assert(handleTypes == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHX);
+   } else if (handleTypes & VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHR) {
+      assert(handleTypes == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHR);
 
       semaphore->permanent.type = ANV_SEMAPHORE_TYPE_BO;
       VkResult result = anv_bo_cache_alloc(device, &device->bo_cache,
@@ -557,7 +557,7 @@ VkResult anv_CreateSemaphore(
    } else {
       assert(!"Unknown handle type");
       vk_free2(&device->alloc, pAllocator, semaphore);
-      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX);
+      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR);
    }
 
    semaphore->temporary.type = ANV_SEMAPHORE_TYPE_NONE;
@@ -602,20 +602,20 @@ void anv_DestroySemaphore(
    vk_free2(&device->alloc, pAllocator, semaphore);
 }
 
-void anv_GetPhysicalDeviceExternalSemaphorePropertiesKHX(
+void anv_GetPhysicalDeviceExternalSemaphorePropertiesKHR(
     VkPhysicalDevice                            physicalDevice,
-    const VkPhysicalDeviceExternalSemaphoreInfoKHX* pExternalSemaphoreInfo,
-    VkExternalSemaphorePropertiesKHX*           pExternalSemaphoreProperties)
+    const VkPhysicalDeviceExternalSemaphoreInfoKHR* pExternalSemaphoreInfo,
+    VkExternalSemaphorePropertiesKHR*           pExternalSemaphoreProperties)
 {
    switch (pExternalSemaphoreInfo->handleType) {
-   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHX:
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHR:
       pExternalSemaphoreProperties->exportFromImportedHandleTypes =
-         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHX;
+         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
       pExternalSemaphoreProperties->compatibleHandleTypes =
-         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHX;
+         VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHR;
       pExternalSemaphoreProperties->externalSemaphoreFeatures =
-         VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT_KHX |
-         VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT_KHX;
+         VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT_KHR |
+         VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT_KHR;
       break;
 
    default:
@@ -625,15 +625,15 @@ void anv_GetPhysicalDeviceExternalSemaphorePropertiesKHX(
    }
 }
 
-VkResult anv_ImportSemaphoreFdKHX(
+VkResult anv_ImportSemaphoreFdKHR(
     VkDevice                                    _device,
-    const VkImportSemaphoreFdInfoKHX*           pImportSemaphoreFdInfo)
+    const VkImportSemaphoreFdInfoKHR*           pImportSemaphoreFdInfo)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_semaphore, semaphore, pImportSemaphoreFdInfo->semaphore);
 
    switch (pImportSemaphoreFdInfo->handleType) {
-   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHX: {
+   case VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT_KHR: {
       struct anv_bo *bo;
       VkResult result = anv_bo_cache_import(device, &device->bo_cache,
                                             pImportSemaphoreFdInfo->fd, 4096,
@@ -655,19 +655,19 @@ VkResult anv_ImportSemaphoreFdKHX(
    }
 
    default:
-      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX);
+      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR);
    }
 }
 
-VkResult anv_GetSemaphoreFdKHX(
+VkResult anv_GetSemaphoreFdKHR(
     VkDevice                                    _device,
-    const VkSemaphoreGetFdInfoKHX*              pGetFdInfo,
+    const VkSemaphoreGetFdInfoKHR*              pGetFdInfo,
     int*                                        pFd)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
    ANV_FROM_HANDLE(anv_semaphore, semaphore, pGetFdInfo->semaphore);
 
-   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHX);
+   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR);
 
    switch (semaphore->permanent.type) {
    case ANV_SEMAPHORE_TYPE_BO:
@@ -675,7 +675,7 @@ VkResult anv_GetSemaphoreFdKHX(
                                  semaphore->permanent.bo, pFd);
 
    default:
-      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX);
+      return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR);
    }
 
    return VK_SUCCESS;
