@@ -1616,15 +1616,17 @@ VkResult anv_AllocateMemory(
 
 VkResult anv_GetMemoryFdKHX(
     VkDevice                                    device_h,
-    VkDeviceMemory                              memory_h,
-    VkExternalMemoryHandleTypeFlagBitsKHX       handleType,
+    const VkMemoryGetFdInfoKHX*                 pGetFdInfo,
     int*                                        pFd)
 {
    ANV_FROM_HANDLE(anv_device, dev, device_h);
-   ANV_FROM_HANDLE(anv_device_memory, mem, memory_h);
+   ANV_FROM_HANDLE(anv_device_memory, mem, pGetFdInfo->memory);
+
+   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHX);
 
    /* We support only one handle type. */
-   assert(handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHX);
+   assert(pGetFdInfo->handleType ==
+          VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT_KHX);
 
    return anv_bo_cache_export(dev, &dev->bo_cache, mem->bo, pFd);
 }

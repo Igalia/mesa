@@ -661,12 +661,13 @@ VkResult anv_ImportSemaphoreFdKHX(
 
 VkResult anv_GetSemaphoreFdKHX(
     VkDevice                                    _device,
-    VkSemaphore                                 _semaphore,
-    VkExternalSemaphoreHandleTypeFlagBitsKHX    handleType,
+    const VkSemaphoreGetFdInfoKHX*              pGetFdInfo,
     int*                                        pFd)
 {
    ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_semaphore, semaphore, _semaphore);
+   ANV_FROM_HANDLE(anv_semaphore, semaphore, pGetFdInfo->semaphore);
+
+   assert(pGetFdInfo->sType == VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHX);
 
    switch (semaphore->permanent.type) {
    case ANV_SEMAPHORE_TYPE_BO:
