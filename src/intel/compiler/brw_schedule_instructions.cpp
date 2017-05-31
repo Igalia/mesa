@@ -1264,6 +1264,19 @@ vec4_instruction_scheduler::calculate_deps()
       if (is_scheduling_barrier(inst))
          add_barrier_deps(n);
 
+      /* On IVB, scratch reads are emitted when doing unspilling;
+       * with only one opcode we will emit several messages to read
+       * the contents of the whole dvec4 for both vertices, although
+       * child instructions just read part one vertex data.
+       * Then, we set a barrier dependency to be sure that it is executed
+       * after the spilling command and to avoid the scheduler
+       * to relocate child operations before it.
+       */
+      if (v->devinfo->gen == 7 && !v->devinfo->is_haswell &&
+          inst->opcode == SHADER_OPCODE_GEN4_SCRATCH_READ &&
+          type_sz(inst->dst.type) == 8)
+         add_barrier_deps(n);
+
       /* read-after-write deps. */
       for (int i = 0; i < 3; i++) {
          if (inst->src[i].file == VGRF) {
