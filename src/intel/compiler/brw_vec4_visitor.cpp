@@ -254,11 +254,13 @@ vec4_instruction *
 vec4_visitor::SCRATCH_READ(const dst_reg &dst, const src_reg &index)
 {
    vec4_instruction *inst;
+   bool is_df_ivb = devinfo->gen == 7 && !devinfo->is_haswell &&
+      type_sz(dst.type) == 8;
 
    inst = new(mem_ctx) vec4_instruction(SHADER_OPCODE_GEN4_SCRATCH_READ,
 					dst, index);
    inst->base_mrf = FIRST_SPILL_MRF(devinfo->gen) + 1;
-   inst->mlen = 2;
+   inst->mlen = is_df_ivb ? 1 : 2;
 
    return inst;
 }
@@ -286,11 +288,13 @@ vec4_visitor::SCRATCH_WRITE(const dst_reg &dst, const src_reg &src,
                             const src_reg &index)
 {
    vec4_instruction *inst;
+   bool is_df_ivb = devinfo->gen == 7 && !devinfo->is_haswell &&
+      type_sz(src.type) == 8;
 
    inst = new(mem_ctx) vec4_instruction(SHADER_OPCODE_GEN4_SCRATCH_WRITE,
 					dst, src, index);
    inst->base_mrf = FIRST_SPILL_MRF(devinfo->gen);
-   inst->mlen = 3;
+   inst->mlen = is_df_ivb ? 2 : 3;
 
    return inst;
 }
@@ -1527,8 +1531,8 @@ vec4_visitor::emit_1grf_df_ivb_scratch_read(bblock_t *block,
  */
 void
 vec4_visitor::emit_scratch_read(bblock_t *block, vec4_instruction *inst,
-				dst_reg temp, src_reg orig_src,
-				int base_offset)
+                                dst_reg temp, src_reg orig_src,
+                                int base_offset)
 {
    assert(orig_src.offset % REG_SIZE == 0);
    int reg_offset = base_offset + orig_src.offset / REG_SIZE;
@@ -1537,6 +1541,19 @@ vec4_visitor::emit_scratch_read(bblock_t *block, vec4_instruction *inst,
 
    if (type_sz(orig_src.type) < 8) {
       emit_before(block, inst, SCRATCH_READ(temp, index));
+   } else if (devinfo->gen == 7 && !devinfo->is_haswell &&
+              type_sz(temp.type) == 8) {
+      /* Set the offset to the base offset because we address the base GRF of
+       * the DF. We will take into account the second GRF in the scratch write emission.
+       */
+      if (inst->group == 4)
+         reg_offset = base_offset;
+      temp.offset = 0;
+      vec4_instruction *read = SCRATCH_READ(temp, index);
+      read->exec_size = 4;
+      read->offset = reg_offset;
+      read->size_written = 2;
+      emit_before(block, inst, read);
    } else {
       dst_reg shuffled = dst_reg(this, glsl_type::dvec4_type);
       dst_reg shuffled_float = retype(shuffled, BRW_REGISTER_TYPE_F);
@@ -1574,9 +1591,19 @@ vec4_visitor::emit_scratch_write(bblock_t *block, vec4_instruction *inst,
    bool is_64bit = type_sz(inst->dst.type) == 8;
    const glsl_type *alloc_type =
       is_64bit ? glsl_type::dvec4_type : glsl_type::vec4_type;
-   const src_reg temp = swizzle(retype(src_reg(this, alloc_type),
-                                       inst->dst.type),
-                                brw_swizzle_for_mask(inst->dst.writemask));
+   src_reg temp;
+
+   if (is_64bit && devinfo->gen == 7 && !devinfo->is_haswell)
+      /* We use align1 scratch message for IVB DFs and as we don't
+       * need to take into account the writemask, then we can save
+       * an allocation.
+       */
+      temp = swizzle(src_reg(inst->dst),
+                     brw_swizzle_for_mask(inst->dst.writemask));
+   else
+      temp = swizzle(retype(src_reg(this, alloc_type),
+                            inst->dst.type),
+                     brw_swizzle_for_mask(inst->dst.writemask));
 
    if (!is_64bit) {
       dst_reg dst = dst_reg(brw_writemask(brw_vec8_grf(0, 0),
@@ -1587,6 +1614,43 @@ vec4_visitor::emit_scratch_write(bblock_t *block, vec4_instruction *inst,
       write->ir = inst->ir;
       write->annotation = inst->annotation;
       inst->insert_after(block, write);
+      inst->dst.offset %= REG_SIZE;
+   } else if (is_64bit && devinfo->gen == 7 && !devinfo->is_haswell) {
+      /* Set the offset to the base offset because we address the base GRF of
+       * the DF. We will take into account the second GRF in the scratch write emission.
+       */
+      if (inst->group == 4)
+         reg_offset = base_offset;
+
+      dst_reg dst = dst_reg(brw_writemask(brw_vec8_grf(0, 0),
+                                          inst->dst.writemask));
+
+      /* As scratch write/read for this case is implemented with align1
+       * instructions, we are going to unspill existing content, overwrite it
+       * taking into account the writemask of the original instruction and
+       * spill it again.
+       */
+
+      src_reg saved_value = src_reg(this, glsl_type::dvec4_type);
+      saved_value.swizzle = brw_swizzle_for_mask(inst->dst.writemask);
+      vec4_instruction *mov = MOV(dst_reg(saved_value), temp);
+      mov->group = inst->group;
+      mov->exec_size = inst->exec_size;
+      mov->size_written = 1;
+      inst->insert_after(block, mov);
+      emit_1grf_df_ivb_scratch_read(block, mov, dst_reg(saved_value),
+                                    temp, base_offset, inst->group == 0);
+
+      vec4_instruction *write = SCRATCH_WRITE(dst, saved_value, index);
+      if (inst->opcode != BRW_OPCODE_SEL)
+         write->predicate = inst->predicate;
+      write->exec_size = inst->exec_size;
+      write->group = inst->group;
+      write->offset = reg_offset;
+
+      write->ir = inst->ir;
+      write->annotation = inst->annotation;
+      mov->insert_after(block, write);
    } else {
       dst_reg shuffled = dst_reg(this, alloc_type);
       vec4_instruction *last =
@@ -1627,11 +1691,11 @@ vec4_visitor::emit_scratch_write(bblock_t *block, vec4_instruction *inst,
          write->annotation = inst->annotation;
          last->insert_after(block, write);
       }
+      inst->dst.offset %= REG_SIZE;
    }
 
    inst->dst.file = temp.file;
    inst->dst.nr = temp.nr;
-   inst->dst.offset %= REG_SIZE;
    inst->dst.reladdr = NULL;
 }
 

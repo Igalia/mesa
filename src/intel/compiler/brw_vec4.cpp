@@ -343,6 +343,9 @@ vec4_visitor::implied_mrf_writes(vec4_instruction *inst)
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
       return 2;
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
+      if (devinfo->gen == 7 && !devinfo->is_haswell &&
+          type_sz(inst->dst.type) == 8)
+         return 2;
       return 3;
    case GS_OPCODE_URB_WRITE:
    case GS_OPCODE_URB_WRITE_ALLOCATE:
