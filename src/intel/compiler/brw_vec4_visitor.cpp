@@ -1478,8 +1478,8 @@ vec4_visitor::get_scratch_offset(bblock_t *block, vec4_instruction *inst,
  */
 void
 vec4_visitor::emit_scratch_read(bblock_t *block, vec4_instruction *inst,
-				dst_reg temp, src_reg orig_src,
-				int base_offset)
+                                dst_reg temp, src_reg orig_src,
+                                int base_offset, bool resolve_reladdr)
 {
    assert(orig_src.offset % REG_SIZE == 0);
    int reg_offset = base_offset + orig_src.offset / REG_SIZE;
@@ -1488,7 +1488,15 @@ vec4_visitor::emit_scratch_read(bblock_t *block, vec4_instruction *inst,
 
    if (type_sz(orig_src.type) < 8) {
       emit_before(block, inst, SCRATCH_READ(temp, index));
-   } else {
+      return;
+   }
+
+   /* The emission of DF scratch reads to resolve reladdrs is done before
+    * executing DF scalarization and lower simd width passes. As the
+    * new DF scratch read code assumes that both passes were executed before,
+    * we keep old code with data shuffling.
+    */
+   if (resolve_reladdr) {
       dst_reg shuffled = dst_reg(this, glsl_type::dvec4_type);
       dst_reg shuffled_float = retype(shuffled, BRW_REGISTER_TYPE_F);
       emit_before(block, inst, SCRATCH_READ(shuffled_float, index));
@@ -1497,7 +1505,30 @@ vec4_visitor::emit_scratch_read(bblock_t *block, vec4_instruction *inst,
          SCRATCH_READ(byte_offset(shuffled_float, REG_SIZE), index);
       emit_before(block, inst, last_read);
       shuffle_64bit_data(temp, src_reg(shuffled), false, block, last_read);
+      return;
    }
+
+   /* We can call this function when unspilling a partial DF read,
+    * however we unspill both GRFs in order to have the data together.
+    * Because of that, we substract the offset part of the second GRF.
+    */
+   if (inst->exec_size == 4 && inst->group == 4)
+      reg_offset = base_offset;
+
+   vec4_instruction *read = SCRATCH_READ(temp, index);
+   read->force_writemask_all = true;
+   read->exec_size = inst->exec_size;
+   read->size_written = REG_SIZE;
+
+   emit_before(block, inst, read);
+   index = get_scratch_offset(block, inst, orig_src.reladdr, reg_offset + 1);
+   vec4_instruction *last_read =
+      SCRATCH_READ(byte_offset(temp, REG_SIZE), index);
+   last_read->force_writemask_all = true;
+   last_read->exec_size = inst->exec_size;
+   last_read->size_written = REG_SIZE;
+
+   emit_before(block, inst, last_read);
 }
 
 /**
@@ -1508,7 +1539,7 @@ vec4_visitor::emit_scratch_read(bblock_t *block, vec4_instruction *inst,
  */
 void
 vec4_visitor::emit_scratch_write(bblock_t *block, vec4_instruction *inst,
-                                 int base_offset)
+                                 int base_offset, bool resolve_reladdr)
 {
    assert(inst->dst.offset % REG_SIZE == 0);
    int reg_offset = base_offset + inst->dst.offset / REG_SIZE;
@@ -1525,20 +1556,77 @@ vec4_visitor::emit_scratch_write(bblock_t *block, vec4_instruction *inst,
    bool is_64bit = type_sz(inst->dst.type) == 8;
    const glsl_type *alloc_type =
       is_64bit ? glsl_type::dvec4_type : glsl_type::vec4_type;
-   const src_reg temp = swizzle(retype(src_reg(this, alloc_type),
-                                       inst->dst.type),
-                                brw_swizzle_for_mask(inst->dst.writemask));
+   src_reg temp;
+
+   temp = swizzle(retype(src_reg(this, alloc_type),
+                         inst->dst.type),
+                  brw_swizzle_for_mask(inst->dst.writemask));
+
+   dst_reg dst = dst_reg(brw_writemask(brw_vec8_grf(0, 0),
+                                       inst->dst.writemask));
 
    if (!is_64bit) {
-      dst_reg dst = dst_reg(brw_writemask(brw_vec8_grf(0, 0),
-				          inst->dst.writemask));
       vec4_instruction *write = SCRATCH_WRITE(dst, temp, index);
       if (inst->opcode != BRW_OPCODE_SEL)
          write->predicate = inst->predicate;
       write->ir = inst->ir;
       write->annotation = inst->annotation;
       inst->insert_after(block, write);
-   } else {
+   }
+
+   if (is_64bit && !resolve_reladdr) {
+      /* As the scratch write for this case is implemented with align1
+       * instructions, we are going to: unspill existing content, overwrite it
+       * taking into account the writemask of the original instruction and
+       * spill it again.
+       */
+      src_reg saved_value = src_reg(this, glsl_type::dvec4_type);
+      dst_reg write_value = dst_reg(saved_value);
+      write_value.writemask = inst->dst.writemask;
+      /* We use write_value to overwrite the unspilled data corresponding to
+       * one GRF in case of a partial DF write. So, if we do a partial
+       * DF write for the second vertex, we need to apply an offset.
+       */
+      if (inst->group == 4)
+         write_value = byte_offset(write_value, REG_SIZE);
+      /* Overwrite the data in the corresponding place. */
+      vec4_instruction *mov = MOV(write_value, temp);
+      mov->group = inst->group;
+      mov->exec_size = inst->exec_size;
+      mov->size_written = type_sz(temp.type) * inst->exec_size;
+
+      inst->insert_after(block, mov);
+      /* Read previously spilled data and have it in 'saved_value'.
+       * emit_scratch_read() emits the instructions before 'mov', so
+       * emit_scratch_read() is called after it.
+       */
+      emit_scratch_read(block, mov, dst_reg(saved_value),
+                        temp, base_offset, false);
+
+      /* In case of a partial DF write, we are going to spill only on exec_size
+       * units of data, so we use 'write_value' as source for it. In case of
+       * full DF write, 'write_value' doesn't have applied any offset and works
+       * too.
+       */
+      vec4_instruction *write = SCRATCH_WRITE(dst, src_reg(write_value), index);
+      write->mlen = 2;
+      if (inst->opcode != BRW_OPCODE_SEL)
+         write->predicate = inst->predicate;
+      write->exec_size = inst->exec_size;
+      write->group = inst->group;
+      write->offset = base_offset;
+
+      write->ir = inst->ir;
+      write->annotation = inst->annotation;
+      mov->insert_after(block, write);
+   }
+
+   /* The emission of DF scratch writes to resolve reladdrs is done before
+    * executing DF scalarization and lower simd width passes. As the
+    * new DF scratch write code assumes that both passes were executed before,
+    * we keep old code with data shuffling.
+    */
+   if (is_64bit && resolve_reladdr) {
       dst_reg shuffled = dst_reg(this, alloc_type);
       vec4_instruction *last =
          shuffle_64bit_data(shuffled, temp, true, block, inst);
@@ -1611,7 +1699,7 @@ vec4_visitor::emit_resolve_reladdr(int scratch_loc[], bblock_t *block,
    if (src.file == VGRF && scratch_loc[src.nr] != -1) {
       dst_reg temp = dst_reg(this, type_sz(src.type) == 8 ?
          glsl_type::dvec4_type : glsl_type::vec4_type);
-      emit_scratch_read(block, inst, temp, src, scratch_loc[src.nr]);
+      emit_scratch_read(block, inst, temp, src, scratch_loc[src.nr], true);
       src.nr = temp.nr;
       src.offset %= REG_SIZE;
       src.reladdr = NULL;
@@ -1686,7 +1774,7 @@ vec4_visitor::move_grf_array_access_to_scratch()
        * accesses for dst we can safely do the scratch write for dst itself
        */
       if (inst->dst.file == VGRF && scratch_loc[inst->dst.nr] != -1)
-         emit_scratch_write(block, inst, scratch_loc[inst->dst.nr]);
+         emit_scratch_write(block, inst, scratch_loc[inst->dst.nr], true);
 
       /* Now handle scratch access on any src. In this case, since inst->src[i]
        * already is a src_reg, we can just call emit_resolve_reladdr with
