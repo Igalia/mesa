@@ -1192,6 +1192,65 @@ generate_scratch_write(struct brw_codegen *p,
    struct brw_reg header = brw_vec8_grf(0, 0);
    bool write_commit;
 
+   if (devinfo->gen >= 7 && type_sz(src.type) == 8) {
+      bool partial_df = inst->exec_size < 8;
+      brw_set_default_access_mode(p, BRW_ALIGN_1);
+
+      if (!partial_df || inst->group == 0) {
+         for (int i = 0; i < 2; i++) {
+            brw_set_default_exec_size(p, BRW_EXECUTE_4);
+            brw_set_default_mask_control(p, true);
+            struct brw_reg temp =
+               retype(suboffset(src, i * 16 / type_sz(src.type)), BRW_REGISTER_TYPE_UD);
+            temp = stride(temp, 4, 4, 1);
+
+            brw_MOV(p, brw_uvec_mrf(4, inst->base_mrf + 1, 0),
+                    temp);
+            brw_set_default_mask_control(p, inst->force_writemask_all);
+            brw_set_default_exec_size(p, BRW_EXECUTE_8);
+
+            /* Offset in OWORDs */
+            brw_oword_block_write_scratch(p, brw_message_reg(inst->base_mrf),
+                                          1, 32*inst->offset + 16*i);
+         }
+      }
+
+      if (!partial_df) {
+         /* HSW can do full DF scratch writes, however we split the writes in
+          * four 1-OWord messages: two for the first GRF, two for the second.
+          *
+          * In order to emit properly the 1-OWord messages for the second GRF,
+          * we need to set the default group (which sets the nibble control)
+          * for them. We also need to fix source regiter to pick the data.
+          */
+         src = suboffset(src, 32 / type_sz(src.type));
+         brw_set_default_group(p, 4);
+      }
+
+      if (!partial_df || inst->group != 0) {
+         for (int i = 0; i < 2; i++) {
+            brw_set_default_exec_size(p, BRW_EXECUTE_4);
+            brw_set_default_mask_control(p, true);
+            struct brw_reg temp =
+               retype(suboffset(src, i * 16 / type_sz(src.type)), BRW_REGISTER_TYPE_UD);
+            temp = stride(temp, 4, 4, 1);
+
+            brw_MOV(p, brw_uvec_mrf(4, inst->base_mrf + 1, 4),
+                    temp);
+
+            brw_set_default_mask_control(p, inst->force_writemask_all);
+            brw_set_default_exec_size(p, BRW_EXECUTE_8);
+
+            /* Offset in OWORDs */
+            brw_oword_block_write_scratch(p, brw_message_reg(inst->base_mrf),
+                                          1, 32*inst->offset + 16*i + 32);
+         }
+      }
+      brw_set_default_exec_size(p, cvt(inst->exec_size) - 1);
+      brw_set_default_access_mode(p, BRW_ALIGN_16);
+      return;
+   }
+
    /* If the instruction is predicated, we'll predicate the send, not
     * the header setup.
     */
