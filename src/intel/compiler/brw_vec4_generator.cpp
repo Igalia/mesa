@@ -1133,6 +1133,73 @@ generate_unpack_flags(struct brw_codegen *p,
 }
 
 static void
+generate_scratch_read_1oword(struct brw_codegen *p,
+                             vec4_instruction *inst,
+                             struct brw_reg dst,
+                             struct brw_reg index,
+                             bool low)
+{
+   const struct gen_device_info *devinfo = p->devinfo;
+
+   assert(devinfo->gen >= 7 && inst->exec_size == 4 &&
+          type_sz(dst.type) == 8);
+   brw_set_default_access_mode(p, BRW_ALIGN_1);
+   brw_set_default_exec_size(p, BRW_EXECUTE_8);
+
+   if (!low) {
+      /* Read second GRF (offset in OWORDs) */
+      for (int i = 0; i < 2; i++) {
+         brw_oword_block_read_scratch(p,
+                                      dst,
+                                      brw_message_reg(inst->base_mrf),
+                                      1, 32*inst->offset + 16*i + 32, false, true);
+         if (i == 0) {
+            /* The scratch read message writes the 128 MSB (OWORD1 HIGH) of
+             * the destination. We need to move them to dst.0 so we can
+             * read the pending 128 bits without using a temporary register.
+             */
+            brw_set_default_exec_size(p, BRW_EXECUTE_4);
+            struct brw_reg tmp =
+               stride(suboffset(dst, 16 / type_sz(dst.type)),
+                      4, 4, 1);
+
+            brw_set_default_mask_control(p, true);
+            brw_MOV(p, dst, tmp);
+            brw_set_default_mask_control(p, inst->force_writemask_all);
+            brw_set_default_exec_size(p, BRW_EXECUTE_8);
+         }
+      }
+   } else {
+      /* Read first GRF (offset in OWORDs) */
+      for (int i = 1; i >= 0; i--) {
+         brw_oword_block_read_scratch(p,
+                                      dst,
+                                      brw_message_reg(inst->base_mrf),
+                                      1, 32*inst->offset + 16*i, true, false);
+
+         if (i == 1) {
+            /* The scratch read message writes the 128 LSB (OWORD1 LOW) of
+             * the destination. We need to move them to dst.4 so we can
+             * read the pending 128 bits without using a temporary register.
+             */
+            struct brw_reg tmp = stride(dst, 4, 4, 1);
+            brw_set_default_exec_size(p, BRW_EXECUTE_4);
+            brw_set_default_mask_control(p, true);
+            brw_MOV(p,
+                    suboffset(dst, 16 / type_sz(dst.type)),
+                    tmp);
+            brw_set_default_mask_control(p, inst->force_writemask_all);
+            brw_set_default_exec_size(p, BRW_EXECUTE_8);
+         }
+      }
+   }
+
+   brw_set_default_exec_size(p, cvt(inst->exec_size) - 1);
+   brw_set_default_access_mode(p, BRW_ALIGN_16);
+   return;
+}
+
+static void
 generate_scratch_read(struct brw_codegen *p,
                       vec4_instruction *inst,
                       struct brw_reg dst,
@@ -1142,6 +1209,16 @@ generate_scratch_read(struct brw_codegen *p,
    struct brw_reg header = brw_vec8_grf(0, 0);
 
    gen6_resolve_implied_move(p, &header, inst->base_mrf);
+
+   if (devinfo->gen >= 7 && inst->exec_size == 4 &&
+       type_sz(dst.type) == 8) {
+      /* First read second GRF (offset in OWORDs) */
+      struct brw_reg dst_high = suboffset(dst, 32 / type_sz(dst.type));
+      generate_scratch_read_1oword(p, inst, dst_high, index, false);
+      /* Now read first GRF (data from first vertex) */
+      generate_scratch_read_1oword(p, inst, dst, index, true);
+      return;
+   }
 
    generate_oword_dual_block_offsets(p, brw_message_reg(inst->base_mrf + 1),
 				     index);
@@ -1191,6 +1268,57 @@ generate_scratch_write(struct brw_codegen *p,
        BRW_DATAPORT_READ_TARGET_RENDER_CACHE);
    struct brw_reg header = brw_vec8_grf(0, 0);
    bool write_commit;
+
+   if (devinfo->gen >= 7 && inst->exec_size == 4 &&
+       type_sz(src.type) == 8) {
+      brw_set_default_access_mode(p, BRW_ALIGN_1);
+
+      /* The messages only works with group == 0, we use the group to know which
+       * message emit (1-OWORD LOW or 1-OWORD HIGH).
+       */
+      brw_set_default_group(p, 0);
+
+      if (inst->group == 0) {
+         for (int i = 0; i < 2; i++) {
+            brw_set_default_exec_size(p, BRW_EXECUTE_4);
+            brw_set_default_mask_control(p, true);
+            struct brw_reg temp =
+               retype(suboffset(src, i * 16 / type_sz(src.type)), BRW_REGISTER_TYPE_UD);
+            temp = stride(temp, 4, 4, 1);
+
+            brw_MOV(p, brw_uvec_mrf(4, inst->base_mrf + 1, 0),
+                    temp);
+            brw_set_default_mask_control(p, inst->force_writemask_all);
+            brw_set_default_exec_size(p, BRW_EXECUTE_8);
+
+            /* Offset in OWORDs */
+            brw_oword_block_write_scratch(p, brw_message_reg(inst->base_mrf),
+                                          1, 32*inst->offset + 16*i, true, false);
+         }
+      } else {
+         for (int i = 0; i < 2; i++) {
+            brw_set_default_exec_size(p, BRW_EXECUTE_4);
+
+            brw_set_default_mask_control(p, true);
+            struct brw_reg temp =
+               retype(suboffset(src, i * 16 / type_sz(src.type)), BRW_REGISTER_TYPE_UD);
+            temp = stride(temp, 4, 4, 1);
+
+            brw_MOV(p, brw_uvec_mrf(4, inst->base_mrf + 1, 4),
+                    temp);
+
+            brw_set_default_mask_control(p, inst->force_writemask_all);
+            brw_set_default_exec_size(p, BRW_EXECUTE_8);
+
+            /* Offset in OWORDs */
+            brw_oword_block_write_scratch(p, brw_message_reg(inst->base_mrf),
+                                          1, 32*inst->offset + 16*i + 32, false, true);
+         }
+      }
+      brw_set_default_exec_size(p, cvt(inst->exec_size) - 1);
+      brw_set_default_access_mode(p, BRW_ALIGN_16);
+      return;
+   }
 
    /* If the instruction is predicated, we'll predicate the send, not
     * the header setup.
@@ -1780,6 +1908,14 @@ generate_code(struct brw_codegen *p,
          generate_vs_urb_write(p, inst);
          break;
 
+      case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_LOW:
+         generate_scratch_read_1oword(p, inst, dst, src[0], true);
+         fill_count++;
+         break;
+      case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_HIGH:
+         generate_scratch_read_1oword(p, inst, dst, src[0], false);
+         fill_count++;
+         break;
       case SHADER_OPCODE_GEN4_SCRATCH_READ:
          generate_scratch_read(p, inst, dst, src[0]);
          fill_count++;

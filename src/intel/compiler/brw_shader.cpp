@@ -296,6 +296,11 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
    case FS_OPCODE_PACK:
       return "pack";
 
+
+   case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_LOW:
+      return "gen4_scratch_read_1word_low";
+   case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_HIGH:
+      return "gen4_scratch_read_1word_high";
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
       return "gen4_scratch_read";
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
