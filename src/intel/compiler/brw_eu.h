@@ -342,15 +342,19 @@ void brw_oword_block_read(struct brw_codegen *p,
 unsigned brw_scratch_surface_idx(const struct brw_codegen *p);
 
 void brw_oword_block_read_scratch(struct brw_codegen *p,
-				  struct brw_reg dest,
-				  struct brw_reg mrf,
-				  int num_regs,
-				  unsigned offset);
+                                  struct brw_reg dest,
+                                  struct brw_reg mrf,
+                                  int num_regs,
+                                  unsigned offset,
+                                  bool oword1_low,
+                                  bool oword_high);
 
 void brw_oword_block_write_scratch(struct brw_codegen *p,
-				   struct brw_reg mrf,
-				   int num_regs,
-				   unsigned offset);
+                                   struct brw_reg mrf,
+                                   int num_regs,
+                                   unsigned offset,
+                                   bool oword1_low,
+                                   bool oword1_high);
 
 void gen7_block_read_scratch(struct brw_codegen *p,
                              struct brw_reg dest,

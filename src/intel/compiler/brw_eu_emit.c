@@ -2133,9 +2133,11 @@ brw_scratch_surface_idx(const struct brw_codegen *p)
  * register spilling.
  */
 void brw_oword_block_write_scratch(struct brw_codegen *p,
-				   struct brw_reg mrf,
-				   int num_regs,
-				   unsigned offset)
+                                   struct brw_reg mrf,
+                                   int num_regs,
+                                   unsigned offset,
+                                   bool oword1_low,
+                                   bool oword1_high)
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
@@ -2180,6 +2182,14 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
       int send_commit_msg;
       struct brw_reg src_header = retype(brw_vec8_grf(0, 0),
 					 BRW_REGISTER_TYPE_UW);
+      int msg_control = BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_regs * 8);
+
+      if (num_regs == 1 && (oword1_low || oword1_high)) {
+         /* Only one of them can be true */
+         assert(oword1_low ^ oword1_high);
+         msg_control = oword1_high ?
+            BRW_DATAPORT_OWORD_BLOCK_1_OWORDHIGH : BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW;
+      }
 
       brw_inst_set_compression(devinfo, insn, false);
 
@@ -2223,7 +2233,7 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
       brw_set_dp_write_message(p,
 			       insn,
                                brw_scratch_surface_idx(p),
-			       BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_regs * 8),
+			       msg_control,
 			       msg_type,
                                target_cache,
 			       mlen,
@@ -2245,10 +2255,12 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
  */
 void
 brw_oword_block_read_scratch(struct brw_codegen *p,
-			     struct brw_reg dest,
-			     struct brw_reg mrf,
-			     int num_regs,
-			     unsigned offset)
+                             struct brw_reg dest,
+                             struct brw_reg mrf,
+                             int num_regs,
+                             unsigned offset,
+                             bool oword1_low,
+                             bool oword1_high)
 {
    const struct gen_device_info *devinfo = p->devinfo;
 
@@ -2291,6 +2303,14 @@ brw_oword_block_read_scratch(struct brw_codegen *p,
 
    {
       brw_inst *insn = next_insn(p, BRW_OPCODE_SEND);
+      int msg_control = BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_regs * 8);
+
+      if (num_regs == 1 && (oword1_low || oword1_high)) {
+         /* Only one of them can be true */
+         assert(oword1_low ^ oword1_high);
+         msg_control = oword1_high ?
+            BRW_DATAPORT_OWORD_BLOCK_1_OWORDHIGH : BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW;
+      }
 
       assert(brw_inst_pred_control(devinfo, insn) == 0);
       brw_inst_set_compression(devinfo, insn, false);
@@ -2306,7 +2326,7 @@ brw_oword_block_read_scratch(struct brw_codegen *p,
       brw_set_dp_read_message(p,
 			      insn,
                               brw_scratch_surface_idx(p),
-			      BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_regs * 8),
+			      msg_control,
 			      BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ, /* msg_type */
 			      target_cache,
 			      1, /* msg_length */
