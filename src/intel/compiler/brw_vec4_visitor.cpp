@@ -264,6 +264,24 @@ vec4_visitor::SCRATCH_READ(const dst_reg &dst, const src_reg &index)
 }
 
 vec4_instruction *
+vec4_visitor::DF_IVB_SCRATCH_READ(const dst_reg &dst,
+                                  const src_reg &index,
+                                  bool first_grf)
+{
+   vec4_instruction *inst;
+   enum opcode op = first_grf ?
+      VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_LOW :
+      VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_HIGH;
+
+   inst = new(mem_ctx) vec4_instruction(op,
+                                        dst, index);
+   inst->base_mrf = FIRST_SPILL_MRF(devinfo->gen) + 1;
+   inst->mlen = 1;
+
+   return inst;
+}
+
+vec4_instruction *
 vec4_visitor::SCRATCH_WRITE(const dst_reg &dst, const src_reg &src,
                             const src_reg &index)
 {
@@ -1468,6 +1486,37 @@ vec4_visitor::get_scratch_offset(bblock_t *block, vec4_instruction *inst,
    } else {
       return brw_imm_d(reg_offset * message_header_scale);
    }
+}
+
+/**
+ * Emits an instruction before @inst to load the value named by @orig_src
+ * from scratch space at @base_offset to @temp. This instruction only reads
+ * DF value on IVB, one GRF each time.
+ *
+ * @base_offset is measured in 32-byte units (the size of a register).
+ * @first_grf indicates if we want to read first vertex data (true) or
+ * the second (false).
+ */
+void
+vec4_visitor::emit_1grf_df_ivb_scratch_read(bblock_t *block,
+                                            vec4_instruction *inst,
+                                            dst_reg temp, src_reg orig_src,
+                                            int base_offset, bool first_grf)
+{
+   assert(orig_src.offset % REG_SIZE == 0);
+   src_reg index = get_scratch_offset(block, inst, 0, base_offset);
+
+   assert(devinfo->gen == 7 && !devinfo->is_haswell && type_sz(temp.type) == 8);
+   temp.offset = 0;
+   vec4_instruction *read = DF_IVB_SCRATCH_READ(temp, index, first_grf);
+   read->exec_size = 4;
+   /* The instruction will use group 0 but a different message depending of the
+    * vertex data to load.
+    */
+   read->group = 0;
+   read->offset = base_offset;
+   read->size_written = 1;
+   emit_before(block, inst, read);
 }
 
 /**

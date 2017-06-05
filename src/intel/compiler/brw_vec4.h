@@ -214,6 +214,9 @@ public:
                         enum brw_conditional_mod condition);
    vec4_instruction *IF(enum brw_predicate predicate);
    EMIT1(SCRATCH_READ)
+   vec4_instruction *DF_IVB_SCRATCH_READ(const dst_reg &dst, const src_reg &src0,
+                                         bool low);
+
    EMIT2(SCRATCH_WRITE)
    EMIT3(LRP)
    EMIT1(BFREV)
@@ -294,6 +297,11 @@ public:
 			  dst_reg dst,
 			  src_reg orig_src,
 			  int base_offset);
+   void emit_1grf_df_ivb_scratch_read(bblock_t *block,
+                                      vec4_instruction *inst,
+                                      dst_reg temp, src_reg orig_src,
+                                      int base_offset, bool first_grf);
+
    void emit_scratch_write(bblock_t *block, vec4_instruction *inst,
 			   int base_offset);
    void emit_pull_constant_load(bblock_t *block, vec4_instruction *inst,

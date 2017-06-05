@@ -259,6 +259,8 @@ bool
 vec4_instruction::can_do_writemask(const struct gen_device_info *devinfo)
 {
    switch (opcode) {
+   case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_LOW:
+   case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_HIGH:
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
    case VEC4_OPCODE_DOUBLE_TO_F32:
    case VEC4_OPCODE_DOUBLE_TO_D32:
@@ -335,6 +337,9 @@ vec4_visitor::implied_mrf_writes(vec4_instruction *inst)
       return 1;
    case VS_OPCODE_PULL_CONSTANT_LOAD:
       return 2;
+   case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_LOW:
+   case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_HIGH:
+      return 1;
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
       return 2;
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
@@ -2091,6 +2096,8 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
 {
    /* Do not split some instructions that require special handling */
    switch (inst->opcode) {
+   case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_LOW:
+   case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_HIGH:
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
       return inst->exec_size;
