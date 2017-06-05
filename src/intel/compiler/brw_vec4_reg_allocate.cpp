@@ -409,7 +409,9 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
                spill_costs[inst->src[i].nr] +=
                   loop_scale * spill_cost_for_type(inst->src[i].type);
                if (inst->src[i].reladdr ||
-                   inst->src[i].offset >= REG_SIZE)
+                   (type_sz(inst->src[i].type) != 8 && inst->src[i].offset % REG_SIZE != 0) ||
+                   (inst->src[i].offset >= REG_SIZE &&
+                    !(inst->src[i].offset == 32 && inst->group == 4)))
                   no_spill[inst->src[i].nr] = true;
 
                /* We don't support unspills of partial DF reads.
@@ -419,7 +421,8 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
                 * we need to shuffle into correct 64-bit data. Ensure that we
                 * are reading data for both threads.
                 */
-               if (type_sz(inst->src[i].type) == 8 && inst->exec_size != 8)
+               if (type_sz(inst->src[i].type) == 8 && inst->exec_size != 8 &&
+                   (devinfo->gen != 7 || devinfo->is_haswell || inst->exec_size != 4))
                   no_spill[inst->src[i].nr] = true;
             }
 
@@ -437,7 +440,10 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
       if (inst->dst.file == VGRF && !no_spill[inst->dst.nr]) {
          spill_costs[inst->dst.nr] +=
             loop_scale * spill_cost_for_type(inst->dst.type);
-         if (inst->dst.reladdr || inst->dst.offset >= REG_SIZE)
+         if (inst->dst.reladdr ||
+             (type_sz(inst->dst.type) != 8 && inst->dst.offset % REG_SIZE != 0) ||
+             (inst->dst.offset >= REG_SIZE &&
+              !(inst->dst.offset == 32 && inst->group == 4)))
             no_spill[inst->dst.nr] = true;
 
          /* We don't support spills of partial DF writes.
@@ -446,7 +452,8 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
           * each one writing that for both SIMD4x2 threads. Ensure that we
           * are writing data for both threads.
           */
-         if (type_sz(inst->dst.type) == 8 && inst->exec_size != 8)
+         if (type_sz(inst->dst.type) == 8 && inst->exec_size != 8 &&
+             (devinfo->gen != 7 || devinfo->is_haswell || inst->exec_size != 4))
             no_spill[inst->dst.nr] = true;
 
          /* We can't spill registers that mix 32-bit and 64-bit access (that
@@ -519,11 +526,24 @@ vec4_visitor::spill_reg(int spill_reg_nr)
 
    /* Generate spill/unspill instructions for the objects being spilled. */
    int scratch_reg = -1;
+   bool done_scratch_read = false;
    foreach_block_and_inst(block, vec4_instruction, inst, cfg) {
       for (unsigned int i = 0; i < 3; i++) {
          if (inst->src[i].file == VGRF && inst->src[i].nr == spill_reg_nr) {
+            /* On IVB, DF scratch reads are not actual partial reads but we are
+             * going to read both GRFs on the first found instruction.
+             * Because of that, we will skip scratch read of the other splitted
+             * instruction, as it can reuse the read value. We check the value of
+             * done_scratch_read to know if we need to do scratch read or not.
+             *
+             * For the rest of generations, just return true.
+             */
+            bool do_df_scratch_read = type_sz(inst->src[i].type) == 8 &&
+               (devinfo->gen != 7 || devinfo->is_haswell || !done_scratch_read);
+
             if (scratch_reg == -1 ||
-                !can_use_scratch_for_source(inst, i, scratch_reg)) {
+                (!can_use_scratch_for_source(inst, i, scratch_reg) &&
+                 (do_df_scratch_read || type_sz(inst->src[i].type) != 8))) {
                /* We need to unspill anyway so make sure we read the full vec4
                 * in any case. This way, the cached register can be reused
                 * for consecutive instructions that read different channels of
@@ -534,9 +554,11 @@ vec4_visitor::spill_reg(int spill_reg_nr)
                temp.nr = scratch_reg;
                temp.offset = 0;
                temp.swizzle = BRW_SWIZZLE_XYZW;
+
                emit_scratch_read(block, inst,
                                  dst_reg(temp), inst->src[i], spill_offset, false);
                temp.offset = inst->src[i].offset;
+               done_scratch_read = true;
             }
             assert(scratch_reg != -1);
             inst->src[i].nr = scratch_reg;
@@ -546,6 +568,7 @@ vec4_visitor::spill_reg(int spill_reg_nr)
       if (inst->dst.file == VGRF && inst->dst.nr == spill_reg_nr) {
          emit_scratch_write(block, inst, spill_offset, false);
          scratch_reg = inst->dst.nr;
+         done_scratch_read = false;
       }
    }
 
