@@ -2133,9 +2133,9 @@ brw_scratch_surface_idx(const struct brw_codegen *p)
  * register spilling.
  */
 void brw_oword_block_write_scratch(struct brw_codegen *p,
-				   struct brw_reg mrf,
-				   int num_regs,
-				   unsigned offset)
+                                   struct brw_reg mrf,
+                                   int num_owords,
+                                   unsigned offset)
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
@@ -2149,7 +2149,7 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
 
    mrf = retype(mrf, BRW_REGISTER_TYPE_UD);
 
-   const unsigned mlen = 1 + num_regs;
+   const unsigned mlen = 1 + MAX2(1, num_owords / 2);
 
    /* Set up the message header.  This is g0, with g0.2 filled with
     * the offset.  We don't want to leave our offset around in g0 or
@@ -2180,6 +2180,18 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
       int send_commit_msg;
       struct brw_reg src_header = retype(brw_vec8_grf(0, 0),
 					 BRW_REGISTER_TYPE_UW);
+      int msg_control = BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_owords * 4);
+
+      /* By default for 1-oword, msg_control = BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW,
+       * fix it when we are writing the high part.
+       */
+      if (num_owords == 1 && brw_inst_nib_control(devinfo, insn) != 0) {
+         msg_control = BRW_DATAPORT_OWORD_BLOCK_1_OWORDHIGH;
+         /* The messages only work with group == 0, we use the group to know which
+          * message emit (1-OWORD LOW or 1-OWORD HIGH), so reset it to zero.
+          */
+         brw_inst_set_group(devinfo, insn, 0);
+      }
 
       brw_inst_set_compression(devinfo, insn, false);
 
@@ -2223,7 +2235,7 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
       brw_set_dp_write_message(p,
 			       insn,
                                brw_scratch_surface_idx(p),
-			       BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_regs * 8),
+			       msg_control,
 			       msg_type,
                                target_cache,
 			       mlen,
@@ -2245,10 +2257,10 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
  */
 void
 brw_oword_block_read_scratch(struct brw_codegen *p,
-			     struct brw_reg dest,
-			     struct brw_reg mrf,
-			     int num_regs,
-			     unsigned offset)
+                             struct brw_reg dest,
+                             struct brw_reg mrf,
+                             int num_owords,
+                             unsigned offset)
 {
    const struct gen_device_info *devinfo = p->devinfo;
 
@@ -2269,7 +2281,7 @@ brw_oword_block_read_scratch(struct brw_codegen *p,
    }
    dest = retype(dest, BRW_REGISTER_TYPE_UW);
 
-   const unsigned rlen = num_regs;
+   const unsigned rlen = MAX2(1, num_owords / 2);
    const unsigned target_cache =
       (devinfo->gen >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
        devinfo->gen >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
@@ -2291,6 +2303,18 @@ brw_oword_block_read_scratch(struct brw_codegen *p,
 
    {
       brw_inst *insn = next_insn(p, BRW_OPCODE_SEND);
+      int msg_control = BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_owords * 4);
+
+      /* By default for 1-oword, msg_control = BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW,
+       * fix it when we are reading the high part.
+       */
+      if (num_owords == 1 && brw_inst_nib_control(devinfo, insn) != 0) {
+         msg_control = BRW_DATAPORT_OWORD_BLOCK_1_OWORDHIGH;
+         /* The messages only work with group == 0, we use the group to know which
+          * message emit (1-OWORD LOW or 1-OWORD HIGH), so reset it to zero.
+          */
+         brw_inst_set_group(devinfo, insn, 0);
+      }
 
       assert(brw_inst_pred_control(devinfo, insn) == 0);
       brw_inst_set_compression(devinfo, insn, false);
@@ -2306,7 +2330,7 @@ brw_oword_block_read_scratch(struct brw_codegen *p,
       brw_set_dp_read_message(p,
 			      insn,
                               brw_scratch_surface_idx(p),
-			      BRW_DATAPORT_OWORD_BLOCK_DWORDS(num_regs * 8),
+			      msg_control,
 			      BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ, /* msg_type */
 			      target_cache,
 			      1, /* msg_length */

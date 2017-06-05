@@ -1178,7 +1178,7 @@ fs_generator::generate_scratch_write(fs_inst *inst, struct brw_reg src)
               retype(offset(src, block_size * i), BRW_REGISTER_TYPE_UD));
 
       brw_oword_block_write_scratch(p, brw_message_reg(inst->base_mrf),
-                                    block_size,
+                                    block_size * 2,
                                     inst->offset + block_size * REG_SIZE * i);
    }
 
@@ -1192,7 +1192,7 @@ fs_generator::generate_scratch_read(fs_inst *inst, struct brw_reg dst)
    assert(inst->mlen != 0);
 
    brw_oword_block_read_scratch(p, dst, brw_message_reg(inst->base_mrf),
-                                inst->exec_size / 8, inst->offset);
+                                inst->exec_size / 4, inst->offset);
 }
 
 void
