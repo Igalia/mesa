@@ -2267,7 +2267,9 @@ brw_oword_block_read_scratch(struct brw_codegen *p,
    if (devinfo->gen >= 6)
       offset /= 16;
 
-   if (p->devinfo->gen >= 7) {
+   if (p->devinfo->gen >= 7 &&
+       (p->devinfo->gen > 7 || p->devinfo->is_haswell ||
+        type_sz(dest.type) != 8)) {
       /* On gen 7 and above, we no longer have message registers and we can
        * send from any register we want.  By using the destination register
        * for the message, we guarantee that the implied message write won't
