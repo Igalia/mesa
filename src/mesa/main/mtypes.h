@@ -4028,6 +4028,9 @@ struct gl_constants
 
    /** When drivers are OK with mapped buffers during draw and other calls. */
    bool AllowMappedBuffersDuringExecution;
+
+   /** GL_ARB_gl_spirv */
+   struct nir_spirv_supported_capabilities SpirVCapabilities;
 };
 
 
