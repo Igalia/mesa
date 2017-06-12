@@ -1635,7 +1635,8 @@ vec4_visitor::emit_scratch_write(bblock_t *block, vec4_instruction *inst,
 
       src_reg saved_value = src_reg(this, glsl_type::dvec4_type);
       saved_value.swizzle = brw_swizzle_for_mask(inst->dst.writemask);
-      vec4_instruction *mov = MOV(dst_reg(saved_value), temp);
+      vec4_instruction *mov =  new(mem_ctx)
+         vec4_instruction(VEC4_OPCODE_TEMP_SCRATCH_WRITE_MOV, dst_reg(saved_value), temp);
       mov->group = inst->group;
       mov->exec_size = inst->exec_size;
       mov->size_written = 1;

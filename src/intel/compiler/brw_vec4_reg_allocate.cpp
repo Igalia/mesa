@@ -469,6 +469,11 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
          loop_scale /= 10;
          break;
 
+      case VEC4_OPCODE_TEMP_SCRATCH_WRITE_MOV:
+         /* VEC4_OPCODE_TEMP_SCRATCH_WRITE_MOV is used for
+          * DF register spilling on IVB so, to avoid infinite loops,
+          * mark it as no spill.
+          */
       case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_LOW:
       case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_HIGH:
       case SHADER_OPCODE_GEN4_SCRATCH_READ:

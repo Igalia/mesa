@@ -1908,6 +1908,9 @@ generate_code(struct brw_codegen *p,
          generate_vs_urb_write(p, inst);
          break;
 
+      case VEC4_OPCODE_TEMP_SCRATCH_WRITE_MOV:
+         brw_MOV(p, dst, src[0]);
+         break;
       case VEC4_OPCODE_GEN4_SCRATCH_READ_1OWORD_LOW:
          generate_scratch_read_1oword(p, inst, dst, src[0], true);
          fill_count++;
