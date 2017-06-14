@@ -294,16 +294,17 @@ public:
    src_reg get_scratch_offset(bblock_t *block, vec4_instruction *inst,
 			      src_reg *reladdr, int reg_offset);
    void emit_scratch_read(bblock_t *block, vec4_instruction *inst,
-			  dst_reg dst,
-			  src_reg orig_src,
-			  int base_offset);
+                          dst_reg dst,
+                          src_reg orig_src,
+                          int base_offset,
+                          bool resolve_reladdr);
    void emit_1grf_df_ivb_scratch_read(bblock_t *block,
                                       vec4_instruction *inst,
                                       dst_reg temp, src_reg orig_src,
                                       int base_offset, bool first_grf);
 
    void emit_scratch_write(bblock_t *block, vec4_instruction *inst,
-			   int base_offset);
+                           int base_offset, bool resolve_addr);
    void emit_pull_constant_load(bblock_t *block, vec4_instruction *inst,
 				dst_reg dst,
 				src_reg orig_src,
