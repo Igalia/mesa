@@ -1532,7 +1532,7 @@ vec4_visitor::emit_1grf_df_ivb_scratch_read(bblock_t *block,
 void
 vec4_visitor::emit_scratch_read(bblock_t *block, vec4_instruction *inst,
                                 dst_reg temp, src_reg orig_src,
-                                int base_offset)
+                                int base_offset, bool resolve_reladdr)
 {
    assert(orig_src.offset % REG_SIZE == 0);
    int reg_offset = base_offset + orig_src.offset / REG_SIZE;
@@ -1541,7 +1541,7 @@ vec4_visitor::emit_scratch_read(bblock_t *block, vec4_instruction *inst,
 
    if (type_sz(orig_src.type) < 8) {
       emit_before(block, inst, SCRATCH_READ(temp, index));
-   } else if (devinfo->gen == 7 && !devinfo->is_haswell &&
+   } else if (devinfo->gen == 7 && !devinfo->is_haswell && !resolve_reladdr &&
               type_sz(temp.type) == 8) {
       /* Set the offset to the base offset because we address the base GRF of
        * the DF. We will take into account the second GRF in the scratch write emission.
@@ -1574,7 +1574,7 @@ vec4_visitor::emit_scratch_read(bblock_t *block, vec4_instruction *inst,
  */
 void
 vec4_visitor::emit_scratch_write(bblock_t *block, vec4_instruction *inst,
-                                 int base_offset)
+                                 int base_offset, bool resolve_reladdr)
 {
    assert(inst->dst.offset % REG_SIZE == 0);
    int reg_offset = base_offset + inst->dst.offset / REG_SIZE;
@@ -1593,7 +1593,8 @@ vec4_visitor::emit_scratch_write(bblock_t *block, vec4_instruction *inst,
       is_64bit ? glsl_type::dvec4_type : glsl_type::vec4_type;
    src_reg temp;
 
-   if (is_64bit && devinfo->gen == 7 && !devinfo->is_haswell)
+   if (is_64bit && devinfo->gen == 7 && !devinfo->is_haswell &&
+       !resolve_reladdr)
       /* We use align1 scratch message for IVB DFs and as we don't
        * need to take into account the writemask, then we can save
        * an allocation.
@@ -1615,7 +1616,8 @@ vec4_visitor::emit_scratch_write(bblock_t *block, vec4_instruction *inst,
       write->annotation = inst->annotation;
       inst->insert_after(block, write);
       inst->dst.offset %= REG_SIZE;
-   } else if (is_64bit && devinfo->gen == 7 && !devinfo->is_haswell) {
+   } else if (is_64bit && devinfo->gen == 7 && !devinfo->is_haswell &&
+              !resolve_reladdr) {
       /* Set the offset to the base offset because we address the base GRF of
        * the DF. We will take into account the second GRF in the scratch write emission.
        */
@@ -1724,7 +1726,7 @@ vec4_visitor::emit_resolve_reladdr(int scratch_loc[], bblock_t *block,
    if (src.file == VGRF && scratch_loc[src.nr] != -1) {
       dst_reg temp = dst_reg(this, type_sz(src.type) == 8 ?
          glsl_type::dvec4_type : glsl_type::vec4_type);
-      emit_scratch_read(block, inst, temp, src, scratch_loc[src.nr]);
+      emit_scratch_read(block, inst, temp, src, scratch_loc[src.nr], true);
       src.nr = temp.nr;
       src.offset %= REG_SIZE;
       src.reladdr = NULL;
@@ -1799,7 +1801,7 @@ vec4_visitor::move_grf_array_access_to_scratch()
        * accesses for dst we can safely do the scratch write for dst itself
        */
       if (inst->dst.file == VGRF && scratch_loc[inst->dst.nr] != -1)
-         emit_scratch_write(block, inst, scratch_loc[inst->dst.nr]);
+         emit_scratch_write(block, inst, scratch_loc[inst->dst.nr], true);
 
       /* Now handle scratch access on any src. In this case, since inst->src[i]
        * already is a src_reg, we can just call emit_resolve_reladdr with

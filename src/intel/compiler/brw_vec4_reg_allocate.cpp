@@ -530,7 +530,7 @@ vec4_visitor::spill_reg(int spill_reg_nr)
                temp.offset = 0;
                temp.swizzle = BRW_SWIZZLE_XYZW;
                emit_scratch_read(block, inst,
-                                 dst_reg(temp), inst->src[i], spill_offset);
+                                 dst_reg(temp), inst->src[i], spill_offset, false);
                temp.offset = inst->src[i].offset;
             }
             assert(scratch_reg != -1);
@@ -539,7 +539,7 @@ vec4_visitor::spill_reg(int spill_reg_nr)
       }
 
       if (inst->dst.file == VGRF && inst->dst.nr == spill_reg_nr) {
-         emit_scratch_write(block, inst, spill_offset);
+         emit_scratch_write(block, inst, spill_offset, false);
          scratch_reg = inst->dst.nr;
       }
    }
