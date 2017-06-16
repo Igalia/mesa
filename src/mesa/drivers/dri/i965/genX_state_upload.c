@@ -3522,9 +3522,10 @@ genX(upload_3dstate_so_decl_list)(struct brw_context *brw,
       const unsigned stream_id = output->StreamId;
       assert(stream_id < MAX_VERTEX_STREAMS);
 
-      buffer_mask[stream_id] |= 1 << buffer;
+      if (vue_map->varying_to_slot[varying] == -1)
+	      continue;
 
-      assert(vue_map->varying_to_slot[varying] >= 0);
+      buffer_mask[stream_id] |= 1 << buffer;
 
       /* Mesa doesn't store entries for gl_SkipComponents in the Outputs[]
        * array.  Instead, it simply increments DstOffset for the following
