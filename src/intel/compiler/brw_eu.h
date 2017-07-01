@@ -251,7 +251,8 @@ void brw_set_dp_write_message(struct brw_codegen *p,
 			      unsigned last_render_target,
 			      unsigned response_length,
 			      unsigned end_of_thread,
-			      unsigned send_commit_msg);
+			      unsigned send_commit_msg,
+			      unsigned data_format);
 
 void brw_urb_WRITE(struct brw_codegen *p,
 		   struct brw_reg dest,
@@ -303,7 +304,8 @@ void brw_fb_WRITE(struct brw_codegen *p,
 		   unsigned response_length,
 		   bool eot,
 		   bool last_render_target,
-		   bool header_present);
+		   bool header_present,
+		   unsigned data_format);
 
 brw_inst *gen9_fb_READ(struct brw_codegen *p,
                        struct brw_reg dst,

@@ -304,7 +304,8 @@ fs_generator::fire_fb_write(fs_inst *inst,
                 0,
                 inst->eot,
                 last_render_target,
-                inst->header_size != 0);
+                inst->header_size != 0,
+                inst->data_format);
 
    brw_mark_surface_used(&prog_data->base, surf_index);
 }

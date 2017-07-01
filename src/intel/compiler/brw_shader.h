@@ -153,6 +153,13 @@ struct backend_instruction {
 
    uint32_t offset; /**< spill/unspill offset or texture offset bitfield */
    uint8_t mlen; /**< SEND message length */
+
+   /* Half Precision Data Format for 16-bit payload SEND messages
+    *  0 = 32-bit
+    *  1 = 16-bit
+    */
+   unsigned data_format:1;
+
    int8_t base_mrf; /**< First MRF in the SEND message, if mlen is nonzero. */
    uint8_t target; /**< MRT target. */
    unsigned size_written; /**< Data written to the destination register in bytes. */

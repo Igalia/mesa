@@ -520,7 +520,8 @@ brw_set_dp_write_message(struct brw_codegen *p,
 			 unsigned last_render_target,
 			 unsigned response_length,
 			 unsigned end_of_thread,
-			 unsigned send_commit_msg)
+			 unsigned send_commit_msg,
+			 unsigned data_format)
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned sfid = (devinfo->gen >= 6 ? target_cache :
@@ -532,6 +533,16 @@ brw_set_dp_write_message(struct brw_codegen *p,
    brw_inst_set_binding_table_index(devinfo, insn, binding_table_index);
    brw_inst_set_dp_write_msg_type(devinfo, insn, msg_type);
    brw_inst_set_dp_write_msg_control(devinfo, insn, msg_control);
+   if (data_format) {
+      /* data_format is supported since CherryView. So we can't just set the
+       * any data_format value, because it would trigger an assertion on
+       * brw_inst_set_data_format for previous hw if they try to set it to
+       * zero. And we don't add an generation assert because as mentioned,
+       * brw_inst_set_data_format already does that.
+       */
+      brw_inst_set_data_format(devinfo, insn, data_format);
+   }
+
    brw_inst_set_rt_last(devinfo, insn, last_render_target);
    if (devinfo->gen < 7) {
       brw_inst_set_dp_write_commit(devinfo, insn, send_commit_msg);
@@ -2050,7 +2061,8 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
 			       0, /* not a render target */
 			       send_commit_msg, /* response_length */
 			       0, /* eot */
-			       send_commit_msg);
+			       send_commit_msg,
+			       0 /* data_format */);
    }
 }
 
@@ -2244,7 +2256,8 @@ void brw_fb_WRITE(struct brw_codegen *p,
                   unsigned response_length,
                   bool eot,
                   bool last_render_target,
-                  bool header_present)
+                  bool header_present,
+                  unsigned data_format)
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
@@ -2292,7 +2305,8 @@ void brw_fb_WRITE(struct brw_codegen *p,
 			    last_render_target,
 			    response_length,
 			    eot,
-			    0 /* send_commit_msg */);
+			    0, /* send_commit_msg */
+			    data_format);
 }
 
 brw_inst *
@@ -2806,7 +2820,8 @@ brw_svb_write(struct brw_codegen *p,
                             0, /* last_render_target: ignored */
                             send_commit_msg, /* response_length */
                             0, /* end_of_thread */
-                            send_commit_msg); /* send_commit_msg */
+                            send_commit_msg, /* send_commit_msg */
+                            0 /* data_format */);
 }
 
 static unsigned

@@ -38,7 +38,7 @@ namespace brw {
          emit_send(const fs_builder &bld, enum opcode opcode,
                    const fs_reg &addr, const fs_reg &src, const fs_reg &surface,
                    unsigned dims, unsigned arg, unsigned rsize,
-                   brw_predicate pred = BRW_PREDICATE_NONE)
+                   brw_predicate pred = BRW_PREDICATE_NONE, unsigned data_format = 0)
          {
             /* Reduce the dynamically uniform surface index to a single
              * scalar.
@@ -50,6 +50,7 @@ namespace brw {
             const fs_reg dst = bld.vgrf(BRW_REGISTER_TYPE_UD, rsize);
             fs_inst *inst = bld.emit(opcode, dst, srcs, ARRAY_SIZE(srcs));
 
+            inst->data_format = data_format;
             inst->size_written = rsize * dst.component_size(inst->exec_size);
             inst->predicate = pred;
             return dst;
