@@ -2448,8 +2448,26 @@ fs_visitor::nir_emit_vs_intrinsic(const fs_builder &bld,
       if (type_sz(dest.type) == 8)
          first_component /= 2;
 
-      for (unsigned j = 0; j < num_components; j++) {
-         bld.MOV(offset(dest, bld, j), offset(src, bld, j + first_component));
+      if (type_sz(dest.type) == 2) {
+         /* The VS load input for 16-bit values receives pairs of 16-bit
+          * values packed in 32-bit values. This is an example on SIMD8:
+          *
+          * xy xy xy xy xy xy xy xy
+          * zw zw zw zw zw zw zw xw
+          *
+          * We need to format it to something like:
+          *
+          * xx xx xx xx yy yy yy yy
+          * zz zz zz zz ww ww ww ww
+          */
+
+         shuffle_32bit_load_result_to_16bit_data(bld,
+                                                 dest,
+                                                 retype(src, BRW_REGISTER_TYPE_F),
+                                                 num_components, 0);
+      } else {
+         for (unsigned j = 0; j < num_components; j++)
+            bld.MOV(offset(dest, bld, j), offset(src, bld, j + first_component));
       }
 
       if (type_sz(dest.type) == 8) {
