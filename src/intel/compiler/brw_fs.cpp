@@ -3006,6 +3006,47 @@ fs_visitor::remove_duplicate_mrf_writes()
    return progress;
 }
 
+/**
+ * Rounding modes for conversion instructions are included for each
+ * conversion, but right now it is a state. So once it is set,
+ * we don't need to call it again for subsequent calls.
+ *
+ * This is useful for vector/matrices conversions, as setting the
+ * mode once is enough for the full vector/matrix
+ */
+bool
+fs_visitor::remove_extra_rounding_modes()
+{
+   bool progress = false;
+   /* By default, the rounding mode is rte, so we can consider it as the
+    * starting rounding mode
+    */
+   brw_rnd_mode prev_mode = BRW_RND_MODE_RTE;
+   brw_rnd_mode current_mode;
+
+   foreach_block_and_inst_safe (block, fs_inst, inst, cfg) {
+      if (inst->opcode == SHADER_OPCODE_RND_MODE_RTZ ||
+          inst->opcode == SHADER_OPCODE_RND_MODE_RTE) {
+
+         current_mode = (inst->opcode == SHADER_OPCODE_RND_MODE_RTZ) ?
+            BRW_RND_MODE_RTZ : BRW_RND_MODE_RTE;
+
+         if (current_mode == prev_mode) {
+            inst->remove(block);
+            progress = true;
+         } else {
+            prev_mode = current_mode;
+         }
+      }
+   }
+
+   if (progress)
+      invalidate_live_intervals();
+
+   return progress;
+}
+
+
 static void
 clear_deps_for_inst_src(fs_inst *inst, bool *deps, int first_grf, int grf_len)
 {
@@ -5683,6 +5724,7 @@ fs_visitor::optimize()
    int pass_num = 0;
 
    OPT(opt_drop_redundant_mov_to_flags);
+   OPT(remove_extra_rounding_modes);
 
    do {
       progress = false;
