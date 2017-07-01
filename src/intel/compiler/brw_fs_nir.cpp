@@ -28,6 +28,7 @@
 
 using namespace brw;
 using namespace brw::surface_access;
+using namespace brw::scattered_access;
 
 void
 fs_visitor::emit_nir_code()
@@ -4090,8 +4091,15 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
           * length of the write to what we can do and let the next iteration
           * handle the rest
           */
-         if (type_size > 4)
+         if (type_size > 4) {
             length = MIN2(2, length);
+         } else if (type_size == 2) {
+            /* For 16-bit types we are using byte scattered writes, that can
+             * only write one component per call. So we limit the length, and
+             * let the write happening in several iterations.
+             */
+            length = 1;
+         }
 
          fs_reg offset_reg;
          nir_const_value *const_offset = nir_src_as_const_value(instr->src[2]);
@@ -4105,11 +4113,20 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                     brw_imm_ud(type_size * first_component));
          }
 
-
-         emit_untyped_write(bld, surf_index, offset_reg,
-                            offset(val_reg, bld, first_component * type_slots),
-                            1 /* dims */, length * type_slots,
-                            BRW_PREDICATE_NONE);
+         if (type_size == 2) {
+            /* Untyped Surface messages have a fixed 32-bit size, so we need
+             * to rely on byte scattered in order to write 16-bit elements.
+             */
+            emit_byte_scattered_write(bld, surf_index, offset_reg,
+                                      offset(val_reg, bld, first_component * type_slots),
+                                      1 /* dims */, length * type_slots,
+                                      BRW_PREDICATE_NONE);
+         } else {
+            emit_untyped_write(bld, surf_index, offset_reg,
+                               offset(val_reg, bld, first_component * type_slots),
+                               1 /* dims */, length * type_slots,
+                               BRW_PREDICATE_NONE);
+         }
 
          /* Clear the bits in the writemask that we just wrote, then try
           * again to see if more channels are left.
