@@ -1254,7 +1254,8 @@ generate_scratch_write(struct brw_codegen *p,
 			    false, /* not a render target write */
 			    write_commit, /* rlen */
 			    false, /* eot */
-			    write_commit);
+			    write_commit,
+			    0 /* data_format */ );
 }
 
 static void

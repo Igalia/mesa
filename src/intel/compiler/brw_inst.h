@@ -463,6 +463,7 @@ FC(gen4_pop_count,  115, 112, devinfo->gen < 6)
  *  @{
  */
 F(eot,                 127, 127)
+FC(data_format,        126,  126, devinfo->gen >= 9 || devinfo->is_cherryview)
 FF(mlen,
    /* 4:   */ 119, 116,
    /* 4.5: */ 119, 116,
