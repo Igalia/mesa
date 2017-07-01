@@ -55,9 +55,12 @@ set_io_mask(nir_shader *shader, nir_variable *var, int offset, int len,
             shader->info.inputs_read |= bitfield;
 
          /* double inputs read is only for vertex inputs */
-         if (shader->info.stage == MESA_SHADER_VERTEX &&
-             glsl_type_is_dual_slot(glsl_without_array(var->type)))
-            shader->info.vs.double_inputs_read |= bitfield;
+         if (shader->info.stage == MESA_SHADER_VERTEX) {
+            if (glsl_type_is_dual_slot(glsl_without_array(var->type)))
+               shader->info.vs.double_inputs_read |= bitfield;
+            else if (glsl_get_bit_size(glsl_without_array(var->type)) == 16)
+               shader->info.vs.inputs_read_16bit |= bitfield;
+         }
 
          if (shader->info.stage == MESA_SHADER_FRAGMENT) {
             shader->info.fs.uses_sample_qualifier |= var->data.sample;
@@ -380,6 +383,7 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    if (shader->info.stage == MESA_SHADER_VERTEX) {
       shader->info.vs.double_inputs = 0;
       shader->info.vs.double_inputs_read = 0;
+      shader->info.vs.inputs_read_16bit = 0;
    }
    if (shader->info.stage == MESA_SHADER_FRAGMENT) {
       shader->info.fs.uses_sample_qualifier = false;
