@@ -3238,13 +3238,16 @@ emit_coherent_fb_read(const fs_builder &bld, const fs_reg &dst, unsigned target)
 }
 
 static fs_reg
-alloc_temporary(const fs_builder &bld, unsigned size, fs_reg *regs, unsigned n)
+alloc_temporary(const fs_builder &bld, unsigned size, fs_reg *regs, unsigned n,
+                bool is_16bit)
 {
    if (n && regs[0].file != BAD_FILE) {
       return regs[0];
 
    } else {
-      const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_F, size);
+      const brw_reg_type type =
+         is_16bit ? BRW_REGISTER_TYPE_HF : BRW_REGISTER_TYPE_F;
+      const fs_reg tmp = bld.vgrf(type, size);
 
       for (unsigned i = 0; i < n; i++)
          regs[i] = tmp;
@@ -3254,7 +3257,7 @@ alloc_temporary(const fs_builder &bld, unsigned size, fs_reg *regs, unsigned n)
 }
 
 static fs_reg
-alloc_frag_output(fs_visitor *v, unsigned location)
+alloc_frag_output(fs_visitor *v, unsigned location, bool is_16bit)
 {
    assert(v->stage == MESA_SHADER_FRAGMENT);
    const brw_wm_prog_key *const key =
@@ -3263,26 +3266,26 @@ alloc_frag_output(fs_visitor *v, unsigned location)
    const unsigned i = GET_FIELD(location, BRW_NIR_FRAG_OUTPUT_INDEX);
 
    if (i > 0 || (key->force_dual_color_blend && l == FRAG_RESULT_DATA1))
-      return alloc_temporary(v->bld, 4, &v->dual_src_output, 1);
+      return alloc_temporary(v->bld, 4, &v->dual_src_output, 1, is_16bit);
 
    else if (l == FRAG_RESULT_COLOR)
       return alloc_temporary(v->bld, 4, v->outputs,
-                             MAX2(key->nr_color_regions, 1));
+                             MAX2(key->nr_color_regions, 1),
+                             is_16bit);
 
    else if (l == FRAG_RESULT_DEPTH)
-      return alloc_temporary(v->bld, 1, &v->frag_depth, 1);
+      return alloc_temporary(v->bld, 1, &v->frag_depth, 1, is_16bit);
 
    else if (l == FRAG_RESULT_STENCIL)
-      return alloc_temporary(v->bld, 1, &v->frag_stencil, 1);
+      return alloc_temporary(v->bld, 1, &v->frag_stencil, 1, is_16bit);
 
    else if (l == FRAG_RESULT_SAMPLE_MASK)
-      return alloc_temporary(v->bld, 1, &v->sample_mask, 1);
+      return alloc_temporary(v->bld, 1, &v->sample_mask, 1, is_16bit);
 
    else if (l >= FRAG_RESULT_DATA0 &&
             l < FRAG_RESULT_DATA0 + BRW_MAX_DRAW_BUFFERS)
       return alloc_temporary(v->bld, 4,
-                             &v->outputs[l - FRAG_RESULT_DATA0], 1);
-
+                             &v->outputs[l - FRAG_RESULT_DATA0], 1, is_16bit);
    else
       unreachable("Invalid location");
 }
@@ -3345,7 +3348,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
          src = retype(src, outputs[location].type);
       }
 
-      fs_reg new_dest = retype(alloc_frag_output(this, location),
+      fs_reg new_dest = retype(alloc_frag_output(this, location, false),
                                src.type);
 
       /* This is a workaround to support 16-bits outputs on HW that doesn't
