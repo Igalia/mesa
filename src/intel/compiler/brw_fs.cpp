@@ -1948,8 +1948,9 @@ set_push_pull_constant_loc(unsigned uniform, int *chunk_start,
    if (!contiguous) {
       /* If bitsize doesn't match the target one, skip it */
       if (*max_chunk_bitsize != target_bitsize) {
-         /* FIXME: right now we only support 32 and 64-bit accesses */
-         assert(*max_chunk_bitsize == 4 || *max_chunk_bitsize == 8);
+         assert(*max_chunk_bitsize == 4 ||
+                *max_chunk_bitsize == 8 ||
+                *max_chunk_bitsize == 2);
          *max_chunk_bitsize = 0;
          *chunk_start = -1;
          return;
@@ -2038,8 +2039,9 @@ fs_visitor::assign_constant_locations()
          int constant_nr = inst->src[i].nr + inst->src[i].offset / 4;
 
          if (inst->opcode == SHADER_OPCODE_MOV_INDIRECT && i == 0) {
-            assert(inst->src[2].ud % 4 == 0);
-            unsigned last = constant_nr + (inst->src[2].ud / 4) - 1;
+            assert(type_sz(inst->src[i].type) == 2 ?
+                   (inst->src[2].ud % 2 == 0) : (inst->src[2].ud % 4 == 0));
+            unsigned last = constant_nr + DIV_ROUND_UP(inst->src[2].ud, 4) - 1;
             assert(last < uniforms);
 
             for (unsigned j = constant_nr; j < last; j++) {
@@ -2051,8 +2053,8 @@ fs_visitor::assign_constant_locations()
             bitsize_access[last] = MAX2(bitsize_access[last], type_sz(inst->src[i].type));
          } else {
             if (constant_nr >= 0 && constant_nr < (int) uniforms) {
-               int regs_read = inst->components_read(i) *
-                  type_sz(inst->src[i].type) / 4;
+               int regs_read = DIV_ROUND_UP(inst->components_read(i) *
+                                            type_sz(inst->src[i].type), 4);
                assert(regs_read <= 2);
                if (regs_read == 2)
                   contiguous[constant_nr] = true;
@@ -2116,7 +2118,7 @@ fs_visitor::assign_constant_locations()
 
    }
 
-   /* Then push the rest of uniforms */
+   /* Then push the 32-bit uniforms */
    const unsigned uniform_32_bit_size = type_sz(BRW_REGISTER_TYPE_F);
    for (unsigned u = 0; u < uniforms; u++) {
       if (!is_live[u])
@@ -2129,6 +2131,21 @@ fs_visitor::assign_constant_locations()
       set_push_pull_constant_loc(u, &chunk_start, &max_chunk_bitsize,
                                  contiguous[u], bitsize_access[u],
                                  uniform_32_bit_size,
+                                 push_constant_loc, pull_constant_loc,
+                                 &num_push_constants, &num_pull_constants,
+                                 max_push_components, max_chunk_size,
+                                 compiler->supports_pull_constants,
+                                 stage_prog_data);
+   }
+
+   const unsigned uniform_16_bit_size = type_sz(BRW_REGISTER_TYPE_HF);
+   for (unsigned u = 0; u < uniforms; u++) {
+      if (!is_live[u])
+         continue;
+
+      set_push_pull_constant_loc(u, &chunk_start, &max_chunk_bitsize,
+                                 contiguous[u], bitsize_access[u],
+                                 uniform_16_bit_size,
                                  push_constant_loc, pull_constant_loc,
                                  &num_push_constants, &num_pull_constants,
                                  max_push_components, max_chunk_size,
