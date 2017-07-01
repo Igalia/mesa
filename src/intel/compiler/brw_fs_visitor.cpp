@@ -439,6 +439,12 @@ fs_visitor::emit_fb_writes()
       inst = emit_single_fb_write(abld, this->outputs[target],
                                   this->dual_src_output, src0_alpha, 4);
       inst->target = target;
+
+      /* Enables half-precision data_format for 16-bit outputs on
+       * Render Target Write Messages. Supported since cherry-view and
+       * Skylake.
+       */
+      inst->data_format = type_sz(this->outputs[target].type) == 2;
    }
 
    prog_data->dual_src_blend = (this->dual_src_output.file != BAD_FILE);
