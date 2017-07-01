@@ -2756,6 +2756,49 @@ brw_send_indirect_surface_message(struct brw_codegen *p,
    return insn;
 }
 
+
+static struct brw_inst *
+brw_send_indirect_scattered_message(struct brw_codegen *p,
+                                    unsigned sfid,
+                                    struct brw_reg dst,
+                                    struct brw_reg payload,
+                                    struct brw_reg surface,
+                                    unsigned message_len,
+                                    unsigned response_len,
+                                    bool header_present)
+{
+   const struct gen_device_info *devinfo = p->devinfo;
+   struct brw_inst *insn;
+
+   if (surface.file != BRW_IMMEDIATE_VALUE) {
+      struct brw_reg addr = retype(brw_address_reg(0), BRW_REGISTER_TYPE_UD);
+
+      brw_push_insn_state(p);
+      brw_set_default_access_mode(p, BRW_ALIGN_1);
+      brw_set_default_mask_control(p, BRW_MASK_DISABLE);
+      brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
+
+      /* Mask out invalid bits from the surface index to avoid hangs e.g. when
+       * some surface array is accessed out of bounds.
+       */
+      insn = brw_AND(p, addr,
+                     suboffset(vec1(retype(surface, BRW_REGISTER_TYPE_UD)),
+                               BRW_GET_SWZ(surface.swizzle, 0)),
+                     brw_imm_ud(0xff));
+
+      brw_pop_insn_state(p);
+
+      surface = addr;
+   }
+
+   insn = brw_send_indirect_message(p, sfid, dst, payload, surface);
+   brw_inst_set_mlen(devinfo, insn, message_len);
+   brw_inst_set_rlen(devinfo, insn, response_len);
+   brw_inst_set_header_present(devinfo, insn, header_present);
+
+   return insn;
+}
+
 static bool
 while_jumps_before_offset(const struct gen_device_info *devinfo,
                           brw_inst *insn, int while_offset, int start_offset)
@@ -3157,6 +3200,52 @@ brw_untyped_surface_write(struct brw_codegen *p,
 
    brw_set_dp_untyped_surface_write_message(
       p, insn, num_channels);
+}
+
+static void
+brw_set_dp_byte_scattered_write(struct brw_codegen *p,
+                                struct brw_inst *insn)
+{
+   const struct gen_device_info *devinfo = p->devinfo;
+
+   /* Although we could configure this message to write BYTE, WORD, or DWORD,
+    * it was added for the need of writing WORD sizes, so we use directly that
+    * size. This could be revisited on the future.
+    */
+   unsigned msg_control = GEN7_BYTE_SCATTERED_DATA_SIZE_WORD << 2;
+
+   assert(brw_inst_access_mode(devinfo, p->current) == BRW_ALIGN_1);
+      if (brw_inst_exec_size(devinfo, p->current) == BRW_EXECUTE_16)
+         msg_control |= 1;
+      else
+         msg_control |= 0;
+
+   brw_inst_set_dp_msg_type(devinfo, insn,
+                            devinfo->gen >= 8 || devinfo->is_haswell ?
+                            HSW_DATAPORT_DC_PORT0_BYTE_SCATTERED_WRITE :
+                            GEN7_DATAPORT_DC_BYTE_SCATTERED_WRITE);
+   brw_inst_set_dp_msg_control(devinfo, insn, msg_control);
+}
+
+
+void
+brw_byte_scattered_write(struct brw_codegen *p,
+                         struct brw_reg payload,
+                         struct brw_reg surface,
+                         unsigned msg_length)
+{
+   const struct gen_device_info *devinfo = p->devinfo;
+   const unsigned sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+   const bool align1 = brw_inst_access_mode(devinfo, p->current) == BRW_ALIGN_1;
+   /* Mask out unused components -- See comment in brw_untyped_atomic(). */
+   const unsigned mask = devinfo->gen == 7 && !devinfo->is_haswell && !align1 ?
+                          WRITEMASK_X : WRITEMASK_XYZW;
+   struct brw_inst *insn = brw_send_indirect_scattered_message(
+      p, sfid, brw_writemask(brw_null_reg(), mask),
+      payload, surface, msg_length, 0, align1);
+
+   brw_set_dp_byte_scattered_write(p, insn);
+
 }
 
 static void

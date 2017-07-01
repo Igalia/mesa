@@ -84,5 +84,14 @@ namespace brw {
                         unsigned surf_dims, unsigned arr_dims,
                         unsigned rsize, unsigned op);
    }
+
+   namespace scattered_access {
+      void
+      emit_byte_scattered_write(const fs_builder &bld, const fs_reg &surface,
+                                const fs_reg &addr, const fs_reg &src,
+                                unsigned dims, unsigned size,
+                                brw_predicate pred = BRW_PREDICATE_NONE);
+
+   }
 }
 #endif

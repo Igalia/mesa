@@ -1192,3 +1192,20 @@ namespace brw {
       }
    }
 }
+
+namespace brw {
+   namespace scattered_access {
+      void
+      emit_byte_scattered_write(const fs_builder &bld, const fs_reg &surface,
+                                const fs_reg &addr, const fs_reg &src,
+                                unsigned dims, unsigned size,
+                                brw_predicate pred)
+      {
+         using namespace surface_access;
+
+         emit_send(bld, SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL,
+                   addr, src, surface, dims, size, 0, pred);
+      }
+
+   }
+}
