@@ -2767,6 +2767,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
 
    prog_data->inputs_read = shader->info.inputs_read;
    prog_data->double_inputs_read = shader->info.double_inputs_read;
+   prog_data->half_inputs_read = shader->info.half_inputs_read;
 
    brw_nir_lower_vs_inputs(shader, use_legacy_snorm_formula,
                            key->gl_attrib_wa_flags);
