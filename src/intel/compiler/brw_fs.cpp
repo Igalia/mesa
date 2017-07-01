@@ -3485,7 +3485,10 @@ fs_visitor::lower_load_payload()
       for (uint8_t i = inst->header_size; i < inst->sources; i++) {
          if (inst->src[i].file != BAD_FILE)
             ibld.MOV(retype(dst, inst->src[i].type), inst->src[i]);
-         dst = offset(dst, ibld, 1);
+         if (type_sz(inst->src[i].type) == 2)
+            dst = byte_offset(dst, REG_SIZE);
+         else
+            dst = offset(dst, ibld, 1);
       }
 
       inst->remove(block);
