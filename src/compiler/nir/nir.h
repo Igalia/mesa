@@ -107,6 +107,14 @@ typedef enum {
 } nir_variable_mode;
 
 
+typedef enum {
+   nir_rounding_mode_undef = 0,
+   nir_rounding_mode_rtne  = 1,
+   nir_rounding_mode_ru    = 2,
+   nir_rounding_mode_rd    = 3,
+   nir_rounding_mode_rtz   = 4,
+} nir_rounding_mode;
+
 typedef union {
    float f32[4];
    double f64[4];
