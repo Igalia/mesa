@@ -456,7 +456,10 @@ type_size_scalar(const struct glsl_type *type)
    switch (type->base_type) {
    case GLSL_TYPE_UINT:
    case GLSL_TYPE_INT:
+   case GLSL_TYPE_UINT16:
+   case GLSL_TYPE_INT16:
    case GLSL_TYPE_FLOAT:
+   case GLSL_TYPE_HALF_FLOAT:
    case GLSL_TYPE_BOOL:
       return type->components();
    case GLSL_TYPE_DOUBLE:
