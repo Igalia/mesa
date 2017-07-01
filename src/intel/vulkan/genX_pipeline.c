@@ -83,6 +83,31 @@ vertex_element_comp_control(enum isl_format format, unsigned comp)
    }
 }
 
+#if GEN_GEN >= 8
+static enum isl_format
+adjust_16bit_format(enum isl_format format)
+{
+   switch(format) {
+   case ISL_FORMAT_R16_UINT:
+   case ISL_FORMAT_R16_SINT:
+   case ISL_FORMAT_R16_FLOAT:
+   case ISL_FORMAT_R16G16_UINT:
+   case ISL_FORMAT_R16G16_SINT:
+   case ISL_FORMAT_R16G16_FLOAT:
+      return ISL_FORMAT_R32_UINT;
+   case ISL_FORMAT_R16G16B16_UINT:
+   case ISL_FORMAT_R16G16B16_SINT:
+   case ISL_FORMAT_R16G16B16_FLOAT:
+   case ISL_FORMAT_R16G16B16A16_UINT:
+   case ISL_FORMAT_R16G16B16A16_SINT:
+   case ISL_FORMAT_R16G16B16A16_FLOAT:
+      return ISL_FORMAT_R32G32_UINT;
+   default:
+      return format;
+   }
+}
+#endif
+
 static void
 emit_vertex_input(struct anv_pipeline *pipeline,
                   const VkPipelineVertexInputStateCreateInfo *info)
@@ -95,6 +120,10 @@ emit_vertex_input(struct anv_pipeline *pipeline,
    assert((inputs_read & ((1 << VERT_ATTRIB_GENERIC0) - 1)) == 0);
    const uint32_t elements = inputs_read >> VERT_ATTRIB_GENERIC0;
    const uint32_t elements_double = double_inputs_read >> VERT_ATTRIB_GENERIC0;
+#if GEN_GEN >= 8
+   const uint64_t inputs_read_16bit = vs_prog_data->inputs_read_16bit;
+   const uint32_t elements_16bit = inputs_read_16bit >> VERT_ATTRIB_GENERIC0;
+#endif
    const bool needs_svgs_elem = vs_prog_data->uses_vertexid ||
                                 vs_prog_data->uses_instanceid ||
                                 vs_prog_data->uses_basevertex ||
@@ -125,6 +154,11 @@ emit_vertex_input(struct anv_pipeline *pipeline,
                                                   VK_IMAGE_ASPECT_COLOR_BIT,
                                                   VK_IMAGE_TILING_LINEAR);
 
+#if GEN_GEN >= 8
+      if ((elements_16bit & (1 << desc->location)) != 0) {
+         format = adjust_16bit_format(format);
+      }
+#endif
       assert(desc->binding < MAX_VBS);
 
       if ((elements & (1 << desc->location)) == 0)
