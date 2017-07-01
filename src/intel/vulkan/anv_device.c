@@ -449,6 +449,10 @@ static const VkExtensionProperties global_extensions[] = {
 
 static const VkExtensionProperties device_extensions[] = {
    {
+      .extensionName = VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
+      .specVersion = 1,
+   },
+   {
       .extensionName = VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,
       .specVersion = 1,
    },
@@ -745,6 +749,19 @@ void anv_GetPhysicalDeviceFeatures2KHR(
          features->multiview = true;
          features->multiviewGeometryShader = true;
          features->multiviewTessellationShader = true;
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES_KHR: {
+         ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
+
+         VkPhysicalDevice16BitStorageFeaturesKHR *features =
+            (VkPhysicalDevice16BitStorageFeaturesKHR *)ext;
+
+         features->storageBuffer16BitAccess = pdevice->info.gen >= 8;
+         features->uniformAndStorageBuffer16BitAccess = pdevice->info.gen >= 8;
+         features->storagePushConstant16 = pdevice->info.gen >= 8;
+         features->storageInputOutput16 = pdevice->info.gen >= 8;
          break;
       }
 
