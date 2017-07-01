@@ -960,6 +960,7 @@ struct brw_vs_prog_data {
 
    GLbitfield64 inputs_read;
    GLbitfield64 double_inputs_read;
+   GLbitfield64 inputs_read_16bit;
 
    unsigned nr_attribute_slots;
 
