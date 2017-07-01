@@ -2294,6 +2294,21 @@ do_untyped_vector_read(const fs_builder &bld,
 
          bld.ADD(read_offset, read_offset, brw_imm_ud(16));
       }
+   } else if (type_sz(dest.type) == 2) {
+      for (unsigned i = 0; i < num_components; i++) {
+         fs_reg base_offset = bld.vgrf(BRW_REGISTER_TYPE_UD);
+         bld.ADD(base_offset,
+                 offset_reg,
+                 brw_imm_ud(i * type_sz(dest.type)));
+         fs_reg read_reg = emit_byte_scattered_read(bld, surf_index, base_offset,
+                                                    1 /* dims */,
+                                                    1,
+                                                    BRW_PREDICATE_NONE);
+         read_reg = retype(read_reg, BRW_REGISTER_TYPE_UD);
+         fs_reg retval = retype(offset(dest,bld,i), BRW_REGISTER_TYPE_UD);
+         retval.stride = 1;
+         bld.MOV(retval, read_reg);
+      }
    } else {
       unreachable("Unsupported type");
    }
@@ -3944,10 +3959,14 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       if (const_offset == NULL) {
          fs_reg base_offset = retype(get_nir_src(instr->src[1]),
                                      BRW_REGISTER_TYPE_UD);
-
-         for (int i = 0; i < instr->num_components; i++)
-            VARYING_PULL_CONSTANT_LOAD(bld, offset(dest, bld, i), surf_index,
-                                       base_offset, i * type_sz(dest.type));
+         if (type_sz(dest.type) == 2) {
+            do_untyped_vector_read(bld, dest, surf_index, base_offset,
+                                   instr->num_components);
+         } else {
+            for (int i = 0; i < instr->num_components; i++)
+               VARYING_PULL_CONSTANT_LOAD(bld, offset(dest, bld, i), surf_index,
+                                          base_offset, i * type_sz(dest.type));
+         }
       } else {
          /* Even if we are loading doubles, a pull constant load will load
           * a 32-bit vec4, so should only reserve vgrf space for that. If we
