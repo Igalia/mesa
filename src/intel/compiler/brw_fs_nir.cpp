@@ -635,6 +635,20 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
          }
       }
 
+      /* For 16-bit data, we are using the full 32-bit register, due alignment
+       * requirements. So it is safe to retype a 16-bit to 16-bit raw mov to
+       * UD, and that would make these movs easier to be optimized during copy
+       * propagation later.
+       */
+      bool retype_to_ud = (nir_dest_bit_size(instr->dest.dest) == 16 &&
+                           nir_src_bit_size(instr->src[0].src) == 16 &&
+                           temp.stride == 2 &&
+                           op[0].stride == 2);
+      if (retype_to_ud) {
+         temp.type = BRW_REGISTER_TYPE_UD;
+         temp.stride = 1;
+      }
+
       for (unsigned i = 0; i < 4; i++) {
          if (!(instr->dest.write_mask & (1 << i)))
             continue;
@@ -643,6 +657,11 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
             inst = bld.MOV(offset(temp, bld, i),
                            offset(op[0], bld, instr->src[0].swizzle[i]));
          } else {
+            if (retype_to_ud) {
+               op[i].type = BRW_REGISTER_TYPE_UD;
+               op[i].stride = 1;
+            }
+
             inst = bld.MOV(offset(temp, bld, i),
                            offset(op[i], bld, instr->src[i].swizzle[0]));
          }
