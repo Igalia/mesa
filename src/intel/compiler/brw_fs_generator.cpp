@@ -2139,6 +2139,14 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
          brw_DIM(p, dst, retype(src[0], BRW_REGISTER_TYPE_F));
          break;
 
+      case SHADER_OPCODE_RND_MODE_RTE:
+         brw_rounding_mode(p, BRW_RND_MODE_RTE);
+         break;
+
+      case SHADER_OPCODE_RND_MODE_RTZ:
+         brw_rounding_mode(p, BRW_RND_MODE_RTZ);
+         break;
+
       default:
          unreachable("Unsupported opcode");
 

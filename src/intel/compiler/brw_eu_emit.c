@@ -3723,3 +3723,22 @@ brw_WAIT(struct brw_codegen *p)
    brw_inst_set_exec_size(devinfo, insn, BRW_EXECUTE_1);
    brw_inst_set_mask_control(devinfo, insn, BRW_MASK_DISABLE);
 }
+
+void
+brw_rounding_mode(struct brw_codegen *p,
+                  enum brw_rnd_mode mode)
+{
+   switch (mode) {
+   case BRW_RND_MODE_UNSPECIFIED:
+      /* nothing to do here */
+      break;
+   case BRW_RND_MODE_RTZ:
+      brw_OR(p, brw_cr0_reg(0), brw_cr0_reg(0), brw_imm_ud(0x00000030u));
+      break;
+   case BRW_RND_MODE_RTE:
+      brw_AND(p, brw_cr0_reg(0), brw_cr0_reg(0), brw_imm_ud(0xffffffcfu));
+      break;
+   default:
+      unreachable("Not reached");
+   }
+}

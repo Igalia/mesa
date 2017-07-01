@@ -486,6 +486,11 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "tes_add_indirect_urb_offset";
    case TES_OPCODE_GET_PRIMITIVE_ID:
       return "tes_get_primitive_id";
+
+   case SHADER_OPCODE_RND_MODE_RTE:
+      return "round_mode_rte";
+   case SHADER_OPCODE_RND_MODE_RTZ:
+      return "round_mode_rtz";
    }
 
    unreachable("not reached");
