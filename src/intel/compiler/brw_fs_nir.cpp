@@ -715,6 +715,14 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_f2f16_rtne:
+   case nir_op_f2f16_rtz:
+      if (instr->op == nir_op_f2f16_rtz)
+         bld.emit(SHADER_OPCODE_RND_MODE_RTZ);
+      else if (instr->op == nir_op_f2f16_rtne)
+         bld.emit(SHADER_OPCODE_RND_MODE_RTE);
+      /* fallthrough */
+
    case nir_op_f2f16:
       /* In theory, it would be better to use BRW_OPCODE_F32TO16. Depending
        * on the HW gen, it is a special hw opcode or just a MOV, and
