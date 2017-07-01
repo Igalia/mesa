@@ -1676,6 +1676,10 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                               brw_inst_rt_message_type(devinfo, inst), &space);
                if (devinfo->gen >= 6 && brw_inst_rt_slot_group(devinfo, inst))
                   string(file, " Hi");
+               if ((devinfo->gen >= 9 || devinfo->is_cherryview) &&
+                   brw_inst_data_format(devinfo, inst)) {
+                  string(file, " HP");
+               }
                if (brw_inst_rt_last(devinfo, inst))
                   string(file, " LastRT");
                if (devinfo->gen < 7 && brw_inst_dp_write_commit(devinfo, inst))
