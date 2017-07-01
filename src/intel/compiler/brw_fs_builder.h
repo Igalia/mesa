@@ -188,7 +188,7 @@ namespace brw {
 
          if (n > 0)
             return dst_reg(VGRF, shader->alloc.allocate(
-                              DIV_ROUND_UP(n * type_sz(type) * dispatch_width(),
+                              DIV_ROUND_UP(n * MAX2(4, type_sz(type)) * dispatch_width(),
                                            REG_SIZE)),
                            type);
          else
