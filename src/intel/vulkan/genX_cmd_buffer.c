@@ -1868,6 +1868,11 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_pipeline *pipeline = cmd_buffer->state.pipeline;
    uint32_t *p;
+#if GEN_GEN >= 8
+   const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
+   const uint64_t inputs_read_16bit = vs_prog_data->inputs_read_16bit;
+   const uint32_t elements_16bit = inputs_read_16bit >> VERT_ATTRIB_GENERIC0;
+#endif
 
    uint32_t vb_emit = cmd_buffer->state.vb_dirty & pipeline->vb_used;
 
@@ -1880,6 +1885,17 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    if (vb_emit) {
       const uint32_t num_buffers = __builtin_popcount(vb_emit);
       const uint32_t num_dwords = 1 + num_buffers * 4;
+      /* ISL 16-bit formats do a 16-bit to 32-bit float conversion, so we need
+       * to use ISL 32-bit formats to avoid such conversion in order to support
+       * properly 16-bit formats. This means that the vertex element may poke
+       * over the end of the buffer by 2 bytes.
+       */
+      const unsigned padding =
+#if GEN_GEN >= 8
+         (elements_16bit > 0) * 2;
+#else
+      0;
+#endif
 
       p = anv_batch_emitn(&cmd_buffer->batch, num_dwords,
                           GENX(3DSTATE_VERTEX_BUFFERS));
@@ -1909,9 +1925,9 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
             .BufferStartingAddress = { buffer->bo, buffer->offset + offset },
 
 #if GEN_GEN >= 8
-            .BufferSize = buffer->size - offset
+            .BufferSize = buffer->size - offset + padding,
 #else
-            .EndAddress = { buffer->bo, buffer->offset + buffer->size - 1},
+            .EndAddress = { buffer->bo, buffer->offset + buffer->size + padding - 1},
 #endif
          };
 
