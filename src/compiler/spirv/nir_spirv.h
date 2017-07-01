@@ -52,6 +52,7 @@ struct nir_spirv_supported_extensions {
    bool int64;
    bool multiview;
    bool variable_pointers;
+   bool storage_16bit;
 };
 
 nir_function *spirv_to_nir(const uint32_t *words, size_t word_count,

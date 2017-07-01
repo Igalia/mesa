@@ -2865,6 +2865,13 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(variable_pointers, cap);
          break;
 
+      case SpvCapabilityStorageUniformBufferBlock16:
+      case SpvCapabilityStorageUniform16:
+      case SpvCapabilityStoragePushConstant16:
+      case SpvCapabilityStorageInputOutput16:
+         spv_check_supported(storage_16bit, cap);
+         break;
+
       default:
          unreachable("Unhandled capability");
       }
