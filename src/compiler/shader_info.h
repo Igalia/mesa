@@ -55,6 +55,8 @@ typedef struct shader_info {
    uint64_t inputs_read;
    /* Which inputs are actually read and are double */
    uint64_t double_inputs_read;
+   /* Which inputs are actually read and are 16-bit type */
+   uint64_t inputs_read_16bit;
    /* Which outputs are actually written */
    uint64_t outputs_written;
    /* Which outputs are actually read */

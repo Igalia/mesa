@@ -230,11 +230,17 @@ gather_intrinsic_info(nir_intrinsic_instr *instr, nir_shader *shader)
          /* We need to track which input_reads bits correspond to a
           * dvec3/dvec4 input attribute */
          if (shader->info.stage == MESA_SHADER_VERTEX &&
-             var->data.mode == nir_var_shader_in &&
-             glsl_type_is_dual_slot(glsl_without_array(var->type))) {
-            for (uint i = 0; i < glsl_count_attribute_slots(var->type, false); i++) {
-               int idx = var->data.location + i;
-               shader->info.double_inputs_read |= BITFIELD64_BIT(idx);
+             var->data.mode == nir_var_shader_in) {
+            if (glsl_type_is_dual_slot(glsl_without_array(var->type))) {
+               for (uint i = 0; i < glsl_count_attribute_slots(var->type, false); i++) {
+                  int idx = var->data.location + i;
+                  shader->info.double_inputs_read |= BITFIELD64_BIT(idx);
+               }
+            } else if (glsl_get_bit_size(glsl_without_array(var->type)) == 16) {
+               for (uint i = 0; i < glsl_count_attribute_slots(var->type, false); i++) {
+                  int idx = var->data.location + i;
+                  shader->info.inputs_read_16bit |= BITFIELD64_BIT(idx);
+               }
             }
          }
       }
@@ -357,6 +363,7 @@ nir_shader_gather_info(nir_shader *shader, nir_function_impl *entrypoint)
    shader->info.outputs_read = 0;
    shader->info.patch_outputs_read = 0;
    shader->info.double_inputs_read = 0;
+   shader->info.inputs_read_16bit = 0;
    shader->info.patch_inputs_read = 0;
    shader->info.patch_outputs_written = 0;
    shader->info.system_values_read = 0;
