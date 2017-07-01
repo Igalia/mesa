@@ -2353,6 +2353,18 @@ do_untyped_vector_read(const fs_builder &bld,
 
          bld.ADD(read_offset, read_offset, brw_imm_ud(16));
       }
+   } else if (type_sz(dest.type) == 2) {
+      fs_reg read_offset = bld.vgrf(BRW_REGISTER_TYPE_UD);
+      bld.MOV(read_offset, offset_reg);
+      for (unsigned i = 0; i < num_components; i++) {
+         fs_reg read_reg = emit_byte_scattered_read(bld, surf_index, read_offset,
+                                                    1 /* dims */,
+                                                    1,
+                                                    16 /*bit_size */,
+                                                    BRW_PREDICATE_NONE);
+         bld.MOV(offset(dest,bld,i), subscript(read_reg, dest.type, 0));
+         bld.ADD(read_offset, read_offset, brw_imm_ud(type_sz(dest.type)));
+      }
    } else {
       unreachable("Unsupported type");
    }
@@ -3929,7 +3941,6 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       if (const_offset == NULL) {
          fs_reg base_offset = retype(get_nir_src(instr->src[1]),
                                      BRW_REGISTER_TYPE_UD);
-
          for (int i = 0; i < instr->num_components; i++)
             VARYING_PULL_CONSTANT_LOAD(bld, offset(dest, bld, i), surf_index,
                                        base_offset, i * type_sz(dest.type));
