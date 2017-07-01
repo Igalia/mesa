@@ -229,6 +229,12 @@ glsl_type_is_dual_slot(const struct glsl_type *type)
 }
 
 bool
+glsl_type_is_half_slot(const struct glsl_type *type)
+{
+   return type->is_half_slot();
+}
+
+bool
 glsl_type_is_numeric(const struct glsl_type *type)
 {
    return type->is_numeric();

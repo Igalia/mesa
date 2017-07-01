@@ -91,6 +91,13 @@ static inline bool glsl_base_type_is_integer(enum glsl_base_type type)
           type == GLSL_TYPE_IMAGE;
 }
 
+static inline bool glsl_base_type_is_16bit(enum glsl_base_type type)
+{
+   return type == GLSL_TYPE_HALF_FLOAT ||
+          type == GLSL_TYPE_UINT16 ||
+          type == GLSL_TYPE_INT16;
+}
+
 enum glsl_sampler_dim {
    GLSL_SAMPLER_DIM_1D = 0,
    GLSL_SAMPLER_DIM_2D,
@@ -551,12 +558,29 @@ struct glsl_type {
       return is_64bit() && vector_elements > 2;
    }
 
+
+   /**
+    * Query whether a 16-bit type takes half slots.
+    */
+   bool is_half_slot() const
+   {
+      return is_16bit();
+   }
+
    /**
     * Query whether or not a type is 64-bit
     */
    bool is_64bit() const
    {
       return glsl_base_type_is_64bit(base_type);
+   }
+
+   /**
+    * Query whether or not a type is 16-bit
+    */
+   bool is_16bit() const
+   {
+      return glsl_base_type_is_16bit(base_type);
    }
 
    /**
