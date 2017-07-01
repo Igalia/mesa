@@ -402,6 +402,16 @@ enum opcode {
 
    SHADER_OPCODE_RND_MODE,
 
+   /**
+    * Byte scattered write/read opcodes.
+    *
+    * LOGICAL opcodes are eventually translated to the matching non-LOGICAL
+    * opcode, but instead of taking a single payload blog they expect their
+    * arguments separately as individual sources, like untyped write/read.
+    */
+   SHADER_OPCODE_BYTE_SCATTERED_WRITE,
+   SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL,
+
    SHADER_OPCODE_MEMORY_FENCE,
 
    SHADER_OPCODE_GEN4_SCRATCH_READ,
@@ -1253,6 +1263,13 @@ enum PACKED brw_rnd_mode {
    BRW_RND_MODE_RD = 2,    /* Round Down, toward -inf */
    BRW_RND_MODE_RTZ = 3,   /* Round Toward Zero */
    BRW_RND_MODE_UNSPECIFIED,  /* Unspecified rounding mode */
+};
+
+/* MDC_DS - Data Size Message Descriptor Control Field */
+enum PACKED brw_data_size {
+   GEN7_BYTE_SCATTERED_DATA_SIZE_BYTE = 0,
+   GEN7_BYTE_SCATTERED_DATA_SIZE_WORD = 1,
+   GEN7_BYTE_SCATTERED_DATA_SIZE_DWORD = 2
 };
 
 #endif /* BRW_EU_DEFINES_H */
