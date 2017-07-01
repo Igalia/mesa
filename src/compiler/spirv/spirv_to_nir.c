@@ -104,10 +104,13 @@ vtn_const_ssa_value(struct vtn_builder *b, nir_constant *constant,
    switch (glsl_get_base_type(type)) {
    case GLSL_TYPE_INT:
    case GLSL_TYPE_UINT:
+   case GLSL_TYPE_INT16:
+   case GLSL_TYPE_UINT16:
    case GLSL_TYPE_INT64:
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_BOOL:
    case GLSL_TYPE_FLOAT:
+   case GLSL_TYPE_HALF_FLOAT:
    case GLSL_TYPE_DOUBLE: {
       int bit_size = glsl_get_bit_size(type);
       if (glsl_type_is_vector_or_scalar(type)) {
@@ -741,6 +744,8 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       val->type->base_type = vtn_base_type_scalar;
       if (bit_size == 64)
          val->type->type = (signedness ? glsl_int64_t_type() : glsl_uint64_t_type());
+      else if (bit_size == 16)
+         val->type->type = (signedness ? glsl_int16_t_type() : glsl_uint16_t_type());
       else
          val->type->type = (signedness ? glsl_int_type() : glsl_uint_type());
       break;
@@ -748,7 +753,19 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
    case SpvOpTypeFloat: {
       int bit_size = w[2];
       val->type->base_type = vtn_base_type_scalar;
-      val->type->type = bit_size == 64 ? glsl_double_type() : glsl_float_type();
+      switch (bit_size) {
+      case 16:
+         val->type->type = glsl_half_float_type();
+         break;
+      case 32:
+         val->type->type = glsl_float_type();
+         break;
+      case 64:
+         val->type->type = glsl_double_type();
+         break;
+      default:
+         assert(!"Invalid float bit size");
+      }
       break;
    }
 
@@ -961,10 +978,13 @@ vtn_null_constant(struct vtn_builder *b, const struct glsl_type *type)
    switch (glsl_get_base_type(type)) {
    case GLSL_TYPE_INT:
    case GLSL_TYPE_UINT:
+   case GLSL_TYPE_INT16:
+   case GLSL_TYPE_UINT16:
    case GLSL_TYPE_INT64:
    case GLSL_TYPE_UINT64:
    case GLSL_TYPE_BOOL:
    case GLSL_TYPE_FLOAT:
+   case GLSL_TYPE_HALF_FLOAT:
    case GLSL_TYPE_DOUBLE:
       /* Nothing to do here.  It's already initialized to zero */
       break;
@@ -1117,6 +1137,8 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
       switch (glsl_get_base_type(val->const_type)) {
       case GLSL_TYPE_UINT:
       case GLSL_TYPE_INT:
+      case GLSL_TYPE_UINT16:
+      case GLSL_TYPE_INT16:
       case GLSL_TYPE_UINT64:
       case GLSL_TYPE_INT64:
       case GLSL_TYPE_FLOAT:
@@ -1257,9 +1279,12 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
             switch (glsl_get_base_type(type)) {
             case GLSL_TYPE_UINT:
             case GLSL_TYPE_INT:
+            case GLSL_TYPE_UINT16:
+            case GLSL_TYPE_INT16:
             case GLSL_TYPE_UINT64:
             case GLSL_TYPE_INT64:
             case GLSL_TYPE_FLOAT:
+            case GLSL_TYPE_HALF_FLOAT:
             case GLSL_TYPE_DOUBLE:
             case GLSL_TYPE_BOOL:
                /* If we hit this granularity, we're picking off an element */
@@ -1428,10 +1453,13 @@ vtn_create_ssa_value(struct vtn_builder *b, const struct glsl_type *type)
          switch (glsl_get_base_type(type)) {
          case GLSL_TYPE_INT:
          case GLSL_TYPE_UINT:
+         case GLSL_TYPE_INT16:
+         case GLSL_TYPE_UINT16:
          case GLSL_TYPE_INT64:
          case GLSL_TYPE_UINT64:
          case GLSL_TYPE_BOOL:
          case GLSL_TYPE_FLOAT:
+         case GLSL_TYPE_HALF_FLOAT:
          case GLSL_TYPE_DOUBLE:
             child_type = glsl_get_column_type(type);
             break;
