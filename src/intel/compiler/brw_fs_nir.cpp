@@ -715,6 +715,24 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_f2f16:
+      /* In theory, it would be better to use BRW_OPCODE_F32TO16. Depending
+       * on the HW gen, it is a special hw opcode or just a MOV, and
+       * brw_F32TO16 (at brw_eu_emit) would do the work to chose.
+       *
+       * But if we want to use that opcode, we need to provide support on
+       * different optimizations and lowerings. As right now HF support is
+       * only for gen8+, it will be better to use directly the MOV, and use
+       * BRW_OPCODE_F32TO16 when/if we work for HF support on gen7.
+       */
+      /* fallthrough */
+
+   case nir_op_i2i16:
+   case nir_op_u2u16:
+      /* 16-bit destinations should already have stride set to 2. */
+      assert(result.stride == 2);
+      /* fallthrough */
+
    case nir_op_f2f64:
    case nir_op_i2f64:
    case nir_op_u2f64:
