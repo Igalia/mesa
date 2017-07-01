@@ -4061,11 +4061,10 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        * Also, we have to suffle 64-bit data to be in the appropriate layout
        * expected by our 32-bit write messages.
        */
-      unsigned type_size = 4;
       unsigned bit_size = instr->src[0].is_ssa ?
          instr->src[0].ssa->bit_size : instr->src[0].reg.reg->bit_size;
+      unsigned type_size = bit_size / 8;
       if (bit_size == 64) {
-         type_size = 8;
          fs_reg tmp =
            fs_reg(VGRF, alloc.allocate(alloc.sizes[val_reg.nr]), val_reg.type);
          shuffle_64bit_data_for_32bit_write(bld,
@@ -4075,7 +4074,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          val_reg = tmp;
       }
 
-      unsigned type_slots = type_size / 4;
+      /* 16-bit types would use a minimum of 1 slot */
+      unsigned type_slots = MAX2(type_size / 4, 1);
 
       /* Combine groups of consecutive enabled channels in one write
        * message. We use ffs to find the first enabled channel and then ffs on
