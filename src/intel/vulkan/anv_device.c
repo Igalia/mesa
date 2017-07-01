@@ -2115,6 +2115,15 @@ void anv_GetBufferMemoryRequirements(
         buffer->usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
       pMemoryRequirements->size = align_u64(buffer->size, 4);
 
+   /* Vertex buffers with 16-bit values need a 2 bytes padding in some cases
+    * because they are read as 32-bit components. By adding 2 bytes to memory
+    * requirements size when robust buffer accesss is enabled the paddings we
+    * read would be outside of the VkBuffer but would not be outside "the
+    * memory range(s) bound to the buffer".
+    */
+   if (device->robust_buffer_access && (buffer->usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT))
+      pMemoryRequirements->size += 2;
+
    pMemoryRequirements->memoryTypeBits = memory_types;
 }
 
