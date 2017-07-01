@@ -147,6 +147,7 @@ public:
    bool dead_code_eliminate();
    bool remove_duplicate_mrf_writes();
    bool remove_extra_rounding_modes();
+   bool reuse_16bit_conversions_vgrf();
 
    bool opt_sampler_eot();
    bool virtual_grf_interferes(int a, int b);

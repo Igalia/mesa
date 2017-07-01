@@ -39,6 +39,7 @@
 #include "compiler/glsl_types.h"
 #include "compiler/nir/nir_builder.h"
 #include "program/prog_parameter.h"
+#include "brw_fs_live_variables.h"
 
 using namespace brw;
 
@@ -3069,6 +3070,81 @@ fs_visitor::remove_extra_rounding_modes()
    return progress;
 }
 
+/**
+ * When dealing with HF/W/UW, it is usual having a register with a F/D/UD, and
+ * then convert it to HF/W/UW, and not use again the F/D/UD value. In those
+ * cases it would be possible to reuse the register where the F value is
+ * initially stored instead of having two. Take also into account that when
+ * operating with HF/W/UW, you would need to use the full register (so stride
+ * 2). Packs/unpacks would be only useful when loading/storing several
+ * HF/W/UWs.
+ *
+ * So something like this:
+ *  mov(8) vgrf14<2>:HF, vgrf39:F
+ *
+ * Became:
+ *  mov(8) vgrf39<2>:HF, vgrf39:F
+ *
+ * Note that no instruction is removed. The main benefict is reducing the
+ * amoung of registers used, so the pressure on the register allocator is
+ * decreased with big shaders.
+ */
+bool
+fs_visitor::reuse_16bit_conversions_vgrf()
+{
+   bool progress = false;
+   int ip = -1;
+
+   calculate_live_intervals();
+
+   foreach_block_and_inst_safe (block, fs_inst, inst, cfg) {
+      ip++;
+
+      if (inst->dst.file != VGRF || inst->src[0].file != VGRF)
+         continue;
+
+      if (inst->opcode != BRW_OPCODE_MOV)
+         continue;
+
+      if (type_sz(inst->dst.type) != 2 || inst->dst.stride != 2 ||
+          type_sz(inst->src[0].type) != 4 || inst->src[0].stride != 1) {
+         continue;
+      }
+
+      int src_reg = inst->src[0].nr;
+      int src_offset = inst->src[0].offset;
+      unsigned src_var = live_intervals->var_from_vgrf[src_reg];
+      int src_end = live_intervals->end[src_var];
+      int dst_reg = inst->dst.nr;
+
+      if (src_end > ip)
+         continue;
+
+      foreach_block_and_inst(block, fs_inst, scan_inst, cfg) {
+         if (scan_inst->dst.file == VGRF &&
+             scan_inst->dst.nr == dst_reg) {
+            scan_inst->dst.nr = src_reg;
+            scan_inst->dst.offset = src_offset;
+            progress = true;
+         }
+
+         for (int i = 0; i < scan_inst->sources; i++) {
+            if (scan_inst->src[i].file == VGRF &&
+                scan_inst->src[i].nr == dst_reg) {
+               scan_inst->src[i].nr = src_reg;
+               scan_inst->src[i].offset = src_offset;
+               progress = true;
+            }
+         }
+      }
+   }
+
+   if (progress)
+      invalidate_live_intervals();
+
+   return progress;
+}
+
 
 static void
 clear_deps_for_inst_src(fs_inst *inst, bool *deps, int first_grf, int grf_len)
@@ -5765,6 +5841,7 @@ fs_visitor::optimize()
 
    OPT(opt_drop_redundant_mov_to_flags);
    OPT(remove_extra_rounding_modes);
+   OPT(reuse_16bit_conversions_vgrf);
 
    do {
       progress = false;
