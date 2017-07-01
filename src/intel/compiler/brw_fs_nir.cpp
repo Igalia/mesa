@@ -585,6 +585,21 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    result.type = brw_type_for_nir_type(devinfo,
       (nir_alu_type)(nir_op_infos[instr->op].output_type |
                      nir_dest_bit_size(instr->dest.dest)));
+   /*  According to PRM, Volume 07 3D Media GPGPU, Section Register Region
+    *  Restrictions, SubSection 5. Special Cases for Word Operations, GEN >= 8
+    *  can only handle writting on 16-bit (UW,HF,W) registers on the lower
+    *  word or in the higher word for each double word. It needs to be the
+    *  same offset for for all 16-bit elements of the register. So as
+    *  consequence all destinations of 16-bit registers should use a stride
+    *  equal to 2.
+    *
+    *  We also need alignment to 32-bit for conversions operations
+    *  form 32-bit to 16-bit. So this is also useful for this operations
+    *  that are the only alu operation supported right now.
+    */
+
+   if (nir_dest_bit_size(instr->dest.dest) == 16)
+      result.stride = 2;
 
    fs_reg op[4];
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
@@ -594,6 +609,9 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
                         nir_src_bit_size(instr->src[i].src)));
       op[i].abs = instr->src[i].abs;
       op[i].negate = instr->src[i].negate;
+      /* Previous comment still aplies here for source elements */
+      if (nir_src_bit_size(instr->src[i].src) == 16)
+         op[i].stride = 2;
    }
 
    /* We get a bunch of mov's out of the from_ssa pass and they may still
@@ -2083,6 +2101,9 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
       first_component = first_component / 2;
    }
 
+   if (type_sz(tmp_dst.type) == 2)
+      tmp_dst.stride = 2;
+
    for (unsigned iter = 0; iter < num_iterations; iter++) {
       if (offset_const) {
          /* Constant indexing - use global offset. */
@@ -2414,6 +2435,9 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
          dst = tmp;
       }
 
+      if (type_sz(dst.type) == 2)
+         dst.stride = 2;
+
       for (unsigned iter = 0; iter < num_iterations; iter++) {
          if (indirect_offset.file == BAD_FILE) {
             /* Constant indexing - use global offset. */
@@ -2725,6 +2749,9 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
          first_component = first_component / 2;
       }
 
+      if (type_sz(dest.type) == 2)
+         dest.stride = 2;
+
       fs_inst *inst;
       if (indirect_offset.file == BAD_FILE) {
          /* Arbitrarily only push up to 32 vec4 slots worth of data,
@@ -2735,7 +2762,7 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
             fs_reg src = fs_reg(ATTR, imm_offset / 2, dest.type);
             for (int i = 0; i < instr->num_components; i++) {
                unsigned comp = 16 / type_sz(dest.type) * (imm_offset % 2) +
-                  i + first_component;
+                  i * dest.stride + first_component;
                bld.MOV(offset(dest, bld, i), component(src, comp));
             }
             tes_prog_data->base.urb_read_length =
@@ -3182,6 +3209,9 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
          num_components *= 2;
       }
 
+      if (type_sz(dest.type) == 2)
+         dest.stride = 2;
+
       for (unsigned int i = 0; i < num_components; i++) {
          struct brw_reg interp = interp_reg(base, component + i);
          interp = suboffset(interp, 3);
@@ -3575,6 +3605,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
       dest = get_nir_dest(instr->dest);
+
+   if (instr->dest.is_ssa && nir_dest_bit_size(instr->dest) == 16)
+      dest.stride = 2;
 
    switch (instr->intrinsic) {
    case nir_intrinsic_atomic_counter_inc:
