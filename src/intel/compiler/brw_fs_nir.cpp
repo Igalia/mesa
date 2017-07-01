@@ -2351,8 +2351,33 @@ fs_visitor::nir_emit_vs_intrinsic(const fs_builder &bld,
       assert(const_offset && "Indirect input loads not allowed");
       src = offset(src, bld, const_offset->u32[0]);
 
-      for (unsigned j = 0; j < num_components; j++) {
-         bld.MOV(offset(dest, bld, j), offset(src, bld, j + first_component));
+      /* The VS load input for 16-bit values receives pairs of 16-bit values
+       * packed in 32-bit values. This is an example on SIMD8:
+       *
+       * xy xy xy xy xy xy xy xy
+       * zw zw zw zw yw zw zw xw
+       *
+       * We need to format it to something like:
+       *
+       * xx xx xx xx yy yy yy yy
+       * zz zz zz zz ww ww ww ww
+       *
+       * As we are setting an stride = 2 by default. We finally receive:
+       *
+       * x0 x0 x0 x0 x0 x0 x0 x0
+       * y0 y0 y0 y0 y0 y0 y0 y0
+       * z0 z0 z0 z0 z0 z0 z0 z0
+       * w0 w0 w0 w0 w0 w0 w0 w0
+       */
+      if (type_sz(type) == 2) {
+         dest.stride = 2;
+         for (unsigned j = 0; j < num_components; j++)
+            bld.MOV(offset(dest, bld, j),
+                    subscript(retype(offset(src,bld, (j / 2) * 2 + first_component),
+                                     BRW_REGISTER_TYPE_F), type, j % 2));
+      } else {
+         for (unsigned j = 0; j < num_components; j++)
+            bld.MOV(offset(dest, bld, j), offset(src, bld, j + first_component));
       }
 
       if (type == BRW_REGISTER_TYPE_DF) {
