@@ -52,7 +52,10 @@ enum glsl_base_type {
    GLSL_TYPE_UINT = 0,
    GLSL_TYPE_INT,
    GLSL_TYPE_FLOAT,
+   GLSL_TYPE_HALF_FLOAT,
    GLSL_TYPE_DOUBLE,
+   GLSL_TYPE_UINT16,
+   GLSL_TYPE_INT16,
    GLSL_TYPE_UINT64,
    GLSL_TYPE_INT64,
    GLSL_TYPE_BOOL,
@@ -237,12 +240,15 @@ struct glsl_type {
     * @{
     */
    static const glsl_type *vec(unsigned components);
+   static const glsl_type *f16vec(unsigned components);
    static const glsl_type *dvec(unsigned components);
    static const glsl_type *ivec(unsigned components);
    static const glsl_type *uvec(unsigned components);
    static const glsl_type *bvec(unsigned components);
    static const glsl_type *i64vec(unsigned components);
    static const glsl_type *u64vec(unsigned components);
+   static const glsl_type *i16vec(unsigned components);
+   static const glsl_type *u16vec(unsigned components);
    /**@}*/
 
    /**
@@ -472,7 +478,9 @@ struct glsl_type {
    bool is_matrix() const
    {
       /* GLSL only has float matrices. */
-      return (matrix_columns > 1) && (base_type == GLSL_TYPE_FLOAT || base_type == GLSL_TYPE_DOUBLE);
+      return (matrix_columns > 1) && (base_type == GLSL_TYPE_FLOAT
+                                      || base_type == GLSL_TYPE_DOUBLE
+                                      || base_type == GLSL_TYPE_HALF_FLOAT);
    }
 
    /**

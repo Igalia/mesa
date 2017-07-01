@@ -144,6 +144,7 @@ static const struct builtin_type_versions {
    T(uvec3,                           130, 300)
    T(uvec4,                           130, 300)
    T(float,                           110, 100)
+   T(float16_t,                       330, 300)
    T(vec2,                            110, 100)
    T(vec3,                            110, 100)
    T(vec4,                            110, 100)

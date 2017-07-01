@@ -199,8 +199,20 @@ lower_buffer_access::emit_access(void *mem_ctx,
       else
          matrix_stride = glsl_align(matrix_columns * N, 16);
 
-      const glsl_type *deref_type = deref->type->is_float() ?
-         glsl_type::float_type : glsl_type::double_type;
+      const glsl_type *deref_type;
+      switch (deref->type->base_type) {
+      case GLSL_TYPE_FLOAT:
+         deref_type = glsl_type::float_type;
+         break;
+      case GLSL_TYPE_HALF_FLOAT:
+         deref_type = glsl_type::float16_t_type;
+         break;
+      case GLSL_TYPE_DOUBLE:
+         deref_type = glsl_type::double_type;
+         break;
+      default:
+         assert(!"Invalid type");
+      }
 
       for (unsigned i = 0; i < deref->type->vector_elements; i++) {
          ir_rvalue *chan_offset =
