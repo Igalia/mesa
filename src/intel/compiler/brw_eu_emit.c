@@ -3202,6 +3202,47 @@ brw_untyped_surface_write(struct brw_codegen *p,
       p, insn, num_channels);
 }
 
+
+
+static void
+brw_set_dp_byte_scattered_read_message(struct brw_codegen *p,
+                                       struct brw_inst *insn)
+{
+
+   const struct gen_device_info *devinfo = p->devinfo;
+   /* Set mask of 32-bit channels to drop. */
+   unsigned msg_control = GEN7_BYTE_SCATTERED_DATA_SIZE_WORD << 2;
+
+   if (brw_inst_access_mode(devinfo, p->current) == BRW_ALIGN_1) {
+      if (brw_inst_exec_size(devinfo, p->current) == BRW_EXECUTE_16)
+         msg_control |= 1; /* SIMD16 mode */
+      else
+         msg_control |= 2; /* SIMD8 mode */
+   }
+
+   brw_inst_set_dp_msg_type(devinfo, insn,
+                            (devinfo->gen >= 8 || devinfo->is_haswell ?
+                             HSW_DATAPORT_DC_PORT0_BYTE_SCATTERED_READ :
+                             GEN7_DATAPORT_DC_BYTE_SCATTERED_READ));
+   brw_inst_set_dp_msg_control(devinfo, insn, msg_control);
+}
+
+void
+brw_byte_scattered_read(struct brw_codegen *p,
+                        struct brw_reg dst,
+                        struct brw_reg payload,
+                        struct brw_reg surface,
+                        unsigned msg_length)
+{
+   const unsigned sfid =  GEN7_SFID_DATAPORT_DATA_CACHE;
+   struct brw_inst *insn = brw_send_indirect_scattered_message(
+      p, sfid, dst, payload, surface, msg_length,
+      brw_surface_payload_size(p, 1, true, true),
+      false);
+
+   brw_set_dp_byte_scattered_read_message(p, insn);
+}
+
 static void
 brw_set_dp_byte_scattered_write(struct brw_codegen *p,
                                 struct brw_inst *insn)

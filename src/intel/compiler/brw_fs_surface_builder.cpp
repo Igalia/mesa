@@ -1207,5 +1207,17 @@ namespace brw {
                    addr, src, surface, dims, size, 0, pred);
       }
 
+   fs_reg
+      emit_byte_scattered_read(const fs_builder &bld,
+                               const fs_reg &surface, const fs_reg &addr,
+                               unsigned dims, unsigned size,
+                               brw_predicate pred)
+      {
+         using namespace surface_access;
+
+         return emit_send(bld, SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL,
+                          addr, fs_reg(), surface, dims, size, size, pred);
+      }
+
    }
 }
