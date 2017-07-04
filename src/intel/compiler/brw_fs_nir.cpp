@@ -54,19 +54,24 @@ fs_visitor::nir_setup_outputs()
       return;
 
    if (stage == MESA_SHADER_FRAGMENT) {
-      /*
+      /* On HW that doesn't support half-precision render-target-write
+       * messages (e.g, some gen8 HW like Broadwell), we need a workaround
+       * to support 16-bit outputs from pixel shaders.
+       *
        * The following code uses the outputs map to save the variable's
        * original output type, so later we can retrieve it and retype
        * the output accordingly while emitting the FS 16-bit outputs.
        */
-      nir_foreach_variable(var, &nir->outputs) {
-         const enum glsl_base_type base_type =
-            glsl_get_base_type(var->type->without_array());
+      if (devinfo->gen == 8) {
+         nir_foreach_variable(var, &nir->outputs) {
+            const enum glsl_base_type base_type =
+               glsl_get_base_type(var->type->without_array());
 
-         if (glsl_base_type_is_16bit(base_type)) {
-            outputs[var->data.driver_location] =
-               retype(outputs[var->data.driver_location],
-                      brw_type_for_base_type(var->type));
+            if (glsl_base_type_is_16bit(base_type)) {
+               outputs[var->data.driver_location] =
+                  retype(outputs[var->data.driver_location],
+                         brw_type_for_base_type(var->type));
+            }
          }
       }
       return;
@@ -3351,14 +3356,27 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       const unsigned location = nir_intrinsic_base(instr) +
          SET_FIELD(const_offset->u32[0], BRW_NIR_FRAG_OUTPUT_LOCATION);
 
+      /* This flag discriminates HW where we have support for half-precision
+       * render target write messages (aka, the data-format bit), so 16-bit
+       * render target payloads can be used. It is available since skylake
+       * and cherryview. In the case of cherryview there is no support for
+       * UINT formats.
+       */
+      bool enable_hp_rtw = is_16bit &&
+         (devinfo->gen >= 9 || (devinfo->is_cherryview &&
+                                outputs[location].type != BRW_REGISTER_TYPE_UW));
+
       if (is_16bit) {
-         /* The outputs[location] should already have the original output type
-          * stored from nir_setup_outputs.
+         /* outputs[location] should already have the original output type
+          * stored from nir_setup_outputs, in case the HW doesn't support
+          * half-precision RTW messages.
+          * If HP RTW is enabled we just use HF to copy 16-bit values.
           */
-         src = retype(src, outputs[location].type);
+         src = retype(src, enable_hp_rtw ?
+                      BRW_REGISTER_TYPE_HF : outputs[location].type);
       }
 
-      fs_reg new_dest = retype(alloc_frag_output(this, location, false),
+      fs_reg new_dest = retype(alloc_frag_output(this, location, enable_hp_rtw),
                                src.type);
 
       /* This is a workaround to support 16-bits outputs on HW that doesn't
@@ -3368,7 +3386,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
        * render target with a 16-bit surface format will force the correct
        * conversion of the 32-bit output values to 16-bit.
        */
-      if (is_16bit) {
+      if (is_16bit && !enable_hp_rtw) {
          new_dest.type = brw_reg_type_from_bit_size(32, src.type);
       }
       for (unsigned j = 0; j < instr->num_components; j++)
