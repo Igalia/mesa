@@ -50,8 +50,27 @@ fs_visitor::emit_nir_code()
 void
 fs_visitor::nir_setup_outputs()
 {
-   if (stage == MESA_SHADER_TESS_CTRL || stage == MESA_SHADER_FRAGMENT)
+   if (stage == MESA_SHADER_TESS_CTRL)
       return;
+
+   if (stage == MESA_SHADER_FRAGMENT) {
+      /*
+       * The following code uses the outputs map to save the variable's
+       * original output type, so later we can retrieve it and retype
+       * the output accordingly while emitting the FS 16-bit outputs.
+       */
+      nir_foreach_variable(var, &nir->outputs) {
+         const enum glsl_base_type base_type =
+            glsl_get_base_type(var->type->without_array());
+
+         if (glsl_base_type_is_16bit(base_type)) {
+            outputs[var->data.driver_location] =
+               retype(outputs[var->data.driver_location],
+                      brw_type_for_base_type(var->type));
+         }
+      }
+      return;
+   }
 
    unsigned vec4s[VARYING_SLOT_TESS_MAX] = { 0, };
 
@@ -3310,14 +3329,35 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
    }
 
    case nir_intrinsic_store_output: {
-      const fs_reg src = get_nir_src(instr->src[0]);
+      fs_reg src = get_nir_src(instr->src[0]);
+      bool is_16bit = (instr->src[0].is_ssa ?
+         instr->src[0].ssa->bit_size : instr->src[0].reg.reg->bit_size) == 16;
+
       const nir_const_value *const_offset = nir_src_as_const_value(instr->src[1]);
       assert(const_offset && "Indirect output stores not allowed");
       const unsigned location = nir_intrinsic_base(instr) +
          SET_FIELD(const_offset->u32[0], BRW_NIR_FRAG_OUTPUT_LOCATION);
-      const fs_reg new_dest = retype(alloc_frag_output(this, location),
-                                     src.type);
 
+      if (is_16bit) {
+         /* The outputs[location] should already have the original output type
+          * stored from nir_setup_outputs.
+          */
+         src = retype(src, outputs[location].type);
+      }
+
+      fs_reg new_dest = retype(alloc_frag_output(this, location),
+                               src.type);
+
+      /* This is a workaround to support 16-bits outputs on HW that doesn't
+       * support half-precision render-target-write (RTW) messages. In these
+       * cases, we construct a 32-bit payload with the result of the
+       * conversion of the output values from 16-bit to 32-bit. Later on, a
+       * render target with a 16-bit surface format will force the correct
+       * conversion of the 32-bit output values to 16-bit.
+       */
+      if (is_16bit) {
+         new_dest.type = brw_reg_type_from_bit_size(32, src.type);
+      }
       for (unsigned j = 0; j < instr->num_components; j++)
          bld.MOV(offset(new_dest, bld, nir_intrinsic_component(instr) + j),
                  offset(src, bld, j));
