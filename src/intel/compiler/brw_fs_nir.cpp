@@ -4088,13 +4088,13 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        */
       unsigned bit_size = nir_src_bit_size(instr->src[0]);
       unsigned type_size = bit_size / 8;
+      unsigned slots_per_component = 1;
+
       if (bit_size == 64) {
          val_reg = shuffle_64bit_data_for_32bit_write(bld,
             val_reg, instr->num_components);
+         slots_per_component = 2;
       }
-
-      /* 16-bit types would use a minimum of 1 slot */
-      unsigned type_slots = MAX2(type_size / 4, 1);
 
       /* Combine groups of consecutive enabled channels in one write
        * message. We use ffs to find the first enabled channel and then ffs on
@@ -4105,18 +4105,48 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          unsigned first_component = ffs(writemask) - 1;
          unsigned length = ffs(~(writemask >> first_component)) - 1;
 
+         fs_reg current_val_reg =
+            offset(val_reg, bld, first_component * slots_per_component);
+
          if (type_size > 4) {
             /* We can't write more than 2 64-bit components at once. Limit
              * the length of the write to what we can do and let the next
              * iteration handle the rest.
              */
             length = MIN2(2, length);
-         } else if (type_size == 2) {
-            /* For 16-bit types we are using byte scattered writes, that can
-             * only write one component per call. So we limit the length, and
-             * let the write happening in several iterations.
+         } else if (type_size < 4) {
+            assert(type_size == 2);
+            /* For 16-bit types we pack two consecutive values into a 32-bit
+             * word and use an untyped write message. For single values or not
+             * 32-bit-aligned we need to use byte-scattered writes because
+             * untyped writes works with 32-bit components with 32-bit
+             * alignment. byte_scattered_write messages only support one
+             * 16-bit component at a time.
+             *
+             * For example, if there is a 3-component vector we submit one
+             * untyped-write message of 32-bit (first two components), and one
+             * byte-scattered write message (the last component).
              */
-            length = 1;
+
+            if (first_component % 2) {
+               /* If we use a .yz writemask we also need to emit 2
+                * byte-scattered write messages because of y-component not
+                * being aligned to 32-bit.
+                */
+               length = 1;
+            } else if (length > 2 && (length % 2)) {
+               /* If there is an odd number of consecutive components we left
+                * the not paired component for a following emit of length == 1
+                * with byte_scattered_write.
+                */
+               length --;
+            }
+
+            fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_D,
+                                  DIV_ROUND_UP(length, 2));
+            shuffle_16bit_data_for_32bit_write(bld, tmp, current_val_reg,
+                                               length);
+            current_val_reg = tmp;
          }
 
          fs_reg offset_reg;
@@ -4131,24 +4161,25 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                     brw_imm_ud(type_size * first_component));
          }
 
-         if (type_size == 2) {
+         if (type_size < 4 && length == 1) {
+            assert(type_size == 2);
             /* Untyped Surface messages have a fixed 32-bit size, so we need
              * to rely on byte scattered in order to write 16-bit elements.
              * The byte_scattered_write message needs that every written 16-bit
              * type to be aligned 32-bits (stride=2).
              */
-            fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_D);
-            bld.MOV(subscript(tmp, BRW_REGISTER_TYPE_W, 0),
-                     offset(val_reg, bld, first_component));
             emit_byte_scattered_write(bld, surf_index, offset_reg,
-                                      tmp,
+                                      current_val_reg,
                                       1 /* dims */, 1,
                                       bit_size,
                                       BRW_PREDICATE_NONE);
          } else {
+            unsigned write_size = (length * type_size) / 4;
+            assert (write_size > 0);
+
             emit_untyped_write(bld, surf_index, offset_reg,
-                               offset(val_reg, bld, first_component * type_slots),
-                               1 /* dims */, length * type_slots,
+                               current_val_reg,
+                               1 /* dims */, write_size,
                                BRW_PREDICATE_NONE);
          }
 
