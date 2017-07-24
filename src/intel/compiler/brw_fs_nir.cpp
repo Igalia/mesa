@@ -2354,16 +2354,39 @@ do_untyped_vector_read(const fs_builder &bld,
          bld.ADD(read_offset, read_offset, brw_imm_ud(16));
       }
    } else if (type_sz(dest.type) == 2) {
-      fs_reg read_offset = bld.vgrf(BRW_REGISTER_TYPE_UD);
-      bld.MOV(read_offset, offset_reg);
-      for (unsigned i = 0; i < num_components; i++) {
-         fs_reg read_reg = emit_byte_scattered_read(bld, surf_index, read_offset,
-                                                    1 /* dims */,
-                                                    1,
-                                                    16 /*bit_size */,
-                                                    BRW_PREDICATE_NONE);
-         bld.MOV(offset(dest,bld,i), subscript(read_reg, dest.type, 0));
-         bld.ADD(read_offset, read_offset, brw_imm_ud(type_sz(dest.type)));
+      assert(dest.stride == 1);
+
+      int component_pairs = num_components / 2;
+      /* Pairs of 16-bit components can be read with untyped read */
+      if (component_pairs > 0) {
+         fs_reg read_result = emit_untyped_read(bld, surf_index,
+                                                offset_reg,
+                                                1 /* dims */,
+                                                component_pairs,
+                                                BRW_PREDICATE_NONE);
+         shuffle_32bit_load_result_to_16bit_data(bld,
+               retype(dest, BRW_REGISTER_TYPE_HF),
+               retype(read_result, BRW_REGISTER_TYPE_F),
+               component_pairs * 2);
+      }
+      /* Last component of vec3 and scalar 16-bit read needs to be read
+       * using one byte_scattered_read message
+       */
+      if (num_components % 2) {
+         fs_reg read_offset = bld.vgrf(BRW_REGISTER_TYPE_UD);
+         bld.ADD(read_offset,
+                 offset_reg,
+                 brw_imm_ud((num_components - 1) * type_sz(dest.type)));
+         fs_reg read_result = emit_byte_scattered_read(bld, surf_index,
+                                                       read_offset,
+                                                       1 /* dims */,
+                                                       1,
+                                                       16 /* bit_size */,
+                                                       BRW_PREDICATE_NONE);
+         read_result.type = dest.type;
+         read_result.stride = 2;
+
+         bld.MOV(offset(dest, bld, num_components - 1), read_result);
       }
    } else {
       unreachable("Unsupported type");
