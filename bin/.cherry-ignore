@@ -23,3 +23,6 @@ c35fd58688fd8c0c421c35b28419d20befdcb8b9 i965: Fix anisotropic filtering for mag
 # stable: The commit is a follow-up to 6235f08ff8870636d89d2181e0a9dfc3ebec7b45
 #         which is not in branch.
 b178e239dd7205a93ae3cf6c0a24c2c555bf333f anv: Transition MCS buffers from the undefined layout
+
+# stable: The commit addresses 63a43f41619 which is not in branch
+f6e674fa5164a957e93e8dc1334a48c9e7ee7df9 i965: Fix offset addition in get_isl_surf.
