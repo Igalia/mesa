@@ -53,3 +53,6 @@ e21fc2c625279b29a3c05d3341b8b748655d5cec swr/rast: non-regex knob fallback code 
 
 # stable: The bindless work did not land in branch.
 b38c9c57f272b54a190be4efd4297effa1a3deab mesa: fix mismatch when returning 64-bit bindless uniform handles
+
+# stable: Addresses commit 57165f2ef8 which landed after the 17.1 branchpoint.
+f99e9335e2ca46ec8ead00b63e79f800fec75592 st/glsl_to_tgsi: fix getting the image type for array of structs
