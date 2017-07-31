@@ -43,3 +43,7 @@ e21fc2c625279b29a3c05d3341b8b748655d5cec swr/rast: non-regex knob fallback code 
 # stable: Depends on the refactoring commit b10cdb217a1638aa7cbd2c7bbb580d180512f3f3
 #         at least.
 194ff5eed18f310bece0899595f678699badd32e swr: fix transform feedback logic
+
+# stable: Based upon earlier refactoring commit 37e22ab65e852fc585650f6df26d976e7306acce
+873789002f5d1c7c6c39231a8c8d541f4f61e65c radeonsi/gfx9: fix vertex idx in ES with multiple waves per threadgroup
+081ac6e5c6d2ef3931b27eb755d1a38827582a45 radeonsi/gfx9: always wrap GS and TCS in an if-block (v2)
