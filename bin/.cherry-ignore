@@ -29,3 +29,9 @@ f6e674fa5164a957e93e8dc1334a48c9e7ee7df9 i965: Fix offset addition in get_isl_su
 
 # stable: The commit addresses 0f9b609cf4f which is not in branch.
 698636cc9762f090b75fd0421db7e654609e7715 i965: Fix = vs == in MCS aux usage assert.
+
+# stable: Depends on the low_prio queue, which did not land in branch.
+ed2b3f5c81b76281ff0e4728928ac55944b930b8 radeonsi: decrease the number of compiler threads
+
+# stable: Depends on the ac_surface work, which did not land in branch.
+5e81df0f103667d888bd346e148843f510a80adc ac/surface: fix hybrid graphics where APU=GFX9, dGPU=older
