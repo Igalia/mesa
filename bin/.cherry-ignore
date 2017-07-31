@@ -15,3 +15,7 @@ c12f8305a8ae4fd5d78a9ab8bbda790a711d5bed nv50,nvc0: remove IDX from bufctx immed
 # extra: References 6a7c5257cac but because later f8d69beed49
 #        introduced a regression and the latter didn't land
 c35fd58688fd8c0c421c35b28419d20befdcb8b9 i965: Fix anisotropic filtering for mag filter
+
+# stable: The commit addresses issue brought up by 08413a81b93dc537fb0c3
+#         which is not in branch.
+8e3d9c5d09c48be9a88bdca7ae3124c12b6db4fe anv: Round u_vector element sizes to a power of two
