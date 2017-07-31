@@ -19,3 +19,7 @@ c35fd58688fd8c0c421c35b28419d20befdcb8b9 i965: Fix anisotropic filtering for mag
 # stable: The commit addresses issue brought up by 08413a81b93dc537fb0c3
 #         which is not in branch.
 8e3d9c5d09c48be9a88bdca7ae3124c12b6db4fe anv: Round u_vector element sizes to a power of two
+
+# stable: The commit is a follow-up to 6235f08ff8870636d89d2181e0a9dfc3ebec7b45
+#         which is not in branch.
+b178e239dd7205a93ae3cf6c0a24c2c555bf333f anv: Transition MCS buffers from the undefined layout
