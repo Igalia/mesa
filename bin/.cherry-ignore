@@ -63,3 +63,18 @@ f4d095cc651af005d5760aa9dd06e6ae7007fab6 radeonsi: update dirty_level_mask only 
 # stable: Addresses issue introduced by earlier fix (081ac6e5c6d2), which
 #         did not land in branch
 2879a602dd5d133c792d262b6be98aa6f810c16d radeonsi: ensure that temp array allocas are in the entry block
+
+# stable: The EGL extension landed in 17.2
+39bf7756b9a56b4827fecabfca00a8139feecd25 egl: move KHR_no_error vs debug/robustness check further down
+
+# stable: The offending commit did not land in branch
+914f11e75b8ebe8a0faab76ce25fe185ab580eee st/mesa: fix unconditional return in st_framebuffer_iface_remove
+c4652a0a5b5eef32f31baa1187ecd2612ac1009d virgl: encode index buffer offset.
+
+# stable: RGBA landed in 17.2
+1bf703e4ea5c4f742bc7ba55d01e5afc3f4e11f9 dri_interface,egl,gallium: only expose RGBA visuals on Android
+be5773fa8dfe9255d9abaf5c7d5bbbd2d922da08 Android: fix compile error for DRI2 loader getCapability
+
+# stable: Commit was never applied - see above.
+d85802e501a67e193a4a363cfe3b4c17c3d9e2e9 Revert "st/mesa: release sampler views when redefining a texture in st_context_teximage"
+>>>>>>> 6a7d67b7ac0... cherry-ignore: add a bunch more commits to the list
