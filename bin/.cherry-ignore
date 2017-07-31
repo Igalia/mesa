@@ -26,3 +26,6 @@ b178e239dd7205a93ae3cf6c0a24c2c555bf333f anv: Transition MCS buffers from the un
 
 # stable: The commit addresses 63a43f41619 which is not in branch
 f6e674fa5164a957e93e8dc1334a48c9e7ee7df9 i965: Fix offset addition in get_isl_surf.
+
+# stable: The commit addresses 0f9b609cf4f which is not in branch.
+698636cc9762f090b75fd0421db7e654609e7715 i965: Fix = vs == in MCS aux usage assert.
