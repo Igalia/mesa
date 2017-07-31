@@ -50,3 +50,6 @@ e21fc2c625279b29a3c05d3341b8b748655d5cec swr/rast: non-regex knob fallback code 
 
 # stable: Reverted shortly after being merged in master.
 5c1241268ba9b240cb79ab9a30c5255b176c83c9 st/mesa: release sampler views when redefining a texture in st_context_teximage
+
+# stable: The bindless work did not land in branch.
+b38c9c57f272b54a190be4efd4297effa1a3deab mesa: fix mismatch when returning 64-bit bindless uniform handles
