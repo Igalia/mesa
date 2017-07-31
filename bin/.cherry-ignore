@@ -39,3 +39,7 @@ ed2b3f5c81b76281ff0e4728928ac55944b930b8 radeonsi: decrease the number of compil
 # stable: Addresses build issues in autoExpandEnvironmentVariables
 #         which landed with commit a25093de7188d553dfd832626a4181bd36898604
 e21fc2c625279b29a3c05d3341b8b748655d5cec swr/rast: non-regex knob fallback code for gcc < 4.9
+
+# stable: Depends on the refactoring commit b10cdb217a1638aa7cbd2c7bbb580d180512f3f3
+#         at least.
+194ff5eed18f310bece0899595f678699badd32e swr: fix transform feedback logic
