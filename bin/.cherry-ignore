@@ -35,3 +35,7 @@ ed2b3f5c81b76281ff0e4728928ac55944b930b8 radeonsi: decrease the number of compil
 
 # stable: Depends on the ac_surface work, which did not land in branch.
 5e81df0f103667d888bd346e148843f510a80adc ac/surface: fix hybrid graphics where APU=GFX9, dGPU=older
+
+# stable: Addresses build issues in autoExpandEnvironmentVariables
+#         which landed with commit a25093de7188d553dfd832626a4181bd36898604
+e21fc2c625279b29a3c05d3341b8b748655d5cec swr/rast: non-regex knob fallback code for gcc < 4.9
