@@ -56,3 +56,6 @@ b38c9c57f272b54a190be4efd4297effa1a3deab mesa: fix mismatch when returning 64-bi
 
 # stable: Addresses commit 57165f2ef8 which landed after the 17.1 branchpoint.
 f99e9335e2ca46ec8ead00b63e79f800fec75592 st/glsl_to_tgsi: fix getting the image type for array of structs
+
+# stable: Addresses issues with bindless textures.
+f4d095cc651af005d5760aa9dd06e6ae7007fab6 radeonsi: update dirty_level_mask only when flushing or unbinding framebuffer
