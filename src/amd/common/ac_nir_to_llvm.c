@@ -1135,7 +1135,17 @@ static LLVMValueRef emit_find_lsb(struct nir_to_llvm_context *ctx,
 		 */
 		LLVMConstInt(ctx->i32, 1, false),
 	};
-	return ac_build_intrinsic(&ctx->ac, "llvm.cttz.i32", ctx->i32, params, 2, AC_FUNC_ATTR_READNONE);
+
+	LLVMValueRef lsb = ac_build_intrinsic(&ctx->ac, "llvm.cttz.i32", ctx->i32,
+					      params, 2,
+					      AC_FUNC_ATTR_READNONE);
+
+	/* TODO: We need an intrinsic to skip this conditional. */
+	/* Check for zero: */
+	return LLVMBuildSelect(ctx->builder, LLVMBuildICmp(ctx->builder,
+							   LLVMIntEQ, src0,
+							   ctx->i32zero, ""),
+			       LLVMConstInt(ctx->i32, -1, 0), lsb, "");
 }
 
 static LLVMValueRef emit_ifind_msb(struct nir_to_llvm_context *ctx,
