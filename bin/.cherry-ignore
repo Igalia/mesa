@@ -59,3 +59,7 @@ f99e9335e2ca46ec8ead00b63e79f800fec75592 st/glsl_to_tgsi: fix getting the image 
 
 # stable: Addresses issues with bindless textures.
 f4d095cc651af005d5760aa9dd06e6ae7007fab6 radeonsi: update dirty_level_mask only when flushing or unbinding framebuffer
+
+# stable: Addresses issue introduced by earlier fix (081ac6e5c6d2), which
+#         did not land in branch
+2879a602dd5d133c792d262b6be98aa6f810c16d radeonsi: ensure that temp array allocas are in the entry block
