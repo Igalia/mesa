@@ -138,3 +138,7 @@ ea08a296fe226f5e67366b4db420c2322f38774c radv: Handle VK_ATTACHMENT_UNUSED in co
 # fixes:  This commit addressed an earlier commit af22adee4f which did not
 #         land in branch.
 554aa094406f3f5a935c4adbe77569cc9beb4312 virgl: drop precise modifier.
+
+# fixes:  This commit is complex and has non trivial conflicts due to
+#         previous changes.
+df61a05019d5c7479d4b29d251af4231f125e61c radv: handle 10-bit format clamping workaround.
