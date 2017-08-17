@@ -77,3 +77,7 @@ be5773fa8dfe9255d9abaf5c7d5bbbd2d922da08 Android: fix compile error for DRI2 loa
 
 # stable: Commit was never applied - see above.
 d85802e501a67e193a4a363cfe3b4c17c3d9e2e9 Revert "st/mesa: release sampler views when redefining a texture in st_context_teximage"
+
+# stable: Breaks SWR compilation due to earlier commit f50aa21456
+#         which did not land in branch.
+4d53b16f555b2d33216518100fb2cd578428512d swr: use the correct variable for no undefined symbols
