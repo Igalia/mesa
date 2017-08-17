@@ -85,3 +85,7 @@ d85802e501a67e193a4a363cfe3b4c17c3d9e2e9 Revert "st/mesa: release sampler views 
 # stable: 17.2 nomination only. Depends on earlier commit 28634ff7d3
 #         which did not land in branch.
 cb6f16dce90b4737f62588f8ea5083ee6544787e radeon/ac: use ds_swizzle for derivs on si/cik.
+
+# stable: 17.2 nomination only. Depends on earlier commit 1cb5a6061c
+#         which did not land in branch.
+4d9b0dcccb81ad10113d9aef52b4c84496e879f1 configure: remove trailing "-a" in swr architecture test
