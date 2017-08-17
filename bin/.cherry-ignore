@@ -130,3 +130,7 @@ e43cc3e3afc98783310f81f8c0151a8314044739 radv/gfx9: handle GFX9 opaque metadata
 
 # stable: 17.2 nomination only.
 4c02e2bd95d16407084914ff7248a1717bdce658 radv: disable texture gather workaround on gfx9.
+
+# fixes:  This commit is complex and has non trivial conflicts due to
+#         multiple previous changes.
+ea08a296fe226f5e67366b4db420c2322f38774c radv: Handle VK_ATTACHMENT_UNUSED in color attachments.
