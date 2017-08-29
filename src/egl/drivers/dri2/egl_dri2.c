@@ -936,9 +936,12 @@ dri2_display_release(_EGLDisplay *disp)
           wl_drm_destroy(dri2_dpy->wl_drm);
       if (dri2_dpy->wl_shm)
           wl_shm_destroy(dri2_dpy->wl_shm);
-      wl_registry_destroy(dri2_dpy->wl_registry);
-      wl_event_queue_destroy(dri2_dpy->wl_queue);
-      wl_proxy_wrapper_destroy(dri2_dpy->wl_dpy_wrapper);
+      if (dri2_dpy->wl_registry)
+         wl_registry_destroy(dri2_dpy->wl_registry);
+      if (dri2_dpy->wl_queue)
+         wl_event_queue_destroy(dri2_dpy->wl_queue);
+      if (dri2_dpy->wl_dpy_wrapper)
+         wl_proxy_wrapper_destroy(dri2_dpy->wl_dpy_wrapper);
       if (dri2_dpy->own_device) {
          wl_display_disconnect(dri2_dpy->wl_dpy);
       }
