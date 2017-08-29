@@ -216,3 +216,7 @@ d118ff876559e468d2d243470947eee53171fe57 radv: disable 1d/2d linear optimisation
 
 # stable: 17.2 nomination only.
 e38685cc62e2a452521c49a3ad09d82495c6b1d0 Revert "radv: disable support for VEGA for now."
+
+# stable: 17.2 nomination only. Depends on earlier commit 43ef75b394f
+#         which did not land in branch.
+63e79a8a777b36ecb30a1f6900e6b638cb32fc5f nir: Fix system_value_from_intrinsic for subgroups
