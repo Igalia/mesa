@@ -198,3 +198,21 @@ f24cf82d6db290a88abfff0669d2c5e2aa463901 i965/tex: Don't pass samples to miptree
 #        branch and which exposes new API.
 3a5e3aa5a53cff55a5e31766d713a41ffa5a93d7 egl/drm: Fix misused x and y offsets in swrast_put_image2()
 fe2a6281b3b299998fe7399e7dbcc2077d773824 egl/drm: Fix misused x and y offsets in swrast_get_image()
+
+# stable: 17.2 nomination only.
+0ac78dc92582a59d4319ebce019b4caa41fb432d util: move string_to_uint_map to glsl
+
+# stable: 17.2 nomination only.
+88cdf16871a0f1cd8ec3844072051ee38e945600 llvmpipe: initialize llvmpipe->dirty with LP_NEW_SCISSOR
+
+# stable: 17.2 nomination only.
+dc9e08b0c3b04ba77ed59b8700e9f43edccb3168 freedreno: skip batch-cache for compute shaders
+
+# stable: 17.2 nomination only.
+d118ff876559e468d2d243470947eee53171fe57 radv: disable 1d/2d linear optimisation on gfx9.
+
+# stable: 17.2 nomination only.
+6d929d3f85604768971d04fa2548f02ffca1696e radv/gfx9: set descriptor up for base_mip to level range.
+
+# stable: 17.2 nomination only.
+e38685cc62e2a452521c49a3ad09d82495c6b1d0 Revert "radv: disable support for VEGA for now."
