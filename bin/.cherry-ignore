@@ -220,3 +220,7 @@ e38685cc62e2a452521c49a3ad09d82495c6b1d0 Revert "radv: disable support for VEGA 
 # stable: 17.2 nomination only. Depends on earlier commit 43ef75b394f
 #         which did not land in branch.
 63e79a8a777b36ecb30a1f6900e6b638cb32fc5f nir: Fix system_value_from_intrinsic for subgroups
+
+# stable: 17.2 nomination only. Depends on earlier commit f37ede40bad
+#         which did not land in branch.
+52b65dfda84e4d433a332dd84596eef054eb5cbb i965: Fix crash in fallback GTT mapping.
