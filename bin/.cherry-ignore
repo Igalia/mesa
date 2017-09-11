@@ -236,3 +236,6 @@ ff23e03d60d264a64fce340c132404c6070050a0 radv: Fix vkCopyImage with both depth a
 # fixes: References 166823bf but it is not really a bug fix, just an
 #        enhancement.
 45c5c444518b7e83d9accd9f44702fa49282a3b8 radeonsi/gfx9: proper workaround for LS/HS VGPR initialization bug
+
+# stable: 17.2 nomination only.
+e4018fdd85d8b58250c2cff8cdf4edd6b2b3c70b st/mesa: skip draw calls with pipe_draw_info::count == 0
