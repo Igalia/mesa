@@ -243,3 +243,6 @@ e4018fdd85d8b58250c2cff8cdf4edd6b2b3c70b st/mesa: skip draw calls with pipe_draw
 # stable: 17.2 nomination only.
 76ac8fafadca86941f2723f7f7176b22112f5c0c radv/winsys: use amdgpu_bo_va_op_raw.
 e8d57802fea60d4b353761ba1bdb08545733c007 radv/gfx9: allocate events from uncached VA space
+
+# stable: 17.2 nomination only.
+219d29e4d83d8c901f127c8a004c45c23c15751e radv: use simpler indirect packet 3 if possible.
