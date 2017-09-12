@@ -1029,7 +1029,8 @@ const struct brw_tracked_state brw_renderbuffer_surfaces = {
    .dirty = {
       .mesa = _NEW_BUFFERS |
               _NEW_COLOR,
-      .brw = BRW_NEW_BATCH,
+      .brw = BRW_NEW_BATCH |
+             BRW_NEW_BLORP,
    },
    .emit = update_renderbuffer_surfaces,
 };
@@ -1038,6 +1039,7 @@ const struct brw_tracked_state gen6_renderbuffer_surfaces = {
    .dirty = {
       .mesa = _NEW_BUFFERS,
       .brw = BRW_NEW_BATCH |
+             BRW_NEW_BLORP |
              BRW_NEW_FAST_CLEAR_COLOR,
    },
    .emit = update_renderbuffer_surfaces,
