@@ -257,3 +257,6 @@ d496780fb2c7f2cf0e32b6a79dc528e5156dfcb3 intel/eu/validate: Look up types on dem
 # stable: 17.2 nomination only.
 2f5b4490b59062f224e73f7a2d5cc0d8bd8eaa7b radv: don't use iview for meta image width/height.
 1bcb953e16600e0d9329b678a6eacee98d326547 radv: handle GFX9 1D textures
+
+# stable: 17.2 nomination only.
+ebd2a5354df64ef504f1e213afd2d6ab9d69a776 radv/gfx9: set mip0-depth correctly for 2d arrays/3d images
