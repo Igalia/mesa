@@ -260,3 +260,6 @@ d496780fb2c7f2cf0e32b6a79dc528e5156dfcb3 intel/eu/validate: Look up types on dem
 
 # stable: 17.2 nomination only.
 ebd2a5354df64ef504f1e213afd2d6ab9d69a776 radv/gfx9: set mip0-depth correctly for 2d arrays/3d images
+
+# stable: 17.2 nomination only.
+3633bae36b56a8667d31096b3c3472ab388c4fbf radv/gfx9: fix image resource handling.
