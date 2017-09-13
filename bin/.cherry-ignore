@@ -246,3 +246,6 @@ e8d57802fea60d4b353761ba1bdb08545733c007 radv/gfx9: allocate events from uncache
 
 # stable: 17.2 nomination only.
 219d29e4d83d8c901f127c8a004c45c23c15751e radv: use simpler indirect packet 3 if possible.
+
+# fixes: References 391673af but it is not really a bug fix.
+17dd4856a68621ab7107975df8239fb2963a57bb radeonsi: don't always apply the PrimID instancing bug workaround on SI
