@@ -249,3 +249,7 @@ e8d57802fea60d4b353761ba1bdb08545733c007 radv/gfx9: allocate events from uncache
 
 # fixes: References 391673af but it is not really a bug fix.
 17dd4856a68621ab7107975df8239fb2963a57bb radeonsi: don't always apply the PrimID instancing bug workaround on SI
+
+# stable: 17.2 nomination only. Depends on earlier commit 4fab67a4415
+#         which did not land in branch.
+d496780fb2c7f2cf0e32b6a79dc528e5156dfcb3 intel/eu/validate: Look up types on demand in execution_type()
