@@ -263,3 +263,6 @@ ebd2a5354df64ef504f1e213afd2d6ab9d69a776 radv/gfx9: set mip0-depth correctly for
 
 # stable: 17.2 nomination only.
 3633bae36b56a8667d31096b3c3472ab388c4fbf radv/gfx9: fix image resource handling.
+
+# fixes: It only fixes documentation.
+85b66d20969685c26d3f7d22b6fc7b988872fa88 docs/egl: remove reference to EGL_DRIVERS_PATH
