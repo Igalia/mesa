@@ -253,3 +253,7 @@ e8d57802fea60d4b353761ba1bdb08545733c007 radv/gfx9: allocate events from uncache
 # stable: 17.2 nomination only. Depends on earlier commit 4fab67a4415
 #         which did not land in branch.
 d496780fb2c7f2cf0e32b6a79dc528e5156dfcb3 intel/eu/validate: Look up types on demand in execution_type()
+
+# stable: 17.2 nomination only.
+2f5b4490b59062f224e73f7a2d5cc0d8bd8eaa7b radv: don't use iview for meta image width/height.
+1bcb953e16600e0d9329b678a6eacee98d326547 radv: handle GFX9 1D textures
