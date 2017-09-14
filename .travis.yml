@@ -38,6 +38,7 @@ matrix:
         - GALLIUM_ST="--enable-dri --disable-opencl --disable-xa --disable-nine --disable-xvmc --disable-vdpau --disable-va --disable-omx --disable-gallium-osmesa"
         - GALLIUM_DRIVERS=""
         - VULKAN_DRIVERS=""
+        - LIBUNWIND_FLAGS="--disable-libunwind"
       addons:
         apt:
           packages:
@@ -62,6 +63,7 @@ matrix:
         - GALLIUM_ST="--enable-dri --disable-opencl --disable-xa --disable-nine --disable-xvmc --disable-vdpau --disable-va --disable-omx --disable-gallium-osmesa"
         - GALLIUM_DRIVERS="swr"
         - VULKAN_DRIVERS=""
+        - LIBUNWIND_FLAGS="--enable-libunwind"
       addons:
         apt:
           sources:
@@ -77,6 +79,7 @@ matrix:
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
+            - libunwind8-dev
     - env:
         - LABEL="make Gallium Drivers Other"
         - BUILD=make
@@ -89,6 +92,7 @@ matrix:
         - GALLIUM_ST="--enable-dri --disable-opencl --disable-xa --disable-nine --disable-xvmc --disable-vdpau --disable-va --disable-omx --disable-gallium-osmesa"
         - GALLIUM_DRIVERS="i915,nouveau,r300,r600,radeonsi,freedreno,svga,swrast,vc4,virgl,etnaviv,imx"
         - VULKAN_DRIVERS=""
+        - LIBUNWIND_FLAGS="--enable-libunwind"
       addons:
         apt:
           sources:
@@ -104,6 +108,7 @@ matrix:
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
+            - libunwind8-dev
     - env:
         # NOTE: Analogous to SWR above, building Clover is quite slow.
         - LABEL="make Gallium ST Clover"
@@ -121,6 +126,7 @@ matrix:
         # Regardless - we're doing a quick build test here.
         - GALLIUM_DRIVERS="i915"
         - VULKAN_DRIVERS=""
+        - LIBUNWIND_FLAGS="--enable-libunwind"
       addons:
         apt:
           sources:
@@ -140,6 +146,7 @@ matrix:
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
+            - libunwind8-dev
     - env:
         - LABEL="make Gallium ST Other"
         - BUILD=make
@@ -155,6 +162,7 @@ matrix:
         # Regardless - we're doing a quick build test here.
         - GALLIUM_DRIVERS="i915,swrast"
         - VULKAN_DRIVERS=""
+        - LIBUNWIND_FLAGS="--enable-libunwind"
       addons:
         apt:
           packages:
@@ -174,6 +182,7 @@ matrix:
             - libexpat1-dev
             - libx11-xcb-dev
             - libelf-dev
+            - libunwind8-dev
     - env:
         - LABEL="make Vulkan"
         - BUILD=make
@@ -186,6 +195,7 @@ matrix:
         - GALLIUM_ST="--enable-dri --enable-dri3 --disable-opencl --disable-xa --disable-nine --disable-xvmc --disable-vdpau --disable-va --disable-omx --disable-gallium-osmesa"
         - GALLIUM_DRIVERS=""
         - VULKAN_DRIVERS="intel,radeon"
+        - LIBUNWIND_FLAGS="--disable-libunwind"
       addons:
         apt:
           sources:
@@ -363,6 +373,7 @@ script:
       export CC="$CC -isystem`pwd`";
 
       ./autogen.sh --enable-debug
+        $LIBUNWIND_FLAGS
         $DRI_LOADERS
         --with-dri-drivers=$DRI_DRIVERS
         $GALLIUM_ST
