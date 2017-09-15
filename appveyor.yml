@@ -21,8 +21,8 @@
 version: '{build}'
 
 branches:
-  except:
-  - /^travis.*$/
+  only:
+  - wip/agomez/master-ci
 
 # Don't download the full Mesa history to speed up cloning.  However the clone
 # depth must not be too small, otherwise builds might fail when lots of patches
