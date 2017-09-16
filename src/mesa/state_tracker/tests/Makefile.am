@@ -1,3 +1,7 @@
+
+# The tests require c++11 support
+if HAVE_STD_CXX11
+
 include $(top_srcdir)/src/gallium/Automake.inc
 
 AM_CFLAGS = \
@@ -14,6 +18,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/src/mesa \
 	-I$(top_builddir)/src/compiler/glsl \
 	$(DEFINES)
+
 
 TESTS = st-renumerate-test
 check_PROGRAMS = st-renumerate-test
@@ -32,3 +37,5 @@ st_renumerate_test_LDADD = \
 	$(top_builddir)/src/gtest/libgtest.la \
 	$(GALLIUM_COMMON_LIB_DEPS) \
 	$(LLVM_LIBS)
+
+endif
