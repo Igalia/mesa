@@ -115,7 +115,7 @@ matrix:
             - libunwind8-dev
     - env:
         # NOTE: Analogous to SWR above, building Clover is quite slow.
-        - LABEL="make Gallium ST Clover"
+        - LABEL="make Gallium ST Clover LLVM-3.6"
         - BUILD=make
         - MAKEFLAGS="-j4"
         - MAKE_CHECK_COMMAND="true"
