@@ -281,3 +281,7 @@ cffc0ae0d9e572a82ce88c09e6ee8e2ed2a9be91 ac/surface: match Z and stencil tile co
 
 # stable: 17.2. nomination only.
 64d9bd149aa7f5a09f73cae07499577933722fb2 radv/nir: call opt_remove_phis after trivial continues.
+
+# fixes: Depends on earlier commit 13a28ff2368 that did not land in
+#        branch.
+94736d31c364635a76a11e0bd4f046a42d2221d5 amd/common: add workaround for cube map array layer clamping
