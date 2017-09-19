@@ -278,3 +278,6 @@ bee83b26611c0a4a554aa37c59187351242e82fd radv: Disable multilayer & multilevel D
 # stable: 17.2 nomination only. Depends on earlier commit f187a4932
 #         which did not land in branch.
 cffc0ae0d9e572a82ce88c09e6ee8e2ed2a9be91 ac/surface: match Z and stencil tile config
+
+# stable: 17.2. nomination only.
+64d9bd149aa7f5a09f73cae07499577933722fb2 radv/nir: call opt_remove_phis after trivial continues.
