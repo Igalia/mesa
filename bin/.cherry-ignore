@@ -274,3 +274,7 @@ bee83b26611c0a4a554aa37c59187351242e82fd radv: Disable multilayer & multilevel D
 # fixes: Depends on earlier commit dfc06d2fac that did not land in
 #        branch.
 1a172fb113554fa03053052b161d5e22fc2fcb1f radv: Don't allocate CMASK for linear images.
+
+# stable: 17.2 nomination only. Depends on earlier commit f187a4932
+#         which did not land in branch.
+cffc0ae0d9e572a82ce88c09e6ee8e2ed2a9be91 ac/surface: match Z and stencil tile config
