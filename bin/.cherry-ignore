@@ -292,3 +292,6 @@ cffc0ae0d9e572a82ce88c09e6ee8e2ed2a9be91 ac/surface: match Z and stencil tile co
 
 # stable: 17.2 nomination only.
 c1b01370486d203a6bccff2161afb288cfda1de3 Scons: Add LLVM 5.0 support
+
+# stable: 17.2 nomination only.
+c4ac522511d20683c09441a9e96ddfbc1b540c00 ac/surface: handle S8 on gfx9
