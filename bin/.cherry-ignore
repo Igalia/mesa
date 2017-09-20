@@ -285,3 +285,7 @@ cffc0ae0d9e572a82ce88c09e6ee8e2ed2a9be91 ac/surface: match Z and stencil tile co
 # fixes: Depends on earlier commit 13a28ff2368 that did not land in
 #        branch.
 94736d31c364635a76a11e0bd4f046a42d2221d5 amd/common: add workaround for cube map array layer clamping
+
+# stable: 17.2 nomination only. Depends on earlier commit 5cb2eee557
+#         which did not land in branch.
+6fb0c1013b3578c5bd264efaa99a6d68418ccfb1 radeonsi: workaround for gather4 on integer cube maps
