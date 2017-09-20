@@ -299,3 +299,6 @@ c4ac522511d20683c09441a9e96ddfbc1b540c00 ac/surface: handle S8 on gfx9
 # fixes:  This commit addressed an earlier commit 1bcb953e166 which did not
 #         land in branch.
 979978ee06867a531b8d56cee252f5c83920a339 radv: Check for GFX9 for 1D arrays in image_size intrinsic.
+
+# This commit is causing several regressions on i965 driver
+15cae12804ef288c7fb4cb9a38f7e32e6d8c4dc1 glsl/linker: fix output variable overlap check
