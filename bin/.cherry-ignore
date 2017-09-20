@@ -289,3 +289,6 @@ cffc0ae0d9e572a82ce88c09e6ee8e2ed2a9be91 ac/surface: match Z and stencil tile co
 # stable: 17.2 nomination only. Depends on earlier commit 5cb2eee557
 #         which did not land in branch.
 6fb0c1013b3578c5bd264efaa99a6d68418ccfb1 radeonsi: workaround for gather4 on integer cube maps
+
+# stable: 17.2 nomination only.
+c1b01370486d203a6bccff2161afb288cfda1de3 Scons: Add LLVM 5.0 support
