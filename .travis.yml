@@ -1,3 +1,9 @@
+notifications:
+  email:
+    recipients:
+      - jasuarez+mesa-travis@igalia.com
+      - tanty+mesa-travis@igalia.com
+
 language: c
 
 sudo: false
