@@ -223,6 +223,61 @@ fs_live_variables::compute_start_end()
          }
       }
    }
+
+   /* Due to the explicit way the SIMD data is handled on GEN, we need to be a
+    * bit more careful with live ranges and loops.  Consider the following
+    * example:
+    *
+    *    vec4 color2;
+    *    while (1) {
+    *       vec4 color = texture();
+    *       if (...) {
+    *          color2 = color * 2;
+    *          break;
+    *       }
+    *    }
+    *    gl_FragColor = color2;
+    *
+    * In this case, the definition of color2 dominates the use because the
+    * loop only has the one exit.  This means that the live range interval for
+    * color2 goes from the statement in the if to it's use below the loop.
+    * Now suppose that the texture operation has a header register that gets
+    * assigned one of the registers used for color2.  If the loop condition is
+    * non-uniform and some of the threads will take the and others will
+    * continue.  In this case, the next pass through the loop, the WE_all
+    * setup of the header register will stomp the disabled channels of color2
+    * and corrupt the value.
+    *
+    * This same problem can occur if you have a mix of 64, 32, and 16-bit
+    * registers because the channels do not line up or if you have a SIMD16
+    * program and the first half of one value overlaps the second half of the
+    * other.
+    *
+    * To solve this problem, we take any VGRFs whose live ranges cross the
+    * while instruction of a loop and extend their live ranges to the top of
+    * the loop.  This more accurately models the hardware because the value in
+    * the VGRF needs to be carried through subsequent loop iterations in order
+    * to remain valid when we finally do break.
+    */
+   foreach_block (block, cfg) {
+      if (block->end()->opcode != BRW_OPCODE_WHILE)
+         continue;
+
+      /* This is a WHILE instrution. Find the DO block. */
+      bblock_t *do_block = NULL;
+      foreach_list_typed(bblock_link, child_link, link, &block->children) {
+         if (child_link->block->start_ip < block->end_ip) {
+            assert(do_block == NULL);
+            do_block = child_link->block;
+         }
+      }
+      assert(do_block);
+
+      for (int i = 0; i < num_vars; i++) {
+         if (start[i] < block->end_ip && end[i] > block->end_ip)
+            start[i] = MIN2(start[i], do_block->start_ip);
+      }
+   }
 }
 
 fs_live_variables::fs_live_variables(fs_visitor *v, const cfg_t *cfg)
