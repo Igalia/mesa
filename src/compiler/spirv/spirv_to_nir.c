@@ -1111,6 +1111,7 @@ spec_constant_decoration_cb(struct vtn_builder *b, struct vtn_value *v,
             const_value->data64 = b->specializations[i].data64;
          else
             const_value->data32 = b->specializations[i].data32;
+         b->specializations[i].defined_on_module = true;
          return;
       }
    }
@@ -1145,7 +1146,13 @@ handle_workgroup_size_decoration_cb(struct vtn_builder *b,
                                     const struct vtn_decoration *dec,
                                     void *data)
 {
+   /* This can happens if we are gl_spirv_validation. We can return safely, as
+    * we don't need the workgroup info for such validation. */
+   if (b->shader == NULL)
+      return;
+
    vtn_assert(member == -1);
+
    if (dec->decoration != SpvDecorationBuiltIn ||
        dec->literals[0] != SpvBuiltInWorkgroupSize)
       return;
@@ -2951,6 +2958,49 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
    return true;
 }
 
+/*
+ * gl_spirv validation. Just need to check for the entry point.
+ */
+static bool
+vtn_validate_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
+                                  const uint32_t *w, unsigned count)
+{
+   switch (opcode) {
+   /* The following opcodes are not needed for gl_spirv, so we can skip
+    * them.
+    */
+   case SpvOpSource:
+   case SpvOpSourceExtension:
+   case SpvOpSourceContinued:
+   case SpvOpExtension:
+   case SpvOpCapability:
+   case SpvOpExtInstImport:
+   case SpvOpMemoryModel:
+   case SpvOpString:
+   case SpvOpName:
+   case SpvOpMemberName:
+   case SpvOpExecutionMode:
+   case SpvOpDecorationGroup:
+   case SpvOpMemberDecorate:
+   case SpvOpGroupDecorate:
+   case SpvOpGroupMemberDecorate:
+      break;
+
+   case SpvOpEntryPoint:
+      vtn_handle_preamble_instruction(b, opcode, w, count);
+      break;
+
+   case SpvOpDecorate:
+      vtn_handle_decoration(b, opcode, w, count);
+      break;
+
+   default:
+      return false; /* End of preamble */
+   }
+
+   return true;
+}
+
 static void
 vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
                           const struct vtn_decoration *mode, void *data)
@@ -3153,6 +3203,22 @@ vtn_handle_variable_or_type_instruction(struct vtn_builder *b, SpvOp opcode,
 
    default:
       return false; /* End of preamble */
+   }
+
+   return true;
+}
+
+static bool
+vtn_handle_constant_or_type_instruction(struct vtn_builder *b, SpvOp opcode,
+                                        const uint32_t *w, unsigned count)
+{
+   switch (opcode) {
+   case SpvOpUndef:
+   case SpvOpVariable:
+      break;
+
+   default:
+      return vtn_handle_variable_or_type_instruction(b, opcode, w, count);
    }
 
    return true;
@@ -3412,12 +3478,9 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    return true;
 }
 
-nir_function *
-spirv_to_nir(const uint32_t *words, size_t word_count,
-             struct nir_spirv_specialization *spec, unsigned num_spec,
-             gl_shader_stage stage, const char *entry_point_name,
-             const struct spirv_to_nir_options *options,
-             const nir_shader_compiler_options *nir_options)
+static struct vtn_builder*
+common_initialization(const uint32_t *words, size_t word_count,
+                      gl_shader_stage stage, const char *entry_point_name)
 {
    /* Initialize the stn_builder object */
    struct vtn_builder *b = rzalloc(NULL, struct vtn_builder);
@@ -3428,15 +3491,12 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    exec_list_make_empty(&b->functions);
    b->entry_point_stage = stage;
    b->entry_point_name = entry_point_name;
-   b->options = options;
 
    /* See also _vtn_fail() */
    if (setjmp(b->fail_jump)) {
       ralloc_free(b);
       return NULL;
    }
-
-   const uint32_t *word_end = words + word_count;
 
    /* Handle the SPIR-V header (first 4 dwords)  */
    vtn_assert(word_count > 5);
@@ -3447,10 +3507,94 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
    unsigned value_id_bound = words[3];
    vtn_assert(words[4] == 0);
 
-   words+= 5;
-
    b->value_id_bound = value_id_bound;
    b->values = rzalloc_array(b, struct vtn_value, value_id_bound);
+
+   return b;
+}
+
+/*
+ * Since OpenGL 4.6 you can use SPIR-V modules directly on OpenGL. One of the
+ * new methods, glSpecializeShader include some possible errors when trying to
+ * use it. From OpenGL 4.6, Section 7.2.1, "Shader Specialization":
+ *
+ * "void SpecializeShaderARB(uint shader,
+ *                           const char* pEntryPoint,
+ *                           uint numSpecializationConstants,
+ *                           const uint* pConstantIndex,
+ *                           const uint* pConstantVaulue);
+ * <skip>
+ *
+ * INVALID_VALUE is generated if <pEntryPoint> does not name a valid
+ * entry point for <shader>.
+ *
+ * An INVALID_VALUE error is generated if any element of pConstantIndex refers
+ * to a specialization constant that does not exist in the shader module
+ * contained in shader."
+ *
+ * We could do those checks on spirv_to_nir, but we are only interested on the
+ * full translation later, during linking. This method is a simplified version
+ * of spirv_to_nir, looking for only the checks needed by SpecializeShader.
+ *
+ * This method returns NULL if no entry point was found, and fill the
+ * nir_spirv_specialization field "defined_on_module" accordingly. Caller
+ * would need to trigger the specific errors.
+ *
+ */
+bool
+gl_spirv_validation(const uint32_t *words, size_t word_count,
+                    struct nir_spirv_specialization *spec, unsigned num_spec,
+                    gl_shader_stage stage, const char *entry_point_name)
+{
+   /* vtn_warn/vtn_log uses debug.func. Setting a null to prevent crash. Not
+    * need to print the warnings now, would be done later, on the real
+    * spirv_to_nir
+    */
+   const struct spirv_to_nir_options options = { .debug.func = NULL};
+   const uint32_t *word_end = words + word_count;
+
+   struct vtn_builder *b = common_initialization(words, word_count,
+                                                 stage, entry_point_name);
+   words+= 5;
+   b->options = &options;
+
+   /* Search entry point from preamble */
+   words = vtn_foreach_instruction(b, words, word_end,
+                                   vtn_validate_preamble_instruction);
+
+   if (b->entry_point == NULL) {
+      ralloc_free(b);
+      return false;
+   }
+
+   b->specializations = spec;
+   b->num_specializations = num_spec;
+
+   /* Handle type, and constant instructions (we don't need to handle
+    * variables for gl_spirv)
+    */
+   words = vtn_foreach_instruction(b, words, word_end,
+                                   vtn_handle_constant_or_type_instruction);
+
+   ralloc_free(b);
+
+   return true;
+}
+
+nir_function *
+spirv_to_nir(const uint32_t *words, size_t word_count,
+             struct nir_spirv_specialization *spec, unsigned num_spec,
+             gl_shader_stage stage, const char *entry_point_name,
+             const struct spirv_to_nir_options *options,
+             const nir_shader_compiler_options *nir_options)
+
+{
+   const uint32_t *word_end = words + word_count;
+
+   struct vtn_builder *b = common_initialization(words, word_count,
+                                                 stage, entry_point_name);
+   words+= 5;
+   b->options = options;
 
    /* Handle all the preamble instructions */
    words = vtn_foreach_instruction(b, words, word_end,
