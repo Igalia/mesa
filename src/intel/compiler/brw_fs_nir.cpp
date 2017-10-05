@@ -2209,12 +2209,17 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
       first_component = first_component / 2;
    }
 
+   if (type_sz(dst.type) == 2) {
+      num_components = DIV_ROUND_UP(num_components, 2);
+      tmp_dst = bld.vgrf(BRW_REGISTER_TYPE_F, num_components);
+   }
+
    for (unsigned iter = 0; iter < num_iterations; iter++) {
       if (offset_const) {
          /* Constant indexing - use global offset. */
          if (first_component != 0) {
             unsigned read_components = num_components + first_component;
-            fs_reg tmp = bld.vgrf(dst.type, read_components);
+            fs_reg tmp = bld.vgrf(tmp_dst.type, read_components);
             inst = bld.emit(SHADER_OPCODE_URB_READ_SIMD8, tmp, icp_handle);
             inst->size_written = read_components *
                                  tmp.component_size(inst->exec_size);
@@ -2262,6 +2267,11 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
 
          for (unsigned c = 0; c < num_components; c++)
             bld.MOV(offset(dst, bld, iter * 2 + c), offset(tmp_dst, bld, c));
+      }
+
+      if (type_sz(dst.type) == 2) {
+         shuffle_32bit_load_result_to_16bit_data(bld, dst, tmp_dst,
+                                                 orig_num_components, 0);
       }
 
       if (num_iterations > 1) {
@@ -2603,6 +2613,11 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
          dst = tmp;
       }
 
+      if (type_sz(dst.type) == 2) {
+         num_components = DIV_ROUND_UP(num_components, 2);
+         dst = bld.vgrf(BRW_REGISTER_TYPE_F, num_components);
+      }
+
       for (unsigned iter = 0; iter < num_iterations; iter++) {
          if (indirect_offset.file == BAD_FILE) {
             /* Constant indexing - use global offset. */
@@ -2656,6 +2671,11 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                bld.MOV(offset(orig_dst, bld, iter * 2 + c),
                        offset(dst, bld, c));
             }
+         }
+
+         if (type_sz(orig_dst.type) == 2) {
+            shuffle_32bit_load_result_to_16bit_data(
+               bld, orig_dst, dst, instr->num_components, 0);
          }
 
          /* Copy the temporary to the destination to deal with writemasking.
@@ -2748,6 +2768,8 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       fs_reg value = get_nir_src(instr->src[0]);
       bool is_64bit = (instr->src[0].is_ssa ?
          instr->src[0].ssa->bit_size : instr->src[0].reg.reg->bit_size) == 64;
+      bool is_16bit = (instr->src[0].is_ssa ?
+         instr->src[0].ssa->bit_size : instr->src[0].reg.reg->bit_size) == 16;
       fs_reg indirect_offset = get_indirect_offset(instr);
       unsigned imm_offset = instr->const_index[0];
       unsigned mask = instr->const_index[1];
@@ -2776,6 +2798,11 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
          if (instr->num_components > 2) {
             num_iterations = 2;
             iter_components = 2;
+         }
+      } else {
+         if (is_16bit) {
+            iter_components = DIV_ROUND_UP(num_components, 2);
+            value = retype (value, BRW_REGISTER_TYPE_D);
          }
       }
 
@@ -2822,6 +2849,13 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
                continue;
 
             if (!is_64bit) {
+               if (is_16bit) {
+                  shuffle_16bit_data_for_32bit_write(bld,
+                     retype(offset(value,bld, i), BRW_REGISTER_TYPE_F),
+                     retype(offset(value,bld, i), BRW_REGISTER_TYPE_HF),
+                     2);
+                  value = retype (value, BRW_REGISTER_TYPE_D);
+               }
                srcs[header_regs + i + first_component] = offset(value, bld, i);
             } else {
                /* We need to shuffle the 64-bit data to match the layout
@@ -2965,6 +2999,11 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
             dest = tmp;
          }
 
+         if (type_sz(dest.type) == 2) {
+            num_components = DIV_ROUND_UP(num_components, 2);
+            dest = bld.vgrf(BRW_REGISTER_TYPE_F, num_components);
+         }
+
          for (unsigned iter = 0; iter < num_iterations; iter++) {
             const fs_reg srcs[] = {
                retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UD),
@@ -3005,6 +3044,11 @@ fs_visitor::nir_emit_tes_intrinsic(const fs_builder &bld,
                   bld.MOV(offset(orig_dest, bld, iter * 2 + c),
                           offset(dest, bld, c));
                }
+            }
+
+            if (type_sz(dest.type) == 2) {
+               shuffle_32bit_load_result_to_16bit_data(bld, orig_dest,
+                                                       dest, num_components, 0);
             }
 
             /* If we are loading double data and we need a second read message
@@ -3360,6 +3404,13 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
          num_components *= 2;
       }
 
+      fs_reg orig_dest = dest;
+      if (nir_dest_bit_size(instr->dest) == 16) {
+         type = BRW_REGISTER_TYPE_F;
+         num_components = DIV_ROUND_UP(num_components, 2);
+         dest = bld.vgrf(type, num_components);
+      }
+
       for (unsigned int i = 0; i < num_components; i++) {
          struct brw_reg interp = interp_reg(base, component + i);
          interp = suboffset(interp, 3);
@@ -3372,6 +3423,13 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
                                                  dest,
                                                  retype(dest, type),
                                                  instr->num_components);
+      }
+      if (nir_dest_bit_size(instr->dest) == 16) {
+         shuffle_32bit_load_result_to_16bit_data(bld,
+                                                 orig_dest,
+                                                 dest,
+                                                 instr->num_components,
+                                                 0);
       }
       break;
    }
@@ -4276,9 +4334,17 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       unsigned num_components = instr->num_components;
       unsigned first_component = nir_intrinsic_component(instr);
-      if (nir_src_bit_size(instr->src[0]) == 64) {
+      unsigned bit_size = nir_src_bit_size(instr->src[0]);
+
+      if (bit_size == 64) {
          src = shuffle_64bit_data_for_32bit_write(bld, src, num_components);
          num_components *= 2;
+      } else if (bit_size == 16) {
+         fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_D,
+                               DIV_ROUND_UP(num_components, 2));
+         shuffle_16bit_data_for_32bit_write(bld, tmp, src, num_components);
+         src = tmp;
+         num_components = DIV_ROUND_UP(num_components, 2);
       }
 
       fs_reg new_dest = retype(offset(outputs[instr->const_index[0]], bld,
