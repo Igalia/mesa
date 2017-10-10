@@ -34,6 +34,7 @@
 #include "get.h"
 #include "macros.h"
 #include "mtypes.h"
+#include "spirv_extensions.h"
 #include "state.h"
 #include "texcompress.h"
 #include "texstate.h"
@@ -501,6 +502,7 @@ EXTRA_EXT(OES_primitive_bounding_box);
 EXTRA_EXT(ARB_compute_variable_group_size);
 EXTRA_EXT(KHR_robustness);
 EXTRA_EXT(ARB_sparse_buffer);
+EXTRA_EXT(ARB_spirv_extensions);
 
 static const int
 extra_ARB_color_buffer_float_or_glcore[] = {
@@ -1150,6 +1152,11 @@ find_custom_value(struct gl_context *ctx, const struct value_desc *d, union valu
             v->value_int_4[3] = info.avail_staging_memory;
          }
       }
+      break;
+
+   /* ARB_spirv_extensions */
+   case GL_NUM_SPIR_V_EXTENSIONS:
+      v->value_int = _mesa_get_spirv_extension_count(ctx);
       break;
    }
 }
