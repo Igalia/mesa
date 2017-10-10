@@ -104,6 +104,16 @@ _mesa_spirv_shader_binary(struct gl_context *ctx,
    }
 }
 
+void
+_mesa_spirv_link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
+{
+   /* @TODO: This is a placeholder for the equivalent of
+    * compiler/glsl/linker.cpp::link_shaders() but for SPIR-V.
+    */
+   prog->data->LinkStatus = linking_success;
+   prog->data->Validated = false;
+}
+
 void GLAPIENTRY
 _mesa_SpecializeShaderARB(GLuint shader,
                           const GLchar *pEntryPoint,
