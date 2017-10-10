@@ -247,6 +247,8 @@ files_libmesa_common = files(
   'main/shader_query.cpp',
   'main/shared.c',
   'main/shared.h',
+  'main/spirv_extensions.c',
+  'main/spirv_extensions.h',
   'main/state.c',
   'main/state.h',
   'main/stencil.c',
