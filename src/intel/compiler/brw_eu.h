@@ -433,7 +433,8 @@ brw_inst *brw_fb_WRITE(struct brw_codegen *p,
                        unsigned response_length,
                        bool eot,
                        bool last_render_target,
-                       bool header_present);
+                       bool header_present,
+                       unsigned data_format);
 
 brw_inst *gen9_fb_READ(struct brw_codegen *p,
                        struct brw_reg dst,

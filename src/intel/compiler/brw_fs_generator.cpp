@@ -311,7 +311,8 @@ fs_generator::fire_fb_write(fs_inst *inst,
                                  0,
                                  inst->eot,
                                  inst->last_rt,
-                                 inst->header_size != 0);
+                                 inst->header_size != 0,
+                                 inst->data_format);
 
    if (devinfo->gen >= 6)
       brw_inst_set_rt_slot_group(devinfo, insn, inst->group / 16);

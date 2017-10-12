@@ -541,6 +541,7 @@ brw_inst_send_ex_desc(const struct gen_device_info *devinfo,
  *  @{
  */
 F(eot,                 127, 127)
+FC(data_format,        126,  126, devinfo->gen >= 9 || devinfo->is_cherryview)
 FF(mlen,
    /* 4:   */ 119, 116,
    /* 4.5: */ 119, 116,

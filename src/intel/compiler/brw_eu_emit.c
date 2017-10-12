@@ -2205,7 +2205,8 @@ brw_fb_WRITE(struct brw_codegen *p,
              unsigned response_length,
              bool eot,
              bool last_render_target,
-             bool header_present)
+             bool header_present,
+             unsigned data_format)
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
@@ -2249,6 +2250,16 @@ brw_fb_WRITE(struct brw_codegen *p,
                 brw_dp_write_desc(devinfo, binding_table_index, msg_control,
                                   msg_type, last_render_target,
                                   0 /* send_commit_msg */));
+   if (data_format) {
+      /* data_format is supported since CherryView. So we can't just set the
+       * any data_format value, because it would trigger an assertion on
+       * brw_inst_set_data_format for previous hw if they try to set it to
+       * zero. And we don't add an generation assert because as mentioned,
+       * brw_inst_set_data_format already does that.
+       */
+      brw_inst_set_data_format(devinfo, insn, data_format);
+   }
+
    brw_inst_set_eot(devinfo, insn, eot);
 
    return insn;
