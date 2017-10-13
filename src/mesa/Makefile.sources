@@ -679,6 +679,7 @@ INCLUDE_DIRS = \
 	-I$(top_srcdir)/src \
 	-I$(top_builddir)/src/compiler/glsl \
 	-I$(top_builddir)/src/compiler/nir \
+	-I$(top_builddir)/src/compiler/spirv \
 	-I$(top_builddir)/src/mesa \
 	-I$(top_srcdir)/src/mesa \
 	-I$(top_builddir)/src/mesa/main \
