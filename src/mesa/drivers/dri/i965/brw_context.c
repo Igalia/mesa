@@ -76,6 +76,7 @@
 #include "isl/isl.h"
 
 #include "compiler/spirv/nir_spirv.h"
+#include "compiler/spirv/spirv_extensions.h"
 /***************************************
  * Mesa's Driver Functions
  ***************************************/
@@ -717,6 +718,11 @@ brw_initialize_context_constants(struct brw_context *brw)
    /* GL_ARB_gl_spirv */
    if (ctx->Version >= 33)
       brw_initialize_spirv_supported_capabilities(brw);
+
+   /* GL_ARB_spirv_extensions */
+   ctx->Const.SpirVExtensions = MALLOC_STRUCT(spirv_supported_extensions);
+   spirv_fill_supported_spirv_extensions(ctx->Const.SpirVExtensions,
+                                         &ctx->Const.SpirVCapabilities);
 }
 
 static void
