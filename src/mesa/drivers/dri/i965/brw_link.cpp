@@ -322,7 +322,7 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
        * get sent to the shader.
        */
       nir_foreach_variable(var, &prog->nir->uniforms) {
-         if (strncmp(var->name, "gl_", 3) == 0) {
+         if (var->name && strncmp(var->name, "gl_", 3) == 0) {
             const nir_state_slot *const slots = var->state_slots;
             assert(var->state_slots != NULL);
 
