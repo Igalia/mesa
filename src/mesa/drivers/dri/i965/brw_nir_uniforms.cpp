@@ -124,7 +124,7 @@ brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
                            struct brw_stage_prog_data *stage_prog_data,
                            bool is_scalar)
 {
-   int namelen = strlen(var->name);
+   int namelen = var->name ? strlen(var->name) : 0;
 
    /* The data for our (non-builtin) uniforms is stored in a series of
     * gl_uniform_storage structs for each subcomponent that
@@ -140,11 +140,26 @@ brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
       if (storage->builtin || storage->type->is_sampler())
          continue;
 
-      if (strncmp(var->name, storage->name, namelen) != 0 ||
-          (storage->name[namelen] != 0 &&
-           storage->name[namelen] != '.' &&
-           storage->name[namelen] != '[')) {
-         continue;
+      /* If this is a SPIR-V program we are linking, match the uniforms
+       * by location since the variable name can be NULL.
+       * @FIXME: Extend this location-based matching to GLSL programs too.
+       */
+      if (prog->sh.data->spirv) {
+         if (glsl_type_is_struct(var->type)) {
+            unsigned num_slots = glsl_count_attribute_slots(var->type, false);
+            if (storage->remap_location >= var->data.location + num_slots)
+               continue;
+         } else if ((unsigned) var->data.location != storage->remap_location) {
+            continue;
+         }
+      } else {
+         assert(var->name);
+         if (strncmp(var->name, storage->name, namelen) != 0 ||
+             (storage->name[namelen] != 0 &&
+              storage->name[namelen] != '.' &&
+              storage->name[namelen] != '[')) {
+            continue;
+         }
       }
 
       if (storage->type->is_image()) {
@@ -202,7 +217,7 @@ brw_nir_setup_glsl_uniforms(void *mem_ctx, nir_shader *shader,
       if (var->interface_type != NULL || var->type->contains_atomic())
          continue;
 
-      if (strncmp(var->name, "gl_", 3) == 0) {
+      if (var->name && strncmp(var->name, "gl_", 3) == 0) {
          brw_nir_setup_glsl_builtin_uniform(var, prog, stage_prog_data,
                                             is_scalar);
       } else {
