@@ -4321,6 +4321,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       break;
    }
 
+   case nir_intrinsic_vulkan_resource_index: {
+      bld.MOV(dest, get_nir_src(instr->src[0]));
+      break;
+   }
+
    default:
       unreachable("unknown intrinsic");
    }
