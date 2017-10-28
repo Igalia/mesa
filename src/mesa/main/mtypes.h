@@ -3607,6 +3607,7 @@ struct nir_spirv_supported_capabilities {
    bool int64;
    bool multiview;
    bool variable_pointers;
+   bool atomic_storage;
 };
 
 /**
