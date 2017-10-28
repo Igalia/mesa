@@ -56,6 +56,7 @@ struct spirv_supported_capabilities {
    bool trinary_minmax;
    bool descriptor_array_dynamic_indexing;
    bool runtime_descriptor_array;
+   bool atomic_storage;
 };
 
 typedef struct shader_info {
