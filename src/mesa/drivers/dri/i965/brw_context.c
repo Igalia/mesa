@@ -346,6 +346,7 @@ brw_initialize_spirv_supported_capabilities(struct brw_context *brw)
    ctx->Const.SpirVCapabilities.image_write_without_format = true;
    ctx->Const.SpirVCapabilities.multiview = true;
    ctx->Const.SpirVCapabilities.variable_pointers = true;
+   ctx->Const.SpirVCapabilities.atomic_storage = devinfo->gen >= 7;
 }
 
 static void
