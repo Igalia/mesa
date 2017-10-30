@@ -82,6 +82,10 @@ brw_create_nir(struct brw_context *brw,
          nir = glsl_to_nir(shader_prog, stage, options);
       assert (nir);
 
+      if (stage == MESA_SHADER_COMPUTE &&
+          shader_prog->_LinkedShaders[stage]->spirv_data) {
+         NIR_PASS_V(nir, brw_nir_lower_cs_shared);
+      }
       nir_remove_dead_variables(nir, nir_var_shader_in | nir_var_shader_out);
       nir_lower_returns(nir);
       nir_validate_shader(nir);
