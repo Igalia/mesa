@@ -1618,7 +1618,8 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    const struct glsl_type *image_type = sampled.type->type;
    const enum glsl_sampler_dim sampler_dim = glsl_get_sampler_dim(image_type);
    const bool is_array = glsl_sampler_type_is_array(image_type);
-   const bool is_shadow = glsl_sampler_type_is_shadow(image_type);
+   const bool is_shadow = glsl_type_is_sampler(image_type) &&
+      glsl_sampler_type_is_shadow(image_type);
 
    /* Figure out the base texture operation */
    nir_texop texop;
