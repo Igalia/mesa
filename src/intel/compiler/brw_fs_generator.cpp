@@ -1210,6 +1210,9 @@ fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst, struct brw_reg src
       brw_inst_set_eot(p->devinfo, brw_last_inst, true);
       brw_inst_set_opcode(p->devinfo, brw_last_inst, BRW_OPCODE_SENDC);
    }
+
+   if (dst.type == BRW_REGISTER_TYPE_HF)
+      brw_inst_set_data_format(p->devinfo, brw_last_inst, 1);
 }
 
 
