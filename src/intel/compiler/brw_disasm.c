@@ -1644,6 +1644,11 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                               brw_inst_sampler_msg_type(devinfo, inst), &space);
                err |= control(file, "sampler simd mode", gen5_sampler_simd_mode,
                               brw_inst_sampler_simd_mode(devinfo, inst), &space);
+               if ((devinfo->gen >= 9 || devinfo->is_cherryview) &&
+                   brw_inst_data_format(devinfo, inst)) {
+                  string(file, " HP");
+               }
+
                format(file, " Surface = %"PRIu64" Sampler = %"PRIu64,
                       brw_inst_binding_table_index(devinfo, inst),
                       brw_inst_sampler(devinfo, inst));
