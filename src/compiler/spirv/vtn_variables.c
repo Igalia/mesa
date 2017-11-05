@@ -1742,13 +1742,15 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    vtn_foreach_decoration(b, val, var_decoration_cb, var);
 
    if (var->mode == vtn_variable_mode_image ||
-       var->mode == vtn_variable_mode_sampler) {
+       var->mode == vtn_variable_mode_sampler ||
+       var->mode == vtn_variable_mode_uniform) {
       /* XXX: We still need the binding information in the nir_variable
        * for these. We should fix that.
        */
       var->var->data.binding = var->binding;
       var->var->data.descriptor_set = var->descriptor_set;
       var->var->data.index = var->input_attachment_index;
+      var->var->data.offset = var->offset;
 
       if (var->mode == vtn_variable_mode_image)
          var->var->data.image.format = without_array->image_format;
