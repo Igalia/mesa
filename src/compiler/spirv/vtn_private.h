@@ -443,6 +443,7 @@ struct vtn_variable {
 
    unsigned descriptor_set;
    unsigned binding;
+   unsigned offset;
    unsigned input_attachment_index;
    bool patch;
 
