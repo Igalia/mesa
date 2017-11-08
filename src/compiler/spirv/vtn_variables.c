@@ -1617,7 +1617,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       switch (var->mode) {
       case vtn_variable_mode_image:
       case vtn_variable_mode_sampler:
-         var->var->interface_type = without_array->type;
+         var->var->interface_type = without_array == type ?
+            NULL : without_array->type;
          break;
       default:
          var->var->interface_type = NULL;
