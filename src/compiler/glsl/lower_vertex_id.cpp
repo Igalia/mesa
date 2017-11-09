@@ -46,17 +46,8 @@ public:
    explicit lower_vertex_id_visitor(ir_function_signature *main_sig,
                                     exec_list *ir_list)
       : progress(false), VertexID(NULL), gl_VertexID(NULL),
-        gl_BaseVertex(NULL), main_sig(main_sig), ir_list(ir_list)
+        BaseVertexID(NULL), main_sig(main_sig), ir_list(ir_list)
    {
-      foreach_in_list(ir_instruction, ir, ir_list) {
-         ir_variable *const var = ir->as_variable();
-
-         if (var != NULL && var->data.mode == ir_var_system_value &&
-             var->data.location == SYSTEM_VALUE_BASE_VERTEX) {
-            gl_BaseVertex = var;
-            break;
-         }
-      }
    }
 
    virtual ir_visitor_status visit(ir_dereference_variable *);
@@ -66,7 +57,7 @@ public:
 private:
    ir_variable *VertexID;
    ir_variable *gl_VertexID;
-   ir_variable *gl_BaseVertex;
+   ir_variable *BaseVertexID;
 
    ir_function_signature *main_sig;
    exec_list *ir_list;
@@ -98,20 +89,20 @@ lower_vertex_id_visitor::visit(ir_dereference_variable *ir)
       gl_VertexID->data.explicit_index = 0;
       ir_list->push_head(gl_VertexID);
 
-      if (gl_BaseVertex == NULL) {
-         gl_BaseVertex = new(mem_ctx) ir_variable(int_t, "gl_BaseVertex",
-                                                  ir_var_system_value);
-         gl_BaseVertex->data.how_declared = ir_var_hidden;
-         gl_BaseVertex->data.read_only = true;
-         gl_BaseVertex->data.location = SYSTEM_VALUE_BASE_VERTEX;
-         gl_BaseVertex->data.explicit_location = true;
-         gl_BaseVertex->data.explicit_index = 0;
-         ir_list->push_head(gl_BaseVertex);
+      if (BaseVertexID == NULL) {
+         BaseVertexID = new(mem_ctx) ir_variable(int_t, "__BaseVertexIDMESA",
+                                                 ir_var_system_value);
+         BaseVertexID->data.how_declared = ir_var_hidden;
+         BaseVertexID->data.read_only = true;
+         BaseVertexID->data.location = SYSTEM_VALUE_BASE_VERTEX_ID;
+         BaseVertexID->data.explicit_location = true;
+         BaseVertexID->data.explicit_index = 0;
+         ir_list->push_head(BaseVertexID);
       }
 
       ir_instruction *const inst =
          ir_builder::assign(VertexID,
-                            ir_builder::add(gl_VertexID, gl_BaseVertex));
+                            ir_builder::add(gl_VertexID, BaseVertexID));
 
       main_sig->body.push_head(inst);
    }
