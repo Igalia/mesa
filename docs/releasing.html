@@ -374,6 +374,9 @@ Queued (NUMBER)
 
 AUTHOR (NUMBER):
       COMMIT SUMMARY
+[If applicable:
+Squashed with
+      COMMIT SUMMARY]
 
 For example:
 
@@ -382,16 +385,21 @@ Jonas Pfeil (1):
 Squashed with
       ralloc: don't leave out the alignment factor
 
+
 Rejected (NUMBER)
 =================
-
-Rejected (11)
-=============
 
 AUTHOR (NUMBER):
       SHA     COMMIT SUMMARY
 
 Reason: ...
+
+For example:
+
+Emil Velikov (1):
+      31a6750988d st/dri: NULL check before deref DRI loader .getCapability
+
+Reason: Above three add/fix extra infra, while simpler fix is already applied.
 </pre>
 
 
