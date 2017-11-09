@@ -420,6 +420,9 @@ typedef enum
     */
    SYSTEM_VALUE_VERTEX_ID,
 
+   // TODO: Add and modify comments
+   SYSTEM_VALUE_BASE_VERTEX_ID,
+
    /**
     * Instanced ID as supplied to gl_InstanceID
     *
