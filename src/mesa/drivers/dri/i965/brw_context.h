@@ -807,8 +807,7 @@ struct brw_context
 
    struct {
       struct {
-         /** The value of gl_BaseVertex for the current _mesa_prim. */
-         int gl_basevertex;
+         int base_vertex_id;
 
          /** The value of gl_BaseInstance for the current _mesa_prim. */
          int gl_baseinstance;
@@ -821,12 +820,17 @@ struct brw_context
       struct brw_bo *draw_params_bo;
       uint32_t draw_params_offset;
 
-      /**
-       * The value of gl_DrawID for the current _mesa_prim. This always comes
-       * in from it's own vertex buffer since it's not part of the indirect
-       * draw parameters.
-       */
-      int gl_drawid;
+      struct {
+         /**
+          * The value of gl_DrawID for the current _mesa_prim. This always comes
+          * in from it's own vertex buffer since it's not part of the indirect
+          * draw parameters.
+          */
+         int gl_drawid;
+
+         int gl_basevertex;
+      } drawid_params;
+
       struct brw_bo *draw_id_bo;
       uint32_t draw_id_offset;
 

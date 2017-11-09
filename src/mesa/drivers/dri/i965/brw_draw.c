@@ -766,25 +766,25 @@ brw_draw_single_prim(struct gl_context *ctx,
     * always flag if the shader uses one of the values. For direct draws,
     * we only flag if the values change.
     */
-   const int new_basevertex =
+   const int new_basevertexid =
       prim->indexed ? prim->basevertex : prim->start;
    const int new_baseinstance = prim->base_instance;
    const struct brw_vs_prog_data *vs_prog_data =
       brw_vs_prog_data(brw->vs.base.prog_data);
    if (prim_id > 0) {
       const bool uses_draw_parameters =
-         vs_prog_data->uses_basevertex ||
+         vs_prog_data->uses_vertexid ||
          vs_prog_data->uses_baseinstance;
 
       if ((uses_draw_parameters && prim->is_indirect) ||
-          (vs_prog_data->uses_basevertex &&
-           brw->draw.params.gl_basevertex != new_basevertex) ||
+          (vs_prog_data->uses_vertexid &&
+           brw->draw.params.base_vertex_id != new_basevertexid) ||
           (vs_prog_data->uses_baseinstance &&
            brw->draw.params.gl_baseinstance != new_baseinstance))
          brw->ctx.NewDriverState |= BRW_NEW_VERTICES;
    }
 
-   brw->draw.params.gl_basevertex = new_basevertex;
+   brw->draw.params.base_vertex_id = new_basevertexid;
    brw->draw.params.gl_baseinstance = new_baseinstance;
    brw_bo_unreference(brw->draw.draw_params_bo);
 
@@ -809,11 +809,19 @@ brw_draw_single_prim(struct gl_context *ctx,
     * valid vs_prog_data, but we always flag BRW_NEW_VERTICES before
     * the loop.
     */
-   brw->draw.gl_drawid = prim->draw_id;
+   const int new_basevertex = prim->indexed ? prim->basevertex : prim->start;
+
+   if (prim_id > 0 &&
+       (vs_prog_data->uses_drawid ||
+        (vs_prog_data->uses_basevertex &&
+         brw->draw.drawid_params.gl_basevertex != new_basevertex)))
+      brw->ctx.NewDriverState |= BRW_NEW_VERTICES;
+
+   brw->draw.drawid_params.gl_drawid = prim->draw_id;
+   brw->draw.drawid_params.gl_basevertex = new_basevertex;
+
    brw_bo_unreference(brw->draw.draw_id_bo);
    brw->draw.draw_id_bo = NULL;
-   if (prim_id > 0 && vs_prog_data->uses_drawid)
-      brw->ctx.NewDriverState |= BRW_NEW_VERTICES;
 
    if (devinfo->gen < 6)
       brw_set_prim(brw, prim);

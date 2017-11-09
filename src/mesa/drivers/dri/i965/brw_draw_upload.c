@@ -697,15 +697,15 @@ brw_prepare_shader_draw_parameters(struct brw_context *brw)
       brw_vs_prog_data(brw->vs.base.prog_data);
 
    /* For non-indirect draws, upload gl_BaseVertex. */
-   if ((vs_prog_data->uses_basevertex || vs_prog_data->uses_baseinstance) &&
+   if ((vs_prog_data->uses_vertexid || vs_prog_data->uses_baseinstance) &&
        brw->draw.draw_params_bo == NULL) {
       intel_upload_data(brw, &brw->draw.params, sizeof(brw->draw.params), 4,
 			&brw->draw.draw_params_bo,
                         &brw->draw.draw_params_offset);
    }
 
-   if (vs_prog_data->uses_drawid) {
-      intel_upload_data(brw, &brw->draw.gl_drawid, sizeof(brw->draw.gl_drawid), 4,
+   if (vs_prog_data->uses_drawid || vs_prog_data->uses_basevertex) {
+      intel_upload_data(brw, &brw->draw.drawid_params, sizeof(brw->draw.drawid_params), 4,
                         &brw->draw.draw_id_bo,
                         &brw->draw.draw_id_offset);
    }
