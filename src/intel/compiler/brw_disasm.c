@@ -1321,7 +1321,8 @@ imm(FILE *file, const struct gen_device_info *devinfo, enum brw_reg_type type,
       format(file, "/* %-gDF */", brw_inst_imm_df(devinfo, inst));
       break;
    case BRW_REGISTER_TYPE_HF:
-      string(file, "Half Float IMM");
+      format(file, "%-gHF",
+             _mesa_half_to_float((uint16_t) brw_inst_imm_ud(devinfo, inst)));
       break;
    case BRW_REGISTER_TYPE_NF:
    case BRW_REGISTER_TYPE_UB:
