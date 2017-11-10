@@ -40,6 +40,7 @@
 #include "compiler/nir/nir_builder.h"
 #include "program/prog_parameter.h"
 #include "util/u_math.h"
+#include "util/half_float.h"
 
 using namespace brw;
 
@@ -6039,6 +6040,10 @@ fs_visitor::dump_instruction(backend_instruction *be_inst, FILE *file)
          break;
       case IMM:
          switch (inst->src[i].type) {
+         case BRW_REGISTER_TYPE_HF:
+            fprintf(file, "%-gHF",
+                    _mesa_half_to_float((uint16_t)inst->src[i].ud));
+            break;
          case BRW_REGISTER_TYPE_F:
             fprintf(file, "%-gf", inst->src[i].f);
             break;
