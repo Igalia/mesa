@@ -239,6 +239,13 @@ brw_emit_prim(struct brw_context *brw,
                                prim->indirect_offset + 12);
          brw_load_register_mem(brw, GEN7_3DPRIM_START_INSTANCE, bo,
                                prim->indirect_offset + 16);
+
+         if (brw->draw.derived_draw_params_bo != NULL) {
+            brw_store_register_mem32(brw, brw->draw.derived_draw_params_bo,
+                                     GEN7_3DPRIM_BASE_VERTEX,
+                                     brw->draw.derived_draw_params_offset + 4);
+            brw_emit_mi_flush(brw);
+         }
       } else {
          brw_load_register_mem(brw, GEN7_3DPRIM_START_INSTANCE, bo,
                                prim->indirect_offset + 12);
@@ -803,7 +810,7 @@ brw_draw_single_prim(struct gl_context *ctx,
     * valid vs_prog_data, but we always flag BRW_NEW_VERTICES before
     * the loop.
     */
-   const int new_basevertex = prim->indexed ? prim->basevertex : prim->start;
+   const int new_basevertex = prim->indexed ? prim->basevertex : 0;
 
    if (prim_id > 0 &&
        (vs_prog_data->uses_drawid ||
