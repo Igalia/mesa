@@ -439,3 +439,9 @@ glsl_channel_type(const glsl_type *t)
       unreachable("Unhandled base type glsl_channel_type()");
    }
 }
+
+const glsl_type *
+glsl_atomic_uint_type(void)
+{
+   return glsl_type::atomic_uint_type;
+}
