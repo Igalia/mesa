@@ -240,7 +240,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
     */
    const bool has_sgvs =
       nir->info.system_values_read &
-      (BITFIELD64_BIT(SYSTEM_VALUE_BASE_VERTEX) |
+      (BITFIELD64_BIT(SYSTEM_VALUE_FIRST_VERTEX) |
        BITFIELD64_BIT(SYSTEM_VALUE_BASE_INSTANCE) |
        BITFIELD64_BIT(SYSTEM_VALUE_VERTEX_ID_ZERO_BASE) |
        BITFIELD64_BIT(SYSTEM_VALUE_INSTANCE_ID));
@@ -262,6 +262,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
             nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
 
             switch (intrin->intrinsic) {
+            case nir_intrinsic_load_first_vertex:
             case nir_intrinsic_load_base_vertex:
             case nir_intrinsic_load_base_instance:
             case nir_intrinsic_load_vertex_id_zero_base:
@@ -279,7 +280,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
 
                nir_intrinsic_set_base(load, num_inputs);
                switch (intrin->intrinsic) {
-               case nir_intrinsic_load_base_vertex:
+               case nir_intrinsic_load_first_vertex:
                   nir_intrinsic_set_component(load, 0);
                   break;
                case nir_intrinsic_load_base_instance:
@@ -292,11 +293,15 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                   nir_intrinsic_set_component(load, 3);
                   break;
                case nir_intrinsic_load_draw_id:
+               case nir_intrinsic_load_base_vertex:
                   /* gl_DrawID is stored right after gl_VertexID and friends
                    * if any of them exist.
                    */
                   nir_intrinsic_set_base(load, num_inputs + has_sgvs);
-                  nir_intrinsic_set_component(load, 0);
+                  if (intrin->intrinsic ==  nir_intrinsic_load_draw_id)
+                     nir_intrinsic_set_component(load, 0);
+                  else
+                     nir_intrinsic_set_component(load, 1);
                   break;
                default:
                   unreachable("Invalid system value intrinsic");

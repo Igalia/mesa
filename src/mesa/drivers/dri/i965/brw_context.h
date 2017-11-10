@@ -844,28 +844,44 @@ struct brw_context
 
    struct {
       struct {
-         /** The value of gl_BaseVertex for the current _mesa_prim. */
-         int gl_basevertex;
+         /**
+          * Either the value of gl_BaseVertex for indexed draw calls or the
+          * value of the argument <first> for non-indexed draw calls, for the
+          * current _mesa_prim.
+          */
+         int firstvertex;
 
          /** The value of gl_BaseInstance for the current _mesa_prim. */
          int gl_baseinstance;
       } params;
 
       /**
-       * Buffer and offset used for GL_ARB_shader_draw_parameters
-       * (for now, only gl_BaseVertex).
+       * Buffer and offset used for GL_ARB_shader_draw_parameters. For indirect
+       * draw calls it will point to the indirect buffer.
        */
       struct brw_bo *draw_params_bo;
       uint32_t draw_params_offset;
 
+      struct {
+         /** The value of gl_DrawID for the current _mesa_prim. */
+         int gl_drawid;
+
+         /**
+          * The value of gl_BaseVertex for the current _mesa_prim. It must be
+          * zero for non-indexed calls.
+          */
+         int gl_basevertex;
+      } derived_params;
+
       /**
-       * The value of gl_DrawID for the current _mesa_prim. This always comes
-       * in from it's own vertex buffer since it's not part of the indirect
-       * draw parameters.
+       * Buffer and offset also used for GL_ARB_shader_draw_parameters. As they
+       * are not part of the indirect buffer they will go in their own vertex
+       * element. Note that although gl_BaseVertex is part of the indirect
+       * buffer for indexed draw calls, that is not longer the case for
+       * non-indexed.
        */
-      int gl_drawid;
-      struct brw_bo *draw_id_bo;
-      uint32_t draw_id_offset;
+      struct brw_bo *derived_draw_params_bo;
+      uint32_t derived_draw_params_offset;
 
       /**
        * Pointer to the the buffer storing the indirect draw parameters. It

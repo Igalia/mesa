@@ -495,19 +495,20 @@ genX(emit_vertices)(struct brw_context *brw)
     * can't be inserted past that so we need a dummy element to ensure that
     * the edge flag is the last one.
     */
-   const bool needs_sgvs_element = (vs_prog_data->uses_basevertex ||
+   const bool needs_sgvs_element = (vs_prog_data->uses_firstvertex ||
                                     vs_prog_data->uses_baseinstance ||
                                     ((vs_prog_data->uses_instanceid ||
                                       vs_prog_data->uses_vertexid)
                                      && uses_edge_flag));
 #else
-   const bool needs_sgvs_element = (vs_prog_data->uses_basevertex ||
+   const bool needs_sgvs_element = (vs_prog_data->uses_firstvertex ||
                                     vs_prog_data->uses_baseinstance ||
                                     vs_prog_data->uses_instanceid ||
                                     vs_prog_data->uses_vertexid);
 #endif
    unsigned nr_elements =
-      brw->vb.nr_enabled + needs_sgvs_element + vs_prog_data->uses_drawid;
+      brw->vb.nr_enabled + needs_sgvs_element +
+      (vs_prog_data->uses_drawid || vs_prog_data->uses_basevertex);
 
 #if GEN_GEN < 8
    /* If any of the formats of vb.enabled needs more that one upload, we need
@@ -546,10 +547,15 @@ genX(emit_vertices)(struct brw_context *brw)
 
    /* Now emit 3DSTATE_VERTEX_BUFFERS and 3DSTATE_VERTEX_ELEMENTS packets. */
    const bool uses_draw_params =
-      vs_prog_data->uses_basevertex ||
+      vs_prog_data->uses_firstvertex ||
       vs_prog_data->uses_baseinstance;
+
+   const bool uses_derived_draw_params =
+      vs_prog_data->uses_basevertex ||
+      vs_prog_data->uses_drawid;
+
    const unsigned nr_buffers = brw->vb.nr_buffers +
-      uses_draw_params + vs_prog_data->uses_drawid;
+      uses_draw_params + uses_derived_draw_params;
 
    if (nr_buffers) {
       assert(nr_buffers <= (GEN_GEN >= 6 ? 33 : 17));
@@ -583,11 +589,11 @@ genX(emit_vertices)(struct brw_context *brw)
                                              0 /* step rate */);
       }
 
-      if (vs_prog_data->uses_drawid) {
+      if (uses_derived_draw_params) {
          dw = genX(emit_vertex_buffer_state)(brw, dw, brw->vb.nr_buffers + 1,
-                                             brw->draw.draw_id_bo,
-                                             brw->draw.draw_id_offset,
-                                             brw->draw.draw_id_bo->size,
+                                             brw->draw.derived_draw_params_bo,
+                                             brw->draw.derived_draw_params_offset,
+                                             brw->draw.derived_draw_params_bo->size,
                                              0 /* stride */,
                                              0 /* step rate */);
       }
@@ -724,7 +730,7 @@ genX(emit_vertices)(struct brw_context *brw)
       };
 
 #if GEN_GEN >= 8
-      if (vs_prog_data->uses_basevertex ||
+      if (vs_prog_data->uses_firstvertex ||
           vs_prog_data->uses_baseinstance) {
          elem_state.VertexBufferIndex = brw->vb.nr_buffers;
          elem_state.SourceElementFormat = (enum GENX(SURFACE_FORMAT)) ISL_FORMAT_R32G32_UINT;
@@ -734,11 +740,10 @@ genX(emit_vertices)(struct brw_context *brw)
 #else
       elem_state.VertexBufferIndex = brw->vb.nr_buffers;
       elem_state.SourceElementFormat = (enum GENX(SURFACE_FORMAT)) ISL_FORMAT_R32G32_UINT;
-      if (vs_prog_data->uses_basevertex)
+      if (vs_prog_data->uses_firstvertex || vs_prog_data->uses_baseinstance) {
          elem_state.Component0Control = VFCOMP_STORE_SRC;
-
-      if (vs_prog_data->uses_baseinstance)
          elem_state.Component1Control = VFCOMP_STORE_SRC;
+      }
 
       if (vs_prog_data->uses_vertexid)
          elem_state.Component2Control = VFCOMP_STORE_VID;
@@ -751,13 +756,13 @@ genX(emit_vertices)(struct brw_context *brw)
       dw += GENX(VERTEX_ELEMENT_STATE_length);
    }
 
-   if (vs_prog_data->uses_drawid) {
+   if (vs_prog_data->uses_drawid || vs_prog_data->uses_basevertex) {
       struct GENX(VERTEX_ELEMENT_STATE) elem_state = {
          .Valid = true,
          .VertexBufferIndex = brw->vb.nr_buffers + 1,
-         .SourceElementFormat = (enum GENX(SURFACE_FORMAT)) ISL_FORMAT_R32_UINT,
+         .SourceElementFormat = (enum GENX(SURFACE_FORMAT)) ISL_FORMAT_R32G32_UINT,
          .Component0Control = VFCOMP_STORE_SRC,
-         .Component1Control = VFCOMP_STORE_0,
+         .Component1Control = VFCOMP_STORE_SRC,
          .Component2Control = VFCOMP_STORE_0,
          .Component3Control = VFCOMP_STORE_0,
 #if GEN_GEN < 5
