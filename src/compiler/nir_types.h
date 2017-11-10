@@ -167,6 +167,7 @@ const struct glsl_type *glsl_transposed_type(const struct glsl_type *type);
 
 const struct glsl_type *glsl_channel_type(const struct glsl_type *type);
 
+const struct glsl_type *glsl_atomic_uint_type(void);
 #ifdef __cplusplus
 }
 #endif
