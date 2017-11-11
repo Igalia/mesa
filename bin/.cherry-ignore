@@ -87,3 +87,9 @@ e17e8934f9e4b008bdfb4f9abd8ed4faa604c7d9 automake: include git_sha1.h.in in rele
 
 # stable: This commit is not really needed after 6ac2d169019.
 e8c9e65185de3e821e1e482e77906d1d51efa3ec intel/fs: Use a pure vertical stride for large register strides
+
+# stable: These commits addressed earlier commit 379b24a40d3 which did
+#         not land in branch.
+7364f080f9a272323ed3491f278a1eed3eb9b1a7 intel/nir: Add a helper for getting the NoIndirect mask
+3e63cf893f096a7263eb1856d58417dd2d170d4b intel/nir: Break the linking code into a helper in brw_nir.c
+951a5dc4cc29da996b54ae63eeba1915a3a65b4a intel/nir: Use the correct indirect lowering masks in link_shaders
