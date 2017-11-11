@@ -93,3 +93,7 @@ e8c9e65185de3e821e1e482e77906d1d51efa3ec intel/fs: Use a pure vertical stride fo
 7364f080f9a272323ed3491f278a1eed3eb9b1a7 intel/nir: Add a helper for getting the NoIndirect mask
 3e63cf893f096a7263eb1856d58417dd2d170d4b intel/nir: Break the linking code into a helper in brw_nir.c
 951a5dc4cc29da996b54ae63eeba1915a3a65b4a intel/nir: Use the correct indirect lowering masks in link_shaders
+
+# stable: These commits resulted in a CTS regression being addressed
+#         at https://bugs.freedesktop.org/show_bug.cgi?id=103626 .
+18fde36ced4279f2577097a1a7d31b55f2f5f141 intel/fs: Use the original destination region for int MUL lowering
