@@ -77,8 +77,6 @@ d8cefaa197f02944812ef535b1b303dd5bf26848 radv: use device name in cache creation
 
 # stable: 17.3 nomination only.
 3f8e3c2bd8f54ae6817f7496be47f4e1a8860d9c radeonsi: add a workaround for weird s_buffer_load_dword behavior on SI
-
-# stable: 17.3 nomination only.
 7dae419aa7c34af820c08896acef3b65d855188e Android: move drivers' symlinks to /vendor (v2)
 
 # fixes:  This commit has more than one Fixes tag but the commit it
@@ -119,3 +117,10 @@ a07f7b26198ce0f5c8799481a673754968ac5daf anv/cmd_buffer: Take bo_offset into acc
 #         not land in branch.
 344252a27f8d875572bbe65641a825af8e73845d i965/bufmgr: Add a helper to mark a BO as external
 0a6a137eb27129e17298cfe9dd620205588ee4f6 i965: Mark BOs as external when we export their handle
+
+# stable: 17.3 nomination only.
+6e4d65f674a70809e6df1a4f716f874828915562 broadcom/vc5: Add vc5_drm.h to the release tarball
+4639cc716e89c69da41c7b54fa938457000fbd4c intel/blorp: Use mocs.tex for depth stencil
+deec84fd771876b5c0755293376df11bc95b473b anv/blorp: Add a device parameter to blorp_surf_for_anv_image
+bc933d0e8462871e19328f66182c35543e334013 intel/blorp: Make the MOCS setting part of blorp_address
+d7a19d69ebc032ba7207fc97bc6f10d5bb35bb99 i965: Use PTE MOCS for all external buffers
