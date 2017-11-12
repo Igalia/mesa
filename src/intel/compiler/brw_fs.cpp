@@ -448,6 +448,7 @@ fs_reg::fs_reg(struct ::brw_reg reg) :
 {
    this->offset = 0;
    this->stride = 1;
+   this->pad_per_component = 0;
    if (this->file == IMM &&
        (this->type != BRW_REGISTER_TYPE_V &&
         this->type != BRW_REGISTER_TYPE_UV &&
@@ -482,7 +483,7 @@ fs_reg::component_size(unsigned width) const
    const unsigned stride = ((file != ARF && file != FIXED_GRF) ? this->stride :
                             hstride == 0 ? 0 :
                             1 << (hstride - 1));
-   return MAX2(width * stride, 1) * type_sz(type);
+   return (MAX2(width * stride, 1) * (type_sz(type)) + pad_per_component);
 }
 
 extern "C" int

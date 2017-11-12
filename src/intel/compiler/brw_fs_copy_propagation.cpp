@@ -497,6 +497,7 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
    inst->src[arg].file = entry->src.file;
    inst->src[arg].nr = entry->src.nr;
    inst->src[arg].stride *= entry->src.stride;
+   inst->src[arg].pad_per_component = entry->src.pad_per_component;
    inst->saturate = inst->saturate || entry->saturate;
 
    /* Compute the offset of inst->src[arg] relative to entry->dst */

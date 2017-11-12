@@ -348,6 +348,9 @@ fs_visitor::nir_emit_impl(nir_function_impl *impl)
       unsigned size = array_elems * reg->num_components;
       const brw_reg_type reg_type =
          brw_reg_type_from_bit_size(reg->bit_size, BRW_REGISTER_TYPE_F);
+
+      /* TODO: Consider if 16-bit component padding is needed. */
+
       nir_locals[reg->index] = bld.vgrf(reg_type, size);
    }
 
@@ -1674,7 +1677,8 @@ fs_visitor::get_nir_src_imm(const nir_src &src)
 }
 
 fs_reg
-fs_visitor::get_nir_dest(const nir_dest &dest)
+fs_visitor::get_nir_dest(const nir_dest &dest,
+                          bool pad_components_to_full_registers)
 {
    if (dest.is_ssa) {
       const brw_reg_type reg_type =
@@ -1683,7 +1687,8 @@ fs_visitor::get_nir_dest(const nir_dest &dest)
                                     BRW_REGISTER_TYPE_D :
                                     BRW_REGISTER_TYPE_F);
       nir_ssa_values[dest.ssa.index] =
-         bld.vgrf(reg_type, dest.ssa.num_components);
+         bld.vgrf(reg_type, dest.ssa.num_components,
+                  pad_components_to_full_registers);
       return nir_ssa_values[dest.ssa.index];
    } else {
       /* We don't handle indirects on locals */

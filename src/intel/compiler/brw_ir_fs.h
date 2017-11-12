@@ -52,6 +52,9 @@ public:
 
    /** Register region horizontal stride */
    uint8_t stride;
+
+   /* Needed, for example, for SIMD8 half float payloads. */
+   uint8_t pad_per_component;
 };
 
 static inline fs_reg

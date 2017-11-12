@@ -196,17 +196,28 @@ namespace brw {
        * component in this IR).
        */
       dst_reg
-      vgrf(enum brw_reg_type type, unsigned n = 1) const
+      vgrf(enum brw_reg_type type,
+           unsigned n = 1,
+           bool pad_components_to_full_registers = false) const
       {
          assert(dispatch_width() <= 32);
 
-         if (n > 0)
-            return dst_reg(VGRF, shader->alloc.allocate(
-                              DIV_ROUND_UP(n * type_sz(type) * dispatch_width(),
-                                           REG_SIZE)),
-                           type);
-         else
+         if (n == 0)
             return retype(null_reg_ud(), type);
+
+         const unsigned pad_per_component =
+            (pad_components_to_full_registers &&
+             type_sz(type) == 2 &&
+             dispatch_width() == 8) ? (REG_SIZE / 2) : 0;
+         const unsigned size =
+            n * ((type_sz(type) * dispatch_width()) + pad_per_component);
+         const unsigned nr = shader->alloc.allocate(
+                                DIV_ROUND_UP(size, REG_SIZE));
+
+         dst_reg dst = dst_reg(VGRF, nr, type);
+         dst.pad_per_component = pad_per_component;
+
+         return dst;
       }
 
       /**
