@@ -36,6 +36,7 @@
 
 #include "brw_fs.h"
 #include "brw_cfg.h"
+#include "util/half_float.h"
 
 using namespace brw;
 
@@ -95,6 +96,15 @@ link(void *mem_ctx, fs_reg *reg)
    return &l->link;
 }
 
+union imm_val {
+   double df;
+   uint64_t u64;
+   int64_t d64;
+   float f;
+   int   d;
+   unsigned ud;
+};
+
 /**
  * Information about an immediate value.
  */
@@ -114,8 +124,10 @@ struct imm {
     */
    exec_list *uses;
 
-   /** The immediate value.  We currently only handle floats. */
-   float val;
+   enum brw_reg_type type;
+
+   /** The immediate value.  We currently handle floats and half floats. */
+   union imm_val val;
 
    /**
     * The GRF register and subregister number where we've decided to store the
@@ -145,10 +157,10 @@ struct table {
 };
 
 static struct imm *
-find_imm(struct table *table, float val)
+find_imm(struct table *table, enum brw_reg_type type, union imm_val val)
 {
    for (int i = 0; i < table->len; i++) {
-      if (table->imm[i].val == val) {
+      if (table->imm[i].val.u64 == val.u64 && table->imm[i].type == type) {
          return &table->imm[i];
       }
    }
@@ -190,6 +202,33 @@ compare(const void *_a, const void *_b)
    return a->first_use_ip - b->first_use_ip;
 }
 
+static uint16_t
+fabs_f16(uint16_t hf)
+{
+   return _mesa_float_to_half(fabs(_mesa_half_to_float(hf)));
+}
+
+static union imm_val
+get_val(const struct gen_device_info *devinfo, fs_inst *inst, unsigned i)
+{
+   union imm_val res = { 0 };
+
+   switch (inst->src[i].type) {
+   case BRW_REGISTER_TYPE_F:
+      res.f = !inst->can_do_source_mods(devinfo) ?
+              inst->src[i].f : fabs(inst->src[i].f);
+      break;
+   case BRW_REGISTER_TYPE_HF:
+      res.ud = !inst->can_do_source_mods(devinfo) ?
+               inst->src[i].ud : fabs_f16(inst->src[i].ud);
+      break;
+   default:
+      unreachable("unsupported immediate type");
+   }
+
+   return res;
+}
+
 bool
 fs_visitor::opt_combine_constants()
 {
@@ -215,12 +254,12 @@ fs_visitor::opt_combine_constants()
 
       for (int i = 0; i < inst->sources; i++) {
          if (inst->src[i].file != IMM ||
-             inst->src[i].type != BRW_REGISTER_TYPE_F)
+             (inst->src[i].type != BRW_REGISTER_TYPE_F &&
+              inst->src[i].type != BRW_REGISTER_TYPE_HF))
             continue;
 
-         float val = !inst->can_do_source_mods(devinfo) ? inst->src[i].f :
-                     fabs(inst->src[i].f);
-         struct imm *imm = find_imm(&table, val);
+         union imm_val val = get_val(devinfo, inst, i);
+         struct imm *imm = find_imm(&table, inst->src[i].type, val);
 
          if (imm) {
             bblock_t *intersection = cfg_t::intersect(block, imm->block);
@@ -238,6 +277,7 @@ fs_visitor::opt_combine_constants()
             imm->uses = new(const_ctx) exec_list();
             imm->uses->push_tail(link(const_ctx, &inst->src[i]));
             imm->val = val;
+            imm->type = inst->src[i].type;
             imm->uses_by_coissue = could_coissue(devinfo, inst);
             imm->must_promote = must_promote_imm(devinfo, inst);
             imm->first_use_ip = ip;
@@ -278,7 +318,14 @@ fs_visitor::opt_combine_constants()
                       imm->block->last_non_control_flow_inst()->next);
       const fs_builder ibld = bld.at(imm->block, n).exec_all().group(1, 0);
 
-      ibld.MOV(reg, brw_imm_f(imm->val));
+      if (imm->type == BRW_REGISTER_TYPE_F)
+         ibld.MOV(reg, brw_imm_f(imm->val.f));
+      else if (imm->type == BRW_REGISTER_TYPE_HF) {
+         ibld.MOV(retype(reg, BRW_REGISTER_TYPE_HF),
+                  retype(brw_imm_ud(imm->val.ud), BRW_REGISTER_TYPE_HF));
+      } else
+         unreachable("unsupported immediate type");
+
       imm->nr = reg.nr;
       imm->subreg_offset = reg.offset;
 
@@ -298,9 +345,19 @@ fs_visitor::opt_combine_constants()
          reg->nr = table.imm[i].nr;
          reg->offset = table.imm[i].subreg_offset;
          reg->stride = 0;
-         reg->negate = signbit(reg->f) != signbit(table.imm[i].val);
-         assert((isnan(reg->f) && isnan(table.imm[i].val)) ||
-                fabsf(reg->f) == fabs(table.imm[i].val));
+         reg->negate = signbit(reg->f) != signbit(table.imm[i].val.f);
+
+         switch (table.imm[i].type) {
+         case BRW_REGISTER_TYPE_F:
+            assert((isnan(reg->f) && isnan(table.imm[i].val.f)) ||
+                   fabsf(reg->f) == fabs(table.imm[i].val.f));
+            break;
+         case BRW_REGISTER_TYPE_HF:
+            assert(fabs_f16(reg->ud) == fabs_f16(table.imm[i].val.ud));
+            break;
+         default:
+            unreachable("unsupported immediate type");
+         }
       }
    }
 
@@ -310,7 +367,8 @@ fs_visitor::opt_combine_constants()
 
          printf("%.3fF - block %3d, reg %3d sub %2d, Uses: (%2d, %2d), "
                 "IP: %4d to %4d, length %4d\n",
-                imm->val,
+                imm->type == BRW_REGISTER_TYPE_HF ?
+                   _mesa_half_to_float(imm->val.ud) : imm->val.f,
                 imm->block->num,
                 imm->nr,
                 imm->subreg_offset,
