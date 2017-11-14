@@ -296,7 +296,14 @@ brw_tcs_populate_key(struct brw_context *brw,
       per_patch_slots |= prog->info.patch_outputs_written;
    }
 
-   if (devinfo->gen < 8 || !tcp)
+   /* For GLSL, gen8+ lowers gl_PatchVerticesIn to a uniform, however
+    * the SPIR-V path always lowers it to a system value.
+    */
+   bool reads_patch_vertices_as_system_value =
+      tcp && (tcp->program.nir->info.system_values_read &
+              BITFIELD64_BIT(SYSTEM_VALUE_VERTICES_IN));
+
+   if (devinfo->gen < 8 || !tcp || reads_patch_vertices_as_system_value)
       key->input_vertices = brw->ctx.TessCtrlProgram.patch_vertices;
    key->outputs_written = per_vertex_slots;
    key->patch_outputs_written = per_patch_slots;
