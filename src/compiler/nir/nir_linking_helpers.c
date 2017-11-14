@@ -24,6 +24,10 @@
 #include "nir.h"
 #include "util/set.h"
 #include "util/hash_table.h"
+#include "nir_linker.h"
+#include "compiler/glsl/ir_uniform.h" /* for gl_uniform_storage */
+#include "compiler/linker_util.h"
+#include "main/context.h"
 
 /* This file contains various little helpers for doing simple linking in
  * NIR.  Eventually, we'll probably want a full-blown varying packing
@@ -502,4 +506,63 @@ nir_compact_varyings(nir_shader *producer, nir_shader *consumer,
 
    compact_components(producer, consumer, comps, interp_type, interp_loc,
                       default_to_smooth_interp);
+}
+
+void
+nir_build_program_resource_list(struct gl_context *ctx,
+                                struct gl_shader_program *prog)
+{
+   /* Rebuild resource list. */
+   if (prog->data->ProgramResourceList) {
+      ralloc_free(prog->data->ProgramResourceList);
+      prog->data->ProgramResourceList = NULL;
+      prog->data->NumProgramResourceList = 0;
+   }
+
+   struct set *resource_set = _mesa_set_create(NULL,
+                                               _mesa_hash_pointer,
+                                               _mesa_key_pointer_equal);
+
+   /* Add uniforms
+    *
+    * Here, it is expected that nir_link_uniforms() has already been
+    * called, so that UniformStorage table is already available.
+    */
+   for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
+      struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
+
+      if (!add_program_resource(prog, resource_set, GL_UNIFORM, uniform,
+                                uniform->active_shader_mask)) {
+         return;
+      }
+   }
+
+   /* Add inputs */
+   struct gl_linked_shader *sh = prog->_LinkedShaders[MESA_SHADER_VERTEX];
+   if (sh) {
+      nir_shader *nir = sh->Program->nir;
+      assert(nir);
+
+      nir_foreach_variable(var, &nir->inputs) {
+         struct gl_shader_variable *sh_var =
+            rzalloc(prog, struct gl_shader_variable);
+
+         /* ARB_gl_spirv: names are considered optional debug info, so the linker
+          * needs to work without them, and returning them is optional. For
+          * simplicity we ignore names.
+          */
+         sh_var->name = NULL;
+         sh_var->type = var->type;
+         sh_var->location = var->data.location;
+
+         /* @TODO: Fill in the rest of gl_shader_variable data. */
+
+         if (!add_program_resource(prog, resource_set, GL_PROGRAM_INPUT,
+                                   sh_var, 1 << MESA_SHADER_VERTEX)) {
+            return;
+         }
+      }
+   }
+
+   _mesa_set_destroy(resource_set, NULL);
 }
