@@ -24,6 +24,7 @@
 #include "nir.h"
 #include "util/set.h"
 #include "util/hash_table.h"
+#include "nir_linker.h"
 
 /* This file contains various little helpers for doing simple linking in
  * NIR.  Eventually, we'll probably want a full-blown varying packing
@@ -502,4 +503,11 @@ nir_compact_varyings(nir_shader *producer, nir_shader *consumer,
 
    compact_components(producer, consumer, comps, interp_type, interp_loc,
                       default_to_smooth_interp);
+}
+
+void
+nir_link_uniforms(struct gl_context *ctx,
+                  struct gl_shader_program *prog)
+{
+   /* This is boilerplate for now */
 }
