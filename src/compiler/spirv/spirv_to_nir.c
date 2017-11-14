@@ -3403,6 +3403,7 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityInputAttachment:
       case SpvCapabilityImageGatherExtended:
       case SpvCapabilityStorageImageExtendedFormats:
+      case SpvCapabilityStorageImageMultisample:
          break;
 
       case SpvCapabilityLinkage:
@@ -3410,7 +3411,6 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityFloat16Buffer:
       case SpvCapabilityFloat16:
       case SpvCapabilityInt64Atomics:
-      case SpvCapabilityStorageImageMultisample:
       case SpvCapabilityInt8:
       case SpvCapabilitySparseResidency:
       case SpvCapabilityMinLod:
