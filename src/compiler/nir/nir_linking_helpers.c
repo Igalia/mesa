@@ -852,3 +852,95 @@ nir_link_uniforms(struct gl_context *ctx,
 
    nir_setup_uniform_remap_tables(ctx, prog);
 }
+
+/* @FIXME: copied verbatim from linker.cpp, needs refactoring. */
+static bool
+add_program_resource(struct gl_shader_program *prog,
+                     struct set *resource_set,
+                     GLenum type, const void *data, uint8_t stages)
+{
+   assert(data);
+
+   /* If resource already exists, do not add it again. */
+   if (_mesa_set_search(resource_set, data))
+      return true;
+
+   prog->data->ProgramResourceList =
+      reralloc(prog,
+               prog->data->ProgramResourceList,
+               struct gl_program_resource,
+               prog->data->NumProgramResourceList + 1);
+
+   if (!prog->data->ProgramResourceList) {
+      linker_error(prog, "Out of memory during linking.\n");
+      return false;
+   }
+
+   struct gl_program_resource *res =
+      &prog->data->ProgramResourceList[prog->data->NumProgramResourceList];
+
+   res->Type = type;
+   res->Data = data;
+   res->StageReferences = stages;
+
+   prog->data->NumProgramResourceList++;
+
+   _mesa_set_add(resource_set, data);
+
+   return true;
+}
+
+void
+nir_build_program_resource_list(struct gl_context *ctx,
+                                struct gl_shader_program *prog)
+{
+   /* Rebuild resource list. */
+   if (prog->data->ProgramResourceList) {
+      ralloc_free(prog->data->ProgramResourceList);
+      prog->data->ProgramResourceList = NULL;
+      prog->data->NumProgramResourceList = 0;
+   }
+
+   struct set *resource_set = _mesa_set_create(NULL,
+                                               _mesa_hash_pointer,
+                                               _mesa_key_pointer_equal);
+
+   /* Add uniforms
+    *
+    * Here, it is expected that nir_link_uniforms() has already been
+    * called, so that UniformStorage table is already available.
+    */
+   for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
+      struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
+
+      if (!add_program_resource(prog, resource_set, GL_UNIFORM, uniform,
+                                uniform->active_shader_mask)) {
+         return;
+      }
+   }
+
+   /* Add inputs */
+   struct gl_linked_shader *sh = prog->_LinkedShaders[MESA_SHADER_VERTEX];
+   if (sh) {
+      nir_shader *nir = sh->Program->nir;
+      assert(nir);
+
+      nir_foreach_variable(var, &nir->inputs) {
+         struct gl_shader_variable *sh_var =
+            rzalloc(prog, struct gl_shader_variable);
+
+         sh_var->name = ralloc_strdup(sh_var, var->name ? var->name : "");
+         sh_var->type = var->type;
+         sh_var->location = var->data.location;
+
+         /* @TODO: Fill in the rest of gl_shader_variable data. */
+
+         if (!add_program_resource(prog, resource_set, GL_PROGRAM_INPUT,
+                                   sh_var, 1 << MESA_SHADER_VERTEX)) {
+            return;
+         }
+      }
+   }
+
+   _mesa_set_destroy(resource_set, NULL);
+}
