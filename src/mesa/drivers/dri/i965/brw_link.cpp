@@ -28,6 +28,7 @@
 #include "compiler/glsl/ir_optimization.h"
 #include "compiler/glsl/program.h"
 #include "compiler/nir/nir_serialize.h"
+#include "compiler/nir/nir_linker.h"
 #include "program/program.h"
 #include "main/mtypes.h"
 #include "main/shaderapi.h"
@@ -256,6 +257,11 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
 
       prog->nir = brw_create_nir(brw, shProg, prog, (gl_shader_stage) stage,
                                  compiler->scalar_stage[stage]);
+   }
+
+   /* SPIR-V programs use a NIR linker */
+   if (shProg->data->spirv) {
+      nir_link_uniforms(ctx, shProg);
    }
 
    /* Determine first and last stage. */
