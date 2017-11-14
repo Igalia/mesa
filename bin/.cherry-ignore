@@ -102,3 +102,7 @@ e8c9e65185de3e821e1e482e77906d1d51efa3ec intel/fs: Use a pure vertical stride fo
 fcd4adb9d08094520fb8d118d3448b04c6ec1fd1 intel/fs: Pass builders instead of blocks into emit_[un]zip
 0d905597fe2997c89022c76cdf84dc4fba5eb055 intel/fs: Be more explicit about our placement of [un]zip
 6c00240bc650805e0b66aa6e17dbe69bbe41e446 intel/fs: Don't stomp f0.1 in SIMD16 ballot
+
+# stable: This commit addressed earlier commit ea1b97714d9b which did
+#         not land in branch.
+50330d7115f0d5050ec3cfe6bca2b0136222e097 r600/shader: reserve first register of vertex shader.
