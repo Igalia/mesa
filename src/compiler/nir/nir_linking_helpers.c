@@ -636,7 +636,7 @@ struct nir_link_uniforms_state {
    unsigned num_shader_images;
    unsigned num_shader_uniform_components;
 
-   const nir_variable *current_var;
+   nir_variable *current_var;
 };
 
 static bool
@@ -682,6 +682,9 @@ nir_link_uniform (struct gl_context *ctx,
          linker_error(prog, "Out of memory during linking.\n");
          return false;
       }
+
+      if (state->current_var->data.location == location)
+         state->current_var->data.location = prog->data->NumUniformStorage;
 
       uniform = &prog->data->UniformStorage[prog->data->NumUniformStorage];
       prog->data->NumUniformStorage++;
