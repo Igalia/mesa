@@ -84,3 +84,6 @@ d8cefaa197f02944812ef535b1b303dd5bf26848 radv: use device name in cache creation
 # fixes:  This commit has more than one Fixes tag but the commit it
 #         addresses didn't land in branch.
 e17e8934f9e4b008bdfb4f9abd8ed4faa604c7d9 automake: include git_sha1.h.in in release tarball
+
+# stable: This commit is not really needed after 6ac2d169019.
+e8c9e65185de3e821e1e482e77906d1d51efa3ec intel/fs: Use a pure vertical stride for large register strides
