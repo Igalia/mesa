@@ -5341,8 +5341,6 @@ genX(init_atoms)(struct brw_context *brw)
 
       /* Command packets:
        */
-      &brw_invariant_state,
-
       &brw_binding_table_pointers,
       &genX(blend_constant_color),
 
