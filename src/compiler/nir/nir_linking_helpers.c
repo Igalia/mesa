@@ -614,6 +614,13 @@ static struct gl_uniform_storage *
 find_previous_uniform_storage(struct gl_shader_program *prog,
                               int location)
 {
+   /* This would only work for uniform with explicit location, as all the
+    * uniforms without location (ie: atomic counters) would have a initial
+    * location equal to -1. We early return in that case.
+    */
+   if (location == -1)
+      return NULL;
+
    for (unsigned i = 0; i < prog->data->NumUniformStorage; i++)
       if (prog->data->UniformStorage[i].remap_location == location)
          return &prog->data->UniformStorage[i];
@@ -812,10 +819,6 @@ nir_link_uniforms(struct gl_context *ctx,
       nir_foreach_variable(var, &nir->uniforms) {
          struct gl_uniform_storage *uniform = NULL;
 
-         /* In this stage we only care for uniforms with explicit locations. */
-         if (var->data.location == -1)
-            continue;
-
          /* Check if the uniform has been processed already for
           * other stage. If so, validate they are compatible and update
           * the active stage mask.
@@ -846,8 +849,6 @@ nir_link_uniforms(struct gl_context *ctx,
       sh->num_uniform_components = state.num_shader_uniform_components;
       sh->num_combined_uniform_components = sh->num_uniform_components;
    }
-
-   /* @TODO: Now process all the uniform with unspecified location (-1). */
 
    prog->data->NumHiddenUniforms = state.num_hidden_uniforms;
    prog->NumUniformRemapTable = state.max_uniform_location;
