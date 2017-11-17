@@ -127,3 +127,7 @@ d7a19d69ebc032ba7207fc97bc6f10d5bb35bb99 i965: Use PTE MOCS for all external buf
 
 # fixes:  This commit is only a typo correction on an error message.
 a6932faae1074445210d392a80b94fdac147b255 glsl: Fix typo fragement -> fragment
+
+# fixes:  This commit makes reference to 2 other commits but none have
+#         made it to the 17.2 queue.
+9b0223046668593deb9c0be0b557994bb5218788 egl: pass the dri2_dpy to the $plat_teardown functions
