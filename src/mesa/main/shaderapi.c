@@ -805,9 +805,11 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
          break;
 
       for (i = 0; i < shProg->data->NumUniformBlocks; i++) {
-	 /* Add one for the terminating NUL character.
+	 /* Add one for the terminating NUL character.  Checking for null, as
+	  * the name can be null if we are dealing with a spirv shader binary.
 	  */
-         const GLint len = strlen(shProg->data->UniformBlocks[i].Name) + 1;
+         const GLint len = shProg->data->UniformBlocks[i].Name ?
+            strlen(shProg->data->UniformBlocks[i].Name) + 1 : 1;
 
 	 if (len > max_len)
 	    max_len = len;
