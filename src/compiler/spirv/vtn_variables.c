@@ -1637,6 +1637,9 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
          var->var->interface_type = without_array == type ?
             NULL : without_array->type;
          break;
+      case vtn_variable_mode_ubo:
+         var->var->interface_type = without_array->type;
+         break;
       default:
          var->var->interface_type = NULL;
          break;
