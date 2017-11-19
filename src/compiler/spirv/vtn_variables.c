@@ -1695,7 +1695,16 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       }
       var->var->data.mode = nir_mode;
       var->var->data.location = -1;
-      var->var->interface_type = NULL;
+
+      switch (var->mode) {
+      case vtn_variable_mode_ubo:
+      case vtn_variable_mode_ssbo:
+         var->var->interface_type = without_array->type;
+         break;
+      default:
+         var->var->interface_type = NULL;
+         break;
+      }
       break;
 
    case vtn_variable_mode_workgroup:
