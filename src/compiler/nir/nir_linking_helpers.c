@@ -665,8 +665,6 @@ nir_link_uniform (struct gl_context *ctx,
          char *uniform_name = NULL;
          if (name)
             asprintf(&uniform_name, "%s.%s", name, field_name);
-         else
-            uniform_name = strdup(field_name);
 
          unsigned entries = MAX2(1, glsl_get_length(field_type));
          if (!nir_link_uniform(ctx, prog, stage_program, stage,
