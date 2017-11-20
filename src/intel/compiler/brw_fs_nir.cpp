@@ -27,6 +27,7 @@
 #include "brw_nir.h"
 #include "util/u_math.h"
 #include "util/bitscan.h"
+#include "util/half_float.h"
 
 using namespace brw;
 using namespace brw::surface_access;
@@ -1512,7 +1513,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       if (optimize_frontfacing_ternary(instr, result))
          return;
 
-      bld.CMP(bld.null_reg_d(), op[0], brw_imm_d(0), BRW_CONDITIONAL_NZ);
+      if (brw_reg_type_to_size(op[0].type) == 2)
+         bld.CMP(bld.null_reg_w(), op[0], brw_imm_w(0), BRW_CONDITIONAL_NZ);
+      else
+         bld.CMP(bld.null_reg_d(), op[0], brw_imm_d(0), BRW_CONDITIONAL_NZ);
       inst = bld.SEL(result, op[1], op[2]);
       inst->predicate = BRW_PREDICATE_NORMAL;
       break;
@@ -3135,8 +3139,14 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
        */
       fs_inst *cmp;
       if (instr->intrinsic == nir_intrinsic_discard_if) {
-         cmp = bld.CMP(bld.null_reg_f(), get_nir_src(instr->src[0]),
-                       brw_imm_d(0), BRW_CONDITIONAL_Z);
+         const fs_reg src = get_nir_src(instr->src[0]);
+
+         if (brw_reg_type_to_size(src.type) == 2)
+            cmp = bld.CMP(bld.null_reg_hf(), get_nir_src(instr->src[0]),
+                          brw_imm_w(0), BRW_CONDITIONAL_Z);
+         else
+            cmp = bld.CMP(bld.null_reg_f(), get_nir_src(instr->src[0]),
+                          brw_imm_d(0), BRW_CONDITIONAL_Z);
       } else {
          fs_reg some_reg = fs_reg(retype(brw_vec8_grf(0, 0),
                                        BRW_REGISTER_TYPE_UW));
