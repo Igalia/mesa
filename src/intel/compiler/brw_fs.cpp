@@ -184,9 +184,17 @@ fs_visitor::VARYING_PULL_CONSTANT_LOAD(const fs_builder &bld,
     * a double this means we are only loading 2 elements worth of data.
     * We also want to use a 32-bit data type for the dst of the load operation
     * so other parts of the driver don't get confused about the size of the
-    * result.
+    * result. On the case of 16-bit data we only need half of the 32-bit
+    * components on SKL+ as we take advance of using message return size to
+    * define an xy channel mask.
     */
-   fs_reg vec4_result = bld.vgrf(BRW_REGISTER_TYPE_F, 4);
+   fs_reg vec4_result;
+   if (type_sz(dst.type) == 2 && (devinfo->gen >= 9)) {
+      vec4_result = bld.vgrf(BRW_REGISTER_TYPE_F, 2);
+      vec4_result = retype(vec4_result, BRW_REGISTER_TYPE_HF);
+   } else {
+      vec4_result = bld.vgrf(BRW_REGISTER_TYPE_F, 4);
+   }
    fs_inst *inst = bld.emit(FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_LOGICAL,
                             vec4_result, surf_index, vec4_offset);
    inst->size_written = 4 * vec4_result.component_size(inst->exec_size);
@@ -197,8 +205,23 @@ fs_visitor::VARYING_PULL_CONSTANT_LOAD(const fs_builder &bld,
    }
 
    vec4_result.type = dst.type;
-   bld.MOV(dst, offset(vec4_result, bld,
-                       (const_offset & 0xf) / type_sz(vec4_result.type)));
+
+   if (type_sz(dst.type) == 2) {
+      /* 16-bit types need to be unshuffled as each pair of 16-bit components
+       * is packed on a 32-bit compoment because we are using a 32-bit format
+       * in the surface of uniform that is read by the sampler.
+       * TODO: On BDW+ mark when an uniform has 16-bit type so we could setup a
+       * surface format of 16-bit and use the 16-bit return format at the
+       * sampler.
+       */
+      vec4_result.stride = 2;
+      bld.MOV(dst, byte_offset(offset(vec4_result, bld,
+                                      (const_offset & 0x7) / 4),
+                               (const_offset & 0x7) / 2 % 2 * 2));
+   } else {
+      bld.MOV(dst, offset(vec4_result, bld,
+                          (const_offset & 0xf) / type_sz(vec4_result.type)));
+   }
 }
 
 /**

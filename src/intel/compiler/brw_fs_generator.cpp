@@ -1381,12 +1381,18 @@ fs_generator::generate_varying_pull_constant_load_gen7(fs_inst *inst,
    uint32_t simd_mode, rlen, mlen;
    if (inst->exec_size == 16) {
       mlen = 2;
-      rlen = 8;
+      if (type_sz(dst.type) == 2 && (devinfo->gen >= 9))
+         rlen = 4;
+      else
+         rlen = 8;
       simd_mode = BRW_SAMPLER_SIMD_MODE_SIMD16;
    } else {
       assert(inst->exec_size == 8);
       mlen = 1;
-      rlen = 4;
+      if (type_sz(dst.type) == 2 && (devinfo->gen >= 9))
+         rlen = 2;
+      else
+         rlen = 4;
       simd_mode = BRW_SAMPLER_SIMD_MODE_SIMD8;
    }
 
