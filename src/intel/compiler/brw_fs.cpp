@@ -5418,6 +5418,15 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
    case SHADER_OPCODE_LOG2:
    case SHADER_OPCODE_SIN:
    case SHADER_OPCODE_COS:
+      /* From the SKL PRM Vol 2, math - Extended Math Function:
+       *
+       * The execution size must be no more than 8 when half-floats are used
+       * in source or destination operand.
+       */
+      if (inst->src[0].type == BRW_REGISTER_TYPE_HF ||
+          inst->dst.type == BRW_REGISTER_TYPE_HF)
+         return MIN2(8, inst->exec_size);
+
       /* Unary extended math instructions are limited to SIMD8 on Gen4 and
        * Gen6.
        */
@@ -5426,6 +5435,15 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
               MIN2(8, inst->exec_size));
 
    case SHADER_OPCODE_POW:
+      /* From the SKL PRM Vol 2, math - Extended Math Function:
+       *
+       * The execution size must be no more than 8 when half-floats are used
+       * in source or destination operand.
+       */
+      if (inst->src[0].type == BRW_REGISTER_TYPE_HF ||
+          inst->dst.type == BRW_REGISTER_TYPE_HF)
+         return MIN2(8, inst->exec_size);
+
       /* SIMD16 is only allowed on Gen7+. */
       return (devinfo->gen >= 7 ? MIN2(16, inst->exec_size) :
               MIN2(8, inst->exec_size));
