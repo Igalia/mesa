@@ -106,3 +106,7 @@ fcd4adb9d08094520fb8d118d3448b04c6ec1fd1 intel/fs: Pass builders instead of bloc
 # stable: This commit addressed earlier commit ea1b97714d9b which did
 #         not land in branch.
 50330d7115f0d5050ec3cfe6bca2b0136222e097 r600/shader: reserve first register of vertex shader.
+
+# stable: This commit depends on earlier commit 3735af04152b which did
+#         not land in branch.
+a6cc361e5fd2450249847d5ee8093d26ed7ff545 anv/cmd_buffer: Advance the address when initializing clear colors
