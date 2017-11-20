@@ -110,3 +110,7 @@ fcd4adb9d08094520fb8d118d3448b04c6ec1fd1 intel/fs: Pass builders instead of bloc
 # stable: This commit depends on earlier commit 3735af04152b which did
 #         not land in branch.
 a6cc361e5fd2450249847d5ee8093d26ed7ff545 anv/cmd_buffer: Advance the address when initializing clear colors
+
+# stable: This commit addressed earlier commit a62a97933578 which did
+#         not land in branch.
+a07f7b26198ce0f5c8799481a673754968ac5daf anv/cmd_buffer: Take bo_offset into account in fast clear state addresses
