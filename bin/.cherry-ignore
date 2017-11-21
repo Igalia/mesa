@@ -114,3 +114,8 @@ a6cc361e5fd2450249847d5ee8093d26ed7ff545 anv/cmd_buffer: Advance the address whe
 # stable: This commit addressed earlier commit a62a97933578 which did
 #         not land in branch.
 a07f7b26198ce0f5c8799481a673754968ac5daf anv/cmd_buffer: Take bo_offset into account in fast clear state addresses
+
+# stable: These commits addressed earlier commit 2c4097aff1b which did
+#         not land in branch.
+344252a27f8d875572bbe65641a825af8e73845d i965/bufmgr: Add a helper to mark a BO as external
+0a6a137eb27129e17298cfe9dd620205588ee4f6 i965: Mark BOs as external when we export their handle
