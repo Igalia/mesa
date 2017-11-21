@@ -219,6 +219,12 @@ namespace brw {
       }
 
       dst_reg
+      null_reg_hf() const
+      {
+         return dst_reg(retype(brw_null_reg(), BRW_REGISTER_TYPE_HF));
+      }
+
+      dst_reg
       null_reg_df() const
       {
          return dst_reg(retype(brw_null_reg(), BRW_REGISTER_TYPE_DF));
@@ -231,6 +237,12 @@ namespace brw {
       null_reg_d() const
       {
          return dst_reg(retype(brw_null_reg(), BRW_REGISTER_TYPE_D));
+      }
+
+      dst_reg
+      null_reg_w() const
+      {
+         return dst_reg(retype(brw_null_reg(), BRW_REGISTER_TYPE_W));
       }
 
       /**
