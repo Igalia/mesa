@@ -2066,8 +2066,13 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
 	 if (devinfo->gen >= 6) {
             assert(inst->mlen == 0);
             assert(devinfo->gen >= 7 || inst->exec_size == 8);
+
+            struct brw_reg null_reg = brw_null_reg();
+            if (brw_reg_type_to_size(dst.type) == 2)
+               null_reg = retype(null_reg, BRW_REGISTER_TYPE_HF);
+
             gen6_math(p, dst, brw_math_function(inst->opcode),
-                      src[0], brw_null_reg());
+                      src[0], null_reg);
 	 } else {
             assert(inst->mlen >= 1);
             assert(devinfo->gen == 5 || devinfo->is_g4x || inst->exec_size == 8);
