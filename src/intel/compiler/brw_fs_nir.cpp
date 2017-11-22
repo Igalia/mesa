@@ -4984,7 +4984,22 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       }
    }
 
-   fs_reg dst = bld.vgrf(brw_type_for_nir_type(devinfo, instr->dest_type), 4);
+   const enum brw_reg_type dst_type =
+      brw_type_for_nir_type(devinfo, instr->dest_type);
+
+   /* In case of 16-bit return format one needs to prepare for 4 registers
+    * regardless of the dispatch width:
+    *
+    * From SKL PRM Vol. 7 Page 131, Return Format = 16-bit:
+    *
+    * A SIMD8* writeback message with Return Format of 16-bit consists of 
+    * up to 4 destination registers).
+    *
+    * Therefore tell builder to give full register per component even in
+    * case of 16-bit size and SIMD8.
+    */
+   const bool pad_components_to_full_registers = true;
+   fs_reg dst = bld.vgrf(dst_type, 4, pad_components_to_full_registers);
    fs_inst *inst = bld.emit(opcode, dst, srcs, ARRAY_SIZE(srcs));
    inst->offset = header_bits;
 
@@ -5022,7 +5037,9 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       bld.emit_minmax(nir_dest[2], depth, brw_imm_d(1), BRW_CONDITIONAL_GE);
    }
 
-   bld.LOAD_PAYLOAD(get_nir_dest(instr->dest), nir_dest, dest_size, 0);
+   bld.LOAD_PAYLOAD(get_nir_dest(instr->dest,
+                                 pad_components_to_full_registers),
+                    nir_dest, dest_size, 0);
 }
 
 void
