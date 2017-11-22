@@ -677,7 +677,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    struct brw_wm_prog_key *fs_key = (struct brw_wm_prog_key *) this->key;
    fs_inst *inst;
 
-   fs_reg result = get_nir_dest(instr->dest.dest);
+   fs_reg result = get_nir_alu_dest(instr);
    result.type = brw_type_for_nir_type(devinfo,
       (nir_alu_type)(nir_op_infos[instr->op].output_type |
                      nir_dest_bit_size(instr->dest.dest)));
@@ -1696,6 +1696,23 @@ fs_visitor::get_nir_dest(const nir_dest &dest,
       return offset(nir_locals[dest.reg.reg->index], bld,
                     dest.reg.base_offset * dest.reg.reg->num_components);
    }
+}
+
+fs_reg
+fs_visitor::get_nir_alu_dest(const nir_alu_instr *instr)
+{
+   /* With data type size =< 16 bits one can fit two or more components
+    * into one register. In virtual register space this doesn't really add
+    * any value but requires things such as liveness analysis,
+    * copy propagation and dead code elimination to be updated to work with
+    * sub-regsiter regions.
+    *
+    * Therefore instead allocate full padded registers per component. This
+    * doesn't prevent final hardware register allocator from packing more than
+    * one component per register.
+    */
+   const bool pad_components_to_full_register = true;
+   return get_nir_dest(instr->dest.dest, pad_components_to_full_register);
 }
 
 void
