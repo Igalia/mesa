@@ -1586,7 +1586,8 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
 {
    const brw_reg_type reg_type =
       brw_reg_type_from_bit_size(instr->def.bit_size, BRW_REGISTER_TYPE_D);
-   fs_reg reg = bld.vgrf(reg_type, instr->def.num_components);
+   fs_reg reg = bld.vgrf(reg_type, instr->def.num_components,
+                         true /* pad components to full regs */);
 
    switch (instr->def.bit_size) {
    case 8:
