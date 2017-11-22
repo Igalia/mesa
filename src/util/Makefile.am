@@ -51,8 +51,9 @@ libmesautil_la_LIBADD = \
 
 u_atomic_test_LDADD = libmesautil.la
 roundeven_test_LDADD = -lm
+mesa_sha1_test_LDADD = libmesautil.la
 
-check_PROGRAMS = u_atomic_test roundeven_test
+check_PROGRAMS = u_atomic_test roundeven_test mesa-sha1_test
 TESTS = $(check_PROGRAMS)
 
 BUILT_SOURCES = $(MESA_UTIL_GENERATED_FILES)
