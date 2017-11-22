@@ -73,6 +73,19 @@ retype(fs_reg reg, enum brw_reg_type type)
 }
 
 static inline fs_reg
+retype_pad_to_full_register(fs_reg reg, unsigned dispatch_width,
+                            enum brw_reg_type type)
+{
+   reg.type = type;
+
+   assert(reg.pad_per_component == 0);
+   if (dispatch_width == 8 && type_sz(reg.type) == 2)
+      reg.pad_per_component = REG_SIZE / 2;
+
+   return reg;
+}
+
+static inline fs_reg
 byte_offset(fs_reg reg, unsigned delta)
 {
    switch (reg.file) {
