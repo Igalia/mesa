@@ -3742,7 +3742,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 {
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_dest(instr->dest, true /* pad components to full regs */);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_image_load:
