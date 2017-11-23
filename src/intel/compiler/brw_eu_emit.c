@@ -792,14 +792,35 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
                                           src2.vstride == BRW_VERTICAL_STRIDE_0);
 
       if (devinfo->gen >= 7) {
-         /* Set both the source and destination types based on dest.type,
-          * ignoring the source register types.  The MAD and LRP emitters ensure
-          * that all four types are float.  The BFE and BFI2 emitters, however,
-          * may send us mixed D and UD types and want us to ignore that and use
-          * the destination type.
-          */
-         brw_inst_set_3src_a16_src_type(devinfo, inst, dest.type);
          brw_inst_set_3src_a16_dst_type(devinfo, inst, dest.type);
+
+         /* Set both the source and destination types based on dest.type,
+          * ignoring the source register types.  The MAD and LRP emitters
+          * ensure that all four types are float.  The BFE and BFI2
+          * emitters, however, may send us mixed D and UD types and want us
+          * to ignore that and use the destination type.
+          */
+         if (dest.type != BRW_REGISTER_TYPE_HF) {
+            brw_inst_set_3src_a16_src_type(devinfo, inst, dest.type);
+         } else {
+            brw_inst_set_3src_a16_src_type(devinfo, inst, src0.type);
+         }
+
+         /* From the Bspec: Instruction types
+          *
+          * Three source instructions can use operands with mixed-mode
+          * precision. When SrcType field is set to :f or :hf it defines
+          * precision for source 0 only, and fields Src1Type and Src2Type
+          * define precision for other source operands:
+          *
+          *   0b = :f. Single precision Float (32-bit).
+          *   1b = :hf. Half precision Float (16-bit).
+          */
+         if (src1.type == BRW_REGISTER_TYPE_HF)
+            brw_inst_set_3src_src1_type(devinfo, inst, 1);
+
+         if (src2.type == BRW_REGISTER_TYPE_HF)
+            brw_inst_set_3src_src2_type(devinfo, inst, 1);
       }
    }
 

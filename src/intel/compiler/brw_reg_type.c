@@ -138,6 +138,7 @@ enum hw_3src_reg_type {
    GEN7_3SRC_TYPE_D  = 1,
    GEN7_3SRC_TYPE_UD = 2,
    GEN7_3SRC_TYPE_DF = 3,
+   GEN7_3SRC_TYPE_HF = 4,
 
    /** When ExecutionDatatype is 1: @{ */
    GEN10_ALIGN1_3SRC_REG_TYPE_HF = 0b000,
@@ -166,6 +167,7 @@ static const struct hw_3src_type {
    [BRW_REGISTER_TYPE_D]  = { GEN7_3SRC_TYPE_D  },
    [BRW_REGISTER_TYPE_UD] = { GEN7_3SRC_TYPE_UD },
    [BRW_REGISTER_TYPE_DF] = { GEN7_3SRC_TYPE_DF },
+   [BRW_REGISTER_TYPE_HF] = { GEN7_3SRC_TYPE_HF },
 }, gen10_hw_3src_align1_type[] = {
 #define E(x) BRW_ALIGN1_3SRC_EXEC_TYPE_##x
    [0 ... BRW_REGISTER_TYPE_LAST] = { INVALID },
