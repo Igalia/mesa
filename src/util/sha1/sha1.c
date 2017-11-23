@@ -16,7 +16,16 @@
 
 #include <stdint.h>
 #include <string.h>
+#include "u_endian.h"
 #include "sha1.h"
+
+#ifndef BYTE_ORDER
+#error BYTE_ORDER not defined
+#endif
+
+#ifndef LITTLE_ENDIAN
+#error LITTLE_ENDIAN no defined
+#endif
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
 
