@@ -946,6 +946,13 @@ nir_build_program_resource_list(struct gl_context *ctx,
       }
    }
 
+   /* Add program uniform blocks. */
+   for (unsigned i = 0; i < prog->data->NumUniformBlocks; i++) {
+      if (!add_program_resource(prog, resource_set, GL_UNIFORM_BLOCK,
+                                &prog->data->UniformBlocks[i], 0))
+         return;
+   }
+
    _mesa_set_destroy(resource_set, NULL);
 }
 
