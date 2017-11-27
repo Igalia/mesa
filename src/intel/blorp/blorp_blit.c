@@ -2343,7 +2343,7 @@ surf_convert_to_uncompressed(const struct isl_device *isl_dev,
     */
    blorp_surf_convert_to_single_slice(isl_dev, info);
 
-   if (width || height) {
+   if (width && height) {
 #ifndef NDEBUG
       uint32_t right_edge_px = info->tile_x_sa + *x + *width;
       uint32_t bottom_edge_px = info->tile_y_sa + *y + *height;
