@@ -948,3 +948,309 @@ nir_build_program_resource_list(struct gl_context *ctx,
 
    _mesa_set_destroy(resource_set, NULL);
 }
+
+struct active_atomic_counter_uniform {
+   unsigned loc;
+   nir_variable *var;
+};
+
+struct active_atomic_buffer {
+   struct active_atomic_counter_uniform *uniforms;
+   unsigned num_uniforms;
+   unsigned uniform_buffer_size;
+   unsigned stage_counter_references[MESA_SHADER_STAGES];
+   unsigned size;
+};
+
+static void
+add_atomic_counter(const void *ctx,
+                   struct active_atomic_buffer *buffer,
+                   unsigned uniform_loc,
+                   nir_variable *var)
+{
+   if (buffer->num_uniforms >= buffer->uniform_buffer_size) {
+      if (buffer->uniform_buffer_size == 0)
+         buffer->uniform_buffer_size = 1;
+      else
+         buffer->uniform_buffer_size *= 2;
+      buffer->uniforms = reralloc(ctx,
+                                  buffer->uniforms,
+                                  struct active_atomic_counter_uniform,
+                                  buffer->uniform_buffer_size);
+   }
+
+   struct active_atomic_counter_uniform *uniform =
+      buffer->uniforms + buffer->num_uniforms;
+   uniform->loc = uniform_loc;
+   uniform->var = var;
+   buffer->num_uniforms++;
+}
+
+static void
+process_atomic_variable(const struct glsl_type *t,
+                        struct gl_shader_program *prog,
+                        unsigned *uniform_loc,
+                        nir_variable *var,
+                        struct active_atomic_buffer *buffers,
+                        unsigned *num_buffers,
+                        int *offset,
+                        unsigned shader_stage)
+{
+   /* FIXME: Arrays of arrays get counted separately. For example:
+    * x1[3][3][2] = 9 uniforms, 18 atomic counters
+    * x2[3][2]    = 3 uniforms, 6 atomic counters
+    * x3[2]       = 1 uniform, 2 atomic counters
+    *
+    * However this code marks all the counters as active even when they
+    * might not be used.
+    */
+   if (glsl_type_is_array(t) &&
+       glsl_type_is_array(glsl_get_array_element(t))) {
+      for (unsigned i = 0; i < glsl_get_length(t); i++) {
+         process_atomic_variable(glsl_get_array_element(t),
+                                 prog,
+                                 uniform_loc,
+                                 var,
+                                 buffers, num_buffers,
+                                 offset,
+                                 shader_stage);
+      }
+   } else {
+      struct active_atomic_buffer *buf = buffers + var->data.binding;
+      struct gl_uniform_storage *const storage =
+         &prog->data->UniformStorage[*uniform_loc];
+
+      /* If this is the first time the buffer is used, increment
+       * the counter of buffers used.
+       */
+      if (buf->size == 0)
+         (*num_buffers)++;
+
+      add_atomic_counter(buffers, /* ctx */
+                         buf,
+                         *uniform_loc,
+                         var);
+
+      /* When checking for atomic counters we should count every member in
+       * an array as an atomic counter reference.
+       */
+      if (glsl_type_is_array(t))
+         buf->stage_counter_references[shader_stage] += glsl_get_length(t);
+      else
+         buf->stage_counter_references[shader_stage]++;
+      buf->size = MAX2(buf->size, *offset + glsl_atomic_size(t));
+
+      storage->offset = *offset;
+      *offset += glsl_atomic_size(t);
+
+      (*uniform_loc)++;
+   }
+}
+
+static int
+cmp_actives(const void *a, const void *b)
+{
+   const struct active_atomic_counter_uniform *const first =
+      (struct active_atomic_counter_uniform *) a;
+   const struct active_atomic_counter_uniform *const second =
+      (struct active_atomic_counter_uniform *) b;
+
+   return (int) first->var->data.offset - (int) second->var->data.offset;
+}
+
+static bool
+check_atomic_counters_overlap(const nir_variable *x,
+                              const nir_variable *y)
+{
+   return ((x->data.offset >= y->data.offset &&
+            x->data.offset < y->data.offset + glsl_atomic_size(y->type)) ||
+           (y->data.offset >= x->data.offset &&
+            y->data.offset < x->data.offset + glsl_atomic_size(x->type)));
+}
+
+static struct active_atomic_buffer *
+find_active_atomic_counters(struct gl_context *ctx,
+                            struct gl_shader_program *prog,
+                            unsigned *num_buffers)
+{
+   struct active_atomic_buffer *buffers =
+      rzalloc_array(NULL, /* ctx */
+                    struct active_atomic_buffer,
+                    ctx->Const.MaxAtomicBufferBindings);
+   *num_buffers = 0;
+
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; ++i) {
+      struct gl_linked_shader *sh = prog->_LinkedShaders[i];
+      if (sh == NULL)
+         continue;
+
+      nir_shader *nir = sh->Program->nir;
+
+      nir_foreach_variable(var, &nir->uniforms) {
+         if (!glsl_contains_atomic(var->type))
+            continue;
+
+         int offset = var->data.offset;
+         unsigned uniform_loc = var->data.location;
+
+         process_atomic_variable(var->type,
+                                 prog,
+                                 &uniform_loc,
+                                 var,
+                                 buffers,
+                                 num_buffers,
+                                 &offset,
+                                 i);
+      }
+   }
+
+   for (unsigned i = 0; i < ctx->Const.MaxAtomicBufferBindings; i++) {
+      if (buffers[i].size == 0)
+         continue;
+
+      qsort(buffers[i].uniforms,
+            buffers[i].num_uniforms,
+            sizeof (struct active_atomic_counter_uniform),
+            cmp_actives);
+
+      for (unsigned j = 1; j < buffers[i].num_uniforms; j++) {
+         /* If an overlapping counter found, it must be a reference to the
+          * same counter from a different shader stage.
+          *
+          * TODO: What about uniforms with no name?
+          */
+         if (check_atomic_counters_overlap(buffers[i].uniforms[j - 1].var,
+                                           buffers[i].uniforms[j].var) &&
+             buffers[i].uniforms[j - 1].var->name &&
+             buffers[i].uniforms[j].var->name &&
+             strcmp(buffers[i].uniforms[j - 1].var->name,
+                    buffers[i].uniforms[j].var->name) != 0) {
+            linker_error(prog,
+                         "Atomic counter %s declared at offset %d which is "
+                         "already in use.",
+                         buffers[i].uniforms[j].var->name,
+                         buffers[i].uniforms[j].var->data.offset);
+         }
+      }
+   }
+
+   return buffers;
+}
+
+void
+nir_link_assign_atomic_counter_resources(struct gl_context *ctx,
+                                         struct gl_shader_program *prog)
+{
+   unsigned num_buffers;
+   unsigned num_atomic_buffers[MESA_SHADER_STAGES] = { };
+   struct active_atomic_buffer *abs =
+      find_active_atomic_counters(ctx, prog, &num_buffers);
+
+   prog->data->AtomicBuffers =
+      rzalloc_array(prog->data, struct gl_active_atomic_buffer, num_buffers);
+   prog->data->NumAtomicBuffers = num_buffers;
+
+   unsigned buffer_idx = 0;
+   for (unsigned binding = 0;
+        binding < ctx->Const.MaxAtomicBufferBindings;
+        binding++) {
+
+      /* If the binding was not used, skip.
+       */
+      if (abs[binding].size == 0)
+         continue;
+
+      struct active_atomic_buffer *ab = abs + binding;
+      struct gl_active_atomic_buffer *mab =
+         prog->data->AtomicBuffers + buffer_idx;
+
+      /* Assign buffer-specific fields. */
+      mab->Binding = binding;
+      mab->MinimumSize = ab->size;
+      mab->Uniforms = rzalloc_array(prog->data->AtomicBuffers, GLuint,
+                                    ab->num_uniforms);
+      mab->NumUniforms = ab->num_uniforms;
+
+      /* Assign counter-specific fields. */
+      for (unsigned j = 0; j < ab->num_uniforms; j++) {
+         nir_variable *var = ab->uniforms[j].var;
+         struct gl_uniform_storage *storage =
+            &prog->data->UniformStorage[ab->uniforms[j].loc];
+
+         mab->Uniforms[j] = ab->uniforms[j].loc;
+         /* FIXME: this was in the previous GLSL IR linker, but I don’t think
+          * it’s neccessary because if there was no explicit binding then
+          * binding would be zero and it will just work.
+          *
+          * if (!var->data.explicit_binding)
+          *    var->data.binding = buffer_idx;
+          */
+
+         storage->atomic_buffer_index = buffer_idx;
+         storage->offset = var->data.offset;
+         if (glsl_type_is_array(var->type)) {
+            const struct glsl_type *without_array =
+               glsl_without_array(var->type);
+            storage->array_stride = glsl_atomic_size(without_array);
+         } else {
+            storage->array_stride = 0;
+         }
+         if (!glsl_type_is_matrix(var->type))
+            storage->matrix_stride = 0;
+      }
+
+      /* Assign stage-specific fields. */
+      for (unsigned stage = 0; stage < MESA_SHADER_STAGES; ++stage) {
+         if (ab->stage_counter_references[stage]) {
+            mab->StageReferences[stage] = GL_TRUE;
+            num_atomic_buffers[stage]++;
+         } else {
+            mab->StageReferences[stage] = GL_FALSE;
+         }
+      }
+
+      buffer_idx++;
+   }
+
+   /* Store a list pointers to atomic buffers per stage and store the index
+    * to the intra-stage buffer list in uniform storage.
+    */
+   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; ++stage) {
+      if (prog->_LinkedShaders[stage] == NULL ||
+          num_atomic_buffers[stage] <= 0)
+         continue;
+
+      struct gl_program *gl_prog = prog->_LinkedShaders[stage]->Program;
+      gl_prog->info.num_abos = num_atomic_buffers[stage];
+      gl_prog->sh.AtomicBuffers =
+         rzalloc_array(gl_prog,
+                       struct gl_active_atomic_buffer *,
+                       num_atomic_buffers[stage]);
+
+      gl_prog->nir->info.num_abos = num_atomic_buffers[stage];
+
+      unsigned intra_stage_idx = 0;
+      for (unsigned i = 0; i < num_buffers; i++) {
+         struct gl_active_atomic_buffer *atomic_buffer =
+            &prog->data->AtomicBuffers[i];
+         if (!atomic_buffer->StageReferences[stage])
+            continue;
+
+         gl_prog->sh.AtomicBuffers[intra_stage_idx] = atomic_buffer;
+
+         for (unsigned u = 0; u < atomic_buffer->NumUniforms; u++) {
+            GLuint uniform_loc = atomic_buffer->Uniforms[u];
+            struct gl_opaque_uniform_index *opaque =
+               prog->data->UniformStorage[uniform_loc].opaque + stage;
+            opaque->index = intra_stage_idx;
+            opaque->active = true;
+         }
+
+         intra_stage_idx++;
+      }
+   }
+
+   assert(buffer_idx == num_buffers);
+
+   ralloc_free(abs);
+}
