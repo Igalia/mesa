@@ -210,6 +210,7 @@ NIR_FILES = \
 	nir/nir_inline_functions.c \
 	nir/nir_instr_set.c \
 	nir/nir_instr_set.h \
+	nir/nir_link_atomics.c \
 	nir/nir_link_uniform_initializers.c \
 	nir/nir_link_uniforms.c \
 	nir/nir_linker.h \
