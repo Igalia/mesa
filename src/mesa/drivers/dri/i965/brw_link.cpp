@@ -263,6 +263,8 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
    /* SPIR-V programs use a NIR linker */
    if (shProg->data->spirv) {
       nir_link_uniforms(ctx, shProg);
+
+      nir_link_assign_atomic_counter_resources(ctx, shProg);
    }
 
    /* Determine first and last stage. */
