@@ -78,6 +78,7 @@ files_libglsl = files(
   'gl_nir_lower_samplers_as_deref.c',
   'gl_nir_lower_vulkan_intrinsics.c',
   'gl_nir_link_atomics.c',
+  'gl_nir_link_uniform_blocks.c',
   'gl_nir_link_uniform_initializers.c',
   'gl_nir_link_uniforms.c',
   'gl_nir_link_xfb.c',
