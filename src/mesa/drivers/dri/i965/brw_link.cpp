@@ -264,6 +264,10 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
    if (shProg->data->spirv) {
       nir_link_uniforms(ctx, shProg);
 
+      if (!nir_link_uniform_blocks(ctx, shProg)) {
+         return GL_FALSE;
+      }
+
       nir_link_assign_atomic_counter_resources(ctx, shProg);
    }
 
