@@ -508,8 +508,8 @@ nir_compact_varyings(nir_shader *producer, nir_shader *consumer,
 
 #define UNMAPPED_UNIFORM_LOC ~0u
 
-static void
-linker_error(struct gl_shader_program *prog, const char *fmt, ...)
+void
+nir_linker_error(struct gl_shader_program *prog, const char *fmt, ...)
 {
    va_list ap;
 
@@ -532,7 +532,7 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
       rzalloc_array(prog->data,
                     union gl_constant_value, prog->data->NumUniformDataSlots);
    if (!prog->UniformRemapTable || !data) {
-      linker_error(prog, "Out of memory during linking.\n");
+      nir_linker_error(prog, "Out of memory during linking.\n");
       return;
    }
    prog->data->UniformDataSlots = data;
@@ -686,7 +686,7 @@ nir_link_uniform (struct gl_context *ctx,
                   struct gl_uniform_storage,
                   prog->data->NumUniformStorage + 1);
       if (!prog->data->UniformStorage) {
-         linker_error(prog, "Out of memory during linking.\n");
+         nir_linker_error(prog, "Out of memory during linking.\n");
          return false;
       }
 
@@ -876,7 +876,7 @@ add_program_resource(struct gl_shader_program *prog,
                prog->data->NumProgramResourceList + 1);
 
    if (!prog->data->ProgramResourceList) {
-      linker_error(prog, "Out of memory during linking.\n");
+      nir_linker_error(prog, "Out of memory during linking.\n");
       return false;
    }
 
@@ -1125,11 +1125,11 @@ find_active_atomic_counters(struct gl_context *ctx,
              buffers[i].uniforms[j].var->name &&
              strcmp(buffers[i].uniforms[j - 1].var->name,
                     buffers[i].uniforms[j].var->name) != 0) {
-            linker_error(prog,
-                         "Atomic counter %s declared at offset %d which is "
-                         "already in use.",
-                         buffers[i].uniforms[j].var->name,
-                         buffers[i].uniforms[j].var->data.offset);
+            nir_linker_error(prog,
+                             "Atomic counter %s declared at offset %d which is "
+                             "already in use.",
+                             buffers[i].uniforms[j].var->name,
+                             buffers[i].uniforms[j].var->data.offset);
          }
       }
    }
