@@ -92,6 +92,12 @@ _link_cross_validate_uniform_block(void *mem_ctx,
    for (unsigned int i = 0; i < *num_linked_blocks; i++) {
       struct gl_uniform_block *old_block = &(*linked_blocks)[i];
 
+      /* FIXME: on gl_spirv name can be null. So the way to validate/integrate
+       * uniform blocks needs to be name-less */
+      if (old_block->Name == NULL || new_block->Name == NULL) {
+         return -1;
+      }
+
       if (strcmp(old_block->Name, new_block->Name) == 0)
          return link_uniform_blocks_are_compatible(old_block, new_block)
             ? i : -1;
@@ -183,7 +189,6 @@ _nir_interstage_cross_validate_uniform_blocks(struct gl_shader_program *prog,
       for (unsigned int j = 0; j < sh_num_blocks; j++) {
          int index = _link_cross_validate_uniform_block(prog->data, &blks,
                                                         num_blks, sh_blks[j]);
-
          if (index == -1) {
             nir_linker_error(prog, "buffer block `%s' has mismatching "
                              "definitions\n", sh_blks[j]->Name);
