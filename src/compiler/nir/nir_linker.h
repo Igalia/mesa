@@ -31,6 +31,9 @@
 extern "C" {
 #endif
 
+void
+nir_linker_error(struct gl_shader_program *prog, const char *fmt, ...);
+
 void nir_link_uniforms(struct gl_context *ctx,
                        struct gl_shader_program *prog);
 
