@@ -252,8 +252,8 @@ static void rvce_destroy(struct pipe_video_codec *encoder)
 		rvid_create_buffer(enc->screen, &fb, 512, PIPE_USAGE_STAGING);
 		enc->fb = &fb;
 		enc->session(enc);
-		enc->feedback(enc);
 		enc->destroy(enc);
+		enc->feedback(enc);
 		flush(enc);
 		rvid_destroy_buffer(&fb);
 	}
