@@ -135,3 +135,7 @@ a6932faae1074445210d392a80b94fdac147b255 glsl: Fix typo fragement -> fragment
 # extra:  The commit just references a proper fix that has already
 #         landed.
 a31d0382084c8aa860ffcef9b12592c5c44e192f Revert "intel/fs: Use a pure vertical stride for large register strides"
+
+# stable: The commit depends on at least one other that did not land in
+#          branch - 8b3a2578519.
+010214b403de1b5e25a549372ba6192b89e05d06 radeonsi: allow DMABUF exports for local buffers
