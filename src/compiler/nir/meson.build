@@ -102,6 +102,7 @@ files_libnir = files(
   'nir_link_uniform_blocks.c',
   'nir_link_uniforms.c',
   'nir_link_atomics.c',
+  'nir_link_xfb.c',
   'nir_linker.h',
   'nir_link_uniform_initializers.c',
   'nir_linker.h',

@@ -213,6 +213,7 @@ NIR_FILES = \
 	nir/nir_link_atomics.c \
 	nir/nir_link_uniform_blocks.c \
 	nir/nir_link_uniform_initializers.c \
+	nir/nir_link_xfb.c \
 	nir/nir_link_uniforms.c \
 	nir/nir_linker.h \
 	nir/nir_linking_helpers.c \
