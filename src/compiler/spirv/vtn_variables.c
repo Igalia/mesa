@@ -1907,8 +1907,14 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                mtype = glsl_array_type(mtype, array_length);
 
             var->members[i] = rzalloc(b->shader, nir_variable);
-            var->members[i]->name =
-               ralloc_asprintf(var->members[i], "%s.%d", val->name, i);
+            if (val->name == NULL) {
+               var->members[i]->name = NULL;
+            } else if (val->name[0] == '\0') {
+               var->members[i]->name = ralloc_strdup(var->members[i], "");
+            } else {
+               var->members[i]->name =
+                  ralloc_asprintf(var->members[i], "%s.%d", val->name, i);
+            }
             var->members[i]->type = mtype;
             var->members[i]->interface_type =
                interface_type->members[i]->type;
