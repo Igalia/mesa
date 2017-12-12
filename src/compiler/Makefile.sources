@@ -32,6 +32,7 @@ LIBGLSL_FILES = \
 	glsl/gl_nir_link_uniform_initializers.c \
 	glsl/gl_nir_link_uniforms.c \
 	glsl/gl_nir_link_uniform_blocks.c \
+	glsl/gl_nir_link_xfb.c \
 	glsl/gl_nir_linker.c \
 	glsl/gl_nir_linker.h \
 	glsl/gl_nir.h \
