@@ -45,6 +45,10 @@ void
 nir_link_assign_atomic_counter_resources(struct gl_context *ctx,
                                          struct gl_shader_program *prog);
 
+void
+nir_link_assign_xfb_resources(struct gl_context *ctx,
+                              struct gl_shader_program *prog);
+
 bool nir_link_uniform_blocks(struct gl_context *ctx,
                              struct gl_shader_program *prog);
 
