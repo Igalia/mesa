@@ -1016,6 +1016,10 @@ else
 endif
 
 _llvm = get_option('llvm')
+_llvm_version = get_option('llvm-version')
+if _llvm_version == 'auto'
+  _llvm_version = '>= 4.0.0'
+endif
 if _llvm == 'auto'
   dep_llvm = dependency(
     'llvm', version : _llvm_version, modules : llvm_modules,

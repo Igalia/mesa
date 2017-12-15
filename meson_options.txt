@@ -222,6 +222,12 @@ option(
   description : 'Build with LLVM support.'
 )
 option(
+  'llvm-version',
+  type : 'string',
+  value : 'auto',
+  description : 'LLVM version to use, or `auto`'
+)
+option(
   'valgrind',
   type : 'combo',
   value : 'auto',

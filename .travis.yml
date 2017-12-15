@@ -33,7 +33,7 @@ matrix:
     - env:
         - LABEL="meson Vulkan"
         - BUILD=meson
-        - MESON_OPTIONS="-Ddri-drivers= -Dgallium-drivers="
+        - MESON_OPTIONS="-Ddri-drivers= -Dgallium-drivers= -Dllvm-version=4.0"
       addons:
         apt:
           sources:
