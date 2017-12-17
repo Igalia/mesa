@@ -154,3 +154,8 @@ bf0904e31fb7d9cd8932d582076c8d7beb02ba89 winsys/amdgpu: disable local BOs again 
 
 # extra:  The commit just references a fix for an additional change in its v2.
 c1ff99fd70cd2ceb2cac4723e4fd5efc93834746 main: Clear shader program data whenever ProgramBinary is called
+
+# extra:  The commit references a previous commit in which the changes
+#         should have been included but, as clarified by the
+#         developer, it is not needed for stable.
+71e630753ebbee82e8f8709da5488296b2c070c8 r600: set DX10_CLAMP for compute shader too
