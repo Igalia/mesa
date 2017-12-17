@@ -151,3 +151,6 @@ bf0904e31fb7d9cd8932d582076c8d7beb02ba89 winsys/amdgpu: disable local BOs again 
 # fixes:  This commit addressed earlier commit d1c9f30d7ff7 which did
 #         not land in branch.
 1bdeac545f4ea9f7ca6947f5da7fcf4f5b3010dc radv: port merge tess info from anv
+
+# extra:  The commit just references a fix for an additional change in its v2.
+c1ff99fd70cd2ceb2cac4723e4fd5efc93834746 main: Clear shader program data whenever ProgramBinary is called
