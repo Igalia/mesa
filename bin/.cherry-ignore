@@ -143,3 +143,7 @@ a31d0382084c8aa860ffcef9b12592c5c44e192f Revert "intel/fs: Use a pure vertical s
 # stable: This commit addressed earlier commit ead0dfe31ec7 which did
 #         not land in branch.
 709f5bdc4a2bf31f422f5cf60797224c0463c10a swr: Fix KNOB_MAX_WORKER_THREADS thread creation override.
+
+# stable: 17.3 nomination only.
+bf0904e31fb7d9cd8932d582076c8d7beb02ba89 winsys/amdgpu: disable local BOs again due to worse performance
+35c3cbad3c30ad3d40a6811dd6ca2286e013bfc5 radeonsi: don't call force_dcc_off for buffers
