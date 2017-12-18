@@ -291,4 +291,7 @@ functions = {
 
     # GL_ARB_bindless_texture
     "GetVertexAttribLui64vARB": exec_info(compatibility=30, core=31),
+
+    # OpenGL 4.6 / GL_ARB_gl_spirv
+    "SpecializeShaderARB": exec_info(core=33),
 }
