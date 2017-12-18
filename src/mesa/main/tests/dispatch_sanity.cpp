@@ -1020,9 +1020,6 @@ const struct function common_desktop_functions_possible[] = {
    { "glImportMemoryFdEXT", 45, -1 },
    { "glImportSemaphoreFdEXT", 45, -1 },
 
-   /* GL_ARB_gl_spirv */
-   { "glSpecializeShaderARB", 45, -1 },
-
    /* GL_EXT_shader_framebuffer_fetch_non_coherent */
    { "glFramebufferFetchBarrierEXT", 20, -1 },
 
