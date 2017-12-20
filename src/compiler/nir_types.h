@@ -91,6 +91,8 @@ unsigned glsl_get_record_location_offset(const struct glsl_type *type,
 
 unsigned glsl_atomic_size(const struct glsl_type *type);
 
+enum glsl_interface_packing glsl_get_interface_packing(const struct glsl_type *type);
+
 static inline unsigned
 glsl_get_bit_size(const struct glsl_type *type)
 {
