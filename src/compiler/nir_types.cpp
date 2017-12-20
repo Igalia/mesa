@@ -591,3 +591,9 @@ glsl_contains_atomic(const struct glsl_type *type)
 {
    return type->contains_atomic();
 }
+
+enum glsl_interface_packing
+glsl_get_interface_packing(const struct glsl_type *type)
+{
+   return type->get_interface_packing();
+}
