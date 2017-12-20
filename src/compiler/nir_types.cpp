@@ -597,3 +597,9 @@ glsl_get_interface_packing(const struct glsl_type *type)
 {
    return type->get_interface_packing();
 }
+
+bool
+glsl_get_row_major(const struct glsl_type *type)
+{
+   return type->get_interface_row_major();
+}
