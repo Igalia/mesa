@@ -91,6 +91,9 @@ unsigned glsl_get_record_location_offset(const struct glsl_type *type,
 
 unsigned glsl_atomic_size(const struct glsl_type *type);
 
+
+bool glsl_get_row_major(const struct glsl_type *type);
+
 static inline unsigned
 glsl_get_bit_size(const struct glsl_type *type)
 {

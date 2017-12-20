@@ -591,3 +591,9 @@ glsl_contains_atomic(const struct glsl_type *type)
 {
    return type->contains_atomic();
 }
+
+bool
+glsl_get_row_major(const struct glsl_type *type)
+{
+   return type->get_interface_row_major();
+}
