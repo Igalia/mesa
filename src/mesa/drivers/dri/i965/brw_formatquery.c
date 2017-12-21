@@ -53,18 +53,12 @@ brw_query_samples_for_format(struct gl_context *ctx, GLenum target,
       samples[2] = 2;
       return 3;
 
-   case 7:
-      if (internalFormat == GL_RGBA32F && _mesa_is_gles(ctx)) {
-         /* For GLES, we are allowed to return a smaller number of samples for
-          * GL_RGBA32F. See OpenGLES 3.2 spec, section 20.3.1 Internal Format
-          * Query Parameters, under SAMPLES:
-          *
-          * "A value less than or equal to the value of MAX_SAMPLES, if
-          *  internalformat is RGBA16F, R32F, RG32F, or RGBA32F."
-          *
-          * In brw_render_target_supported, we prevent formats with a size
-          * greater than 8 bytes from using 8x MSAA on gen7.
-          */
+   case 7: {
+      mesa_format format =
+         ctx->Driver.ChooseTextureFormat(ctx, GL_TEXTURE_2D, internalFormat,
+                                         GL_NONE, GL_NONE);
+
+      if (_mesa_get_format_bytes(format) > 8) {
          samples[0] = 4;
          return 1;
       } else {
@@ -72,6 +66,7 @@ brw_query_samples_for_format(struct gl_context *ctx, GLenum target,
          samples[1] = 4;
          return 2;
       }
+   }
 
    case 6:
       samples[0] = 4;
