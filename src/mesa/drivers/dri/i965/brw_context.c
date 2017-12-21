@@ -499,10 +499,25 @@ brw_initialize_context_constants(struct brw_context *brw)
       }
    }
 
-   ctx->Const.MaxSamples = max_samples;
-   ctx->Const.MaxColorTextureSamples = max_samples;
+   /* Gen7 can't handle 8x MSAA for all formats, so we can only legally
+    * expose a value of 4 for GL_MAX_SAMPLES, GL_MAX_INTEGER_SAMPLES,
+    * and GL_MAX_COLOR_TEXTURE_SAMPLES.  We can always do 8x MSAA for
+    * depth textures, however, so we leave that be.
+    *
+    * Applications can use ARB_internalformat_query2 to detect a higher
+    * maximum value for particular internal formats.
+    */
+   if (devinfo->gen == 7) {
+      ctx->Const.MaxSamples = 4;
+      ctx->Const.MaxColorTextureSamples = 4;
+      ctx->Const.MaxIntegerSamples = 4;
+   } else {
+      ctx->Const.MaxSamples = max_samples;
+      ctx->Const.MaxColorTextureSamples = max_samples;
+      ctx->Const.MaxIntegerSamples = max_samples;
+   }
+
    ctx->Const.MaxDepthTextureSamples = max_samples;
-   ctx->Const.MaxIntegerSamples = max_samples;
    ctx->Const.MaxImageSamples = 0;
 
    /* gen6_set_sample_maps() sets SampleMap{2,4,8}x variables which are used
