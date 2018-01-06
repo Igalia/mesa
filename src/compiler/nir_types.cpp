@@ -72,6 +72,21 @@ glsl_get_struct_field(const glsl_type *type, unsigned index)
    return type->fields.structure[index].type;
 }
 
+const int
+glsl_get_struct_field_offset(const struct glsl_type *type,
+                             unsigned index)
+{
+   return type->fields.structure[index].offset;
+}
+
+const unsigned
+glsl_get_struct_field_matrix_layout(const struct glsl_type *type,
+                                    unsigned index)
+{
+   return type->fields.structure[index].matrix_layout;
+}
+
+
 const glsl_type *
 glsl_get_function_return_type(const glsl_type *type)
 {
@@ -602,4 +617,10 @@ bool
 glsl_contains_atomic(const struct glsl_type *type)
 {
    return type->contains_atomic();
+}
+
+unsigned
+glsl_type_arrays_of_arrays_size(const struct glsl_type *type)
+{
+   return type->arrays_of_arrays_size();
 }
