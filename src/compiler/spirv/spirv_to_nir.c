@@ -725,6 +725,7 @@ struct_member_decoration_cb(struct vtn_builder *b,
       break; /* Nothing to do here.  Column-major is the default. */
    case SpvDecorationRowMajor:
       mutable_matrix_member(b, ctx->type, member)->row_major = true;
+      ctx->fields[member].matrix_layout = GLSL_MATRIX_LAYOUT_ROW_MAJOR;
       break;
 
    case SpvDecorationPatch:
