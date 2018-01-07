@@ -734,7 +734,7 @@ struct_member_decoration_cb(struct vtn_builder *b,
       ctx->type->builtin_block = true;
       break;
    case SpvDecorationOffset:
-      ctx->type->offsets[member] = dec->literals[0];
+      ctx->type->offsets[member] = ctx->fields[member].offset = dec->literals[0];
       break;
    case SpvDecorationMatrixStride:
       /* Handled as a second pass */
