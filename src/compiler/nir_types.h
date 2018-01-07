@@ -49,6 +49,8 @@ const struct glsl_type *glsl_get_struct_field(const struct glsl_type *type,
 const int glsl_get_struct_field_offset(const struct glsl_type *type,
                                        unsigned index);
 
+const unsigned glsl_get_struct_field_matrix_layout(const struct glsl_type *type,
+                                                   unsigned index);
 const struct glsl_type *glsl_get_array_element(const struct glsl_type *type);
 const struct glsl_type *glsl_without_array(const struct glsl_type *type);
 const struct glsl_type *glsl_without_array_or_matrix(const struct glsl_type *type);
