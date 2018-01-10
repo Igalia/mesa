@@ -40,6 +40,7 @@
    .lower_uadd_carry = true,                                                  \
    .lower_usub_borrow = true,                                                 \
    .lower_fdiv = true,                                                        \
+   .lower_flrp16 = true,                                                      \
    .lower_flrp64 = true,                                                      \
    .lower_ldexp = true,                                                       \
    .lower_cs_local_id_from_index = true,                                      \
