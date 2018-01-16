@@ -3169,9 +3169,14 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
 
       switch (opcode) {
       case SpvOpEmitStreamVertex:
-      case SpvOpEndStreamPrimitive:
-         nir_intrinsic_set_stream_id(intrin, w[1]);
+      case SpvOpEndStreamPrimitive: {
+         struct vtn_value *stream_value =
+            vtn_value(b, w[1], vtn_value_type_constant);
+         unsigned stream = stream_value->constant->values[0].u32[0];
+         nir_intrinsic_set_stream_id(intrin, stream);
          break;
+      }
+
       default:
          break;
       }
