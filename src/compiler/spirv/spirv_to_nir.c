@@ -3189,6 +3189,7 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
       case SpvOpEndPrimitive:
       case SpvOpEndStreamPrimitive:
          intrinsic_op = nir_intrinsic_end_primitive;
+         b->shader->info.gs.uses_end_primitive = true;
          break;
       default:
          unreachable("Invalid opcode");
