@@ -1294,7 +1294,6 @@ apply_var_decoration(struct vtn_builder *b,
    case SpvDecorationMatrixStride:
    case SpvDecorationAliased:
    case SpvDecorationUniform:
-   case SpvDecorationStream:
    case SpvDecorationLinkageAttributes:
       break; /* Do nothing with these here */
 
@@ -1331,6 +1330,10 @@ apply_var_decoration(struct vtn_builder *b,
    case SpvDecorationOffset:
       var_data->explicit_offset = true;
       var_data->offset = dec->literals[0];
+      break;
+
+   case SpvDecorationStream:
+      var_data->stream = dec->literals[0];
       break;
 
    case SpvDecorationCPacked:
