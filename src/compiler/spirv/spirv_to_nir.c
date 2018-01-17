@@ -3162,6 +3162,10 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
             vtn_value(b, w[1], vtn_value_type_constant);
          unsigned stream = stream_value->constant->values[0].u32[0];
          nir_intrinsic_set_stream_id(intrin, stream);
+
+         if (stream > 0)
+            b->shader->info.gs.uses_streams = true;
+
          break;
       }
 
