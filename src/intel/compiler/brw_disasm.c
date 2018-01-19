@@ -1142,6 +1142,14 @@ src1_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
       subreg_nr = brw_inst_3src_a16_src1_subreg_nr(devinfo, inst) * 4;
       type = brw_inst_3src_a16_src_type(devinfo, inst);
 
+      if (type == BRW_REGISTER_TYPE_HF ||
+          type == BRW_REGISTER_TYPE_F) {
+         if (brw_inst_3src_src1_type(devinfo, inst))
+            type = BRW_REGISTER_TYPE_HF;
+         else
+            type = BRW_REGISTER_TYPE_F;
+      }
+
       if (brw_inst_3src_a16_src1_rep_ctrl(devinfo, inst)) {
          _vert_stride = BRW_VERTICAL_STRIDE_0;
          _width = BRW_WIDTH_1;
@@ -1223,6 +1231,14 @@ src2_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
       reg_nr = brw_inst_3src_src2_reg_nr(devinfo, inst);
       subreg_nr = brw_inst_3src_a16_src2_subreg_nr(devinfo, inst) * 4;
       type = brw_inst_3src_a16_src_type(devinfo, inst);
+
+      if (type == BRW_REGISTER_TYPE_HF ||
+          type == BRW_REGISTER_TYPE_F) {
+         if (brw_inst_3src_src2_type(devinfo, inst))
+            type = BRW_REGISTER_TYPE_HF;
+         else
+            type = BRW_REGISTER_TYPE_F;
+      }
 
       if (brw_inst_3src_a16_src2_rep_ctrl(devinfo, inst)) {
          _vert_stride = BRW_VERTICAL_STRIDE_0;
