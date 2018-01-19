@@ -892,9 +892,12 @@ brw_inst *brw_##OP(struct brw_codegen *p,         \
           dest.type == BRW_REGISTER_TYPE_F  ||                  \
           dest.type == BRW_REGISTER_TYPE_DF);                   \
    if (dest.type == BRW_REGISTER_TYPE_HF) {                     \
-      assert(src0.type == BRW_REGISTER_TYPE_HF);                \
-      assert(src1.type == BRW_REGISTER_TYPE_HF);                \
-      assert(src2.type == BRW_REGISTER_TYPE_HF);                \
+      assert(src0.type == BRW_REGISTER_TYPE_HF ||               \
+             src0.type == BRW_REGISTER_TYPE_F);                 \
+      assert(src1.type == BRW_REGISTER_TYPE_HF ||               \
+             src1.type == BRW_REGISTER_TYPE_F);                 \
+      assert(src2.type == BRW_REGISTER_TYPE_HF ||               \
+             src2.type == BRW_REGISTER_TYPE_F);                 \
    } else if (dest.type == BRW_REGISTER_TYPE_F) {               \
       assert(src0.type == BRW_REGISTER_TYPE_F);                 \
       assert(src1.type == BRW_REGISTER_TYPE_F);                 \
