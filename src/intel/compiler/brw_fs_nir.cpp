@@ -3100,7 +3100,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
    fs_reg dest;
    if (nir_intrinsic_infos[instr->intrinsic].has_dest)
-      dest = get_nir_dest(instr->dest);
+      dest = get_nir_dest(instr->dest, true);
 
    switch (instr->intrinsic) {
    case nir_intrinsic_load_front_face:
@@ -3402,7 +3402,9 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
             component(interp_reg(nir_intrinsic_base(instr),
                                  nir_intrinsic_component(instr) + i), 0);
          interp.type = BRW_REGISTER_TYPE_F;
-         dest.type = BRW_REGISTER_TYPE_F;
+
+         if (dest.type != BRW_REGISTER_TYPE_HF)
+            dest.type = BRW_REGISTER_TYPE_F;
 
          if (devinfo->gen < 6 && interp_mode == INTERP_MODE_SMOOTH) {
             fs_reg tmp = vgrf(glsl_type::float_type);
