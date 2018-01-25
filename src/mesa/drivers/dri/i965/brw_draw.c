@@ -240,6 +240,14 @@ brw_emit_prim(struct brw_context *brw,
                                prim->indirect_offset + 12);
          brw_load_register_mem(brw, GEN7_3DPRIM_START_INSTANCE, bo,
                                prim->indirect_offset + 16);
+
+         /* Store the gl_BaseVertex value in its vertex buffer */
+         if (brw->draw.derived_draw_params_bo != NULL) {
+            brw_store_register_mem32(brw, brw->draw.derived_draw_params_bo,
+                                     GEN7_3DPRIM_BASE_VERTEX,
+                                     brw->draw.derived_draw_params_offset + 4);
+            brw_emit_mi_flush(brw);
+         }
       } else {
          brw_load_register_mem(brw, GEN7_3DPRIM_START_INSTANCE, bo,
                                prim->indirect_offset + 12);
@@ -814,7 +822,7 @@ brw_draw_single_prim(struct gl_context *ctx,
    }
 
    /* Determine if we need to flag BRW_NEW_VERTICES for updating the
-    * gl_BaseVertexARB or gl_BaseInstanceARB values. For indirect draw, we
+    * firstvertex or gl_BaseInstanceARB values. For indirect draw, we
     * always flag if the shader uses one of the values. For direct draws,
     * we only flag if the values change.
     */
@@ -824,16 +832,12 @@ brw_draw_single_prim(struct gl_context *ctx,
    const struct brw_vs_prog_data *vs_prog_data =
       brw_vs_prog_data(brw->vs.base.prog_data);
    if (prim_id > 0) {
-      const bool uses_firstvertex =
-         vs_prog_data->uses_basevertex ||
-         vs_prog_data->uses_firstvertex;
-
       const bool uses_draw_parameters =
-         uses_firstvertex ||
+         vs_prog_data->uses_firstvertex ||
          vs_prog_data->uses_baseinstance;
 
       if ((uses_draw_parameters && prim->is_indirect) ||
-          (uses_firstvertex &&
+          (vs_prog_data->uses_firstvertex &&
            brw->draw.params.firstvertex != new_firstvertex) ||
           (vs_prog_data->uses_baseinstance &&
            brw->draw.params.gl_baseinstance != new_baseinstance))
@@ -860,16 +864,27 @@ brw_draw_single_prim(struct gl_context *ctx,
    }
 
    /* gl_DrawID always needs its own vertex buffer since it's not part of
-    * the indirect parameter buffer. If the program uses gl_DrawID we need
-    * to flag BRW_NEW_VERTICES. For the first iteration, we don't have
-    * valid vs_prog_data, but we always flag BRW_NEW_VERTICES before
-    * the loop.
+    * the indirect parameter buffer. This is the same for gl_BaseVertex, which
+    * is not part of the indirect parameter buffer for non-indexed draw calls.
+    * If the program uses gl_DrawID or, uses gl_BaseVertex and it is an indirect
+    * draw call or the value has changed, we need to flag BRW_NEW_VERTICES.
+    * For the first iteration, we don't have valid vs_prog_data, but we always
+    * flag BRW_NEW_VERTICES before the loop.
     */
-   brw->draw.gl_drawid = prim->draw_id;
-   brw_bo_unreference(brw->draw.draw_id_bo);
-   brw->draw.draw_id_bo = NULL;
-   if (prim_id > 0 && vs_prog_data->uses_drawid)
+   const int new_basevertex = prim->indexed ? prim->basevertex : 0;
+   if (prim_id > 0 &&
+       (vs_prog_data->uses_drawid ||
+        (vs_prog_data->uses_basevertex &&
+         (prim->is_indirect ||
+          brw->draw.derived_params.gl_basevertex != new_basevertex))))
       brw->ctx.NewDriverState |= BRW_NEW_VERTICES;
+
+   brw->draw.derived_params.gl_drawid = prim->draw_id;
+   brw->draw.derived_params.gl_basevertex = new_basevertex;
+
+   brw_bo_unreference(brw->draw.derived_draw_params_bo);
+   brw->draw.derived_draw_params_bo = NULL;
+   brw->draw.derived_draw_params_offset = 0;
 
    if (devinfo->gen < 6)
       brw_set_prim(brw, prim);
