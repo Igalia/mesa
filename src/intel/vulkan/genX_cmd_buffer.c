@@ -2671,7 +2671,6 @@ void genX(CmdDraw)(
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
    if (vs_prog_data->uses_firstvertex ||
-       vs_prog_data->uses_basevertex ||
        vs_prog_data->uses_baseinstance)
       emit_base_vertex_instance(cmd_buffer, firstVertex, firstInstance);
    if (vs_prog_data->uses_drawid)
@@ -2711,7 +2710,6 @@ void genX(CmdDrawIndexed)(
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
    if (vs_prog_data->uses_firstvertex ||
-       vs_prog_data->uses_basevertex ||
        vs_prog_data->uses_baseinstance)
       emit_base_vertex_instance(cmd_buffer, vertexOffset, firstInstance);
    if (vs_prog_data->uses_drawid)
@@ -2852,7 +2850,6 @@ void genX(CmdDrawIndirect)(
       uint32_t bo_offset = buffer->offset + offset;
 
       if (vs_prog_data->uses_firstvertex ||
-          vs_prog_data->uses_basevertex ||
           vs_prog_data->uses_baseinstance)
          emit_base_vertex_instance_bo(cmd_buffer, bo, bo_offset + 8);
       if (vs_prog_data->uses_drawid)
@@ -2893,7 +2890,6 @@ void genX(CmdDrawIndexedIndirect)(
 
       /* TODO: We need to stomp base vertex to 0 somehow */
       if (vs_prog_data->uses_firstvertex ||
-          vs_prog_data->uses_basevertex ||
           vs_prog_data->uses_baseinstance)
          emit_base_vertex_instance_bo(cmd_buffer, bo, bo_offset + 12);
       if (vs_prog_data->uses_drawid)
