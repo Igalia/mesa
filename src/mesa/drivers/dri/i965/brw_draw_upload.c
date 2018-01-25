@@ -696,8 +696,11 @@ brw_prepare_shader_draw_parameters(struct brw_context *brw)
    const struct brw_vs_prog_data *vs_prog_data =
       brw_vs_prog_data(brw->vs.base.prog_data);
 
-   /* For non-indirect draws, upload gl_BaseVertex. */
-   if ((vs_prog_data->uses_basevertex || vs_prog_data->uses_baseinstance) &&
+   const bool uses_firstvertex =
+      vs_prog_data->uses_basevertex || vs_prog_data->uses_firstvertex;
+
+   /* For non-indirect draws, upload the shader draw parameters */
+   if ((uses_firstvertex || vs_prog_data->uses_baseinstance) &&
        brw->draw.draw_params_bo == NULL) {
       intel_upload_data(brw, &brw->draw.params, sizeof(brw->draw.params), 4,
 			&brw->draw.draw_params_bo,
