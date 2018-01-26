@@ -91,6 +91,7 @@ const glsl_type *
 glsl_get_function_return_type(const glsl_type *type)
 {
    return type->fields.parameters[0].type;
+
 }
 
 const glsl_function_param *
@@ -617,4 +618,10 @@ bool
 glsl_get_row_major(const struct glsl_type *type)
 {
    return type->get_interface_row_major();
+}
+
+unsigned
+glsl_type_arrays_of_arrays_size(const struct glsl_type *type)
+{
+   return type->arrays_of_arrays_size();
 }
