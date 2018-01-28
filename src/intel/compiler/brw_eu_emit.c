@@ -750,9 +750,24 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
                                          BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE :
                                          BRW_ALIGN1_3SRC_IMMEDIATE_VALUE);
    } else {
+      /* From the Broadwell PRM, Volume 2d, DstSubRegNum:
+       *   For three source instructions, the address must be DWord aligned;
+       *   SubRegNum provides bits 4:2 of the address and bits 1:0 are zero.
+       *
+       *   Note: The recommended instruction syntax uses subregister numbers
+       *   within the GRF in units of actual data element size, corresponding
+       *   to the data type used. For example for the F (Float) type, the
+       *   assembler syntax uses subregister numbers 0 to 7, corresponding to
+       *   subregister byte addresses of 0 to 28 in steps of 4, the element
+       *   size.
+       */
+      assert((dest.subnr / type_sz(dest.type)) % 2 == 0);
+      const unsigned dst_subreg_nr = (dest.subnr / type_sz(dest.type)) >> 1;
+
       assert(dest.file == BRW_GENERAL_REGISTER_FILE ||
              dest.file == BRW_MESSAGE_REGISTER_FILE);
-      assert(dest.type == BRW_REGISTER_TYPE_F  ||
+      assert(dest.type == BRW_REGISTER_TYPE_HF ||
+             dest.type == BRW_REGISTER_TYPE_F  ||
              dest.type == BRW_REGISTER_TYPE_DF ||
              dest.type == BRW_REGISTER_TYPE_D  ||
              dest.type == BRW_REGISTER_TYPE_UD);
@@ -761,7 +776,7 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
                                             dest.file == BRW_MESSAGE_REGISTER_FILE);
       }
       brw_inst_set_3src_dst_reg_nr(devinfo, inst, dest.nr);
-      brw_inst_set_3src_a16_dst_subreg_nr(devinfo, inst, dest.subnr / 16);
+      brw_inst_set_3src_a16_dst_subreg_nr(devinfo, inst, dst_subreg_nr);
       brw_inst_set_3src_a16_dst_writemask(devinfo, inst, dest.writemask);
 
       assert(src0.file == BRW_GENERAL_REGISTER_FILE);
@@ -873,9 +888,14 @@ brw_inst *brw_##OP(struct brw_codegen *p,         \
                                  struct brw_reg src1,           \
                                  struct brw_reg src2)           \
 {                                                               \
-   assert(dest.type == BRW_REGISTER_TYPE_F ||                   \
+   assert(dest.type == BRW_REGISTER_TYPE_HF ||                  \
+          dest.type == BRW_REGISTER_TYPE_F  ||                  \
           dest.type == BRW_REGISTER_TYPE_DF);                   \
-   if (dest.type == BRW_REGISTER_TYPE_F) {                      \
+   if (dest.type == BRW_REGISTER_TYPE_HF) {                     \
+      assert(src0.type == BRW_REGISTER_TYPE_HF);                \
+      assert(src1.type == BRW_REGISTER_TYPE_HF);                \
+      assert(src2.type == BRW_REGISTER_TYPE_HF);                \
+   } else if (dest.type == BRW_REGISTER_TYPE_F) {               \
       assert(src0.type == BRW_REGISTER_TYPE_F);                 \
       assert(src1.type == BRW_REGISTER_TYPE_F);                 \
       assert(src2.type == BRW_REGISTER_TYPE_F);                 \
