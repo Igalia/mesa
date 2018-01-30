@@ -1482,7 +1482,7 @@ vtn_storage_class_to_mode(struct vtn_builder *b,
          nir_mode = nir_var_uniform;
       } else if (interface_type->buffer_block) {
          mode = vtn_variable_mode_ssbo;
-         nir_mode = 0;
+         nir_mode = nir_var_shader_storage;
       } else {
          /* Default-block uniforms, coming from gl_spirv */
          mode = vtn_variable_mode_uniform;
@@ -1678,6 +1678,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    case vtn_variable_mode_global:
    case vtn_variable_mode_uniform:
    case vtn_variable_mode_ubo:
+   case vtn_variable_mode_ssbo:
       /* For these, we create the variable normally */
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
@@ -1782,7 +1783,6 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       break;
    }
 
-   case vtn_variable_mode_ssbo:
    case vtn_variable_mode_push_constant:
       /* These don't need actual variables. */
       break;
