@@ -28,11 +28,15 @@
 #include "main/shaderobj.h" /* _mesa_delete_linked_shader */
 #include "main/mtypes.h"
 
-/* This file contains code to do a nir-based linking for uniform blocks. Note
- * that it is tailored to ARB_gl_spirv needs. Uniform block name, fields
- * names, and other names are considered optional debug infor, so could not be
- * present. So the linking should work without it, and it is optional to not
- * handle them at all. From ARB_gl_spirv:
+/* Summary: This file contains code to do a nir-based linking for uniform
+ * blocks. This includes ubos and ssbos.
+ *
+ * More details:
+ *
+ * 1. Note that it is tailored to ARB_gl_spirv needs. Uniform block name,
+ * fields names, and other names are considered optional debug infor so could
+ * not be present. So the linking should work without it, and it is optional
+ * to not handle them at all. From ARB_gl_spirv:
  *
  *    "19. How should the program interface query operations behave for program
  *         objects created from SPIR-V shaders?
@@ -65,12 +69,35 @@
  * This implemention doesn't care for the names, as the main objective is
  * functional, and not support optional debug features.
  *
+ * 2. As mentioned, the code on this file handles both ubo and ssbo. In some
+ * terminology they are called "buffer-backed blocks", and don't consider ssbo
+ * as "real uniforms". And for example, on nir, the mode for ubos are
+ * nir_var_uniform but for ssbo are nir_var_shader_storage.
+ *
+ * But from ARB_gl_spirv spec:
+ *   "Mapping of Storage Classes:
+ *     <skip>
+ *     uniform blockN { ... } ...;  -> Uniform, with Block decoration
+ *     <skip>
+ *     buffer  blockN { ... } ...;  -> Uniform, with BufferBlock decoration"
+ *
+ * Additionally, the GLSL (IR) path is already handling and calling them
+ * uniform blocks (ie: struct gl_uniform_block can be a individual ubo or
+ * ssbo), so for consistency we are doing the same here.
  */
 
+/*
+ * As we reuse some methods for ubos and ssbos, it is good to mark what we are
+ * handling at each moment.
+ */
+enum block_type {
+   BLOCK_UBO,
+   BLOCK_SSBO
+};
 
 static bool
-link_uniform_blocks_are_compatible(const struct gl_uniform_block *a,
-                                   const struct gl_uniform_block *b)
+link_blocks_are_compatible(const struct gl_uniform_block *a,
+                           const struct gl_uniform_block *b)
 {
    /*
     * Names on ARB_gl_spirv are optional, so we are ignoring them. So
@@ -113,8 +140,8 @@ link_uniform_blocks_are_compatible(const struct gl_uniform_block *a,
 }
 
 /**
- * Merges a uniform block into an array of uniform blocks that may or
- * may not already contain a copy of it.
+ * Merges a buffer block into an array of buffer blocks that may or may not
+ * already contain a copy of it.
  *
  * Returns the index of the new block in the array.
  */
@@ -128,8 +155,7 @@ _link_cross_validate_uniform_block(void *mem_ctx,
       struct gl_uniform_block *old_block = &(*linked_blocks)[i];
 
       if (old_block->Binding == new_block->Binding)
-         return link_uniform_blocks_are_compatible(old_block, new_block)
-            ? i : -1;
+         return link_blocks_are_compatible(old_block, new_block) ? i : -1;
    }
 
    *linked_blocks = reralloc(mem_ctx, *linked_blocks,
@@ -155,24 +181,24 @@ _link_cross_validate_uniform_block(void *mem_ctx,
  * Accumulates the array of buffer blocks and checks that all definitions of
  * blocks agree on their contents.
  *
- * TODO: right now this is equal to its GLSL counter-part, but calling our
- * binding-based (instead of name-based) _link_cross_validate_uniform_block
- * and some C++ cleaning. Candidate for refactoring. This is the reason it
- * also take into account ssbo.
+ * TODO: right now this is really similar to its GLSL counter-part, but
+ * calling our binding-based (instead of name-based)
+ * _link_cross_validate_uniform_block and some C++ cleaning. Candidate for
+ * refactoring.
  */
 static bool
 _nir_interstage_cross_validate_uniform_blocks(struct gl_shader_program *prog,
-                                              bool validate_ssbo)
+                                              enum block_type block_type)
 {
    int *InterfaceBlockStageIndex[MESA_SHADER_STAGES];
    struct gl_uniform_block *blks = NULL;
-   unsigned *num_blks = validate_ssbo ? &prog->data->NumShaderStorageBlocks :
+   unsigned *num_blks = block_type == BLOCK_SSBO ? &prog->data->NumShaderStorageBlocks :
       &prog->data->NumUniformBlocks;
 
    unsigned max_num_buffer_blocks = 0;
    for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
       if (prog->_LinkedShaders[i]) {
-         if (validate_ssbo) {
+         if (block_type == BLOCK_SSBO) {
             max_num_buffer_blocks +=
                prog->_LinkedShaders[i]->Program->info.num_ssbos;
          } else {
@@ -194,7 +220,7 @@ _nir_interstage_cross_validate_uniform_blocks(struct gl_shader_program *prog,
 
       unsigned sh_num_blocks;
       struct gl_uniform_block **sh_blks;
-      if (validate_ssbo) {
+      if (block_type == BLOCK_SSBO) {
          sh_num_blocks = prog->_LinkedShaders[i]->Program->info.num_ssbos;
          sh_blks = sh->Program->sh.ShaderStorageBlocks;
       } else {
@@ -236,7 +262,7 @@ _nir_interstage_cross_validate_uniform_blocks(struct gl_shader_program *prog,
          if (stage_index != -1) {
             struct gl_linked_shader *sh = prog->_LinkedShaders[i];
 
-            struct gl_uniform_block **sh_blks = validate_ssbo ?
+            struct gl_uniform_block **sh_blks = block_type == BLOCK_SSBO ?
                sh->Program->sh.ShaderStorageBlocks :
                sh->Program->sh.UniformBlocks;
 
@@ -250,7 +276,7 @@ _nir_interstage_cross_validate_uniform_blocks(struct gl_shader_program *prog,
       free(InterfaceBlockStageIndex[i]);
    }
 
-   if (validate_ssbo)
+   if (block_type == BLOCK_SSBO)
       prog->data->ShaderStorageBlocks = blks;
    else
       prog->data->UniformBlocks = blks;
@@ -259,35 +285,46 @@ _nir_interstage_cross_validate_uniform_blocks(struct gl_shader_program *prog,
 }
 
 static bool
-_var_is_uniform_block(nir_variable *var)
+_var_is_ubo(nir_variable *var)
 {
    return (var->data.mode == nir_var_uniform &&
            var->interface_type != NULL);
 }
 
+static bool
+_var_is_ssbo(nir_variable *var)
+{
+   return (var->data.mode == nir_var_shader_storage);
+}
+
 /*
  * In opposite to the equivalent glsl one, this one only allocates the needed
- * space.
+ * space. We do a initial count here, just to avoid re-allocating for each one
+ * we find.
  */
 static void
-_allocate_buffer_blocks(void *mem_ctx,
-                        struct gl_linked_shader *shader,
-                        struct gl_uniform_block **out_blks, unsigned *num_blocks,
-                        struct gl_uniform_buffer_variable **out_variables, unsigned *num_variables,
-                        bool create_ubo_blocks)
+_allocate_uniform_blocks(void *mem_ctx,
+                         struct gl_linked_shader *shader,
+                         struct gl_uniform_block **out_blks, unsigned *num_blocks,
+                         struct gl_uniform_buffer_variable **out_variables, unsigned *num_variables,
+                         enum block_type block_type)
 {
    *num_variables = 0;
    *num_blocks = 0;
 
    nir_foreach_variable(var, &shader->Program->nir->uniforms) {
-      if (_var_is_uniform_block(var)) {
-         const struct glsl_type *type = glsl_without_array(var->type);
-         unsigned aoa_size = glsl_type_arrays_of_arrays_size(var->type);
-         unsigned ubo_count = aoa_size == 0 ? 1 : aoa_size;
+      if (block_type == BLOCK_UBO && !_var_is_ubo(var))
+         continue;
 
-         *num_blocks += ubo_count;
-         *num_variables += glsl_get_length(type) * ubo_count;
-      }
+      if (block_type == BLOCK_SSBO && !_var_is_ssbo(var))
+         continue;
+
+      const struct glsl_type *type = glsl_without_array(var->type);
+      unsigned aoa_size = glsl_type_arrays_of_arrays_size(var->type);
+      unsigned buffer_count = aoa_size == 0 ? 1 : aoa_size;
+
+      *num_blocks += buffer_count;
+      *num_variables += glsl_get_length(type) * buffer_count;
    }
 
    if (*num_blocks == 0) {
@@ -308,12 +345,12 @@ _allocate_buffer_blocks(void *mem_ctx,
 }
 
 static void
-_fill_uniform_block(struct gl_uniform_block *block,
-                    nir_variable *var,
-                    struct gl_uniform_buffer_variable *variables,
-                    unsigned *variable_index,
-                    unsigned array_index,
-                    struct gl_shader_program *prog)
+_fill_block(struct gl_uniform_block *block,
+            nir_variable *var,
+            struct gl_uniform_buffer_variable *variables,
+            unsigned *variable_index,
+            unsigned array_index,
+            struct gl_shader_program *prog)
 {
    const struct glsl_type *type = glsl_without_array(var->type);
 
@@ -381,15 +418,16 @@ _fill_uniform_block(struct gl_uniform_block *block,
 }
 
 /*
- * Link uniform blocks for a given linked_shader/stage.
+ * Link ubos/ssbos for a given linked_shader/stage.
  */
 static void
 _link_linked_shader_uniform_blocks(void *mem_ctx,
                                    struct gl_context *ctx,
                                    struct gl_shader_program *prog,
                                    struct gl_linked_shader *shader,
-                                   struct gl_uniform_block **ubo_blocks,
-                                   unsigned *num_ubo_blocks)
+                                   struct gl_uniform_block **blocks,
+                                   unsigned *num_blocks,
+                                   enum block_type block_type)
 {
    struct gl_uniform_buffer_variable *variables = NULL;
 
@@ -409,31 +447,37 @@ _link_linked_shader_uniform_blocks(void *mem_ctx,
     * Conclusion: alls ubos coming from a SPIR-V shader should be considered
     * as active, so we just count them.
     */
-   unsigned num_ubo_variables = 0;
+   unsigned num_variables = 0;
 
-   _allocate_buffer_blocks(mem_ctx, shader,
-                           ubo_blocks, num_ubo_blocks,
-                           &variables, &num_ubo_variables, true);
+   _allocate_uniform_blocks(mem_ctx, shader,
+                            blocks, num_blocks,
+                            &variables, &num_variables,
+                            block_type);
 
    /* Fill the content of uniforms and variables */
    unsigned block_index = 0;
    unsigned variable_index = 0;
-   struct gl_uniform_block *blks = *ubo_blocks;
+   struct gl_uniform_block *blks = *blocks;
+
    nir_foreach_variable(var, &shader->Program->nir->uniforms) {
-      if (!_var_is_uniform_block(var))
+      if (block_type == BLOCK_UBO && !_var_is_ubo(var))
+         continue;
+
+      if (block_type == BLOCK_SSBO && !_var_is_ssbo(var))
          continue;
 
       unsigned aoa_size = glsl_type_arrays_of_arrays_size(var->type);
-      unsigned ubo_count = aoa_size == 0 ? 1 : aoa_size;
+      unsigned buffer_count = aoa_size == 0 ? 1 : aoa_size;
 
-      for (unsigned array_index = 0; array_index < ubo_count; array_index++) {
-         _fill_uniform_block(&blks[block_index], var, variables, &variable_index, array_index, prog);
+      for (unsigned array_index = 0; array_index < buffer_count; array_index++) {
+         _fill_block(&blks[block_index], var, variables, &variable_index,
+                     array_index, prog);
          block_index++;
       }
    }
 
-   assert(block_index == *num_ubo_blocks);
-   assert(variable_index == num_ubo_variables);
+   assert(block_index == *num_blocks);
+   assert(variable_index == num_variables);
 }
 
 bool
@@ -446,12 +490,19 @@ gl_nir_link_uniform_blocks(struct gl_context *ctx,
       struct gl_linked_shader *const linked = prog->_LinkedShaders[stage];
       struct gl_uniform_block *ubo_blocks = NULL;
       unsigned num_ubo_blocks = 0;
+      struct gl_uniform_block *ssbo_blocks = NULL;
+      unsigned num_ssbo_blocks = 0;
 
       if (!linked)
          continue;
 
       _link_linked_shader_uniform_blocks(mem_ctx, ctx, prog, linked,
-                                         &ubo_blocks, &num_ubo_blocks);
+                                         &ubo_blocks, &num_ubo_blocks,
+                                         BLOCK_UBO);
+
+      _link_linked_shader_uniform_blocks(mem_ctx, ctx, prog, linked,
+                                         &ssbo_blocks, &num_ssbo_blocks,
+                                         BLOCK_SSBO);
 
       if (!prog->data->LinkStatus) {
          if (linked)
@@ -475,10 +526,24 @@ gl_nir_link_uniform_blocks(struct gl_context *ctx,
        * brw_shader_gather_info
        */
       linked->Program->info.num_ubos = num_ubo_blocks;
+
+      /* Copy ssbo blocks to linked shader list */
+      linked->Program->sh.ShaderStorageBlocks =
+         ralloc_array(linked, struct gl_uniform_block *, num_ssbo_blocks);
+      ralloc_steal(linked, ssbo_blocks);
+      for (unsigned i = 0; i < num_ssbo_blocks; i++) {
+         linked->Program->sh.ShaderStorageBlocks[i] = &ssbo_blocks[i];
+      }
+      linked->Program->info.num_ssbos = num_ssbo_blocks;
    }
 
-   /* FIXME: check for cache_fallback ? */
-   if (!_nir_interstage_cross_validate_uniform_blocks(prog, false)) {
+   /* Process UBOs */
+   if (!_nir_interstage_cross_validate_uniform_blocks(prog, BLOCK_UBO)) {
+      return false;
+   }
+
+   /* Process SSBOs */
+   if (!_nir_interstage_cross_validate_uniform_blocks(prog, BLOCK_SSBO)) {
       return false;
    }
 
