@@ -55,6 +55,8 @@
 extern "C" {
 #endif
 
+struct gl_linked_shader;
+
 #define NIR_FALSE 0u
 #define NIR_TRUE (~0u)
 
@@ -2645,6 +2647,9 @@ bool nir_lower_subgroups(nir_shader *shader,
                          const nir_lower_subgroups_options *options);
 
 bool nir_lower_system_values(nir_shader *shader);
+
+bool nir_lower_vulkan_resource_index(nir_shader *shader,
+                                     struct gl_linked_shader *linked_shader);
 
 typedef struct nir_lower_tex_options {
    /**
