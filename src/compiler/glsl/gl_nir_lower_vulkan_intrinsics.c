@@ -37,18 +37,45 @@
  */
 
 static unsigned
-find_block_by_binding(struct gl_linked_shader *linked_shader,
+find_block_by_binding(unsigned num_blocks,
+                      struct gl_uniform_block **blocks,
                       unsigned binding)
 {
-   unsigned num_blocks = linked_shader->Program->info.num_ubos;
-   struct gl_uniform_block **blocks = linked_shader->Program->sh.UniformBlocks;
-
    for (unsigned i = 0; i < num_blocks; i++) {
       if (blocks[i]->Binding == binding)
          return i;
    }
 
    unreachable("No block found with the given binding");
+}
+
+static bool
+find_intrinsic_usage(nir_ssa_def *def,
+                     bool *is_ubo_usage)
+{
+   nir_foreach_use_safe(use_src, def) {
+      if (use_src->parent_instr->type == nir_instr_type_alu) {
+         nir_alu_instr *alu = nir_instr_as_alu(use_src->parent_instr);
+
+         if (find_intrinsic_usage(&alu->dest.dest.ssa, is_ubo_usage))
+            return true;
+
+         continue;
+      }
+
+      if (use_src->parent_instr->type != nir_instr_type_intrinsic)
+         continue;
+
+      nir_intrinsic_instr *intr = nir_instr_as_intrinsic(use_src->parent_instr);
+
+      if (intr == NULL)
+         continue;
+
+      *is_ubo_usage = intr->intrinsic == nir_intrinsic_load_ubo;
+      return true;
+   }
+
+   return false;
 }
 
 static bool
@@ -67,13 +94,29 @@ convert_block(nir_block *block,
       if (res_index->intrinsic != nir_intrinsic_vulkan_resource_index)
          continue;
 
+      bool is_ubo_usage;
+      if (!find_intrinsic_usage(&res_index->dest.ssa, &is_ubo_usage))
+         continue;
+
       b->cursor = nir_after_instr(instr);
 
       /* The descriptor set should always be zero for GL */
       assert(nir_intrinsic_desc_set(res_index) == 0);
-
       unsigned binding = nir_intrinsic_binding(res_index);
-      unsigned block = find_block_by_binding(linked_shader, binding);
+
+      unsigned num_blocks;
+      struct gl_uniform_block **blocks;
+
+      if (is_ubo_usage) {
+         num_blocks = linked_shader->Program->info.num_ubos;
+         blocks = linked_shader->Program->sh.UniformBlocks;
+      } else {
+         num_blocks = linked_shader->Program->info.num_ssbos;
+         blocks = linked_shader->Program->sh.ShaderStorageBlocks;
+      }
+
+      unsigned block = find_block_by_binding(num_blocks, blocks, binding);
+
       nir_ssa_def *surface =
          nir_iadd(b,
                   nir_imm_int(b, block),
