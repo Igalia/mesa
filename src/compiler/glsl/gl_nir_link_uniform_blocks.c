@@ -470,6 +470,10 @@ gl_nir_link_uniform_blocks(struct gl_context *ctx,
       for (unsigned i = 0; i < num_ubo_blocks; i++) {
          linked->Program->sh.UniformBlocks[i] = &ubo_blocks[i];
       }
+      linked->Program->nir->info.num_ubos = num_ubo_blocks;
+      /* This value will get overwritten by the one from nir in
+       * brw_shader_gather_info
+       */
       linked->Program->info.num_ubos = num_ubo_blocks;
    }
 
