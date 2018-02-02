@@ -30,6 +30,7 @@ extern "C" {
 
 struct nir_shader;
 struct gl_shader_program;
+struct gl_linked_shader;
 
 bool gl_nir_lower_atomics(nir_shader *shader,
                           const struct gl_shader_program *shader_program,
@@ -42,6 +43,9 @@ bool gl_nir_lower_samplers_as_deref(nir_shader *shader,
 
 bool gl_nir_lower_buffers(nir_shader *shader,
                           const struct gl_shader_program *shader_program);
+
+bool gl_nir_lower_vulkan_resource_index(nir_shader *shader,
+                                        struct gl_linked_shader *linked_shader);
 
 #ifdef __cplusplus
 }
