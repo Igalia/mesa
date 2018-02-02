@@ -29,6 +29,7 @@ LIBGLSL_FILES = \
 	glsl/gl_nir_lower_buffers.c \
 	glsl/gl_nir_lower_samplers.c \
 	glsl/gl_nir_lower_samplers_as_deref.c \
+	glsl/gl_nir_lower_vulkan_intrinsics.c \
 	glsl/gl_nir_link_atomics.c \
 	glsl/gl_nir_link_uniform_initializers.c \
 	glsl/gl_nir_link_uniforms.c \
