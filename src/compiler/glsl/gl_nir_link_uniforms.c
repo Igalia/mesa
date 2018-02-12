@@ -271,7 +271,6 @@ get_next_index(struct nir_link_uniforms_state *state,
    return index;
 }
 
-
 /**
  * Creates the neccessary entries in UniformStorage for the uniform. Returns
  * the number of locations used or -1 on failure.
@@ -369,6 +368,8 @@ nir_link_uniform(struct gl_context *ctx,
       if (uniform->hidden)
          state->num_hidden_uniforms++;
 
+      uniform->is_shader_storage = nir_variable_is_in_ssbo(state->current_var);
+
       /* @FIXME: the initialization of the following will be done as we
        * implement support for their specific features, like SSBO, atomics,
        * etc.
@@ -379,7 +380,6 @@ nir_link_uniform(struct gl_context *ctx,
       uniform->array_stride = -1;
       uniform->row_major = false;
       uniform->builtin = false;
-      uniform->is_shader_storage = false;
       uniform->atomic_buffer_index = -1;
       uniform->top_level_array_size = 0;
       uniform->top_level_array_stride = 0;
