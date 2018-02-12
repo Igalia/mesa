@@ -284,6 +284,12 @@ handle_type_for_uniform_storage(const struct glsl_type *original_type,
    }
 }
 
+static bool
+_var_is_ssbo(nir_variable *var)
+{
+   return (var->data.mode == nir_var_shader_storage);
+}
+
 /**
  * Creates the neccessary entries in UniformStorage for the uniform. Returns
  * the number of locations used or -1 on failure.
@@ -371,6 +377,8 @@ nir_link_uniform(struct gl_context *ctx,
          uniform->remap_location = UNMAPPED_UNIFORM_LOC;
       }
 
+      uniform->is_shader_storage = _var_is_ssbo(state->current_var);
+
       /* @FIXME: the initialization of the following will be done as we
        * implement support for their specific features, like SSBO, atomics,
        * etc.
@@ -382,7 +390,6 @@ nir_link_uniform(struct gl_context *ctx,
       uniform->row_major = false;
       uniform->hidden = false;
       uniform->builtin = false;
-      uniform->is_shader_storage = false;
       uniform->atomic_buffer_index = -1;
       uniform->top_level_array_size = 0;
       uniform->top_level_array_stride = 0;
