@@ -118,7 +118,8 @@ brw_create_nir(struct brw_context *brw,
       assert(shader_prog->_LinkedShaders[MESA_SHADER_TESS_CTRL]);
       struct gl_linked_shader *linked_tcs =
          shader_prog->_LinkedShaders[MESA_SHADER_TESS_CTRL];
-      uint32_t patch_vertices = linked_tcs->Program->info.tess.tcs_vertices_out;
+      uint32_t patch_vertices =
+         linked_tcs->Program->nir->info.tess.tcs_vertices_out;
       nir_lower_tes_patch_vertices(nir, patch_vertices);
    }
 
