@@ -534,6 +534,13 @@ gl_nir_link_uniform_blocks(struct gl_context *ctx,
       for (unsigned i = 0; i < num_ssbo_blocks; i++) {
          linked->Program->sh.ShaderStorageBlocks[i] = &ssbo_blocks[i];
       }
+      /* See previous comment on num_ubo_blocks
+       *
+       * FIXME: in general this is somewhat ugly. It would be better to try to
+       * find a way to set the info once, and being able to properly gather
+       * the info.
+       */
+      linked->Program->nir->info.num_ssbos = num_ssbo_blocks;
       linked->Program->info.num_ssbos = num_ssbo_blocks;
    }
 
