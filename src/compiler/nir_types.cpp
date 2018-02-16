@@ -625,3 +625,17 @@ glsl_type_arrays_of_arrays_size(const struct glsl_type *type)
 {
    return type->arrays_of_arrays_size();
 }
+
+unsigned
+glsl_type_std430_size(const struct glsl_type *type,
+                      bool row_major)
+{
+   return type->std430_size(row_major);
+}
+
+unsigned
+glsl_type_std140_size(const struct glsl_type *type,
+                      bool row_major)
+{
+   return type->std140_size(row_major);
+}
