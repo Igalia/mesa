@@ -344,6 +344,22 @@ _allocate_uniform_blocks(void *mem_ctx,
    *out_variables = variables;
 }
 
+static unsigned
+_get_type_size(const struct glsl_type *type,
+               bool row_major,
+               enum glsl_interface_packing packing)
+{
+   switch(packing) {
+   case GLSL_INTERFACE_PACKING_STD140:
+      return glsl_type_std140_size(type, row_major);
+   case GLSL_INTERFACE_PACKING_STD430:
+      return glsl_type_std430_size(type, row_major);
+   default:
+      /* gl_spirv doesn't support packed/shared */
+      unreachable("Wrong interface packing");
+   }
+}
+
 static void
 _fill_block(struct gl_uniform_block *block,
             nir_variable *var,
@@ -412,8 +428,8 @@ _fill_block(struct gl_uniform_block *block,
     * align
     */
    const struct glsl_type *last_field_type = glsl_get_struct_field(type, glsl_get_length(type) - 1);
-   const struct glsl_type *type_for_size = glsl_without_array(last_field_type);
-   block->UniformBufferSize = variables[*variable_index - 1].Offset + glsl_get_bit_size(type_for_size) / 8;
+   block->UniformBufferSize = variables[*variable_index - 1].Offset +
+      _get_type_size(last_field_type, block->_RowMajor, block->_Packing);
    block->UniformBufferSize = glsl_align(block->UniformBufferSize, 16);
 }
 
