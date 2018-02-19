@@ -124,28 +124,20 @@ brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
                            struct brw_stage_prog_data *stage_prog_data,
                            bool is_scalar)
 {
-   int namelen = strlen(var->name);
-
    /* The data for our (non-builtin) uniforms is stored in a series of
     * gl_uniform_storage structs for each subcomponent that
     * glGetUniformLocation() could name.  We know it's been set up in the same
-    * order we'd walk the type, so walk the list of storage and find anything
-    * with our name, or the prefix of a component that starts with our name.
+    * order we'd walk the type, so walk the list of storage that matches the
+    * range of slots covered by this variable.
     */
    unsigned uniform_index = var->data.driver_location / 4;
-   for (unsigned u = 0; u < prog->sh.data->NumUniformStorage; u++) {
+   unsigned num_slots = var->type->uniform_locations(true /* storage locs */);
+   for (unsigned u = 0; u < num_slots; u++) {
       struct gl_uniform_storage *storage =
-         &prog->sh.data->UniformStorage[u];
+         &prog->sh.data->UniformStorage[var->data.location + u];
 
       if (storage->builtin || storage->type->is_sampler())
          continue;
-
-      if (strncmp(var->name, storage->name, namelen) != 0 ||
-          (storage->name[namelen] != 0 &&
-           storage->name[namelen] != '.' &&
-           storage->name[namelen] != '[')) {
-         continue;
-      }
 
       if (storage->type->is_image()) {
          brw_setup_image_uniform_values(stage, stage_prog_data,
