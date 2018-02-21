@@ -380,6 +380,10 @@ _fill_block(struct gl_uniform_block *block,
    block->Binding = var->data.binding + array_index;
    block->Uniforms = &variables[*variable_index];
    block->NumUniforms = glsl_get_length(type);
+   /* FIXME: right now spirv_to_nir pass isn't filling row_major one
+    * properly. It is not affecting us as RowMajor for each variable is
+    * properly filled, but it would be good to get the proper value here
+    */
    block->_RowMajor = glsl_get_row_major(type);
    block->_Packing = glsl_get_interface_packing(type);
 
