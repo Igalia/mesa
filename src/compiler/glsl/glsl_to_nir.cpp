@@ -643,7 +643,7 @@ nir_visitor::visit(ir_call *ir)
          op = nir_intrinsic_atomic_counter_inc_var;
          break;
       case ir_intrinsic_atomic_counter_predecrement:
-         op = nir_intrinsic_atomic_counter_dec_var;
+         op = nir_intrinsic_atomic_counter_pre_dec_var;
          break;
       case ir_intrinsic_atomic_counter_add:
          op = nir_intrinsic_atomic_counter_add_var;
@@ -844,7 +844,7 @@ nir_visitor::visit(ir_call *ir)
       switch (op) {
       case nir_intrinsic_atomic_counter_read_var:
       case nir_intrinsic_atomic_counter_inc_var:
-      case nir_intrinsic_atomic_counter_dec_var:
+      case nir_intrinsic_atomic_counter_pre_dec_var:
       case nir_intrinsic_atomic_counter_add_var:
       case nir_intrinsic_atomic_counter_min_var:
       case nir_intrinsic_atomic_counter_max_var:
