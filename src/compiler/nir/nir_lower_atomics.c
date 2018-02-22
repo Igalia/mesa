@@ -51,8 +51,12 @@ lower_instr(nir_intrinsic_instr *instr,
       op = nir_intrinsic_atomic_counter_inc;
       break;
 
-   case nir_intrinsic_atomic_counter_dec_var:
-      op = nir_intrinsic_atomic_counter_dec;
+   case nir_intrinsic_atomic_counter_pre_dec_var:
+      op = nir_intrinsic_atomic_counter_pre_dec;
+      break;
+
+   case nir_intrinsic_atomic_counter_pos_dec_var:
+      op = nir_intrinsic_atomic_counter_pos_dec;
       break;
 
    case nir_intrinsic_atomic_counter_add_var:
