@@ -101,6 +101,7 @@ files_libnir = files(
   'nir_instr_set.h',
   'nir_link_uniforms.c',
   'nir_linker.h',
+  'nir_link_uniform_initializers.c',
   'nir_linking_helpers.c',
   'nir_liveness.c',
   'nir_loop_analyze.c',
