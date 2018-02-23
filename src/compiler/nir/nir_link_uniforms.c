@@ -507,6 +507,7 @@ nir_link_uniforms(struct gl_context *ctx,
    prog->data->NumUniformDataSlots = state.num_values;
 
    nir_setup_uniform_remap_tables(ctx, prog);
+   nir_set_uniform_initializers(ctx, prog);
 
    return true;
 }
