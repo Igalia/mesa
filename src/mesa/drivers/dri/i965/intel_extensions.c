@@ -269,6 +269,7 @@ intelInitExtensions(struct gl_context *ctx)
       }
 
       ctx->Extensions.ARB_gl_spirv = true;
+      ctx->Extensions.ARB_spirv_extensions = true;
    }
 
    if (devinfo->gen >= 8 || devinfo->is_haswell) {
