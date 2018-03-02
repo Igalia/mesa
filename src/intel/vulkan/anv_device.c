@@ -759,7 +759,7 @@ void anv_GetPhysicalDeviceFeatures(
       .shaderCullDistance                       = true,
       .shaderFloat64                            = pdevice->info.gen >= 8,
       .shaderInt64                              = pdevice->info.gen >= 8,
-      .shaderInt16                              = false,
+      .shaderInt16                              = pdevice->info.gen >= 8,
       .shaderResourceMinLod                     = false,
       .variableMultisampleRate                  = false,
       .inheritedQueries                         = true,
