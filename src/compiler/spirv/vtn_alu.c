@@ -354,10 +354,19 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
    case SpvOpConvertFToS:
    case SpvOpConvertSToF:
    case SpvOpConvertUToF:
-   case SpvOpSConvert:
    case SpvOpFConvert:
       return nir_type_conversion_op(src, dst, nir_rounding_mode_undef);
 
+   case SpvOpSConvert: {
+      /* SPIR-V expects to interpret the unsigned value as signed and
+       * sign extend. Return the opcode accordingly.
+       */
+      unsigned src_bit_size = nir_alu_type_get_type_size(src);
+      nir_alu_type src_type = nir_type_int | src_bit_size;
+      unsigned dst_bit_size = nir_alu_type_get_type_size(dst);
+      nir_alu_type dst_type = nir_type_int | dst_bit_size;
+      return nir_type_conversion_op(src_type, dst_type, nir_rounding_mode_undef);
+   }
    /* Derivatives: */
    case SpvOpDPdx:         return nir_op_fddx;
    case SpvOpDPdy:         return nir_op_fddy;
