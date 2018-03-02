@@ -25,8 +25,8 @@ not started
 # OpenGL Core and Compatibility context support
 
 Some drivers do not support the Compatibility profile or ARB_compatibility.
-Such drivers are limited to OpenGL 3.0 if the Core profile is not requested
-by applications. Some of the later GL features are exposed in the 3.0 context
+Such drivers are limited to use OpenGL 3.1 and later in Core
+profile. Some of the later GL features are exposed in the 3.0 context
 as extensions.
 
 
