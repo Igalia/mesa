@@ -833,10 +833,18 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_f2f64:
    case nir_op_f2i64:
    case nir_op_f2u64:
+      assert(type_sz(op[0].type) > 2); /* brw_nir_lower_conversions */
+      if (fixup_64bit_conversion(bld, result, op[0], instr->dest.saturate, devinfo))
+         break;
+      inst = bld.MOV(result, op[0]);
+      inst->saturate = instr->dest.saturate;
+      break;
+
    case nir_op_i2f64:
    case nir_op_i2i64:
    case nir_op_u2f64:
    case nir_op_u2u64:
+      assert(type_sz(op[0].type) > 1); /* brw_nir_lower_conversions */
       if (fixup_64bit_conversion(bld, result, op[0], instr->dest.saturate, devinfo))
          break;
       /* fallthrough */
