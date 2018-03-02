@@ -796,6 +796,47 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_f2f64:
    case nir_op_f2i64:
    case nir_op_f2u64:
+      /* BDW PRM, vol02, Command Reference Instructions, mov - MOVE:
+       *
+       *   "There is no direct conversion from HF to DF or DF to HF.
+       *    Use two instructions and F (Float) as an intermediate type.
+       *
+       *    There is no direct conversion from HF to Q/UQ or Q/UQ to HF.
+       *    Use two instructions and F (Float) or a word integer type
+       *    or a DWord integer type as an intermediate type."
+       */
+      if (nir_src_bit_size(instr->src[0].src) == 16) {
+         fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_F, 1);
+         inst = bld.MOV(tmp, op[0]);
+         inst->saturate = instr->dest.saturate;
+         op[0] = tmp;
+      }
+
+      /* CHV PRM, vol07, 3D Media GPGPU Engine, Register Region Restrictions:
+       *
+       *    "When source or destination is 64b (...), regioning in Align1
+       *     must follow these rules:
+       *
+       *     1. Source and destination horizontal stride must be aligned to
+       *        the same qword.
+       *     (...)"
+       *
+       * This means that conversions from bit-sizes smaller than 64-bit to
+       * 64-bit need to have the source data elements aligned to 64-bit.
+       * This restriction does not apply to BDW and later.
+       */
+      if (type_sz(result.type) == 8 && type_sz(op[0].type) < 8 &&
+          (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
+         fs_reg tmp = bld.vgrf(result.type, 1);
+         tmp = subscript(tmp, op[0].type, 0);
+         inst = bld.MOV(tmp, op[0]);
+         op[0] = tmp;
+      }
+
+      inst = bld.MOV(result, op[0]);
+      inst->saturate = instr->dest.saturate;
+      break;
+
    case nir_op_i2f64:
    case nir_op_i2i64:
    case nir_op_u2f64:
