@@ -1021,11 +1021,16 @@ get_buffer_property(struct gl_shader_program *shProg,
          *val = 0;
          for (unsigned i = 0; i < RESOURCE_UBO(res)->NumUniforms; i++) {
             const char *iname = RESOURCE_UBO(res)->Uniforms[i].IndexName;
-            struct gl_program_resource *uni =
-               _mesa_program_resource_find_name(shProg, GL_UNIFORM, iname,
-                                                NULL);
-            if (!uni)
-               continue;
+            /* IndexName can be NULL if we are using a SPIR-V shader
+             * (ARB_gl_spirv).
+             */
+            if (iname != NULL) {
+               struct gl_program_resource *uni =
+                  _mesa_program_resource_find_name(shProg, GL_UNIFORM, iname,
+                                                   NULL);
+               if (!uni)
+                  continue;
+            }
             (*val)++;
          }
          return 1;
@@ -1057,11 +1062,16 @@ get_buffer_property(struct gl_shader_program *shProg,
          *val = 0;
          for (unsigned i = 0; i < RESOURCE_UBO(res)->NumUniforms; i++) {
             const char *iname = RESOURCE_UBO(res)->Uniforms[i].IndexName;
-            struct gl_program_resource *uni =
-               _mesa_program_resource_find_name(shProg, GL_BUFFER_VARIABLE,
-                                                iname, NULL);
-            if (!uni)
-               continue;
+            /* IndexName can be NULL if we are using a SPIR-V shader
+             * (ARB_gl_spirv).
+             */
+            if (iname != NULL) {
+               struct gl_program_resource *uni =
+                  _mesa_program_resource_find_name(shProg, GL_BUFFER_VARIABLE,
+                                                   iname, NULL);
+               if (!uni)
+                  continue;
+            }
             (*val)++;
          }
          return 1;
