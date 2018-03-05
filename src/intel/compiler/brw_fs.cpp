@@ -3872,6 +3872,57 @@ fs_visitor::lower_integer_multiplication()
    return progress;
 }
 
+/**
+ * The extended Math function does not support 16-bit integer types so we
+ * turn 16-bit math instructions into 32-bit.
+ */
+bool
+fs_visitor::lower_16bit_math()
+{
+   bool progress = false;
+
+   foreach_block_and_inst_safe(block, fs_inst, inst, cfg) {
+      const fs_builder ibld(this, block, inst);
+
+      if (!inst->is_math() ||
+          (inst->dst.type != BRW_REGISTER_TYPE_W &&
+           inst->dst.type != BRW_REGISTER_TYPE_UW))
+         continue;
+
+      brw_reg_type orig_type = inst->dst.type;
+      brw_reg_type lower_type = orig_type == BRW_REGISTER_TYPE_W ?
+         BRW_REGISTER_TYPE_D : BRW_REGISTER_TYPE_UD;
+
+      for (uint32_t i = 0; i < inst->sources; i++) {
+         assert(type_sz(inst->src[i].type) == 2);
+         fs_reg tmp = ibld.vgrf(lower_type);
+         ibld.MOV(tmp, inst->src[i]);
+         inst->src[i] = tmp;
+      }
+
+      fs_reg orig_dst = inst->dst;
+      fs_reg tmp = ibld.vgrf(lower_type);
+      ibld.MOV(tmp, inst->dst);
+      inst->dst = tmp;
+
+      /* Convert the 32-bit result back to 16-bit (honoring alignment
+       * requirements) and store the result in the original destination.
+       */
+      const fs_builder abld = ibld.at(block, inst->next);
+      tmp = abld.vgrf(lower_type);
+      tmp = subscript(tmp, orig_type, 0);
+      abld.MOV(tmp, inst->dst);
+      abld.MOV(orig_dst, tmp);
+
+      progress = true;
+   }
+
+   if (progress)
+      invalidate_live_intervals();
+
+   return progress;
+}
+
 bool
 fs_visitor::lower_minmax()
 {
@@ -6208,6 +6259,8 @@ fs_visitor::optimize()
    OPT(opt_sampler_eot);
 
    OPT(lower_logical_sends);
+
+   OPT(lower_16bit_math);
 
    if (progress) {
       OPT(opt_copy_propagation);

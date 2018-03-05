@@ -171,6 +171,7 @@ public:
    bool lower_conversions();
    bool lower_logical_sends();
    bool lower_integer_multiplication();
+   bool lower_16bit_math();
    bool lower_minmax();
    bool lower_simd_width();
    bool opt_combine_constants();
