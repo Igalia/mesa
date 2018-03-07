@@ -1449,6 +1449,10 @@ link_assign_uniform_storage(struct gl_context *ctx,
    link_set_uniform_initializers(prog, boolean_true);
 }
 
+extern "C" void
+dump_uniform_storage(struct gl_context *ctx,
+                     struct gl_shader_program *prog);
+
 void
 link_assign_uniform_locations(struct gl_shader_program *prog,
                               struct gl_context *ctx)
@@ -1514,4 +1518,6 @@ link_assign_uniform_locations(struct gl_shader_program *prog,
    delete hiddenUniforms;
 
    link_assign_uniform_storage(ctx, prog, uniform_size.num_values);
+
+   dump_uniform_storage(ctx, prog);
 }

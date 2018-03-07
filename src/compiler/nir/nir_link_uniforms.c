@@ -275,6 +275,39 @@ _var_is_ssbo(nir_variable *var)
    return (var->data.mode == nir_var_shader_storage);
 }
 
+void
+dump_uniform_storage(struct gl_context *ctx,
+                     struct gl_shader_program *prog);
+
+void
+dump_uniform_storage(struct gl_context *ctx,
+                     struct gl_shader_program *prog)
+{
+   for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
+      struct gl_uniform_storage *uniform =
+         prog->data->UniformStorage + i;
+
+      printf("%u: loc=%i, type=%s, elems=%u, storage offset=%zi, name=%s",
+             i,
+             uniform->remap_location,
+             glsl_get_type_name(uniform->type),
+             uniform->array_elements,
+             uniform->storage - prog->data->UniformDataSlots,
+             uniform->name);
+
+      for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+         if (!uniform->opaque[stage].active)
+            continue;
+
+         printf(", %s=%i",
+                _mesa_shader_stage_to_string(stage),
+                uniform->opaque[stage].index);
+      }
+
+      fputc('\n', stdout);
+   }
+}
+
 /**
  * Creates the neccessary entries in UniformStorage for the uniform. Returns
  * the number of locations used or -1 on failure.
@@ -520,6 +553,8 @@ nir_link_uniforms(struct gl_context *ctx,
 
    nir_setup_uniform_remap_tables(ctx, prog);
    nir_set_uniform_initializers(ctx, prog);
+
+   dump_uniform_storage(ctx, prog);
 
    return true;
 }
