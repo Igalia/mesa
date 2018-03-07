@@ -1162,8 +1162,9 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
 
    case nir_op_i2b:
-   case nir_op_f2b:
-      if (nir_src_bit_size(instr->src[0].src) == 64) {
+   case nir_op_f2b: {
+      uint32_t bit_size = nir_src_bit_size(instr->src[0].src);
+      if (bit_size == 64) {
          /* two-argument instructions can't take 64-bit immediates */
          fs_reg zero;
          fs_reg tmp;
@@ -1184,14 +1185,21 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
           */
          bld.CMP(tmp, op[0], zero, BRW_CONDITIONAL_NZ);
          bld.MOV(result, subscript(tmp, BRW_REGISTER_TYPE_UD, 0));
+      } else if (instr->op == nir_op_f2b) {
+         /* FIXME: probably need brw_imm_hf for f162b */
+         bld.CMP(result, op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ);
       } else {
-         if (instr->op == nir_op_f2b) {
-            bld.CMP(result, op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ);
-         } else {
+         assert(instr->op == nir_op_i2b);
+         if (bit_size == 32) {
             bld.CMP(result, op[0], brw_imm_d(0), BRW_CONDITIONAL_NZ);
+         } else if (bit_size == 16) {
+            bld.CMP(result, op[0], brw_imm_w(0), BRW_CONDITIONAL_NZ);
+         } else {
+            unreachable("unsupported bit size");
          }
       }
       break;
+   }
 
    case nir_op_ftrunc:
       inst = bld.RNDZ(result, op[0]);
