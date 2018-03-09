@@ -4685,6 +4685,17 @@ linker_optimisation_loop(struct gl_context *ctx, exec_list *ir,
       }
 }
 
+enum block_type {
+   BLOCK_UBO,
+   BLOCK_SSBO
+};
+
+extern "C" void
+dump_uniform_blocks(struct gl_context *ctx,
+                    struct gl_shader_program *prog,
+                    enum block_type block_type);
+
+
 void
 link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
 {
@@ -4971,6 +4982,9 @@ link_shaders(struct gl_context *ctx, struct gl_shader_program *prog)
    /* Process SSBOs */
    if (!interstage_cross_validate_uniform_blocks(prog, true))
       goto done;
+
+   dump_uniform_blocks(ctx, prog, BLOCK_UBO);
+   dump_uniform_blocks(ctx, prog, BLOCK_SSBO);
 
    /* Do common optimization before assigning storage for attributes,
     * uniforms, and varyings.  Later optimization could possibly make

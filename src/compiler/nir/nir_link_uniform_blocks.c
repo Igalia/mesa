@@ -95,6 +95,68 @@ enum block_type {
    BLOCK_SSBO
 };
 
+void
+dump_uniform_block(struct gl_uniform_block *block,
+                   const char *prefix,
+                   unsigned index);
+
+void
+dump_uniform_block(struct gl_uniform_block *block,
+                   const char *prefix,
+                   unsigned index)
+{
+   fprintf(stderr, "%s%u: binding=%i, numuniforms=%i, buffersize=%i, stageref=%u,"
+           " linearized_array_index=%u, _packing=%i, _rowmajor=%i, name=%s\n",
+           prefix, index,
+           block->Binding, block->NumUniforms, block->UniformBufferSize, block->stageref,
+           block->linearized_array_index, block->_Packing, block->_RowMajor, block->Name);
+}
+
+
+void
+dump_uniform_buffer_variable(struct gl_uniform_buffer_variable *var,
+                             unsigned index);
+
+void
+dump_uniform_buffer_variable(struct gl_uniform_buffer_variable *var,
+                             unsigned index)
+{
+   fprintf(stderr, "%u: type=%s, offset=%i, rowmajor=%i, name=%s, indexname=%s\n",
+           index, glsl_get_type_name(var->Type),
+           var->Offset, var->RowMajor,
+           var->Name, var->IndexName);
+}
+
+void
+dump_uniform_blocks(struct gl_context *ctx,
+                    struct gl_shader_program *prog,
+                    enum block_type block_type);
+
+void
+dump_uniform_blocks(struct gl_context *ctx,
+                    struct gl_shader_program *prog,
+                    enum block_type block_type)
+{
+   struct gl_uniform_block *blocks = block_type == BLOCK_UBO ?
+      prog->data->UniformBlocks : prog->data->ShaderStorageBlocks;
+   unsigned num_blocks = block_type == BLOCK_UBO ?
+      prog->data->NumUniformBlocks : prog->data->NumShaderStorageBlocks;
+   const char *prefix = block_type == BLOCK_UBO ? "ubo" : "ssbo";
+
+   for (unsigned i = 0; i < num_blocks; i++) {
+      struct gl_uniform_block *block = blocks + i;
+
+      dump_uniform_block(block, prefix, i);
+
+      for (unsigned c = 0; c < blocks->NumUniforms; c++) {
+         struct gl_uniform_buffer_variable *var = block->Uniforms + c;
+
+         fprintf(stderr, "\t");
+         dump_uniform_buffer_variable(var, c);
+      }
+   }
+}
+
 static bool
 _glsl_type_is_leaf(const struct glsl_type *type)
 {
@@ -671,5 +733,7 @@ nir_link_uniform_blocks(struct gl_context *ctx,
       return false;
    }
 
+   dump_uniform_blocks(ctx, prog, BLOCK_UBO);
+   dump_uniform_blocks(ctx, prog, BLOCK_SSBO);
    return true;
 }
