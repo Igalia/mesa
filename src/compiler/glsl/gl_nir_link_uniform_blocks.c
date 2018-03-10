@@ -84,6 +84,28 @@
  * Additionally, the GLSL (IR) path is already handling and calling them
  * uniform blocks (ie: struct gl_uniform_block can be a individual ubo or
  * ssbo), so for consistency we are doing the same here.
+ *
+ * 3. The code assumes that all structure members have an Offset decoration,
+ * all arrays have an ArrayStride and all matrices have a MatrixStride, even
+ * for nested structures. That way we don’t have to worry about the different
+ * layout modes. This is explicitly required in the SPIR-V spec:
+ *
+ *   "Composite objects in the UniformConstant, Uniform, and PushConstant
+ *    Storage Classes must be explicitly laid out. The following apply to all
+ *    the aggregate and matrix types describing such an object, recursively
+ *    through their nested types:
+ *
+ *    – Each structure-type member must have an Offset Decoration.
+ *    – Each array type must have an ArrayStride Decoration.
+ *    – Each structure-type member that is a matrix or array-of-matrices must
+ *      have be decorated with a MatrixStride Decoration, and one of the
+ *      RowMajor or ColMajor Decorations."
+ *
+ * Additionally, the structure members are expected to be presented in
+ * increasing offset order:
+ *
+ *   "a structure has lower-numbered members appearing at smaller offsets than
+ *    higher-numbered members"
  */
 
 /*
@@ -94,6 +116,53 @@ enum block_type {
    BLOCK_UBO,
    BLOCK_SSBO
 };
+
+static bool
+_glsl_type_is_leaf(const struct glsl_type *type)
+{
+   if (glsl_type_is_struct(type) ||
+       (glsl_type_is_array(type) &&
+        (glsl_type_is_array(glsl_get_array_element(type)) ||
+         glsl_type_is_struct(glsl_get_array_element(type))))) {
+      return false;
+   } else {
+      return true;
+   }
+}
+
+static unsigned
+_get_type_size(const struct glsl_type *type,
+               bool row_major,
+               enum glsl_interface_packing packing)
+{
+   /* If the type is a struct then the members are supposed to presented in
+    * increasing order of offset so we can just look at the last member.
+    */
+   if (glsl_type_is_struct(type)) {
+      unsigned length = glsl_get_length(type);
+      if (length > 0) {
+         return (glsl_get_struct_field_offset(type, length - 1) +
+                 _get_type_size(glsl_get_struct_field(type, length - 1),
+                                row_major, packing));
+      } else {
+         return 0;
+      }
+   }
+
+   /* FIXME, this is not correct for SPIR-V because in that case the shader
+    * can have completely custom packing with its own array and matrix stride.
+    */
+
+   switch(packing) {
+   case GLSL_INTERFACE_PACKING_STD140:
+      return glsl_type_std140_size(type, row_major);
+   case GLSL_INTERFACE_PACKING_STD430:
+      return glsl_type_std430_size(type, row_major);
+   default:
+      /* gl_spirv doesn't support packed/shared */
+      unreachable("Wrong interface packing");
+   }
+}
 
 static bool
 link_blocks_are_compatible(const struct gl_uniform_block *a,
@@ -298,6 +367,114 @@ _var_is_ssbo(nir_variable *var)
 }
 
 /*
+ * Iterates @type in order to compute how many individual leaf variables
+ * contains.
+ *
+ * FIXME: probably we want to expand this to a kind of visitor, as with the
+ * glsl linker, as this could be useful for filling the variables of each
+ * block.
+ */
+static void
+iterate_type_count_variables(const struct glsl_type *type,
+                             unsigned int *num_variables)
+{
+   for (unsigned i = 0; i < glsl_get_length(type); i++) {
+      const struct glsl_type *field_type;
+
+      if (glsl_type_is_struct(type))
+         field_type = glsl_get_struct_field(type, i);
+      else
+         field_type = glsl_get_array_element(type);
+
+      /* FIXME: this would the the placeholder for something more generic that
+       * just count variables.
+       */
+      if (_glsl_type_is_leaf(field_type))
+         (*num_variables)++;
+      else
+         iterate_type_count_variables(field_type, num_variables);
+   }
+}
+
+
+static void
+fill_individual_variable(const struct glsl_type *type,
+                         const struct glsl_type *parent_type,
+                         unsigned int index_in_parent,
+                         struct gl_uniform_buffer_variable *variables,
+                         unsigned int *variable_index,
+                         unsigned int *offset,
+                         struct gl_shader_program *prog,
+                         struct gl_uniform_block *block)
+{
+   /* ARB_gl_spirv: allowed to ignore names */
+   variables[*variable_index].Name = NULL;
+   variables[*variable_index].IndexName = NULL;
+
+   variables[*variable_index].Type = type;
+
+   /* FIXME: pending to manage INHERITED, although probably it doesn't make
+    * sense on SPIR-V (see comment at _RowMajor filling) */
+   if (glsl_type_is_matrix(type)) {
+      /* See comments on _RowMajor. RowMajor is a decoration that member
+       * structure type. Right now we are not getting it directly from the type,
+       * but from the parent type (FIXME: that is somewhat out of sync, and
+       * perhaps it should be fixed)
+       */
+      variables[*variable_index].RowMajor =
+         (glsl_get_struct_field_matrix_layout(parent_type, index_in_parent) ==
+          GLSL_MATRIX_LAYOUT_ROW_MAJOR);
+   } else {
+      /* default value, better that potential meaningless garbage */
+      variables[*variable_index].RowMajor = false;
+   }
+
+   /**
+    * Although ARB_gl_spirv points that the offsets need to be included (see
+    * "Mappings of layouts"), in the end those are only valid for
+    * root-variables, and we would need to recompute offsets when we iterate
+    * over non-trivial types, like aoa. So we compute the offset always.
+    */
+   variables[*variable_index].Offset = *offset;
+   (*offset) += _get_type_size(type, variables[*variable_index].RowMajor,
+                               block->_Packing);
+
+   (*variable_index)++;
+}
+
+static void
+iterate_type_fill_variables(const struct glsl_type *type,
+                            struct gl_uniform_buffer_variable *variables,
+                            unsigned int *variable_index,
+                            unsigned int *offset,
+                            struct gl_shader_program *prog,
+                            struct gl_uniform_block *block)
+{
+   unsigned int base_offset = *offset;
+
+   for (unsigned i = 0; i < glsl_get_length(type); i++) {
+      const struct glsl_type *field_type;
+
+      if (glsl_type_is_struct(type)) {
+         field_type = glsl_get_struct_field(type, i);
+         *offset = base_offset + glsl_get_struct_field_offset(type, i);
+      } else {
+         field_type = glsl_get_array_element(type);
+      }
+
+
+      /* FIXME: this would the the placeholder for something more generic that
+       * just fill variables.
+       */
+      if (_glsl_type_is_leaf(field_type)) {
+         fill_individual_variable(field_type, type, i, variables, variable_index, offset, prog, block);
+      } else {
+         iterate_type_fill_variables(field_type, variables, variable_index, offset, prog, block);
+      }
+   }
+}
+
+/*
  * In opposite to the equivalent glsl one, this one only allocates the needed
  * space. We do a initial count here, just to avoid re-allocating for each one
  * we find.
@@ -324,7 +501,11 @@ _allocate_uniform_blocks(void *mem_ctx,
       unsigned buffer_count = aoa_size == 0 ? 1 : aoa_size;
 
       *num_blocks += buffer_count;
-      *num_variables += glsl_get_length(type) * buffer_count;
+
+      unsigned int block_variables = 0;
+      iterate_type_count_variables(type, &block_variables);
+
+      *num_variables += block_variables * buffer_count;
    }
 
    if (*num_blocks == 0) {
@@ -342,22 +523,6 @@ _allocate_uniform_blocks(void *mem_ctx,
 
    *out_blks = blocks;
    *out_variables = variables;
-}
-
-static unsigned
-_get_type_size(const struct glsl_type *type,
-               bool row_major,
-               enum glsl_interface_packing packing)
-{
-   switch(packing) {
-   case GLSL_INTERFACE_PACKING_STD140:
-      return glsl_type_std140_size(type, row_major);
-   case GLSL_INTERFACE_PACKING_STD430:
-      return glsl_type_std430_size(type, row_major);
-   default:
-      /* gl_spirv doesn't support packed/shared */
-      unreachable("Wrong interface packing");
-   }
 }
 
 static void
@@ -379,61 +544,33 @@ _fill_block(struct gl_uniform_block *block,
     */
    block->Binding = var->data.binding + array_index;
    block->Uniforms = &variables[*variable_index];
-   block->NumUniforms = glsl_get_length(type);
-   /* FIXME: right now spirv_to_nir pass isn't filling row_major one
-    * properly. It is not affecting us as RowMajor for each variable is
-    * properly filled, but it would be good to get the proper value here
+
+
+   /* From SPIR-V 1.0 spec, 3.20, Decoration:
+    *    "RowMajor
+    *     Applies only to a member of a structure type.
+    *     Only valid on a matrix or array whose most basic
+    *     element is a matrix. Indicates that components
+    *     within a row are contiguous in memory."
+    *
+    * So the SPIR-V binary doesn't report if the block was defined as RowMajor
+    * or not. In any case, for the components it is mandatory to set it, so it
+    * is not needed a default RowMajor value to know it.
+    *
+    * Setting to the default, but it should be ignored.
     */
-   block->_RowMajor = glsl_get_row_major(type);
+   block->_RowMajor = false;
    block->_Packing = glsl_get_interface_packing(type);
 
    /* FIXME: default values pending to fill  */
    block->linearized_array_index = 0;
 
-   block->UniformBufferSize = 0;
-   for (unsigned i = 0; i < glsl_get_length(type); i++) {
-      const struct glsl_type *field_type = glsl_get_struct_field(type, i);
+   unsigned old_variable_index = *variable_index;
+   unsigned offset = 0;
+   iterate_type_fill_variables(type, variables, variable_index, &offset, prog, block);
+   block->NumUniforms = *variable_index - old_variable_index;
 
-      /* ARB_gl_spirv: allowed to ignore names */
-      variables[*variable_index].Name = NULL;
-      variables[*variable_index].IndexName = NULL;
-
-      variables[*variable_index].Type = field_type;
-
-      /**
-       * From ARB_gl_spirv spec:
-       *   "Mapping of layouts
-       *    std140/std430 -> explicit *Offset*, *ArrayStride*, and
-       *           *MatrixStride* Decoration on struct members"
-       *
-       *   "A variable in the *Uniform* Storage Class decorated as a
-       *   *Block* must be explicitly laid out using the *Offset*,
-       *   *ArrayStride*, and MatrixStride* decorations. If the variable
-       *   is decorated as a BufferBlock*, its offsets and strides must
-       *   not contradict std430 alignment and minimum offset
-       *   requirements."
-       *
-       * So we use the offsets coming from the glsl_type, that should
-       * have been filled during the spirv to nir pass.
-       */
-      variables[*variable_index].Offset = glsl_get_struct_field_offset(type, i);
-
-      /* FIXME: untested. */
-      /* FIXME: pending to manage INHERITED */
-      variables[*variable_index].RowMajor =
-         (glsl_get_struct_field_matrix_layout(type, i) ==
-          GLSL_MATRIX_LAYOUT_ROW_MAJOR);
-
-      (*variable_index)++;
-   }
-
-   /* At this point, to compute the size, we need to compute the size of
-    * the last element of the block, add it to the last offset and
-    * align
-    */
-   const struct glsl_type *last_field_type = glsl_get_struct_field(type, glsl_get_length(type) - 1);
-   block->UniformBufferSize = variables[*variable_index - 1].Offset +
-      _get_type_size(last_field_type, block->_RowMajor, block->_Packing);
+   block->UniformBufferSize =  _get_type_size(type, block->_RowMajor, block->_Packing);
    block->UniformBufferSize = glsl_align(block->UniformBufferSize, 16);
 }
 
