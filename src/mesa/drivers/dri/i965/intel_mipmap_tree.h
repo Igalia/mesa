@@ -379,6 +379,27 @@ enum intel_miptree_create_flags {
     * that the miptree will be created with mt->aux_usage == NONE.
     */
    MIPTREE_CREATE_NO_AUX   = 1 << 2,
+
+   /** Create a second miptree for the compressed pixels (Gen7 only)
+    *
+    * On Gen7, we need to store 2 miptrees for some compressed
+    * formats so we can handle rendering as well as getting the
+    * compressed image data. This flag indicates that the miptree
+    * is expected to hold compressed data for the latter case.
+    */
+   MIPTREE_CREATE_ETC      = 1 << 3,
+};
+
+enum intel_miptree_upload_flags {
+   MIPTREE_UPLOAD_DEFAULT = 0,
+
+   /** Upload the miptree that holds the compressed pixels (Gen 7 only)
+    *
+    * On Gen7, sometimes we need to map the miptree that stores the
+    * image data for the rendering and sometimes the miptree that holds
+    * the compressed data. This flag is for the latter case.
+    */
+   MIPTREE_UPLOAD_ETC,
 };
 
 struct intel_mipmap_tree *intel_miptree_create(struct brw_context *brw,
