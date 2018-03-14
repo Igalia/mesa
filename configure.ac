@@ -90,7 +90,6 @@ LIBVA_REQUIRED=0.38.0
 VDPAU_REQUIRED=1.1
 WAYLAND_REQUIRED=1.11
 WAYLAND_PROTOCOLS_REQUIRED=1.8
-XCB_REQUIRED=1.9.3
 XCBDRI2_REQUIRED=1.8
 XCBDRI3_REQUIRED=1.13
 XCBGLX_REQUIRED=1.8.1
@@ -1850,7 +1849,7 @@ fi
 if test x"$enable_dri3" = xyes; then
     DEFINES="$DEFINES -DHAVE_DRI3"
 
-    dri3_modules="x11-xcb xcb >= $XCB_REQUIRED xcb-dri3 >= $XCBDRI3_REQUIRED xcb-xfixes xcb-present >= $XCBPRESENT_REQUIRED xcb-sync xshmfence >= $XSHMFENCE_REQUIRED"
+    dri3_modules="x11-xcb xcb xcb-dri3 >= $XCBDRI3_REQUIRED xcb-xfixes xcb-present >= $XCBPRESENT_REQUIRED xcb-sync xshmfence >= $XSHMFENCE_REQUIRED"
     PKG_CHECK_MODULES([XCB_DRI3], [$dri3_modules])
 fi
 
