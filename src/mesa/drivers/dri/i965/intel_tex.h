@@ -55,4 +55,12 @@ intel_miptree_create_for_teximage(struct brw_context *brw,
 void intel_finalize_mipmap_tree(struct brw_context *brw,
                                 struct gl_texture_object *tex_obj);
 
+void intel_map_texture_image_for_upload(struct gl_context *ctx,
+                                        struct gl_texture_image *tex_image,
+                                        GLuint slice,
+                                        GLuint x, GLuint y, GLuint w, GLuint h,
+                                        GLbitfield mode,
+                                        GLubyte **map,
+                                        GLint *out_stride,
+                                        enum intel_miptree_upload_flags flags);
 #endif
