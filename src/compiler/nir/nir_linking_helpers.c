@@ -571,5 +571,12 @@ nir_build_program_resource_list(struct gl_context *ctx,
          return;
    }
 
+   /* Add program shader storage blocks. */
+   for (unsigned i = 0; i < prog->data->NumShaderStorageBlocks; i++) {
+      if (!add_program_resource(prog, resource_set, GL_SHADER_STORAGE_BLOCK,
+                                &prog->data->ShaderStorageBlocks[i], 0))
+         return;
+   }
+
    _mesa_set_destroy(resource_set, NULL);
 }
