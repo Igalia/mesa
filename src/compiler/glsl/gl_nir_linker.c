@@ -65,6 +65,20 @@ nir_build_program_resource_list(struct gl_context *ctx,
    }
 
 
+   /* Add program uniform blocks. */
+   for (unsigned i = 0; i < prog->data->NumUniformBlocks; i++) {
+      if (!link_util_add_program_resource(prog, resource_set, GL_UNIFORM_BLOCK,
+                                          &prog->data->UniformBlocks[i], 0))
+         return;
+   }
+
+   /* Add program shader storage blocks. */
+   for (unsigned i = 0; i < prog->data->NumShaderStorageBlocks; i++) {
+      if (!link_util_add_program_resource(prog, resource_set, GL_SHADER_STORAGE_BLOCK,
+                                          &prog->data->ShaderStorageBlocks[i], 0))
+         return;
+   }
+
    _mesa_set_destroy(resource_set, NULL);
 }
 
