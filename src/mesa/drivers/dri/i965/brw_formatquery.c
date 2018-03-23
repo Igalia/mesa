@@ -58,7 +58,7 @@ brw_query_samples_for_format(struct gl_context *ctx, GLenum target,
          ctx->Driver.ChooseTextureFormat(ctx, GL_TEXTURE_2D, internalFormat,
                                          GL_NONE, GL_NONE);
 
-      if (_mesa_get_format_bytes(format) > 8) {
+      if (!_mesa_is_depth_format(format)) {
          samples[0] = 4;
          return 1;
       } else {
