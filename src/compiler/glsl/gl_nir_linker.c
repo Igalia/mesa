@@ -60,6 +60,9 @@ nir_build_program_resource_list(struct gl_context *ctx,
       if (uniform->hidden)
          continue;
 
+      /* FIXME: ubo and ssbo resource count is different. Here is missing a
+       * equivalent to should_add_buffer_variable (linker.cpp)
+       */
       if (!link_util_add_program_resource(prog, resource_set, GL_UNIFORM, uniform,
                                           uniform->active_shader_mask)) {
          return;
