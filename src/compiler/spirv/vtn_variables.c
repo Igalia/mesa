@@ -1548,18 +1548,14 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
     */
    if (dec->decoration == SpvDecorationLocation) {
       unsigned location = dec->literals[0];
-      bool is_vertex_input;
       if (b->shader->info.stage == MESA_SHADER_FRAGMENT &&
           vtn_var->mode == vtn_variable_mode_output) {
-         is_vertex_input = false;
          location += FRAG_RESULT_DATA0;
       } else if (b->shader->info.stage == MESA_SHADER_VERTEX &&
                  vtn_var->mode == vtn_variable_mode_input) {
-         is_vertex_input = true;
          location += VERT_ATTRIB_GENERIC0;
       } else if (vtn_var->mode == vtn_variable_mode_input ||
                  vtn_var->mode == vtn_variable_mode_output) {
-         is_vertex_input = false;
          location += vtn_var->patch ? VARYING_SLOT_PATCH0 : VARYING_SLOT_VAR0;
       } else if (vtn_var->mode != vtn_variable_mode_uniform) {
          vtn_warn("Location must be on input, output, uniform, sampler or "
@@ -1573,14 +1569,10 @@ var_decoration_cb(struct vtn_builder *b, struct vtn_value *val, int member,
       } else {
          /* This handles the structure member case */
          assert(vtn_var->members);
-         unsigned length =
-            glsl_get_length(glsl_without_array(vtn_var->type->type));
-         for (unsigned i = 0; i < length; i++) {
-            vtn_var->members[i]->data.location = location;
-            location +=
-               glsl_count_attribute_slots(vtn_var->members[i]->interface_type,
-                                          is_vertex_input);
-         }
+         if (member == -1)
+            vtn_var->base_location = location;
+         else
+            vtn_var->members[member]->data.location = location;
       }
       return;
    } else {
@@ -1763,6 +1755,40 @@ is_per_vertex_inout(const struct vtn_variable *var, gl_shader_stage stage)
 }
 
 static void
+add_missing_member_locations(struct vtn_variable *var,
+                             bool is_vertex_input)
+{
+   unsigned length =
+      glsl_get_length(glsl_without_array(var->type->type));
+   int location = var->base_location;
+
+   for (unsigned i = 0; i < length; i++) {
+      /* From the Vulkan spec:
+       *
+       * “If the structure type is a Block but without a Location, then each
+       *  of its members must have a Location decoration.”
+       */
+      assert(var->base_location != -1 ||
+             var->members[i]->data.location != -1);
+
+      /* From the Vulkan spec:
+       *
+       * “Any member with its own Location decoration is assigned that
+       *  location. Each remaining member is assigned the location after the
+       *  immediately preceding member in declaration order.”
+       */
+      if (var->members[i]->data.location != -1)
+         location = var->members[i]->data.location;
+      else
+         var->members[i]->data.location = location;
+
+      location +=
+         glsl_count_attribute_slots(var->members[i]->interface_type,
+                                    is_vertex_input);
+   }
+}
+
+static void
 vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                     struct vtn_type *ptr_type, SpvStorageClass storage_class,
                     nir_constant *initializer)
@@ -1802,6 +1828,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    struct vtn_variable *var = rzalloc(b, struct vtn_variable);
    var->type = type;
    var->mode = mode;
+   var->base_location = -1;
 
    vtn_assert(val->value_type == vtn_value_type_pointer);
    val->pointer = vtn_pointer_for_variable(b, var, ptr_type);
@@ -1924,6 +1951,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                interface_type->members[i]->type;
             var->members[i]->data.mode = nir_mode;
             var->members[i]->data.patch = var->patch;
+            var->members[i]->data.location = -1;
 
             if (initializer) {
                assert(i < initializer->num_elements);
@@ -1965,6 +1993,14 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    }
 
    vtn_foreach_decoration(b, val, var_decoration_cb, var);
+
+   if ((var->mode == vtn_variable_mode_input ||
+        var->mode == vtn_variable_mode_output) &&
+       var->members) {
+      bool is_vertex_input = (b->shader->info.stage == MESA_SHADER_VERTEX &&
+                              var->mode == vtn_variable_mode_input);
+      add_missing_member_locations(var, is_vertex_input);
+   }
 
    if (var->mode == vtn_variable_mode_uniform ||
        var->mode == vtn_variable_mode_ubo ||
