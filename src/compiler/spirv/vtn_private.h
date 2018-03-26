@@ -460,6 +460,12 @@ struct vtn_variable {
    nir_variable *var;
    nir_variable **members;
 
+   /* If the variable is a struct with a location set on it then this will be
+    * stored here. This will be used to calculate locations for members that
+    * don’t have their own explicit location.
+    */
+   int base_location;
+
    int shared_location;
 
    /**
