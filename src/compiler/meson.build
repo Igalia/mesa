@@ -29,6 +29,8 @@ files_libcompiler = files(
   'builtin_type_macros.h',
   'glsl_types.cpp',
   'glsl_types.h',
+  'linker_util.h',
+  'linker_util.cpp',
   'nir_types.cpp',
   'nir_types.h',
   'shader_enums.c',
