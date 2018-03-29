@@ -569,13 +569,14 @@ brw_initialize_context_constants(struct brw_context *brw)
       ctx->Const.MaxSamples = 4;
       ctx->Const.MaxColorTextureSamples = 4;
       ctx->Const.MaxIntegerSamples = 4;
+      ctx->Const.MaxDepthTextureSamples = _mesa_is_gles(ctx) ? ctx->Const.MaxSamples : max_samples;
    } else {
       ctx->Const.MaxSamples = max_samples;
       ctx->Const.MaxColorTextureSamples = max_samples;
       ctx->Const.MaxIntegerSamples = max_samples;
+      ctx->Const.MaxDepthTextureSamples = max_samples;
    }
 
-   ctx->Const.MaxDepthTextureSamples = max_samples;
    ctx->Const.MaxImageSamples = 0;
 
    /* gen6_set_sample_maps() sets SampleMap{2,4,8}x variables which are used
