@@ -23,6 +23,7 @@
  */
 #include "main/mtypes.h"
 #include "linker_util.h"
+#include "util/set.h"
 
 void
 linker_error(struct gl_shader_program *prog, const char *fmt, ...)
@@ -48,4 +49,40 @@ linker_warning(struct gl_shader_program *prog, const char *fmt, ...)
    ralloc_vasprintf_append(&prog->data->InfoLog, fmt, ap);
    va_end(ap);
 
+}
+
+bool
+add_program_resource(struct gl_shader_program *prog,
+                     struct set *resource_set,
+                     GLenum type, const void *data, uint8_t stages)
+{
+   assert(data);
+
+   /* If resource already exists, do not add it again. */
+   if (_mesa_set_search(resource_set, data))
+      return true;
+
+   prog->data->ProgramResourceList =
+      reralloc(prog->data,
+               prog->data->ProgramResourceList,
+               gl_program_resource,
+               prog->data->NumProgramResourceList + 1);
+
+   if (!prog->data->ProgramResourceList) {
+      linker_error(prog, "Out of memory during linking.\n");
+      return false;
+   }
+
+   struct gl_program_resource *res =
+      &prog->data->ProgramResourceList[prog->data->NumProgramResourceList];
+
+   res->Type = type;
+   res->Data = data;
+   res->StageReferences = stages;
+
+   prog->data->NumProgramResourceList++;
+
+   _mesa_set_add(resource_set, data);
+
+   return true;
 }
