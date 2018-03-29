@@ -54,18 +54,16 @@ brw_query_samples_for_format(struct gl_context *ctx, GLenum target,
       return 3;
 
    case 7: {
-      mesa_format format =
-         ctx->Driver.ChooseTextureFormat(ctx, GL_TEXTURE_2D, internalFormat,
-                                         GL_NONE, GL_NONE);
+      mesa_format format = _mesa_base_tex_format(ctx, internalFormat);
 
-      if (_mesa_get_format_bytes(format) > 8) {
+      if (!_mesa_is_depth_or_stencil_format(format)) {
          samples[0] = 4;
          return 1;
-      } else {
-         samples[0] = 8;
-         samples[1] = 4;
-         return 2;
       }
+
+      samples[0] = ctx->Const.MaxDepthTextureSamples;
+      samples[1] = 4;
+      return 2;
    }
 
    case 6:
