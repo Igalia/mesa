@@ -152,6 +152,8 @@ void brw_nir_analyze_ubo_ranges(const struct brw_compiler *compiler,
 
 bool brw_nir_opt_peephole_ffma(nir_shader *shader);
 
+bool brw_nir_lower_16bit_math(nir_shader *shader);
+
 nir_shader *brw_nir_optimize(nir_shader *nir,
                              const struct brw_compiler *compiler,
                              bool is_scalar);
