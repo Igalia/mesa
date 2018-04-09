@@ -78,6 +78,8 @@ constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
            j++) {
          if (load_const->def.bit_size == 64)
             src[i].u64[j] = load_const->value.u64[instr->src[i].swizzle[j]];
+         else if (load_const->def.bit_size == 16)
+            src[i].u16[j] = load_const->value.u16[instr->src[i].swizzle[j]];
          else
             src[i].u32[j] = load_const->value.u32[instr->src[i].swizzle[j]];
       }
