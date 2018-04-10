@@ -638,6 +638,8 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
                         nir_lower_isign64 |
                         nir_lower_divmod64);
 
+   brw_nir_lower_16bit_int_math(nir);
+
    nir = brw_nir_optimize(nir, compiler, is_scalar);
 
    if (is_scalar) {
