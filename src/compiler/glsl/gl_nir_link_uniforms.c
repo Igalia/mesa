@@ -36,6 +36,8 @@
  * normal uniforms as mandatory, and so on).
  */
 
+#define UNMAPPED_UNIFORM_LOC ~0u
+
 static void
 nir_setup_uniform_remap_tables(struct gl_context *ctx,
                                struct gl_shader_program *prog)
@@ -57,6 +59,9 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
    /* Reserve all the explicit locations of the active uniforms. */
    for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
       struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
+
+      if (prog->data->UniformStorage[i].remap_location == UNMAPPED_UNIFORM_LOC)
+         continue;
 
       /* How many new entries for this uniform? */
       const unsigned entries = MAX2(1, uniform->array_elements);
@@ -302,8 +307,12 @@ nir_link_uniform(struct gl_context *ctx,
       }
       uniform->active_shader_mask |= 1 << stage;
 
-      /* Uniform has an explicit location */
-      uniform->remap_location = location;
+      if (location >= 0) {
+         /* Uniform has an explicit location */
+         uniform->remap_location = location;
+      } else {
+         uniform->remap_location = UNMAPPED_UNIFORM_LOC;
+      }
 
       /* @FIXME: the initialization of the following will be done as we
        * implement support for their specific features, like SSBO, atomics,
