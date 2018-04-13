@@ -77,6 +77,54 @@ nir_setup_uniform_remap_tables(struct gl_context *ctx,
          data_pos += num_slots;
       }
    }
+
+   /* Reserve locations for rest of the uniforms. */
+   for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
+      struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
+
+      if (uniform->is_shader_storage)
+         continue;
+
+      /* Built-in uniforms should not get any location. */
+      if (uniform->builtin)
+         continue;
+
+      /* Explicit ones have been set already. */
+      if (uniform->remap_location != UNMAPPED_UNIFORM_LOC)
+         continue;
+
+      /* How many new entries for this uniform? */
+      const unsigned entries = MAX2(1, uniform->array_elements);
+
+      /* @FIXME: By now, we add un-assigned uniform locations to the end of
+       * the uniform file. We need to keep track of empty locations and use
+       * them.
+       */
+      unsigned chosen_location = prog->NumUniformRemapTable;
+
+      /* resize remap table to fit new entries */
+      prog->UniformRemapTable =
+         reralloc(prog,
+                  prog->UniformRemapTable,
+                  struct gl_uniform_storage *,
+                  prog->NumUniformRemapTable + entries);
+      prog->NumUniformRemapTable += entries;
+
+      /* set the base location in remap table for the uniform */
+      uniform->remap_location = chosen_location;
+
+      unsigned num_slots = glsl_get_component_slots(uniform->type);
+
+      uniform->storage = &data[data_pos];
+
+      /* Set remap table entries point to correct gl_uniform_storage. */
+      for (unsigned j = 0; j < entries; j++) {
+         unsigned element_loc = uniform->remap_location + j;
+         prog->UniformRemapTable[element_loc] = uniform;
+
+         data_pos += num_slots;
+      }
+   }
 }
 
 static struct gl_uniform_storage *
