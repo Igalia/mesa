@@ -938,14 +938,29 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
           * Predicated OR ORs 1.0 (0x3f800000) with the sign bit if val is not
           * zero.
           */
-         bld.CMP(bld.null_reg_f(), op[0], brw_imm_f(0.0f), BRW_CONDITIONAL_NZ);
+         fs_reg zero, one_mask, sign_mask;
+         brw_reg_type reg_type;
+         if (type_sz(op[0].type) == 4) {
+            zero = brw_imm_f(0.0f);
+            one_mask = brw_imm_ud(0x3f800000);
+            sign_mask = brw_imm_ud(0x80000000);
+            reg_type = BRW_REGISTER_TYPE_UD;
+         } else {
+            assert(type_sz(op[0].type) == 2);
+            zero = retype(brw_imm_uw(0), BRW_REGISTER_TYPE_HF);
+            one_mask = brw_imm_uw(0x3c00);
+            sign_mask = brw_imm_uw(0x8000);
+            reg_type = BRW_REGISTER_TYPE_UW;
+         }
 
-         fs_reg result_int = retype(result, BRW_REGISTER_TYPE_UD);
-         op[0].type = BRW_REGISTER_TYPE_UD;
-         result.type = BRW_REGISTER_TYPE_UD;
-         bld.AND(result_int, op[0], brw_imm_ud(0x80000000u));
+         bld.CMP(bld.null_reg_f(), op[0], zero, BRW_CONDITIONAL_NZ);
 
-         inst = bld.OR(result_int, result_int, brw_imm_ud(0x3f800000u));
+         fs_reg result_int = retype(result, reg_type);
+         op[0].type = reg_type;
+         result.type = reg_type;
+         bld.AND(result_int, op[0], sign_mask);
+
+         inst = bld.OR(result_int, result_int, one_mask);
          inst->predicate = BRW_PREDICATE_NORMAL;
       } else {
          /* For doubles we do the same but we need to consider:
