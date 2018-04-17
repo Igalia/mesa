@@ -3431,8 +3431,6 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityLinkage:
       case SpvCapabilityVector16:
       case SpvCapabilityFloat16Buffer:
-      case SpvCapabilityFloat16:
-      case SpvCapabilityInt8:
       case SpvCapabilitySparseResidency:
          vtn_warn("Unsupported SPIR-V capability: %s",
                   spirv_capability_to_string(cap));
@@ -3449,11 +3447,17 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityFloat64:
          spv_check_supported(float64, cap);
          break;
+      case SpvCapabilityFloat16:
+         spv_check_supported(float16, cap);
+         break;
       case SpvCapabilityInt64:
          spv_check_supported(int64, cap);
          break;
       case SpvCapabilityInt16:
          spv_check_supported(int16, cap);
+         break;
+      case SpvCapabilityInt8:
+         spv_check_supported(int8, cap);
          break;
 
       case SpvCapabilityTransformFeedback:
