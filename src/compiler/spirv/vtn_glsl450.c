@@ -238,8 +238,10 @@ build_fsum(nir_builder *b, nir_ssa_def **xs, int terms)
 static nir_ssa_def *
 build_atan(nir_builder *b, nir_ssa_def *y_over_x)
 {
+   const uint32_t bit_size = y_over_x->bit_size;
+
    nir_ssa_def *abs_y_over_x = nir_fabs(b, y_over_x);
-   nir_ssa_def *one = nir_imm_float(b, 1.0f);
+   nir_ssa_def *one = nir_imm_floatN_t(b, 1.0f, bit_size);
 
    /*
     * range-reduction, first step:
@@ -265,25 +267,35 @@ build_atan(nir_builder *b, nir_ssa_def *y_over_x)
    nir_ssa_def *x_9  = nir_fmul(b, x_7, x_2);
    nir_ssa_def *x_11 = nir_fmul(b, x_9, x_2);
 
+   const float coef[] = {
+       0.9999793128310355f,
+      -0.3326756418091246f,
+       0.1938924977115610f,
+      -0.1173503194786851f,
+       0.0536813784310406f,
+      -0.0121323213173444f,
+   };
+
    nir_ssa_def *polynomial_terms[] = {
-      nir_fmul(b, x,    nir_imm_float(b,  0.9999793128310355f)),
-      nir_fmul(b, x_3,  nir_imm_float(b, -0.3326756418091246f)),
-      nir_fmul(b, x_5,  nir_imm_float(b,  0.1938924977115610f)),
-      nir_fmul(b, x_7,  nir_imm_float(b, -0.1173503194786851f)),
-      nir_fmul(b, x_9,  nir_imm_float(b,  0.0536813784310406f)),
-      nir_fmul(b, x_11, nir_imm_float(b, -0.0121323213173444f)),
+      nir_fmul(b, x,    nir_imm_floatN_t(b, coef[0], bit_size)),
+      nir_fmul(b, x_3,  nir_imm_floatN_t(b, coef[1], bit_size)),
+      nir_fmul(b, x_5,  nir_imm_floatN_t(b, coef[2], bit_size)),
+      nir_fmul(b, x_7,  nir_imm_floatN_t(b, coef[3], bit_size)),
+      nir_fmul(b, x_9,  nir_imm_floatN_t(b, coef[4], bit_size)),
+      nir_fmul(b, x_11, nir_imm_floatN_t(b, coef[5], bit_size)),
    };
 
    nir_ssa_def *tmp =
       build_fsum(b, polynomial_terms, ARRAY_SIZE(polynomial_terms));
 
    /* range-reduction fixup */
+   nir_ssa_def *minus_2 = nir_imm_floatN_t(b, -2.0f, bit_size);
+   nir_ssa_def *m_pi_2 = nir_imm_floatN_t(b, M_PI_2f, bit_size);
+   nir_ssa_def *b2f = nir_b2f(b, nir_flt(b, one, abs_y_over_x));
+   b2f->bit_size = bit_size; /* do we prefer b2f<bitsize> opcodes? */
    tmp = nir_fadd(b, tmp,
-                  nir_fmul(b,
-                           nir_b2f(b, nir_flt(b, one, abs_y_over_x)),
-                           nir_fadd(b, nir_fmul(b, tmp,
-                                                nir_imm_float(b, -2.0f)),
-                                       nir_imm_float(b, M_PI_2f))));
+                  nir_fmul(b, b2f,
+                              nir_fadd(b, nir_fmul(b, tmp, minus_2), m_pi_2)));
 
    /* sign fixup */
    return nir_fmul(b, tmp, nir_fsign(b, y_over_x));
