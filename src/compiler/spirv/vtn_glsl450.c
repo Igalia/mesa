@@ -177,7 +177,7 @@ matrix_inverse(struct vtn_builder *b, struct vtn_ssa_value *src)
 static nir_ssa_def *
 build_exp(nir_builder *b, nir_ssa_def *x)
 {
-   return nir_fexp2(b, nir_fmul(b, x, nir_imm_float(b, M_LOG2E)));
+   return nir_fexp2(b, nir_fmul(b, x, nir_imm_floatN_t(b, M_LOG2E, x->bit_size)));
 }
 
 /**
@@ -186,7 +186,8 @@ build_exp(nir_builder *b, nir_ssa_def *x)
 static nir_ssa_def *
 build_log(nir_builder *b, nir_ssa_def *x)
 {
-   return nir_fmul(b, nir_flog2(b, x), nir_imm_float(b, 1.0 / M_LOG2E));
+   return nir_fmul(b, nir_flog2(b, x),
+                      nir_imm_floatN_t(b, 1.0 / M_LOG2E, x->bit_size));
 }
 
 /**
