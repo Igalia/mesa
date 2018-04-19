@@ -5386,18 +5386,34 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
    case SHADER_OPCODE_EXP2:
    case SHADER_OPCODE_LOG2:
    case SHADER_OPCODE_SIN:
-   case SHADER_OPCODE_COS:
+   case SHADER_OPCODE_COS: {
       /* Unary extended math instructions are limited to SIMD8 on Gen4 and
        * Gen6.
        */
-      return (devinfo->gen >= 7 ? MIN2(16, inst->exec_size) :
-              devinfo->gen == 5 || devinfo->is_g4x ? MIN2(16, inst->exec_size) :
-              MIN2(8, inst->exec_size));
+      unsigned max_width =
+         (devinfo->gen >= 7 ? MIN2(16, inst->exec_size) :
+          devinfo->gen == 5 || devinfo->is_g4x ? MIN2(16, inst->exec_size) :
+          MIN2(8, inst->exec_size));
 
-   case SHADER_OPCODE_POW:
+      /* Extended Math Function is limited to SIMD8 with half-float */
+      if (inst->dst.type == BRW_REGISTER_TYPE_HF)
+         max_width = MIN2(max_width, 8);
+
+      return max_width;
+   }
+
+   case SHADER_OPCODE_POW: {
       /* SIMD16 is only allowed on Gen7+. */
-      return (devinfo->gen >= 7 ? MIN2(16, inst->exec_size) :
-              MIN2(8, inst->exec_size));
+      unsigned max_width =
+          (devinfo->gen >= 7 ? MIN2(16, inst->exec_size) :
+           MIN2(8, inst->exec_size));
+
+      /* Extended Math Function is limited to SIMD8 with half-float */
+      if (inst->dst.type == BRW_REGISTER_TYPE_HF)
+         max_width = MIN2(max_width, 8);
+
+      return max_width;
+   }
 
    case SHADER_OPCODE_INT_QUOTIENT:
    case SHADER_OPCODE_INT_REMAINDER:
