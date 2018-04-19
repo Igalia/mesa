@@ -268,21 +268,6 @@ get_next_index(struct nir_link_uniforms_state *state,
    return index;
 }
 
-static void
-handle_type_for_uniform_storage(const struct glsl_type *original_type,
-                                const struct glsl_type **storage_type,
-                                unsigned *array_elements)
-{
-
-   const struct glsl_type *type_no_array = glsl_without_array(original_type);
-   if (glsl_type_is_array(original_type)) {
-      *storage_type = type_no_array;
-      *array_elements = glsl_get_length(original_type);
-   } else {
-      *storage_type = original_type;
-      *array_elements = 0;
-   }
-}
 
 static bool
 _var_is_ssbo(nir_variable *var)
@@ -366,8 +351,14 @@ nir_link_uniform(struct gl_context *ctx,
        */
       uniform->name = NULL;
 
-      handle_type_for_uniform_storage(type, &uniform->type,
-                                      &uniform->array_elements);
+      const struct glsl_type *type_no_array = glsl_without_array(type);
+      if (glsl_type_is_array(type)) {
+         uniform->type = type_no_array;
+         uniform->array_elements = glsl_get_length(type);
+      } else {
+         uniform->type = type;
+         uniform->array_elements = 0;
+      }
       uniform->active_shader_mask |= 1 << stage;
 
       if (location >= 0) {
@@ -400,7 +391,6 @@ nir_link_uniform(struct gl_context *ctx,
 
       unsigned entries = MAX2(1, uniform->array_elements);
 
-      const struct glsl_type *type_no_array = glsl_without_array(type);
       if (glsl_type_is_sampler(type_no_array)) {
          int sampler_index =
             get_next_index(state, uniform, &state->next_sampler_index);
@@ -457,45 +447,6 @@ nir_link_uniform(struct gl_context *ctx,
    }
 }
 
-/*
- * Validate if the uniform already linked before on @existing is compatible
- * with the new usage of it on another stage at @current.
- *
- * GLSL linker has specific methods for validation after the linkage, so
- * probably this bit will be moved later to a more general one.
- */
-static bool
-cross_validate_uniform(struct gl_shader_program *prog,
-                       struct gl_uniform_storage* existing,
-                       nir_variable *current)
-{
-   const struct glsl_type *type = current->type;
-   unsigned array_elements = 0;
-
-   handle_type_for_uniform_storage(current->type, &type, &array_elements);
-
-   if (existing->type != type) {
-      linker_error(prog, "uniform with location %i declared as "
-                   "type `%s' and type `%s'\n", current->data.location,
-                   glsl_get_type_name(type),
-                   glsl_get_type_name(existing->type));
-
-      return false;
-   }
-
-   if (existing->array_elements != array_elements) {
-      linker_error(prog, "uniform with location %i declared as "
-                   "type `%s[%i]' and type `%s[%i]'\n", current->data.location,
-                   glsl_get_type_name(type), array_elements,
-                   glsl_get_type_name(existing->type), existing->array_elements);
-
-      return false;
-   }
-
-   return true;
-}
-
-
 bool
 nir_link_uniforms(struct gl_context *ctx,
                   struct gl_shader_program *prog)
@@ -531,9 +482,6 @@ nir_link_uniforms(struct gl_context *ctx,
           */
          uniform = find_previous_uniform_storage(prog, var->data.location);
          if (uniform) {
-            if (!cross_validate_uniform(prog, uniform, var))
-               return false;
-
             uniform->active_shader_mask |= 1 << shader_type;
 
             continue;
