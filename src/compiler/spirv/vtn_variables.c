@@ -1161,15 +1161,16 @@ vtn_get_builtin_location(struct vtn_builder *b,
    case SpvBuiltInCullDistance:
       *location = VARYING_SLOT_CULL_DIST0;
       break;
-   case SpvBuiltInVertexIndex:
-      *location = SYSTEM_VALUE_VERTEX_ID;
-      set_mode_system_value(b, mode);
-      break;
    case SpvBuiltInVertexId:
-      /* Vulkan defines VertexID to be zero-based and reserves the new
-       * builtin keyword VertexIndex to indicate the non-zero-based value.
+   case SpvBuiltInVertexIndex:
+      /* For whatever reason, both of these are defined in the SPIR-V spec.
+       * The Vulkan spec defines VertexIndex to be non-zero-based and doesn’t
+       * mention VertexId. The ARB_gl_spirv spec defines VertexId to be the
+       * same as gl_VertexID, which is non-zero-based, and removes
+       * VertexIndex. Assuming there is no use for VertexId in Vulkan yet, we
+       * can just make them both be the same.
        */
-      *location = SYSTEM_VALUE_VERTEX_ID_ZERO_BASE;
+      *location = SYSTEM_VALUE_VERTEX_ID;
       set_mode_system_value(b, mode);
       break;
    case SpvBuiltInInstanceIndex:
