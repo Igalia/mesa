@@ -198,7 +198,7 @@ brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
    fprintf(stderr, "\tNow about to iterate\n");
    for (unsigned u = 0; u < num_slots; u++) {
       struct gl_uniform_storage *storage =
-         &prog->sh.data->UniformStorage[var->data.location + u];
+         &prog->sh.data->UniformStorage[u];
 
       fprintf(stderr, "\tCurrent storage: %p\n", storage);
       if (storage->builtin || storage->type->is_sampler())
