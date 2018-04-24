@@ -24,6 +24,7 @@
 #include "compiler/brw_nir.h"
 #include "compiler/glsl/ir_uniform.h"
 #include "brw_program.h"
+#include "main/mtypes.h"
 
 static void
 brw_nir_setup_glsl_builtin_uniform(nir_variable *var,
@@ -151,11 +152,41 @@ count_uniform_storage_slots(const struct glsl_type *type)
 }
 
 static void
+dump_uniform_storage(const struct gl_program *prog)
+{
+   for (unsigned i = 0; i < prog->sh.data->NumUniformStorage; i++) {
+      struct gl_uniform_storage *uniform =
+         prog->sh.data->UniformStorage + i;
+
+      printf("%u:%p: loc=%i, type=%s, elems=%u, storage offset=%zi, name=%s",
+             i, uniform,
+             uniform->remap_location,
+             glsl_get_type_name(uniform->type),
+             uniform->array_elements,
+             uniform->storage - prog->sh.data->UniformDataSlots,
+             uniform->name);
+
+      for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+         if (!uniform->opaque[stage].active)
+            continue;
+
+         printf(", %s=%i",
+                _mesa_shader_stage_to_string(stage),
+                uniform->opaque[stage].index);
+      }
+
+      fputc('\n', stdout);
+   }
+}
+
+static void
 brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
                            const struct gl_program *prog,
                            struct brw_stage_prog_data *stage_prog_data,
                            bool is_scalar)
 {
+   fprintf(stderr, "[brw_nir_setup_glsl_uniform]\n");
+   dump_uniform_storage(prog);
    /* The data for our (non-builtin) uniforms is stored in a series of
     * gl_uniform_storage structs for each subcomponent that
     * glGetUniformLocation() could name.  We know it's been set up in the same
@@ -164,10 +195,12 @@ brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
     */
    unsigned uniform_index = var->data.driver_location / 4;
    unsigned num_slots = count_uniform_storage_slots(var->type);
+   fprintf(stderr, "\tNow about to iterate\n");
    for (unsigned u = 0; u < num_slots; u++) {
       struct gl_uniform_storage *storage =
          &prog->sh.data->UniformStorage[var->data.location + u];
 
+      fprintf(stderr, "\tCurrent storage: %p\n", storage);
       if (storage->builtin || storage->type->is_sampler())
          continue;
 

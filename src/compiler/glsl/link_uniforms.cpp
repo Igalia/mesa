@@ -1450,8 +1450,7 @@ link_assign_uniform_storage(struct gl_context *ctx,
 }
 
 extern "C" void
-dump_uniform_storage(struct gl_context *ctx,
-                     struct gl_shader_program *prog);
+dump_uniform_storage(struct gl_shader_program *prog);
 
 void
 link_assign_uniform_locations(struct gl_shader_program *prog,
@@ -1519,5 +1518,5 @@ link_assign_uniform_locations(struct gl_shader_program *prog,
 
    link_assign_uniform_storage(ctx, prog, uniform_size.num_values);
 
-   dump_uniform_storage(ctx, prog);
+   dump_uniform_storage(prog);
 }

@@ -276,19 +276,17 @@ _var_is_ssbo(nir_variable *var)
 }
 
 void
-dump_uniform_storage(struct gl_context *ctx,
-                     struct gl_shader_program *prog);
+dump_uniform_storage(struct gl_shader_program *prog);
 
 void
-dump_uniform_storage(struct gl_context *ctx,
-                     struct gl_shader_program *prog)
+dump_uniform_storage(struct gl_shader_program *prog)
 {
    for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
       struct gl_uniform_storage *uniform =
          prog->data->UniformStorage + i;
 
-      printf("%u: loc=%i, type=%s, elems=%u, storage offset=%zi, name=%s",
-             i,
+      printf("%u:%p: loc=%i, type=%s, elems=%u, storage offset=%zi, name=%s",
+             i, uniform,
              uniform->remap_location,
              glsl_get_type_name(uniform->type),
              uniform->array_elements,
@@ -554,7 +552,7 @@ nir_link_uniforms(struct gl_context *ctx,
    nir_setup_uniform_remap_tables(ctx, prog);
    nir_set_uniform_initializers(ctx, prog);
 
-   dump_uniform_storage(ctx, prog);
+   dump_uniform_storage(prog);
 
    return true;
 }
