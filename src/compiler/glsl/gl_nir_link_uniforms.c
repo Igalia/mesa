@@ -549,10 +549,126 @@ nir_link_uniform(struct gl_context *ctx,
    }
 }
 
+/*
+ * We need this wrapper in order to maintain a new exec_node for a given
+ * nir_variable, as this only maintain one, so can't belong to two different
+ * lists.
+ */
+typedef struct wrapped_variable {
+   struct exec_node node;
+   nir_variable *var;
+} wrapped_variable;
+
+static struct wrapped_variable*
+wrapped_variable_create(void *mem_ctx,
+                          nir_variable *var)
+{
+   wrapped_variable *variable = rzalloc(mem_ctx, wrapped_variable);
+
+   variable->var = var;
+
+   return variable;
+}
+
+
+static nir_variable*
+nir_search_variable(struct exec_list *variables,
+                    unsigned location)
+{
+   foreach_list_typed(wrapped_variable, wrapped_var, node, variables) {
+      if (wrapped_var->var->data.location == location)
+         return wrapped_var->var;
+   }
+   return NULL;
+}
+
+static bool
+nir_uniforms_are_compatible(struct gl_shader_program *prog,
+                            nir_variable *new,
+                            nir_variable *existing)
+{
+   /* FIXME: As we didn't modify how the names are created, right now
+    * spirv_to_nir is bringing the names from SPIR-V to the types. So the
+    * following check would not be true if the names are different on one
+    * stage to the other. That is technically possible as SPIR-V names are
+    * debug. To prevent that we would need to do a type-compatible check that
+    * ignored the name. Avoiding that corner case for now.
+    */
+   if (existing->type != new->type) {
+      linker_error(prog, "uniform with location %i declared as "
+                   "type `%s' and type `%s'\n", new->data.location,
+                   glsl_get_type_name(new->type),
+                   glsl_get_type_name(existing->type));
+
+      return false;
+   }
+
+   return true;
+}
+
+/*
+ * Validate if all the uniforms on different stages are defined in a
+ * consistent way.
+ *
+ * GLSL linker has a more complete validation method, so probably this bit
+ * will be moved later to a more general one.
+ */
+static bool
+nir_cross_validate_uniforms(struct gl_context *ctx,
+                            struct gl_shader_program *prog)
+{
+   /* Already processed variables. GLSL equivalent uses glsl_symbol_table, for
+    * now we just use a list
+    */
+   struct exec_list variables;
+   exec_list_make_empty(&variables);
+
+   for (unsigned stage = 0; stage < MESA_SHADER_STAGES; stage++) {
+      struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+      if (!sh)
+         continue;
+
+      nir_shader *nir = sh->Program->nir;
+      assert(nir);
+
+      nir_foreach_variable(var, &nir->uniforms) {
+         /* Although in general uniforms should have a explicit location,
+          * there are still cases without them, like UBOs, uniform atomic
+          * counters, etc*/
+         if (var->data.location < 0)
+            continue;
+
+         /* We search on the list of processed variables if we have a variable
+          * with the same location. We can't use name as GLSL linker, as
+          * SPIR-V names are optional. See issue 12 at ARB_gl_spirv spec.
+          */
+         nir_variable *existing = nir_search_variable(&variables, var->data.location);
+         if (existing != NULL) {
+            if (!nir_uniforms_are_compatible(prog, var, existing)) {
+               return false;
+            }
+         } else {
+            wrapped_variable *wrapper = wrapped_variable_create(ctx, var);
+            exec_list_push_tail(&variables, &wrapper->node);
+         }
+      }
+   }
+
+   exec_list_make_empty(&variables);
+
+   return true;
+}
+
 bool
 gl_nir_link_uniforms(struct gl_context *ctx,
                      struct gl_shader_program *prog)
 {
+   /* We do an initial cross-validation based on the nir variables, to avoid
+    * the work of creating gl_uniform_storage variables for individual
+    * shaders */
+   if (!nir_cross_validate_uniforms(ctx, prog))
+      return false;
+
    /* First free up any previous UniformStorage items */
    ralloc_free(prog->data->UniformStorage);
    prog->data->UniformStorage = NULL;
@@ -578,9 +694,10 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       nir_foreach_variable(var, &nir->uniforms) {
          struct gl_uniform_storage *uniform = NULL;
 
-         /* Check if the uniform has been processed already for
-          * other stage. If so, validate they are compatible and update
-          * the active stage mask.
+         /* Check if the uniform has been processed already for other
+          * stage. We don't need to check if the previous uniform is
+          * compatible with the current one. That was already done at
+          * nir_cross_validate_uniforms
           */
          uniform = find_and_update_previous_uniform_storage(prog, var, shader_type);
          if (uniform) {
