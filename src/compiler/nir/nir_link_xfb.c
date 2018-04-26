@@ -242,7 +242,11 @@ nir_link_assign_xfb_resources(struct gl_context *ctx,
    for (unsigned i = 0, output_pos = 0; i < array.num_varyings; i++) {
       struct nir_variable *var = array.varyings[i].var;
 
-      prog->TransformFeedback.VaryingNames[i] = strdup(var->name);
+      /* ARB_gl_spirv: names are considered optional debug info, so the linker
+       * needs to work without them, and returning them is optional. For
+       * simplicity we ignore names.
+       */
+      prog->TransformFeedback.VaryingNames[i] = NULL;
 
       struct gl_transform_feedback_output *output =
          linked_xfb->Outputs + output_pos;
@@ -256,7 +260,9 @@ nir_link_assign_xfb_resources(struct gl_context *ctx,
 
       struct gl_transform_feedback_varying_info *varying =
          linked_xfb->Varyings + i;
-      varying->Name = ralloc_strdup(prog, var->name);
+
+      /* ARB_gl_spirv: see above. */
+      varying->Name = NULL;
       varying->Type = glsl_get_gl_type(var->type);
       varying->BufferIndex = var->data.xfb_buffer;
       varying->Size = glsl_get_length(var->type);
