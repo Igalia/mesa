@@ -3576,7 +3576,8 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpName:
-      b->values[w[1]].name = vtn_string_literal(b, &w[2], count - 2, NULL);
+      if (!b->options->arb_gl_spirv)
+         b->values[w[1]].name = vtn_string_literal(b, &w[2], count - 2, NULL);
       break;
 
    case SpvOpMemberName:
