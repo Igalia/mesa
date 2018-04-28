@@ -212,7 +212,8 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
 
    const struct spirv_to_nir_options spirv_options = {
       .lower_workgroup_access_to_offsets = true,
-      .caps = ctx->Const.SpirVCapabilities
+      .caps = ctx->Const.SpirVCapabilities,
+      .arb_gl_spirv = true
    };
 
    nir_function *entry_point =
