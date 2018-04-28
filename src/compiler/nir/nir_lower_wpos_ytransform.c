@@ -62,6 +62,17 @@ get_transform(lower_wpos_ytransform_state *state)
       memcpy(var->state_slots[0].tokens, state->options->state_tokens,
              sizeof(var->state_slots[0].tokens));
 
+      /* HACK: this is a special uniform, so assigning -1 is basically saying
+       * that it is an special uniform, and the location would be
+       * assigned. Although on ARB_gl_spirv all uniforms needs a explicit
+       * location, that is okish as this uniform is not present on different
+       * stage. Having said so, this is not the correct solution, as this
+       * would lead to the uniform being included on UniformStorage, so
+       * accessible via shader query methods, in opposite to GLSL linking,
+       * where t it is hidden.
+       */
+      var->data.location = -1;
+
       state->transform = var;
    }
    return nir_load_var(&state->b, state->transform);
