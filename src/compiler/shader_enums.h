@@ -518,6 +518,12 @@ typedef enum
    SYSTEM_VALUE_FIRST_VERTEX,
 
    /**
+    * Stores if the Draw command used to start the rendering is an indexed draw
+    * call or not.
+    */
+   SYSTEM_VALUE_IS_INDEXED_DRAW,
+
+   /**
     * Value of \c baseinstance passed to instanced draw entry points
     *
     * \sa SYSTEM_VALUE_INSTANCE_ID

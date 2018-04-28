@@ -1933,6 +1933,9 @@ typedef struct nir_shader_compiler_options {
    /* Indicates that the driver only has zero-based vertex id */
    bool vertex_id_zero_based;
 
+   /* Lowers gl_BaseVertex to (firstvertex & IsIndexedDraw) */
+   bool lower_base_vertex;
+
    bool lower_cs_local_index_from_id;
 
    bool lower_device_index_to_zero;

@@ -121,6 +121,13 @@ convert_block(nir_block *block, nir_builder *b)
          }
          break;
 
+      case SYSTEM_VALUE_BASE_VERTEX:
+         if (b->shader->options->lower_base_vertex)
+            sysval = nir_iand(b,
+                              nir_load_is_indexed_draw(b),
+                              nir_load_first_vertex(b));
+         break;
+
       case SYSTEM_VALUE_INSTANCE_INDEX:
          sysval = nir_iadd(b,
                            nir_load_instance_id(b),
