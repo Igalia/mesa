@@ -381,6 +381,37 @@ vtn_pointer_for_variable(struct vtn_builder *b,
    return pointer;
 }
 
+static const struct glsl_type *
+repair_atomic_type(const struct glsl_type *type, SpvStorageClass storage_class)
+{
+   assert(storage_class == SpvStorageClassAtomicCounter);
+   assert(glsl_get_base_type(glsl_without_array(type)) == GLSL_TYPE_UINT);
+   assert(glsl_type_is_scalar(glsl_without_array(type)));
+
+   const struct glsl_type *atomic = glsl_atomic_uint_type();
+   unsigned depth = glsl_array_depth(type);
+
+   if (depth > 0) {
+      unsigned *lengths = calloc(depth, sizeof(unsigned));
+      unsigned i = depth;
+
+      while (glsl_type_is_array(type)) {
+         i--;
+         lengths[i] = glsl_get_length(type);
+         type = glsl_get_array_element(type);
+      }
+
+      assert(i == 0);
+
+      for (i = 0; i < depth; i++)
+         atomic = glsl_array_type(atomic, lengths[i]);
+
+      free(lengths);
+   }
+
+   return atomic;
+}
+
 nir_deref_var *
 vtn_pointer_to_deref(struct vtn_builder *b, struct vtn_pointer *ptr)
 {
@@ -428,6 +459,14 @@ vtn_pointer_to_deref(struct vtn_builder *b, struct vtn_pointer *ptr)
 
          nir_deref_array *deref_arr = nir_deref_array_create(b);
          deref_arr->deref.type = deref_type->type;
+         if (ptr->ptr_type) {
+            vtn_assert(ptr->ptr_type->base_type == vtn_base_type_pointer);
+
+            SpvStorageClass storage_class = ptr->ptr_type->storage_class;
+            if (storage_class == SpvStorageClassAtomicCounter)
+               deref_arr->deref.type = repair_atomic_type(deref_type->type,
+                                                          storage_class);
+         }
 
          if (chain->link[i].mode == vtn_access_mode_literal) {
             deref_arr->deref_array_type = nir_deref_array_type_direct;
@@ -1844,9 +1883,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
        * the access to storage_class, that is the one that points us that is
        * an atomic uint.
        */
-      if (glsl_get_base_type(var->type->type) == GLSL_TYPE_UINT &&
-          storage_class == SpvStorageClassAtomicCounter) {
-         var->var->type = glsl_atomic_uint_type();
+      if (storage_class == SpvStorageClassAtomicCounter) {
+         var->var->type = repair_atomic_type(var->type->type, storage_class);
       } else {
          var->var->type = var->type->type;
       }
