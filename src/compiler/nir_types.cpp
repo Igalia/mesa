@@ -495,3 +495,9 @@ glsl_contains_atomic(const struct glsl_type *type)
 {
    return type->contains_atomic();
 }
+
+unsigned
+glsl_array_depth(const struct glsl_type *type)
+{
+   return type->array_depth();
+}
