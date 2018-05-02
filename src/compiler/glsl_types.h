@@ -676,6 +676,21 @@ public:
    }
 
    /**
+    * Returns the depth of a multidimensional array
+    */
+   unsigned array_depth() const
+   {
+      const glsl_type *t = this;
+      unsigned depth = 0;
+      while (t->is_array()) {
+         depth++;
+         t = t->fields.array;
+      }
+
+      return depth;
+   }
+
+   /**
     * Return the total number of elements in an array including the elements
     * in arrays of arrays.
     */

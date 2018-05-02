@@ -531,6 +531,12 @@ glsl_get_row_major(const struct glsl_type *type)
 }
 
 unsigned
+glsl_array_depth(const struct glsl_type *type)
+{
+   return type->array_depth();
+}
+
+unsigned
 glsl_type_arrays_of_arrays_size(const struct glsl_type *type)
 {
    return type->arrays_of_arrays_size();
