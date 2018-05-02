@@ -98,6 +98,7 @@ enum glsl_interface_packing glsl_get_interface_packing(const struct glsl_type *t
 
 bool glsl_get_row_major(const struct glsl_type *type);
 
+unsigned glsl_array_depth(const struct glsl_type *type);
 unsigned glsl_type_arrays_of_arrays_size(const struct glsl_type *type);
 
 unsigned glsl_type_std430_size(const struct glsl_type *type, bool row_major);
