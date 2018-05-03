@@ -861,7 +861,7 @@ flush_astc_denorms(struct gl_context *ctx, GLuint dims,
    for (int slice = 0; slice < store.CopySlices; slice++) {
 
       /* Map dest texture buffer */
-      GLubyte *dstMap;
+      GLubyte *dstMap = NULL;
       GLint dstRowStride;
       ctx->Driver.MapTextureImage(ctx, texImage, slice + zoffset,
                                   xoffset, yoffset, width, height,
@@ -905,6 +905,96 @@ flush_astc_denorms(struct gl_context *ctx, GLuint dims,
    }
 }
 
+static void
+intel_upload_compressed_texsubimage(struct gl_context *ctx,
+                                    GLuint dims,
+                                    struct compressed_pixelstore *store,
+                                    struct gl_texture_image *intelImage,
+                                    GLint xoffset, GLint yoffset,
+                                    GLint zoffset,
+                                    GLsizei width, GLsizei height,
+                                    enum intel_miptree_upload_flags flags,
+                                    const GLvoid *data)
+{
+   if (!data)
+      return;
+
+   const GLubyte *src = (const GLubyte *) data + store->SkipBytes;
+
+   GLint i, slice, dstRowStride;
+   GLubyte *dstMap = NULL;
+
+   for (slice = 0; slice < store->CopySlices; slice++) {
+      intel_map_texture_image_for_upload(ctx, intelImage, slice + zoffset,
+                                         xoffset, yoffset, width, height,
+                                         GL_MAP_WRITE_BIT |
+                                         GL_MAP_INVALIDATE_RANGE_BIT,
+                                         &dstMap, &dstRowStride, flags);
+      if (!dstMap)
+         continue;
+
+      if (dstRowStride == store->TotalBytesPerRow &&
+          dstRowStride == store->CopyBytesPerRow) {
+         memcpy(dstMap, src,
+                store->CopyBytesPerRow * store->CopyRowsPerSlice);
+         src += store->CopyBytesPerRow * store->CopyRowsPerSlice;
+      } else {
+         for (i = 0; i < store->CopyRowsPerSlice; i++) {
+            memcpy(dstMap, src, store->CopyBytesPerRow);
+            dstMap += dstRowStride;
+            src += store->TotalBytesPerRow;
+         }
+      }
+
+      ctx->Driver.UnmapTextureImage(ctx, intelImage, slice + zoffset);
+
+      src += store->TotalBytesPerRow *
+             (store->TotalRowsPerSlice - store->CopyRowsPerSlice);
+   }
+}
+
+static void
+intel_store_compressed_texsubimage(struct gl_context *ctx, GLuint dims,
+                                   struct gl_texture_image *intelImage,
+                                   GLint xoffset, GLint yoffset, GLint zoffset,
+                                   GLsizei width, GLsizei height,
+                                   GLsizei depth, GLenum format,
+                                   GLsizei imageSize, const GLvoid *data)
+{
+   struct compressed_pixelstore store;
+   struct brw_context *brw = (struct brw_context*) ctx;
+   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+
+   if (dims == 1) {
+      _mesa_problem(ctx, "Unexpected 1D compressed texsubimage call");
+      return;
+   }
+
+   _mesa_compute_compressed_pixelstore(dims, intelImage->TexFormat,
+                                       width, height, depth,
+                                       &ctx->Unpack, &store);
+
+   /* Get pointer to src pixels (may be in a pbo which we'll map here) */
+   data = _mesa_validate_pbo_compressed_teximage(ctx, dims, imageSize, data,
+                                                 &ctx->Unpack,
+                                                 "glCompressedTexSubImage");
+   if (!data)
+      return;
+
+   intel_upload_compressed_texsubimage(ctx, dims, &store, intelImage,
+                                       xoffset, yoffset, zoffset,
+                                       width, height,
+                                       MIPTREE_UPLOAD_DEFAULT, data);
+
+   if (devinfo->gen == 7 && _mesa_is_format_etc2(intelImage->TexFormat)) {
+      intel_upload_compressed_texsubimage(ctx, dims, &store, intelImage,
+                                          xoffset, yoffset, zoffset,
+                                          width, height,
+                                          MIPTREE_UPLOAD_ETC, data);
+   }
+
+   _mesa_unmap_teximage_pbo(ctx, &ctx->Unpack);
+}
 
 static void
 intelCompressedTexSubImage(struct gl_context *ctx, GLuint dims,
@@ -915,7 +1005,7 @@ intelCompressedTexSubImage(struct gl_context *ctx, GLuint dims,
                         GLsizei imageSize, const GLvoid *data)
 {
    /* Upload the compressed data blocks */
-   _mesa_store_compressed_texsubimage(ctx, dims, texImage,
+   intel_store_compressed_texsubimage(ctx, dims, texImage,
                                       xoffset, yoffset, zoffset,
                                       width, height, depth,
                                       format, imageSize, data);
