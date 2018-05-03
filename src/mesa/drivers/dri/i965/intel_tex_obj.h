@@ -50,6 +50,11 @@ struct intel_texture_object
     */
    struct intel_mipmap_tree *mt;
 
+   /* This miptree is used to store the compressed ETC2/EAC pixels
+    * on Gen 7 GPUs for GetCompressed* functions to work.
+    */
+   struct intel_mipmap_tree *cmt;
+
    /**
     * Set when mipmap trees in the texture images of this texture object
     * might not all be the mipmap tree above.
@@ -79,6 +84,9 @@ struct intel_texture_image
     * Else there is no image data.
     */
    struct intel_mipmap_tree *mt;
+
+   /* Stores the ETC2 formatted image on Gen7 GPUs */
+   struct intel_mipmap_tree *cmt;
 };
 
 static inline struct intel_texture_object *
