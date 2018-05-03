@@ -1340,7 +1340,7 @@ glsl_type::record_location_offset(unsigned length) const
 }
 
 unsigned
-glsl_type::uniform_locations() const
+glsl_type::uniform_locations(bool uniform_storage_locs) const
 {
    unsigned size = 0;
 
@@ -1364,11 +1364,27 @@ glsl_type::uniform_locations() const
 
    case GLSL_TYPE_STRUCT:
    case GLSL_TYPE_INTERFACE:
-      for (unsigned i = 0; i < this->length; i++)
-         size += this->fields.structure[i].type->uniform_locations();
+      for (unsigned i = 0; i < this->length; i++) {
+         const glsl_type *member_type = this->fields.structure[i].type;
+         size += member_type->uniform_locations(uniform_storage_locs);
+      }
       return size;
    case GLSL_TYPE_ARRAY:
-      return this->length * this->fields.array->uniform_locations();
+      if (!uniform_storage_locs ||
+          this->fields.array->is_array() ||
+          this->fields.array->is_interface() ||
+          this->fields.array->is_record()) {
+         /* For uniform locations passed to the user via the API we
+          * count all array elements.
+          */
+         return (this->length *
+                 this->fields.array->uniform_locations(uniform_storage_locs));
+      } else {
+         /* For uniform storage the innermost array only uses a
+          * single slot.
+          */
+         return 1;
+      }
    default:
       return 0;
    }

@@ -351,8 +351,13 @@ public:
     *
     * This is used to allocate slots in the UniformRemapTable, the amount of
     * locations may not match with actual used storage space by the driver.
+    *
+    * If uniform_storage_locs is set to true, it instead counts how many
+    * entries the uniform would occupy in UniformStorage. The difference is
+    * that an entry in UniformStorage can cope with 1-dimensional arrays so
+    * unless it as an array of arrays then arrays only take up one slot.
     */
-   unsigned uniform_locations() const;
+   unsigned uniform_locations(bool uniform_storage_locs = false) const;
 
    /**
     * Used to count the number of varyings contained in the type ignoring
