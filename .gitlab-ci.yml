@@ -1,0 +1,76 @@
+image: docker:latest
+
+services:
+  - docker:dind
+
+stages:
+  - base
+  - llvm
+  - mesa
+
+variables:
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE
+  CCACHE_DIR: $CI_PROJECT_DIR/../ccache
+  LLVM: "4.0"
+  DEBUG: "false"
+  CLEAN: "true"
+
+cache:
+  paths:
+    - ccache/
+  key: "$CI_JOB_STAGE"
+
+before_script:
+  - mkdir -p ccache
+  - rm -fr ../ccache
+  - mv ccache ../
+  - export MAKEFLAGS=-j$(nproc)
+  - apk --no-cache add libc6-compat curl jq
+  - wget https://github.com/grammarly/rocker/releases/download/1.3.1/rocker-1.3.1-linux_amd64.tar.gz
+  - tar xvf rocker-1.3.1-linux_amd64.tar.gz
+  - rm rocker-1.3.1-linux_amd64.tar.gz
+  - mv rocker ..
+  - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+
+after_script:
+  - mv ../ccache ./
+
+base:
+  stage: base
+  script:
+    - DOCKERFILE_SHA256=$(cat gitlab-ci/Rockerfile.base | sha256sum | cut -c-64)
+    - IMAGE_DOCKERFILE_SHA256=$(./gitlab-ci/inspect-remote-image.sh gitlab-ci-token $CI_BUILD_TOKEN $CI_PROJECT_PATH "base" ".config.Labels[\"dockerfile.sha256\"]" || echo -n "<notfound>")
+    - if [ "$DOCKERFILE_SHA256" != "$IMAGE_DOCKERFILE_SHA256" ] || [ "$CI_PIPELINE_SOURCE" == "schedule" ] ; then FORCE_BUILD=true ; fi
+    - if [ "$FORCE_BUILD" ] ; then ../rocker build -f gitlab-ci/Rockerfile.base --var DOCKERFILE_SHA256=$DOCKERFILE_SHA256 ; fi
+    - if [ "$FORCE_BUILD" ] ; then docker push $CI_REGISTRY_IMAGE:base ; fi
+
+.build_llvm: &build_llvm
+  stage: llvm
+  cache: {}
+  script:
+    - DOCKERFILE_SHA256=$(cat gitlab-ci/Rockerfile.base gitlab-ci/Rockerfile.llvm | sha256sum | cut -c-64)
+    - IMAGE_DOCKERFILE_SHA256=$(./gitlab-ci/inspect-remote-image.sh gitlab-ci-token $CI_BUILD_TOKEN $CI_PROJECT_PATH "llvm-$LLVM" ".config.Labels[\"dockerfile.sha256\"]" || echo -n "<notfound>")
+    - if [ "$DOCKERFILE_SHA256" != "$IMAGE_DOCKERFILE_SHA256" ] || [ "$CI_PIPELINE_SOURCE" == "schedule" ] ; then FORCE_BUILD=true ; fi
+    - if [ "$FORCE_BUILD" ] ; then ../rocker build -f gitlab-ci/Rockerfile.llvm --var DOCKERFILE_SHA256=$DOCKERFILE_SHA256 --var LLVM=$LLVM; fi
+    - if [ "$FORCE_BUILD" ] ; then docker push $CI_REGISTRY_IMAGE:llvm-$LLVM ; fi
+
+.build_mesa: &build_mesa
+  stage: mesa
+  except:
+    - schedules
+  script:
+    - ../rocker build -f gitlab-ci/Rockerfile.mesa --var BUILD=$BUILD --var LLVM=$LLVM --var CLEAN=$CLEAN --var DEBUG=$DEBUG --var TAG=$CI_COMMIT_REF_SLUG .
+
+llvm:4.0:
+  variables:
+    LLVM: "4.0"
+  <<: *build_llvm
+
+autotools:code:
+  variables:
+    BUILD: "autotools"
+    CLEAN: "false"
+  after_script:
+    - mv ../ccache ./
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  <<: *build_mesa

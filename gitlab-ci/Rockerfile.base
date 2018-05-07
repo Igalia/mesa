@@ -1,0 +1,164 @@
+#
+# Base image for building Mesa.
+#
+# ~~~
+#  rocker build -f Rockerfile.base [--attach]   \
+#    --var DOCKERFILE_SHA256=`sha256sum Rockerfile.base | cut -c-64)`
+#    [--var USE_TXC_DXTN=yes]   # yes, no (default: no)
+# ~~~
+#
+# Environment variables that are used in the build:
+#  - DOCKER_IMAGE: name of the final image to be tagged (default: mesa:base)
+#  - MAKEFLAGS: flags to pass to make (e.g., "-j8")
+#  - CCACHE_DIR: ccache directory (default: ~/.ccache)
+#
+
+{{ $image := (or .Env.DOCKER_IMAGE "mesa") }}
+{{ $ccachedir := (or .Env.CCACHE_DIR "~/.ccache") }}
+
+FROM ubuntu:xenial
+
+LABEL maintainer "Juan A. Suarez Romero <jasuarez@igalia.com>"
+LABEL dockerfile.sha256 {{ .DOCKERFILE_SHA256 }}
+
+ENV LC_ALL=C.UTF-8
+
+RUN apt-get update                                                                     \
+  && apt-get --no-install-recommends -y install autoconf gcc g++ sudo cmake patch git  \
+    automake pkg-config libtool-bin bison flex python-pip libpthread-stubs0-dev        \
+    wget libxau-dev libx11-dev libxext-dev libxdamage-dev libx11-xcb-dev gettext       \
+    zlib1g-dev scons libelf-dev libxvmc-dev libvdpau-dev libva-dev libclc-dev ccache   \
+    libpciaccess-dev libxxf86vm-dev python-setuptools python-wheel bzip2 make          \
+    mesa-common-dev xutils-dev libexpat1-dev xz-utils libedit-dev libffi-dev           \
+    libxml2-dev libunwind-dev                                                          \
+  && rm -fr /var/lib/apt/lists/*
+
+RUN pip install mako
+
+RUN adduser --gecos "" local && passwd -d local && adduser local sudo
+
+USER local
+
+WORKDIR /home/local
+
+ENV LDFLAGS="-L/usr/local/lib $LDFLAGS"
+
+{{ if .Env.MAKEFLAGS }}
+ENV MAKEFLAGS={{ .Env.MAKEFLAGS }}
+{{ end }}
+
+MOUNT {{ $ccachedir }}:/home/local/.ccache:Z
+
+RUN sudo chown -R local:local /home/local/.ccache
+
+ENV PATH=/usr/lib/ccache:$PATH
+
+ATTACH [ "/bin/bash" ]
+
+RUN wget http://xorg.freedesktop.org/releases/individual/proto/glproto-1.4.14.tar.bz2   \
+  && tar -jxvf glproto-1.4.14.tar.bz2                                                   \
+  && rm glproto-1.4.14.tar.bz2                                                          \
+  && cd glproto-1.4.14                                                                  \
+  && ./configure                                                                        \
+  && make                                                                               \
+  && sudo make install                                                                  \
+  && sudo ldconfig                                                                      \
+  && sudo rm -fr ../glproto-1.4.14
+
+RUN wget http://xorg.freedesktop.org/releases/individual/proto/dri2proto-2.8.tar.bz2    \
+  && tar -jxvf dri2proto-2.8.tar.bz2                                                    \
+  && rm dri2proto-2.8.tar.bz2                                                           \
+  && cd dri2proto-2.8                                                                   \
+  && ./configure                                                                        \
+  && make                                                                               \
+  && sudo make install                                                                  \
+  && sudo ldconfig                                                                      \
+  && sudo rm -fr ../dri2proto-2.8
+
+RUN wget http://xorg.freedesktop.org/releases/individual/proto/dri3proto-1.0.tar.bz2    \
+  && tar -jxvf dri3proto-1.0.tar.bz2                                                    \
+  && rm dri3proto-1.0.tar.bz2                                                           \
+  && cd dri3proto-1.0                                                                   \
+  && ./configure                                                                        \
+  && make                                                                               \
+  && sudo make install                                                                  \
+  && sudo ldconfig                                                                      \
+  && sudo rm -fr ../dri3proto-1.0
+
+RUN wget http://xorg.freedesktop.org/releases/individual/proto/presentproto-1.0.tar.bz2 \
+  && tar -jxvf presentproto-1.0.tar.bz2                                                 \
+  && rm presentproto-1.0.tar.bz2                                                        \
+  && cd presentproto-1.0                                                                \
+  && ./configure                                                                        \
+  && make                                                                               \
+  && sudo make install                                                                  \
+  && sudo ldconfig                                                                      \
+  && sudo rm -fr ../presentproto-1.0
+
+RUN wget http://xcb.freedesktop.org/dist/xcb-proto-1.13.tar.bz2 \
+  && tar -jxvf xcb-proto-1.13.tar.bz2                           \
+  && rm xcb-proto-1.13.tar.bz2                                  \
+  && cd xcb-proto-1.13                                          \
+  && ./configure                                                \
+  && make                                                       \
+  && sudo make install                                          \
+  && sudo ldconfig                                              \
+  && sudo rm -fr ../xcb-proto-1.13
+
+RUN wget http://xcb.freedesktop.org/dist/libxcb-1.13.tar.bz2    \
+  && tar -jxvf libxcb-1.13.tar.bz2                              \
+  && rm libxcb-1.13.tar.bz2                                     \
+  && cd libxcb-1.13                                             \
+  && ./configure                                                \
+  && make                                                       \
+  && sudo make install                                          \
+  && sudo ldconfig                                              \
+  && sudo rm -fr ../libxcb-1.13
+
+RUN wget http://xorg.freedesktop.org/releases/individual/lib/libxshmfence-1.1.tar.bz2   \
+  && tar -jxvf libxshmfence-1.1.tar.bz2                                                 \
+  && rm libxshmfence-1.1.tar.bz2                                                        \
+  && cd libxshmfence-1.1                                                                \
+  && ./configure                                                                        \
+  && make                                                                               \
+  && sudo make install                                                                  \
+  && sudo ldconfig                                                                      \
+  && sudo rm -fr ../libxshmfence-1.1
+
+{{ if .USE_TXC_DXTN }}
+{{ if eq .USE_TXC_DXTN "yes" }}
+RUN wget https://people.freedesktop.org/~cbrill/libtxc_dxtn/libtxc_dxtn-1.0.1.tar.bz2   \
+  && tar -jxvf libtxc_dxtn-1.0.1.tar.bz2                                                \
+  && rm libtxc_dxtn-1.0.1.tar.bz2                                                       \
+  && cd libtxc_dxtn-1.0.1                                                               \
+  && ./configure                                                                        \
+  && make                                                                               \
+  && sudo make install                                                                  \
+  && sudo ldconfig                                                                      \
+  && sudo rm -fr ../libtxc_dxtn-1.0.1
+{{ end }}
+{{ end }}
+
+RUN wget https://wayland.freedesktop.org/releases/wayland-1.15.0.tar.xz                 \
+  && tar -Jxvf wayland-1.15.0.tar.xz                                                    \
+  && rm wayland-1.15.0.tar.xz                                                           \
+  && cd wayland-1.15.0                                                                  \
+  && ./configure --disable-documentation                                                \
+  && make                                                                               \
+  && sudo make install                                                                  \
+  && sudo ldconfig                                                                      \
+  && sudo rm -fr ../wayland-1.15.0
+
+RUN wget https://wayland.freedesktop.org/releases/wayland-protocols-1.14.tar.xz         \
+  && tar -Jxvf wayland-protocols-1.14.tar.xz                                            \
+  && rm wayland-protocols-1.14.tar.xz                                                   \
+  && cd wayland-protocols-1.14                                                          \
+  && ./configure                                                                        \
+  && make                                                                               \
+  && sudo make install                                                                  \
+  && sudo ldconfig                                                                      \
+  && sudo rm -fr ../wayland-protocols-1.14
+
+USER root
+
+TAG {{ $image }}:base

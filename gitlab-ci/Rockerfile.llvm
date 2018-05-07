@@ -1,0 +1,58 @@
+#
+# This builds the base image for building Mesa.
+#
+# ~~~
+#  rocker build -f Rockerfile.llvm                                      \
+#    --var DOCKERFILE_SHA256=`sha256sum Rockerfile.base | cut -c-64)`   \
+#    --var LLVM=3.3             # 3.3, 3.6, 3.8, 3.9, 4.0 or 5.0
+# ~~~
+#
+# Environment variables that are used in the build:
+#  - DOCKER_IMAGE: name of the final image to be tagged (default: mesa:$LLVM)
+#  - MAKEFLAGS: flags to pass to make (e.g., "-j8")
+#  - CCACHE_DIR: ccache directory (default: ~/.ccache)
+#
+# LLVM 3.3 package has been created with checkinstall using Base image
+#
+# ~~~
+#  wget http://releases.llvm.org/3.3/llvm-3.3.src.tar.gz                                \
+#    && tar xzpf llvm-3.3.src.tar.gz                                                    \
+#    && cd llvm-3.3.src                                                                 \
+#    && mkdir build                                                                     \
+#    && cd build                                                                        \
+#    && ../configure --enable-optimized --enable-shared --prefix=/usr/lib/llvm-3.3      \
+#    && make                                                                            \
+#    && echo "LLVM Toolchain 3.3" > description-pak                                     \
+#    && checkinstall -D -y --pkgname=llvm-3.3 --pkgversion=3.3 --pkgrelease=+checkinstall1 --maintainer=jasuarez@igalia.com --provides=llvm
+#  ~~~
+#
+
+{{ $image := (or .Env.DOCKER_IMAGE "mesa") }}
+{{ $ccachedir := (or .Env.CCACHE_DIR "~/.ccache") }}
+
+FROM {{ $image }}:base
+
+LABEL maintainer "Juan A. Suarez Romero <jasuarez@igalia.com>"
+LABEL dockerfile.sha256 {{ .DOCKERFILE_SHA256 }}
+
+{{ if ge .LLVM "3.9" }}
+RUN apt-get update                                                            \
+  && apt-get --no-install-recommends -y install gnupg                         \
+  && wget -qO - http://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -     \
+  && echo "deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-{{ .LLVM }} main" >> /etc/apt/sources.list \
+  && rm -fr /var/lib/apt/lists/*
+{{ end }}
+
+{{ if eq .LLVM "3.3" }}
+RUN wget https://people.igalia.com/jasuarez/packages/llvm-3.3_3.3-+checkinstall1_amd64.deb      \
+  && dpkg -i llvm-3.3_3.3-+checkinstall1_amd64.deb                                              \
+  && rm llvm-3.3_3.3-+checkinstall1_amd64.deb
+ENV LD_LIBRARY_PATH=/usr/lib/llvm-{{ .LLVM }}/lib:$LD_LIBRARY_PATH
+{{ else }}
+RUN apt-get update                                                            \
+  && apt-get --no-install-recommends -y install libclang-{{ .LLVM }}-dev      \
+    llvm-{{ .LLVM }}-dev                                                      \
+  && rm -fr /var/lib/apt/lists/*
+{{ end }}
+
+TAG {{ $image }}:llvm-{{ .LLVM }}

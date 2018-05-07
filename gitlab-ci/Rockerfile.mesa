@@ -1,0 +1,215 @@
+#
+# This builds and installs Mesa.
+#
+# ~~~
+#  rocker build -f Rockerfile.mesa [--attach]                                                   \
+#    --var BUILD=autotools      # meson, scons, autotools, windows, distcheck, gallium, android \
+#    [--var DEBUG=true]         # true, false                                                   \
+#    [--var CLEAN=false]        # true, false                                                   \
+#    [--var LLVM=3.3]           # 3.3, 3.6, 3.8, 3.9, 4.0 or 5.0                                \
+#    [--var TAG=master]         # master, pre-release-17.0, pre-release-13.0, ...               \
+#    [--var RELEASE=master]     # master, pre-release/17.0, pre-release/13.0, ...
+# ~~~
+#
+# Environment variables that are used in the build:
+#  - DOCKER_IMAGE: name of the final image to be tagged (default: mesa[:$TAG])
+#  - MAKEFLAGS: flags to pass to make (e.g., "-j8")
+#  - CCACHE_DIR: ccache directory (default: ~/.ccache)
+#
+
+{{ $image := (or .Env.DOCKER_IMAGE "mesa") }}
+{{ $ccachedir := (or .Env.CCACHE_DIR "~/.ccache") }}
+{{ $llvm_version := (or .LLVM "0.0") }}
+{{ $debug_build := (or .DEBUG "true") }}
+{{ $clean := (or .CLEAN "true") }}
+
+{{ if eq .BUILD "windows"}}
+FROM {{ $image }}:base
+{{ else if eq .BUILD "android"}}
+FROM ubuntu:xenial
+{{ else if eq $llvm_version "0.0" }}
+FROM {{ $image }}:base
+{{ else }}
+FROM {{ $image }}:llvm-{{ .LLVM }}
+{{ end }}
+
+LABEL maintainer "Juan A. Suarez Romero <jasuarez@igalia.com>"
+
+{{ if eq .BUILD "windows" }}
+RUN apt-get update                                              \
+  && apt-get -y --no-install-recommends install mingw-w64       \
+  && rm -fr /var/lib/apt/lists/*
+{{ end }}
+
+{{ if eq .BUILD "android" }}
+RUN apt-get update                                      \
+  && apt-get -y --no-install-recommends install wget    \
+    openjdk-8-jdk python sudo make gcc gettext bison    \
+    python-mako libc6-dev xz-utils                      \
+  && rm -fr /var/lib/apt/lists/*
+
+RUN adduser --gecos "" local && passwd -d local && adduser local sudo
+{{ end }}
+
+{{ if eq .BUILD "meson" }}
+RUN apt-get update                                              \
+  && apt-get -y --no-install-recommends install libgtest-dev    \
+    python3-pip python3-setuptools                              \
+  && rm -fr /var/lib/apt/lists/*
+
+RUN pip3 install meson ninja
+{{ end }}
+
+USER local
+
+WORKDIR /home/local
+
+{{ if .Env.MAKEFLAGS }}
+ENV MAKEFLAGS={{ .Env.MAKEFLAGS }}
+ENV SCONSFLAGS={{ .Env.MAKEFLAGS }}
+{{ end }}
+
+MOUNT {{ $ccachedir }}:/home/local/.ccache:Z
+
+RUN sudo chown -R local:local /home/local/.ccache
+
+{{ if eq .BUILD "android" }}
+RUN wget https://storage.googleapis.com/git-repo-downloads/repo \
+  && chmod u+x repo                                             \
+  && mkdir -p /home/local/.bin                                  \
+  && mv repo /home/local/.bin
+
+ENV PATH=/usr/lib/ccache:/home/local/.bin/:$PATH
+ENV USE_CCACHE=1
+
+RUN mkdir -p /home/local/aosp
+
+WORKDIR /home/local/aosp
+
+ATTACH [ "/bin/bash" ]
+
+RUN repo init --depth=1 -u https://android.googlesource.com/platform/manifest  \
+  && git clone --depth=1 https://github.com/Igalia/mesa-android-manifest -b no-mesa-minimum-reqs .repo/local_manifests  \
+  && repo sync --force-sync --no-tags -c
+
+{{ if .RELEASE }}
+RUN git clone https://github.com/Igalia/release-mesa --depth 1 -b {{ .RELEASE }} external/mesa3d
+{{ else }}
+ADD . external/mesa3d
+RUN sudo chown -R local:local external/mesa3d
+{{ end }}
+
+RUN if [ -d external/mesa3d/.git ] ; then git -C external/mesa3d show --stat > /home/local/mesa-head.txt ; else echo "FROM TARBALL" > /home/local/mesa-head.txt ; fi
+
+{{ else }}
+
+ENV PATH=/usr/lib/ccache:/usr/lib/llvm-{{ $llvm_version }}/bin:$PATH
+
+{{ if .RELEASE }}
+RUN git clone https://github.com/Igalia/release-mesa --depth 1 -b {{ .RELEASE }} /home/local/mesa
+{{ else }}
+ADD . /home/local/mesa
+RUN sudo chown -R local:local /home/local/mesa
+{{ end }}
+
+WORKDIR /home/local/mesa
+
+RUN if [ -d .git ] ; then git show --stat > /home/local/mesa-head.txt ; else echo "FROM TARBALL" > /home/local/mesa-head.txt ; fi
+
+{{ end }}
+
+{{ if ne .BUILD "android" }}
+RUN export DRM_VERSION=`cat /home/local/mesa/configure.ac | egrep ^LIBDRM.*REQUIRED| cut -f2 -d= | sort -nr | head -n 1` \
+  && wget http://dri.freedesktop.org/libdrm/libdrm-$DRM_VERSION.tar.bz2                                                  \
+  && tar -jxvf libdrm-$DRM_VERSION.tar.bz2                                                                               \
+  && rm libdrm-$DRM_VERSION.tar.bz2                                                                                      \
+  && cd libdrm-$DRM_VERSION                                                                                              \
+  && ./configure --enable-freedreno --enable-vc4 --enable-etnaviv-experimental-api                                       \
+  && make                                                                                                                \
+  && sudo make install                                                                                                   \
+  && sudo ldconfig                                                                                                       \
+  && sudo rm -fr ../libdrm-$DRM_VERSION                                                                                  \
+  && unset DRM_VERSION
+{{ end }}
+
+ATTACH [ "/bin/bash" ]
+
+{{ if eq .BUILD "android" }}
+RUN sed -i '1s/^/BOARD_GPU_DRIVERS := i915 i965 i915g r300g r600g nouveau swrast freedreno vc4 virgl\n/' external/mesa3d/Android.mk
+RUN ln -sf /usr/bin/bison prebuilts/misc/linux-x86/bison/bison
+RUN [ "/bin/bash", "-c", "source build/envsetup.sh && lunch linaro_arm64-userdebug && make i965_dri i915_dri gallium_dri && lunch linaro_x86_64-userdebug && make i965_dri i915_dri gallium_dri && sudo rm -fr /home/local/aosp" ]
+
+{{ else if eq .BUILD "scons" }}
+{{ if eq $llvm_version "0.0" }}
+RUN scons llvm=0               \
+  && scons llvm=0 check
+{{ else }}
+RUN scons llvm=1               \
+  && scons llvm=1 check
+{{ end }}
+
+{{ else if eq .BUILD "windows" }}
+RUN scons platform=windows toolchain=crossmingw
+
+{{ else if eq .BUILD "distcheck" }}
+MOUNT .:/context
+RUN ./autogen.sh                                                \
+  && make distcheck                                             \
+  && __version=`cat VERSION`                                    \
+  && mkdir -p /context/release-output                           \
+  && mv /home/local/mesa-head.txt /context/release-output       \
+  && mv mesa-$__version.tar.xz /context/release-output          \
+  && sudo rm -fr /home/local/mesa
+{{ else if eq .BUILD "gallium" }}
+RUN export LLVM={{ $llvm_version }}.0\
+  && eval `cat configure.ac | egrep ^LLVM_REQUIRED`                                                                                                       \
+  && if dpkg --compare-versions $LLVM ge $LLVM_REQUIRED_GALLIUM ; then GALLIUM_DRIVERS=i915,svga,swrast,nouveau,r300,freedreno,vc4,virgl,etnaviv,imx ; fi \
+  && if dpkg --compare-versions $LLVM ge $LLVM_REQUIRED_R600 ; then GALLIUM_DRIVERS=$GALLIUM_DRIVERS,r600 ; fi                                            \
+  && if dpkg --compare-versions $LLVM ge $LLVM_REQUIRED_RADEONSI ; then GALLIUM_DRIVERS=$GALLIUM_DRIVERS,radeonsi ; fi                                    \
+  && if dpkg --compare-versions $LLVM ge $LLVM_REQUIRED_SWR ; then GALLIUM_DRIVERS=$GALLIUM_DRIVERS,swr ; fi                                              \
+  && ./autogen.sh --with-dri-drivers=""                                                                                                                   \
+    --with-gallium-drivers=$GALLIUM_DRIVERS                                                                                                               \
+    {{ if ne $llvm_version "0.0" }} --enable-llvm --enable-llvm-shared-libs {{ end }}                                                                     \
+    {{ if ne $debug_build "false" }} --enable-debug {{ end }}                                                                                             \
+    --disable-glx --disable-gbm --disable-egl                                                                                                             \
+  && make                                                                                                                                                 \
+  && make check
+{{ else if eq .BUILD "meson" }}
+RUN meson -Dbuild-tests=true _build                                                                                                                       \
+  && ninja -C _build                                                                                                                                      \
+  && ninja -C _build test                                                                                                                                 \
+  && sudo ninja -C _build install                                                                                                                         \
+  && sudo ldconfig
+{{ else }}
+RUN export LLVM={{ $llvm_version }}.0\
+  && eval `cat configure.ac | egrep ^LLVM_REQUIRED`                                                                                                       \
+  && if dpkg --compare-versions $LLVM ge $LLVM_REQUIRED_GALLIUM ; then GALLIUM_DRIVERS=i915,svga,swrast,nouveau,r300,freedreno,vc4,virgl,etnaviv,imx ; fi \
+  && if dpkg --compare-versions $LLVM ge $LLVM_REQUIRED_R600 ; then GALLIUM_DRIVERS=$GALLIUM_DRIVERS,r600 ; fi                                            \
+  && if dpkg --compare-versions $LLVM ge $LLVM_REQUIRED_RADEONSI ; then GALLIUM_DRIVERS=$GALLIUM_DRIVERS,radeonsi ; fi                                    \
+  && if dpkg --compare-versions $LLVM ge $LLVM_REQUIRED_SWR ; then GALLIUM_DRIVERS=$GALLIUM_DRIVERS,swr ; fi                                              \
+  && VULKAN_DRIVERS=intel                                                                                                                                 \
+  && if dpkg --compare-versions $LLVM ge $LLVM_REQUIRED_RADV ; then VULKAN_DRIVERS=$VULKAN_DRIVERS,radeon ; fi                                            \
+  && ./autogen.sh --with-egl-platforms=x11,drm,wayland                                                                                                    \
+    --with-dri-drivers=i915,i965,radeon,r200,swrast,nouveau                                                                                               \
+    --with-gallium-drivers=$GALLIUM_DRIVERS                                                                                                               \
+    --with-vulkan-drivers=$VULKAN_DRIVERS                                                                                                                 \
+    {{ if ne $llvm_version "0.0" }} --enable-llvm --enable-llvm-shared-libs {{ end }}                                                                     \
+    {{ if ne $debug_build "false" }} --enable-debug {{ end }}                                                                                             \
+    --enable-glx-tls --enable-gbm --enable-egl                                                                                                            \
+  && make                                                                                                                                                 \
+  && make check                                                                                                                                           \
+  && sudo make install                                                                                                                                    \
+  && sudo ldconfig
+{{ end }}
+
+{{ if eq $clean "true" }}
+RUN test -d /home/local/mesa && sudo rm -fr /home/local/mesa
+{{ end }}
+
+WORKDIR /home/local
+
+USER root
+
+{{ if .TAG }}
+TAG {{ $image }}:{{ .TAG }}
+{{ end }}
