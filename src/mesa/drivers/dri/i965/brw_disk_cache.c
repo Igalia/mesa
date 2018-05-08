@@ -235,6 +235,9 @@ brw_disk_cache_upload_program(struct brw_context *brw, gl_shader_stage stage)
    if (prog == NULL)
       return false;
 
+   if (prog->sh.data->spirv)
+      return false;
+
    if (brw->ctx._Shader->Flags & GLSL_CACHE_FALLBACK)
       goto fail;
 
