@@ -595,6 +595,9 @@ gl_nir_link_uniforms(struct gl_context *ctx,
       nir_foreach_variable(var, &nir->uniforms) {
          struct gl_uniform_storage *uniform = NULL;
 
+         if (var->data.how_declared == nir_var_hidden)
+            continue;
+
          /* Check if the uniform has been processed already for
           * other stage. If so, validate they are compatible and update
           * the active stage mask.
