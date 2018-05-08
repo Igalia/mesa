@@ -1,4 +1,3 @@
-dnl Copyright © 2011-2014 Intel Corporation
 dnl Copyright © 2011-2014 Emil Velikov <emil.l.velikov@gmail.com>
 dnl Copyright © 2007-2010 Dan Nicholson
 dnl Copyright © 2010-2014 Marek Olšák <maraeo@gmail.com>
