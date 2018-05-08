@@ -546,6 +546,12 @@ nir_cross_validate_uniforms(struct gl_context *ctx,
          if (var->data.location < 0)
             continue;
 
+         /* We are not interested on cross-stage uniforms that are implicitly
+          * introduced by the compiler
+          */
+         if (var->data.how_declared == nir_var_hidden)
+            continue;
+
          /* We search on the list of processed variables if we have a variable
           * with the same location. We can't use name as GLSL linker, as
           * SPIR-V names are optional. See issue 12 at ARB_gl_spirv spec.
