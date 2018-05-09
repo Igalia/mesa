@@ -773,6 +773,23 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
    }
 }
 
+static bool
+has_vector_array_deref(nir_deref *deref)
+{
+   while (true) {
+      if (deref->child == NULL)
+         return false;
+
+      if (glsl_type_is_vector(deref->type) &&
+          deref->child->deref_type == nir_deref_type_array) {
+         assert(deref->child->child == NULL);
+         return true;
+      }
+
+      deref = deref->child;
+   }
+}
+
 static void
 handle_glsl450_interpolation(struct vtn_builder *b, enum GLSLstd450 opcode,
                              const uint32_t *w, unsigned count)
@@ -799,9 +816,27 @@ handle_glsl450_interpolation(struct vtn_builder *b, enum GLSLstd450 opcode,
    }
 
    nir_intrinsic_instr *intrin = nir_intrinsic_instr_create(b->nb.shader, op);
+   const struct glsl_type *intrin_type;
 
    nir_deref_var *deref = vtn_nir_deref(b, w[5]);
    intrin->variables[0] = nir_deref_var_clone(deref, intrin);
+
+   /* If the value we are interpolating has an index into a vector then
+    * interpolate the vector and index the result of that instead. This is
+    * necessary because the index will get generated as a series of nir_bcsel
+    * instructions so it would no longer be an input variable.
+    */
+   bool vec_array_deref = has_vector_array_deref(&deref->deref);
+   if (vec_array_deref) {
+      /* Remove the last deref */
+      nir_deref *parent = &intrin->variables[0]->deref;
+      while (parent->child->child)
+         parent = parent->child;
+      parent->child = NULL;
+      intrin_type = parent->type;
+   } else {
+      intrin_type = dest_type;
+   }
 
    switch (opcode) {
    case GLSLstd450InterpolateAtCentroid:
@@ -814,13 +849,26 @@ handle_glsl450_interpolation(struct vtn_builder *b, enum GLSLstd450 opcode,
       vtn_fail("Invalid opcode");
    }
 
-   intrin->num_components = glsl_get_vector_elements(dest_type);
+   intrin->num_components = glsl_get_vector_elements(intrin_type);
    nir_ssa_dest_init(&intrin->instr, &intrin->dest,
-                     glsl_get_vector_elements(dest_type),
-                     glsl_get_bit_size(dest_type), NULL);
-   val->ssa->def = &intrin->dest.ssa;
+                     glsl_get_vector_elements(intrin_type),
+                     glsl_get_bit_size(intrin_type), NULL);
 
    nir_builder_instr_insert(&b->nb, &intrin->instr);
+
+   if (vec_array_deref) {
+      nir_deref_array *deref_array =
+         nir_deref_as_array(nir_deref_tail(&deref->deref));
+      if (deref_array->deref_array_type == nir_deref_array_type_direct) {
+         val->ssa->def = vtn_vector_extract(b, &intrin->dest.ssa,
+                                            deref_array->base_offset);
+      } else {
+         val->ssa->def = vtn_vector_extract_dynamic(b, &intrin->dest.ssa,
+                                                    deref_array->indirect.ssa);
+      }
+   } else {
+      val->ssa->def = &intrin->dest.ssa;
+   }
 }
 
 bool
