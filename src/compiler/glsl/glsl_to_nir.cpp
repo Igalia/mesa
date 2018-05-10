@@ -1916,6 +1916,17 @@ nir_visitor::visit(ir_expression *ir)
             unreachable("not reached");
       }
       break;
+   case ir_binop_vector_extract: {
+      unsigned swiz[4] = { 0 };
+      result = nir_swizzle(&b, srcs[0], swiz, 1, true);
+      for (unsigned i = 1; i < ir->operands[0]->type->vector_elements; i++) {
+         swiz[0] = i;
+         nir_ssa_def *swizzled = nir_swizzle(&b, srcs[0], swiz, 1, true);
+         result = nir_bcsel(&b, nir_ieq(&b, srcs[1], nir_imm_int(&b, i)),
+                            swizzled, result);
+      }
+      break;
+   }
 
    case ir_binop_ldexp: result = nir_ldexp(&b, srcs[0], srcs[1]); break;
    case ir_triop_fma:
