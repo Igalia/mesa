@@ -69,6 +69,32 @@ nir_build_program_resource_list(struct gl_context *ctx,
       }
    }
 
+   /* Add inputs */
+   struct gl_linked_shader *sh = prog->_LinkedShaders[MESA_SHADER_VERTEX];
+   if (sh) {
+      nir_shader *nir = sh->Program->nir;
+      assert(nir);
+
+      nir_foreach_variable(var, &nir->inputs) {
+         struct gl_shader_variable *sh_var =
+            rzalloc(prog, struct gl_shader_variable);
+
+         /* ARB_gl_spirv: names are considered optional debug info, so the linker
+          * needs to work without them, and returning them is optional. For
+          * simplicity we ignore names.
+          */
+         sh_var->name = NULL;
+         sh_var->type = var->type;
+         sh_var->location = var->data.location;
+
+         /* @TODO: Fill in the rest of gl_shader_variable data. */
+
+         if (!link_util_add_program_resource(prog, resource_set, GL_PROGRAM_INPUT,
+                                             sh_var, 1 << MESA_SHADER_VERTEX)) {
+            return;
+         }
+      }
+   }
 
    /* Add program uniform blocks. */
    for (unsigned i = 0; i < prog->data->NumUniformBlocks; i++) {
