@@ -84,6 +84,28 @@
  * Additionally, the GLSL (IR) path is already handling and calling them
  * uniform blocks (ie: struct gl_uniform_block can be a individual ubo or
  * ssbo), so for consistency we are doing the same here.
+ *
+ * 3. The code assumes that all structure members have an Offset decoration,
+ * all arrays have an ArrayStride and all matrices have a MatrixStride, even
+ * for nested structures. That way we don’t have to worry about the different
+ * layout modes. This is explicitly required in the SPIR-V spec:
+ *
+ *   "Composite objects in the UniformConstant, Uniform, and PushConstant
+ *    Storage Classes must be explicitly laid out. The following apply to all
+ *    the aggregate and matrix types describing such an object, recursively
+ *    through their nested types:
+ *
+ *    – Each structure-type member must have an Offset Decoration.
+ *    - Each array type must have an ArrayStride Decoration.
+ *    – Each structure-type member that is a matrix or array-of-matrices must
+ *      have be decorated with a MatrixStride Decoration, and one of the
+ *      RowMajor or ColMajor Decorations."
+ *
+ * Additionally, the structure members are expected to be presented in
+ * increasing offset order:
+ *
+ *   "a structure has lower-numbered members appearing at smaller offsets than
+ *    higher-numbered members"
  */
 
 /*
@@ -109,19 +131,41 @@ _glsl_type_is_leaf(const struct glsl_type *type)
 }
 
 static unsigned
-_get_type_size(const struct glsl_type *type,
-               bool row_major,
-               enum glsl_interface_packing packing)
+_get_type_size(const struct glsl_type *type)
 {
-   switch(packing) {
-   case GLSL_INTERFACE_PACKING_STD140:
-      return glsl_type_std140_size(type, row_major);
-   case GLSL_INTERFACE_PACKING_STD430:
-      return glsl_type_std430_size(type, row_major);
-   default:
-      /* gl_spirv doesn't support packed/shared */
-      unreachable("Wrong interface packing");
+   /* If the type is a struct then the members are supposed to presented in
+    * increasing order of offset so we can just look at the last member.
+    */
+   if (glsl_type_is_struct(type)) {
+      unsigned length = glsl_get_length(type);
+      if (length > 0) {
+         return (glsl_get_struct_field_offset(type, length - 1) +
+                 _get_type_size(glsl_get_struct_field(type, length - 1)));
+      } else {
+         return 0;
+      }
    }
+
+   /* Arrays must have an array stride */
+   if (glsl_type_is_array(type)) {
+      /* FIXME: the array stride needs to be passed through from the SPIR-V.
+       */
+      return (_get_type_size(glsl_get_array_element(type)) *
+              glsl_get_length(type));
+   }
+
+   /* Matrices must have a matrix stride and either RowMajor or ColMajor */
+   if (glsl_type_is_matrix(type)) {
+      /* FIXME: the matrix stride and *Major needs to be passed through from
+       * the SPIR-V.
+       */
+      return (_get_type_size(glsl_get_array_element(type)) *
+              glsl_get_length(type));
+   }
+
+   unsigned N = glsl_type_is_64bit(type) ? 8 : 4;
+
+   return glsl_get_vector_elements(type) * N;
 }
 
 static bool
@@ -396,8 +440,7 @@ fill_individual_variable(const struct glsl_type *type,
     * over non-trivial types, like aoa. So we compute the offset always.
     */
    variables[*variable_index].Offset = *offset;
-   (*offset) += _get_type_size(type, variables[*variable_index].RowMajor,
-                               block->_Packing);
+   (*offset) += _get_type_size(type);
 
    (*variable_index)++;
 }
@@ -413,10 +456,13 @@ iterate_type_fill_variables(const struct glsl_type *type,
    for (unsigned i = 0; i < glsl_get_length(type); i++) {
       const struct glsl_type *field_type;
 
-      if (glsl_type_is_struct(type))
+      if (glsl_type_is_struct(type)) {
          field_type = glsl_get_struct_field(type, i);
-      else
+         *offset = glsl_get_struct_field_offset(type, i);
+      } else {
          field_type = glsl_get_array_element(type);
+      }
+
 
       /* FIXME: this would the the placeholder for something more generic that
        * just fill variables.
@@ -530,7 +576,7 @@ _fill_block(struct gl_uniform_block *block,
    iterate_type_fill_variables(type, variables, variable_index, &offset, prog, block);
    block->NumUniforms = *variable_index - old_variable_index;
 
-   block->UniformBufferSize =  _get_type_size(type, block->_RowMajor, block->_Packing);
+   block->UniformBufferSize =  _get_type_size(type);
    block->UniformBufferSize = glsl_align(block->UniformBufferSize, 16);
 }
 
