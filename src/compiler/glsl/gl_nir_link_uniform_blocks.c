@@ -131,9 +131,7 @@ _glsl_type_is_leaf(const struct glsl_type *type)
 }
 
 static unsigned
-_get_type_size(const struct glsl_type *type,
-               bool row_major,
-               enum glsl_interface_packing packing)
+_get_type_size(const struct glsl_type *type)
 {
    /* If the type is a struct then the members are supposed to presented in
     * increasing order of offset so we can just look at the last member.
@@ -142,26 +140,32 @@ _get_type_size(const struct glsl_type *type,
       unsigned length = glsl_get_length(type);
       if (length > 0) {
          return (glsl_get_struct_field_offset(type, length - 1) +
-                 _get_type_size(glsl_get_struct_field(type, length - 1),
-                                row_major, packing));
+                 _get_type_size(glsl_get_struct_field(type, length - 1)));
       } else {
          return 0;
       }
    }
 
-   /* FIXME, this is not correct for SPIR-V because in that case the shader
-    * can have completely custom packing with its own array and matrix stride.
-    */
-
-   switch(packing) {
-   case GLSL_INTERFACE_PACKING_STD140:
-      return glsl_type_std140_size(type, row_major);
-   case GLSL_INTERFACE_PACKING_STD430:
-      return glsl_type_std430_size(type, row_major);
-   default:
-      /* gl_spirv doesn't support packed/shared */
-      unreachable("Wrong interface packing");
+   /* Arrays must have an array stride */
+   if (glsl_type_is_array(type)) {
+      /* FIXME: the array stride needs to be passed through from the SPIR-V.
+       */
+      return (_get_type_size(glsl_get_array_element(type)) *
+              glsl_get_length(type));
    }
+
+   /* Matrices must have a matrix stride and either RowMajor or ColMajor */
+   if (glsl_type_is_matrix(type)) {
+      /* FIXME: the matrix stride and *Major needs to be passed through from
+       * the SPIR-V.
+       */
+      return (_get_type_size(glsl_get_array_element(type)) *
+              glsl_get_length(type));
+   }
+
+   unsigned N = glsl_type_is_64bit(type) ? 8 : 4;
+
+   return glsl_get_vector_elements(type) * N;
 }
 
 static bool
@@ -436,8 +440,7 @@ fill_individual_variable(const struct glsl_type *type,
     * over non-trivial types, like aoa. So we compute the offset always.
     */
    variables[*variable_index].Offset = *offset;
-   (*offset) += _get_type_size(type, variables[*variable_index].RowMajor,
-                               block->_Packing);
+   (*offset) += _get_type_size(type);
 
    (*variable_index)++;
 }
@@ -450,14 +453,12 @@ iterate_type_fill_variables(const struct glsl_type *type,
                             struct gl_shader_program *prog,
                             struct gl_uniform_block *block)
 {
-   unsigned int base_offset = *offset;
-
    for (unsigned i = 0; i < glsl_get_length(type); i++) {
       const struct glsl_type *field_type;
 
       if (glsl_type_is_struct(type)) {
          field_type = glsl_get_struct_field(type, i);
-         *offset = base_offset + glsl_get_struct_field_offset(type, i);
+         *offset = glsl_get_struct_field_offset(type, i);
       } else {
          field_type = glsl_get_array_element(type);
       }
@@ -570,7 +571,7 @@ _fill_block(struct gl_uniform_block *block,
    iterate_type_fill_variables(type, variables, variable_index, &offset, prog, block);
    block->NumUniforms = *variable_index - old_variable_index;
 
-   block->UniformBufferSize =  _get_type_size(type, block->_RowMajor, block->_Packing);
+   block->UniformBufferSize =  _get_type_size(type);
    block->UniformBufferSize = glsl_align(block->UniformBufferSize, 16);
 }
 
