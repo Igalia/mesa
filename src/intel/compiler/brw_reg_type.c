@@ -138,6 +138,7 @@ enum hw_3src_reg_type {
    GEN7_3SRC_TYPE_D  = 1,
    GEN7_3SRC_TYPE_UD = 2,
    GEN7_3SRC_TYPE_DF = 3,
+   GEN8_3SRC_TYPE_HF = 4,
 
    /** When ExecutionDatatype is 1: @{ */
    GEN10_ALIGN1_3SRC_REG_TYPE_HF = 0b000,
@@ -166,6 +167,14 @@ static const struct hw_3src_type {
    [BRW_REGISTER_TYPE_D]  = { GEN7_3SRC_TYPE_D  },
    [BRW_REGISTER_TYPE_UD] = { GEN7_3SRC_TYPE_UD },
    [BRW_REGISTER_TYPE_DF] = { GEN7_3SRC_TYPE_DF },
+}, gen8_hw_3src_type[] = {
+   [0 ... BRW_REGISTER_TYPE_LAST] = { INVALID },
+
+   [BRW_REGISTER_TYPE_F]  = { GEN7_3SRC_TYPE_F  },
+   [BRW_REGISTER_TYPE_D]  = { GEN7_3SRC_TYPE_D  },
+   [BRW_REGISTER_TYPE_UD] = { GEN7_3SRC_TYPE_UD },
+   [BRW_REGISTER_TYPE_DF] = { GEN7_3SRC_TYPE_DF },
+   [BRW_REGISTER_TYPE_HF] = { GEN8_3SRC_TYPE_HF },
 }, gen10_hw_3src_align1_type[] = {
 #define E(x) BRW_ALIGN1_3SRC_EXEC_TYPE_##x
    [0 ... BRW_REGISTER_TYPE_LAST] = { INVALID },
@@ -249,6 +258,15 @@ brw_hw_type_to_reg_type(const struct gen_device_info *devinfo,
    unreachable("not reached");
 }
 
+static inline const struct hw_3src_type *
+get_hw_3src_type_map(const struct gen_device_info *devinfo)
+{
+   if (devinfo->gen < 8)
+      return gen7_hw_3src_type;
+   else
+      return gen8_hw_3src_type;
+}
+
 /**
  * Convert a brw_reg_type enumeration value into the hardware representation
  * for a 3-src align16 instruction
@@ -257,9 +275,10 @@ unsigned
 brw_reg_type_to_a16_hw_3src_type(const struct gen_device_info *devinfo,
                                  enum brw_reg_type type)
 {
-   assert(type < ARRAY_SIZE(gen7_hw_3src_type));
-   assert(gen7_hw_3src_type[type].reg_type != (enum hw_3src_reg_type)INVALID);
-   return gen7_hw_3src_type[type].reg_type;
+   const struct hw_3src_type *hw_3src_type_map = get_hw_3src_type_map(devinfo);
+   assert(type <= BRW_REGISTER_TYPE_LAST);
+   assert(hw_3src_type_map[type].reg_type != (enum hw_3src_reg_type)INVALID);
+   return hw_3src_type_map[type].reg_type;
 }
 
 /**
@@ -283,8 +302,9 @@ enum brw_reg_type
 brw_a16_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
                                  unsigned hw_type)
 {
+   const struct hw_3src_type *hw_3src_type_map = get_hw_3src_type_map(devinfo);
    for (enum brw_reg_type i = 0; i <= BRW_REGISTER_TYPE_LAST; i++) {
-      if (gen7_hw_3src_type[i].reg_type == hw_type) {
+      if (hw_3src_type_map[i].reg_type == hw_type) {
          return i;
       }
    }
