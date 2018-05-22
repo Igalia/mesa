@@ -801,6 +801,11 @@ brw_alu3(struct brw_codegen *p, unsigned opcode, struct brw_reg dest,
           */
          brw_inst_set_3src_a16_src_type(devinfo, inst, dest.type);
          brw_inst_set_3src_a16_dst_type(devinfo, inst, dest.type);
+
+         if (devinfo->gen >= 8 && dest.type == BRW_REGISTER_TYPE_HF) {
+            brw_inst_set_3src_a16_src1_type(devinfo, inst, 1);
+            brw_inst_set_3src_a16_src2_type(devinfo, inst, 1);
+         }
       }
    }
 
