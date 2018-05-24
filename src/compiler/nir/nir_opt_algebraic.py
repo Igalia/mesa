@@ -778,6 +778,8 @@ def fexp2i(exp, bits):
       return ('ishl', ('iadd', exp, 127), 23)
    elif bits == 64:
       return ('pack_64_2x32_split', 0, ('ishl', ('iadd', exp, 1023), 20))
+   elif bits == 16:
+      return ('i2i16', ('ishl', ('iadd', exp, 15), 10))
    else:
       assert False
 
@@ -796,6 +798,8 @@ def ldexp(f, exp, bits):
       exp = ('imin', ('imax', exp, -252), 254)
    elif bits == 64:
       exp = ('imin', ('imax', exp, -2044), 2046)
+   elif bits == 16:
+      exp = ('imin', ('imax', exp, -30), 30)
    else:
       assert False
 
@@ -814,6 +818,7 @@ def ldexp(f, exp, bits):
 optimizations += [
    (('ldexp@32', 'x', 'exp'), ldexp('x', 'exp', 32), 'options->lower_ldexp'),
    (('ldexp@64', 'x', 'exp'), ldexp('x', 'exp', 64), 'options->lower_ldexp'),
+   (('ldexp@16', 'x', 'exp'), ldexp('x', 'exp', 16), 'options->lower_ldexp'),
 ]
 
 # Unreal Engine 4 demo applications open-codes bitfieldReverse()
