@@ -1259,7 +1259,7 @@ fs_generator::generate_ddx(const fs_inst *inst,
    struct brw_reg src0 = src;
    struct brw_reg src1 = src;
 
-   src0.subnr   = type_sz(src.type);
+   src0.subnr  += type_sz(src.type);
    src0.vstride = vstride;
    src0.width   = width;
    src0.hstride = BRW_HORIZONTAL_STRIDE_0;
@@ -1325,8 +1325,8 @@ fs_generator::generate_ddy(const fs_inst *inst,
       /* replicate the derivative at the top-left pixel to other pixels */
       struct brw_reg src0 = stride(src, 4, 4, 0);
       struct brw_reg src1 = stride(src, 4, 4, 0);
-      src0.subnr = 0 * type_size;
-      src1.subnr = 2 * type_size;
+      src0.subnr += 0 * type_size;
+      src1.subnr += 2 * type_size;
 
       brw_ADD(p, dst, negate(src0), src1);
    }
