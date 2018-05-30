@@ -1339,8 +1339,14 @@ fs_generator::generate_ddy(const fs_inst *inst,
    const uint32_t type_size = type_sz(src.type);
 
    if (inst->opcode == FS_OPCODE_DDY_FINE) {
-      /* produce accurate derivatives */
-      if (devinfo->gen >= 11) {
+      /* produce accurate derivatives. We can do this easily in Align16
+       * but this is not supported in gen11+ and gen8 Align16 swizzles
+       * for Half-Float operands work in units of 32-bit and always
+       * select pairs of consecutive half-float elements, so we can't use
+       * use it for this.
+       */
+      if (devinfo->gen >= 11 ||
+          (devinfo->gen == 8 && src.type == BRW_REGISTER_TYPE_HF)) {
          src = stride(src, 0, 2, 1);
          struct brw_reg src_0  = byte_offset(src,  0 * type_size);
          struct brw_reg src_2  = byte_offset(src,  2 * type_size);
