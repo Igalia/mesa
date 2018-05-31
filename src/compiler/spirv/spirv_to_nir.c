@@ -3720,6 +3720,13 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
 
       case SpvCapabilitySampleMaskPostDepthCoverage:
          spv_check_supported(post_depth_coverage, cap);
+
+      case SpvCapabilityDenormFlushToZero:
+      case SpvCapabilityDenormPreserve:
+      case SpvCapabilitySignedZeroInfNanPreserve:
+      case SpvCapabilityRoundingModeRTE:
+      case SpvCapabilityRoundingModeRTZ:
+         spv_check_supported(shader_float_controls, cap);
          break;
 
       case SpvCapabilityPhysicalStorageBufferAddressesEXT:
