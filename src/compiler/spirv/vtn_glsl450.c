@@ -201,8 +201,20 @@ build_log(nir_builder *b, nir_ssa_def *x)
  * in each case.
  */
 static nir_ssa_def *
-build_asin(nir_builder *b, nir_ssa_def *x, float _p0, float _p1)
+build_asin(nir_builder *b, nir_ssa_def *_x, float _p0, float _p1)
 {
+   /* The polynomial approximation isn't precise enough to meet half-float
+    * precision requirements. Alternatively, we could implement this using
+    * the formula:
+    *
+    * asin(x) = atan2(x, sqrt(1 - x*x))
+    *
+    * But that is very expensive, so instead we just do the polynomial
+    * approximation in 32-bit math and then we convert the result back to
+    * 16-bit.
+    */
+   nir_ssa_def *x = _x->bit_size == 16 ? nir_f2f32(b, _x) : _x;
+
    nir_ssa_def *p0 = nir_imm_floatN_t(b, _p0, x->bit_size);
    nir_ssa_def *p1 = nir_imm_floatN_t(b, _p1, x->bit_size);
    nir_ssa_def *one = nir_imm_floatN_t(b, 1.0f, x->bit_size);
@@ -210,7 +222,8 @@ build_asin(nir_builder *b, nir_ssa_def *x, float _p0, float _p1)
    nir_ssa_def *m_pi_4_minus_one =
       nir_imm_floatN_t(b, M_PI_4f - 1.0f, x->bit_size);
    nir_ssa_def *abs_x = nir_fabs(b, x);
-   return nir_fmul(b, nir_fsign(b, x),
+   nir_ssa_def *result =
+       nir_fmul(b, nir_fsign(b, x),
                    nir_fsub(b, m_pi_2,
                             nir_fmul(b, nir_fsqrt(b, nir_fsub(b, one, abs_x)),
                                      nir_fadd(b, m_pi_2,
@@ -220,6 +233,10 @@ build_asin(nir_builder *b, nir_ssa_def *x, float _p0, float _p1)
                                                                          nir_fadd(b, p0,
                                                                                   nir_fmul(b, abs_x,
                                                                                            p1)))))))));
+   if (_x->bit_size == 16)
+      result = nir_f2f16(b, result);
+
+   return result;
 }
 
 /**
