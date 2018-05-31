@@ -3871,6 +3871,32 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       vtn_assert(b->shader->info.stage == MESA_SHADER_FRAGMENT);
       break;
 
+   case SpvExecutionModeDenormPreserve:
+      switch (mode->literals[0]) {
+      case 16: b->shader->info.shader_float_controls_execution_mode |= SHADER_DENORM_PRESERVE_FP16; break;
+      case 32: b->shader->info.shader_float_controls_execution_mode |= SHADER_DENORM_PRESERVE_FP32; break;
+      case 64: b->shader->info.shader_float_controls_execution_mode |= SHADER_DENORM_PRESERVE_FP64; break;
+      default: vtn_fail("Floating point type not supported");
+      }
+      break;
+   case SpvExecutionModeDenormFlushToZero:
+      switch (mode->literals[0]) {
+      case 16: b->shader->info.shader_float_controls_execution_mode |= SHADER_DENORM_FLUSH_TO_ZERO_FP16; break;
+      case 32: b->shader->info.shader_float_controls_execution_mode |= SHADER_DENORM_FLUSH_TO_ZERO_FP32; break;
+      case 64: b->shader->info.shader_float_controls_execution_mode |= SHADER_DENORM_FLUSH_TO_ZERO_FP64; break;
+      default: vtn_fail("Floating point type not supported");
+      }
+       break;
+   case SpvExecutionModeSignedZeroInfNanPreserve:
+      b->shader->info.shader_float_controls_execution_mode |= SHADER_SIGNED_ZERO_INF_NAN_PRESERVE;
+      break;
+   case SpvExecutionModeRoundingModeRTE:
+      b->shader->info.shader_float_controls_execution_mode |= SHADER_ROUNDING_MODE_RTE;
+      break;
+   case SpvExecutionModeRoundingModeRTZ:
+      b->shader->info.shader_float_controls_execution_mode |= SHADER_ROUNDING_MODE_RTZ;
+      break;
+
    default:
       vtn_fail("Unhandled execution mode");
    }

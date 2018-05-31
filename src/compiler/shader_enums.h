@@ -750,6 +750,20 @@ enum compare_func
    COMPARE_FUNC_ALWAYS,
 };
 
+enum shader_float_controls
+{
+   SHADER_DEFAULT_FLOAT_CONTROL_MODE      = 0x0000,
+   SHADER_DENORM_PRESERVE_FP16            = 0x0001,
+   SHADER_DENORM_PRESERVE_FP32            = 0x0002,
+   SHADER_DENORM_PRESERVE_FP64            = 0x0004,
+   SHADER_DENORM_FLUSH_TO_ZERO_FP16       = 0x0008,
+   SHADER_DENORM_FLUSH_TO_ZERO_FP32       = 0x0010,
+   SHADER_DENORM_FLUSH_TO_ZERO_FP64       = 0x0020,
+   SHADER_SIGNED_ZERO_INF_NAN_PRESERVE    = 0x0040,
+   SHADER_ROUNDING_MODE_RTE               = 0x0080,
+   SHADER_ROUNDING_MODE_RTZ               = 0x0100,
+};
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

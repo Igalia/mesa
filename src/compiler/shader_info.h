@@ -141,6 +141,9 @@ typedef struct shader_info {
    /** Was this shader linked with any transform feedback varyings? */
    bool has_transform_feedback_varyings;
 
+   /* SPV_KHR_shader_float_controls: execution mode for floating point ops */
+   unsigned shader_float_controls_execution_mode;
+
    union {
       struct {
          /* Which inputs are doubles */
