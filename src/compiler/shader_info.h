@@ -48,6 +48,7 @@ struct spirv_supported_capabilities {
    bool int16;
    bool float16;
    bool int8;
+   bool shader_float_controls;
    bool shader_viewport_index_layer;
    bool subgroup_arithmetic;
    bool subgroup_ballot;
