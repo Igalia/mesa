@@ -6671,6 +6671,8 @@ fs_visitor::run_vs()
    if (shader_time_index >= 0)
       emit_shader_time_begin();
 
+   emit_shader_float_controls_execution_mode();
+
    emit_nir_code();
 
    if (failed)
@@ -6741,6 +6743,7 @@ fs_visitor::run_tcs_single_patch()
               brw_imm_ud(nir->info.tess.tcs_vertices_out), BRW_CONDITIONAL_L);
       bld.IF(BRW_PREDICATE_NORMAL);
    }
+   emit_shader_float_controls_execution_mode();
 
    emit_nir_code();
 
@@ -6793,6 +6796,8 @@ fs_visitor::run_tes()
    if (shader_time_index >= 0)
       emit_shader_time_begin();
 
+   emit_shader_float_controls_execution_mode();
+
    emit_nir_code();
 
    if (failed)
@@ -6842,6 +6847,8 @@ fs_visitor::run_gs()
 
    if (shader_time_index >= 0)
       emit_shader_time_begin();
+
+   emit_shader_float_controls_execution_mode();
 
    emit_nir_code();
 
@@ -6934,6 +6941,8 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
                  retype(dispatch_mask, BRW_REGISTER_TYPE_UW));
       }
 
+      emit_shader_float_controls_execution_mode();
+
       emit_nir_code();
 
       if (failed)
@@ -6989,6 +6998,8 @@ fs_visitor::run_cs(unsigned min_dispatch_width)
       abld.MOV(retype(brw_sr0_reg(1), BRW_REGISTER_TYPE_UW),
                suboffset(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_UW), 1));
    }
+
+   emit_shader_float_controls_execution_mode();
 
    emit_nir_code();
 
