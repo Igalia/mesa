@@ -2230,9 +2230,24 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width)
          brw_DIM(p, dst, retype(src[0], BRW_REGISTER_TYPE_F));
          break;
 
-      case SHADER_OPCODE_RND_MODE:
+      case SHADER_OPCODE_RND_MODE: {
          assert(src[0].file == BRW_IMMEDIATE_VALUE);
-         brw_rounding_mode(p, (brw_rnd_mode) src[0].d);
+         /*
+          * Changes the floating point rounding mode updating the control register
+          * field defined at cr0.0[5-6] bits. This function supports the changes to
+          * RTNE (00), RU (01), RD (10) and RTZ (11) rounding using bitwise operations.
+          * Only RTNE and RTZ rounding are enabled at nir.
+          */
+         enum brw_rnd_mode mode =
+            (enum brw_rnd_mode) (src[0].d << BRW_CR0_RND_MODE_SHIFT);
+         brw_float_controls_mode(p, mode, BRW_CR0_RND_MODE_MASK);
+      }
+         break;
+
+      case SHADER_OPCODE_FLOAT_CONTROL_MODE:
+         assert(src[0].file == BRW_IMMEDIATE_VALUE);
+         assert(src[1].file == BRW_IMMEDIATE_VALUE);
+         brw_float_controls_mode(p, src[0].d, src[1].d);
          break;
 
       default:
