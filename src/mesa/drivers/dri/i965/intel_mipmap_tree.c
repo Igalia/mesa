@@ -719,8 +719,10 @@ miptree_create(struct brw_context *brw,
       }
    }
 
-   mt->etc_format = (_mesa_is_format_color_format(format) && mt_fmt != format) ?
-                    format : MESA_FORMAT_NONE;
+   if (!(flags & MIPTREE_CREATE_ETC))
+      mt->etc_format = (_mesa_is_format_color_format(format) && mt_fmt != format) ?
+                       format : MESA_FORMAT_NONE;
+
 
    if (!(flags & MIPTREE_CREATE_NO_AUX))
       intel_miptree_choose_aux_usage(brw, mt);
@@ -3332,9 +3334,6 @@ intel_miptree_map_etc(struct brw_context *brw,
    if (mt->etc_format == MESA_FORMAT_ETC1_RGB8) {
       assert(mt->format == MESA_FORMAT_R8G8B8X8_UNORM);
    }
-
-   assert(map->mode & GL_MAP_WRITE_BIT);
-   assert(map->mode & GL_MAP_INVALIDATE_RANGE_BIT);
 
    intel_miptree_access_raw(brw, mt, level, slice, true);
 

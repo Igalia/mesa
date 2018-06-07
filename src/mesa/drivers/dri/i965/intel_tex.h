@@ -54,5 +54,4 @@ intel_miptree_create_for_teximage(struct brw_context *brw,
 
 void intel_finalize_mipmap_tree(struct brw_context *brw,
                                 struct gl_texture_object *tex_obj);
-
 #endif
