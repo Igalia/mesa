@@ -74,6 +74,7 @@ struct intel_texture_image;
  * without transcoding back.  This flag to intel_miptree_map() gets you that.
  */
 #define BRW_MAP_DIRECT_BIT	0x80000000
+#define BRW_MAP_ETC_BIT	0x40000000
 
 struct intel_miptree_map {
    /** Bitfield of GL_MAP_*_BIT and BRW_MAP_*_BIT. */
@@ -380,6 +381,15 @@ enum intel_miptree_create_flags {
     * that the miptree will be created with mt->aux_usage == NONE.
     */
    MIPTREE_CREATE_NO_AUX   = 1 << 2,
+
+   /** Create a second miptree for the compressed pixels (Gen7 only)
+    *
+    * On Gen7, we need to store 2 miptrees for some compressed
+    * formats so we can handle rendering as well as getting the
+    * compressed image data. This flag indicates that the miptree
+    * is expected to hold compressed data for the latter case.
+    */
+   MIPTREE_CREATE_ETC      = 1 << 3,
 };
 
 struct intel_mipmap_tree *intel_miptree_create(struct brw_context *brw,

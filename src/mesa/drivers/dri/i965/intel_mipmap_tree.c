@@ -733,9 +733,10 @@ miptree_create(struct brw_context *brw,
    mesa_format etc_format = MESA_FORMAT_NONE;
    uint32_t alloc_flags = 0;
 
-   format = intel_lower_compressed_format(brw, format);
-
-   etc_format = (format != tex_format) ? tex_format : MESA_FORMAT_NONE;
+   if (!(flags & MIPTREE_CREATE_ETC)) {
+      format = intel_lower_compressed_format(brw, format);
+      etc_format = (format != tex_format) ? tex_format : MESA_FORMAT_NONE;
+   }
 
    if (flags & MIPTREE_CREATE_BUSY)
       alloc_flags |= BO_ALLOC_BUSY;
@@ -3373,9 +3374,6 @@ intel_miptree_map_etc(struct brw_context *brw,
    if (mt->etc_format == MESA_FORMAT_ETC1_RGB8) {
       assert(mt->format == MESA_FORMAT_R8G8B8X8_UNORM);
    }
-
-   assert(map->mode & GL_MAP_WRITE_BIT);
-   assert(map->mode & GL_MAP_INVALIDATE_RANGE_BIT);
 
    intel_miptree_access_raw(brw, mt, level, slice, true);
 
