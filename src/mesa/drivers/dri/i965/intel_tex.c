@@ -66,6 +66,8 @@ intel_alloc_texture_image_buffer(struct gl_context *ctx,
    struct intel_texture_image *intel_image = intel_texture_image(image);
    struct gl_texture_object *texobj = image->TexObject;
    struct intel_texture_object *intel_texobj = intel_texture_object(texobj);
+   struct gen_device_info *devinfo = &brw->screen->devinfo;
+   mesa_format fmt = image->TexFormat;
 
    assert(image->Border == 0);
 
@@ -110,6 +112,33 @@ intel_alloc_texture_image_buffer(struct gl_context *ctx,
           image->Width, image->Height, image->Depth, intel_image->mt);
    }
 
+   if (devinfo->gen < 8 && _mesa_is_format_etc2(fmt)) {
+      if (intel_texobj->cmt &&
+          intel_miptree_match_image(intel_texobj->cmt, image)) {
+         intel_miptree_reference(&intel_image->cmt, intel_texobj->cmt);
+         DBG("%s: alloc obj %p level %d %dx%dx%d using object's miptree %p\n",
+             __func__, texobj, image->Level,
+             image->Width, image->Height, image->Depth, intel_texobj->cmt);
+      } else {
+         intel_image->cmt = intel_miptree_create_for_teximage(brw,
+                                                              intel_texobj,
+                                                              intel_image,
+                                                              MIPTREE_CREATE_ETC);
+         if (!intel_image->cmt)
+            return false;
+
+         /* Even if the object currently has a mipmap tree associated
+          * with it, this one is a more likely candidate to represent the
+          * whole object since our level didn't fit what was there
+          * before, and any lower levels would fit into our miptree.
+          */
+         intel_miptree_reference(&intel_texobj->cmt, intel_image->cmt);
+
+         DBG("%s: alloc obj %p level %d %dx%dx%d using new miptree %p\n",
+             __func__, texobj, image->Level,
+             image->Width, image->Height, image->Depth, intel_image->cmt);
+      }
+   }
    intel_texobj->needs_validate = true;
 
    return true;
@@ -128,6 +157,7 @@ intel_alloc_texture_storage(struct gl_context *ctx,
                             GLsizei height, GLsizei depth)
 {
    struct brw_context *brw = brw_context(ctx);
+   struct gen_device_info *devinfo = &brw->screen->devinfo;
    struct intel_texture_object *intel_texobj = intel_texture_object(texobj);
    struct gl_texture_image *first_image = texobj->Image[0][0];
    int num_samples = intel_quantize_num_samples(brw->screen,
@@ -135,6 +165,9 @@ intel_alloc_texture_storage(struct gl_context *ctx,
    const int numFaces = _mesa_num_tex_faces(texobj->Target);
    int face;
    int level;
+
+   mesa_format fmt = first_image->TexFormat;
+   bool is_fake_etc = (devinfo->gen < 8) && _mesa_is_format_etc2(fmt);
 
    /* If the object's current miptree doesn't match what we need, make a new
     * one.
@@ -157,6 +190,22 @@ intel_alloc_texture_storage(struct gl_context *ctx,
       }
    }
 
+   if (is_fake_etc) {
+      if (!intel_texobj->cmt ||
+          !intel_miptree_match_image(intel_texobj->cmt, first_image) ||
+          intel_texobj->cmt->last_level != levels - 1) {
+         intel_miptree_release(&intel_texobj->cmt);
+
+         intel_get_image_dims(first_image, &width, &height, &depth);
+         intel_texobj->cmt = intel_miptree_create(brw, texobj->Target,
+                                                  first_image->TexFormat,
+                                                  0, levels - 1,
+                                                  width, height, depth,
+                                                  MAX2(num_samples, 1),
+                                                  MIPTREE_CREATE_ETC);
+      }
+   }
+
    for (face = 0; face < numFaces; face++) {
       for (level = 0; level < levels; level++) {
          struct gl_texture_image *image = texobj->Image[face][level];
@@ -169,6 +218,8 @@ intel_alloc_texture_storage(struct gl_context *ctx,
             return false;
 
          intel_miptree_reference(&intel_image->mt, intel_texobj->mt);
+         if (is_fake_etc)
+            intel_miptree_reference(&intel_image->cmt, intel_texobj->cmt);
       }
    }
 
@@ -181,7 +232,6 @@ intel_alloc_texture_storage(struct gl_context *ctx,
    return true;
 }
 
-
 static void
 intel_free_texture_image_buffer(struct gl_context * ctx,
 				struct gl_texture_image *texImage)
@@ -191,6 +241,7 @@ intel_free_texture_image_buffer(struct gl_context * ctx,
    DBG("%s\n", __func__);
 
    intel_miptree_release(&intelImage->mt);
+   intel_miptree_release(&intelImage->cmt);
 
    _swrast_free_texture_image_buffer(ctx, texImage);
 }
@@ -204,37 +255,52 @@ intel_free_texture_image_buffer(struct gl_context * ctx,
  */
 static void
 intel_map_texture_image(struct gl_context *ctx,
-			struct gl_texture_image *tex_image,
-			GLuint slice,
-			GLuint x, GLuint y, GLuint w, GLuint h,
-			GLbitfield mode,
-			GLubyte **map,
-			GLint *out_stride)
+                        struct gl_texture_image *tex_image,
+                        GLuint slice,
+                        GLuint x, GLuint y, GLuint w, GLuint h,
+                        GLbitfield mode,
+                        GLubyte **map,
+                        GLint *out_stride)
 {
    struct brw_context *brw = brw_context(ctx);
+   struct gen_device_info *devinfo = &brw->screen->devinfo;
+   mesa_format fmt = tex_image->TexFormat;
    struct intel_texture_image *intel_image = intel_texture_image(tex_image);
    struct intel_mipmap_tree *mt = intel_image->mt;
+   struct intel_mipmap_tree *cmt = intel_image->cmt;
    ptrdiff_t stride;
 
    /* Our texture data is always stored in a miptree. */
    assert(mt);
 
    /* Check that our caller wasn't confused about how to map a 1D texture. */
-   assert(tex_image->TexObject->Target != GL_TEXTURE_1D_ARRAY ||
-	  h == 1);
+   assert(tex_image->TexObject->Target != GL_TEXTURE_1D_ARRAY || h == 1);
 
-   /* intel_miptree_map operates on a unified "slice" number that references the
-    * cube face, since it's all just slices to the miptree code.
+   /* intel_miptree_map operates on a unified "slice" number that references
+    * the cube face, since it's all just slices to the miptree code.
     */
    if (tex_image->TexObject->Target == GL_TEXTURE_CUBE_MAP)
       slice = tex_image->Face;
+
+   if (devinfo->gen < 8) {
+      if ((!(mode & GL_MAP_WRITE_BIT) && _mesa_is_format_etc2(fmt)) ||
+            (mode & BRW_MAP_ETC_BIT)) {
+            assert(cmt);
+            intel_miptree_map(brw, cmt,
+                              tex_image->Level + tex_image->TexObject->MinLevel,
+                              slice + tex_image->TexObject->MinLayer,
+                              x, y, w, h, mode,
+                              (void **)map, &stride);
+            *out_stride = stride;
+            return;
+      }
+   }
 
    intel_miptree_map(brw, mt,
                      tex_image->Level + tex_image->TexObject->MinLevel,
                      slice + tex_image->TexObject->MinLayer,
                      x, y, w, h, mode,
                      (void **)map, &stride);
-
    *out_stride = stride;
 }
 
@@ -243,15 +309,25 @@ intel_unmap_texture_image(struct gl_context *ctx,
 			  struct gl_texture_image *tex_image, GLuint slice)
 {
    struct brw_context *brw = brw_context(ctx);
+
    struct intel_texture_image *intel_image = intel_texture_image(tex_image);
    struct intel_mipmap_tree *mt = intel_image->mt;
+   struct intel_mipmap_tree *cmt = intel_image->cmt;
 
    if (tex_image->TexObject->Target == GL_TEXTURE_CUBE_MAP)
       slice = tex_image->Face;
 
-   intel_miptree_unmap(brw, mt,
-         tex_image->Level + tex_image->TexObject->MinLevel,
-         slice + tex_image->TexObject->MinLayer);
+   if (cmt) {
+      intel_miptree_unmap(brw, cmt,
+                          tex_image->Level + tex_image->TexObject->MinLevel,
+                          slice + tex_image->TexObject->MinLayer);
+   }
+
+   if (mt) {
+      intel_miptree_unmap(brw, mt,
+                          tex_image->Level + tex_image->TexObject->MinLevel,
+                          slice + tex_image->TexObject->MinLayer);
+   }
 }
 
 static GLboolean
