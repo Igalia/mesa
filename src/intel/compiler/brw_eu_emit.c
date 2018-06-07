@@ -3700,3 +3700,29 @@ brw_rounding_mode(struct brw_codegen *p,
       brw_inst_set_thread_control(p->devinfo, inst, BRW_THREAD_SWITCH);
    }
 }
+
+/* TODO: Refactor brw_rounding_mode() to use this. */
+void
+brw_float_controls_mode(struct brw_codegen *p,
+                        unsigned mode, unsigned mask)
+{
+   brw_inst *inst = brw_AND(p, brw_cr0_reg(0), brw_cr0_reg(0),
+                            brw_imm_ud(~mask));
+   brw_inst_set_exec_size(p->devinfo, inst, BRW_EXECUTE_1);
+
+   /* From the Skylake PRM, Volume 7, page 760:
+    *  "Implementation Restriction on Register Access: When the control
+    *   register is used as an explicit source and/or destination, hardware
+    *   does not ensure execution pipeline coherency. Software must set the
+    *   thread control field to ‘switch’ for an instruction that uses
+    *   control register as an explicit operand."
+    */
+   brw_inst_set_thread_control(p->devinfo, inst, BRW_THREAD_SWITCH);
+
+   if (mode) {
+      brw_inst *inst_or = brw_OR(p, brw_cr0_reg(0), brw_cr0_reg(0),
+                                 brw_imm_ud(mode));
+      brw_inst_set_exec_size(p->devinfo, inst_or, BRW_EXECUTE_1);
+      brw_inst_set_thread_control(p->devinfo, inst_or, BRW_THREAD_SWITCH);
+   }
+}
