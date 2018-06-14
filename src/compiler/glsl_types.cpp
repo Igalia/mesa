@@ -1714,12 +1714,18 @@ glsl_type::std140_size(bool row_major) const
          const struct glsl_type *field_type = this->fields.structure[i].type;
          unsigned align = field_type->std140_base_alignment(field_row_major);
 
-         /* Ignore unsized arrays when calculating size */
-         if (field_type->is_unsized_array())
-            continue;
+         const struct glsl_type *type_for_size = field_type;
+         if (field_type->is_unsized_array()) {
+            if (i < this->length - 1) {
+               /* only the last element can be an unsized array */
+               assert(!"unsized array is not the final element");
+               return -1;
+            }
+            type_for_size = field_type->fields.array;
+         }
 
          size = glsl_align(size, align);
-         size += field_type->std140_size(field_row_major);
+         size += type_for_size->std140_size(field_row_major);
 
          max_align = MAX2(align, max_align);
 
@@ -1932,8 +1938,19 @@ glsl_type::std430_size(bool row_major) const
 
          const struct glsl_type *field_type = this->fields.structure[i].type;
          unsigned align = field_type->std430_base_alignment(field_row_major);
+
+         const struct glsl_type *type_for_size = field_type;
+         if (field_type->is_unsized_array()) {
+            if (i < this->length - 1) {
+               /* only the last element can be an unsized array */
+               assert(!"unsized array is not the final element");
+               return -1;
+            }
+            type_for_size = field_type->fields.array;
+         }
+
          size = glsl_align(size, align);
-         size += field_type->std430_size(field_row_major);
+         size += type_for_size->std430_size(field_row_major);
 
          max_align = MAX2(align, max_align);
       }
