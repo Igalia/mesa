@@ -39,7 +39,7 @@ struct constant_fold_state {
 };
 
 static bool
-constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
+constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx, unsigned execution_mode)
 {
    nir_const_value src[NIR_MAX_VEC_COMPONENTS];
 
@@ -77,12 +77,39 @@ constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
          switch(load_const->def.bit_size) {
          case 64:
             src[i].u64[j] = load_const->value.u64[instr->src[i].swizzle[j]];
+            if (execution_mode & SHADER_DENORM_FLUSH_TO_ZERO_FP64 &&
+                (nir_op_infos[instr->op].input_types[i] == nir_type_float ||
+                 nir_op_infos[instr->op].input_types[i] == nir_type_float64)) {
+               if (src[i].u64[j] < 0x0010000000000000)
+                  src[i].u64[j] = 0;
+               if (src[i].u64[j] & 0x8000000000000000 &&
+                   !(src[i].u64[j] & 0x7ff0000000000000))
+                  src[i].u64[j] = 0x8000000000000000;
+            }
             break;
          case 32:
             src[i].u32[j] = load_const->value.u32[instr->src[i].swizzle[j]];
+            if (execution_mode & SHADER_DENORM_FLUSH_TO_ZERO_FP32 &&
+                (nir_op_infos[instr->op].input_types[i] == nir_type_float ||
+                 nir_op_infos[instr->op].input_types[i] == nir_type_float32)) {
+                   if (src[i].u32[j] < 0x00800000)
+                      src[i].u32[j] = 0;
+                   if (src[i].u32[j] & 0x80000000 &&
+                       !(src[i].u32[j] & 0x7f800000))
+                      src[i].u32[j] = 0x80000000;
+                }
             break;
          case 16:
             src[i].u16[j] = load_const->value.u16[instr->src[i].swizzle[j]];
+            if (execution_mode & SHADER_DENORM_FLUSH_TO_ZERO_FP16 &&
+                (nir_op_infos[instr->op].input_types[i] == nir_type_float ||
+                 nir_op_infos[instr->op].input_types[i] == nir_type_float16)) {
+                   if (src[i].u16[j] < 0x0400)
+                      src[i].u16[j] = 0;
+                   if (src[i].u16[j] & 0x8000 &&
+                       !(src[i].u16[j] & 0x7c00))
+                      src[i].u16[j] = 0x8000;
+                }
             break;
          case 8:
             src[i].u8[j] = load_const->value.u8[instr->src[i].swizzle[j]];
@@ -105,6 +132,40 @@ constant_fold_alu_instr(nir_alu_instr *instr, void *mem_ctx)
    nir_const_value dest =
       nir_eval_const_opcode(instr->op, instr->dest.dest.ssa.num_components,
                             bit_size, src);
+
+   for (unsigned j = 0; j < instr->dest.dest.ssa.num_components; j++) {
+      if (execution_mode & SHADER_DENORM_FLUSH_TO_ZERO_FP64 &&
+          bit_size == 64 &&
+          (nir_op_infos[instr->op].output_type == nir_type_float ||
+           nir_op_infos[instr->op].output_type == nir_type_float64)) {
+         if (dest.u64[j] < 0x0010000000000000)
+            dest.u64[j] = 0;
+         if (dest.u64[j] & 0x8000000000000000 &&
+             !(dest.u64[j] & 0x7ff0000000000000))
+            dest.u64[j] = 0x8000000000000000;
+      }
+      if (execution_mode & SHADER_DENORM_FLUSH_TO_ZERO_FP32 &&
+          bit_size == 32 &&
+          (nir_op_infos[instr->op].output_type == nir_type_float ||
+           nir_op_infos[instr->op].output_type == nir_type_float32)) {
+         if (dest.u32[j] < 0x00800000)
+            dest.u32[j] = 0;
+         if (dest.u32[j] & 0x80000000 &&
+             !(dest.u32[j] & 0x7f800000))
+            dest.u32[j] = 0x80000000;
+      }
+
+      if (execution_mode & SHADER_DENORM_FLUSH_TO_ZERO_FP16 &&
+          bit_size == 16 &&
+          (nir_op_infos[instr->op].output_type == nir_type_float ||
+           nir_op_infos[instr->op].output_type == nir_type_float16)) {
+         if (dest.u16[j] < 0x0400)
+            dest.u16[j] = 0;
+         if (dest.u16[j] & 0x8000 &&
+             !(dest.u16[j] & 0x7c00))
+            dest.u16[j] = 0x8000;
+      }
+   }
 
    nir_load_const_instr *new_instr =
       nir_load_const_instr_create(mem_ctx,
@@ -157,14 +218,14 @@ constant_fold_intrinsic_instr(nir_intrinsic_instr *instr)
 }
 
 static bool
-constant_fold_block(nir_block *block, void *mem_ctx)
+constant_fold_block(nir_block *block, void *mem_ctx, unsigned execution_mode)
 {
    bool progress = false;
 
    nir_foreach_instr_safe(instr, block) {
       switch (instr->type) {
       case nir_instr_type_alu:
-         progress |= constant_fold_alu_instr(nir_instr_as_alu(instr), mem_ctx);
+         progress |= constant_fold_alu_instr(nir_instr_as_alu(instr), mem_ctx, execution_mode);
          break;
       case nir_instr_type_intrinsic:
          progress |=
@@ -180,13 +241,13 @@ constant_fold_block(nir_block *block, void *mem_ctx)
 }
 
 static bool
-nir_opt_constant_folding_impl(nir_function_impl *impl)
+nir_opt_constant_folding_impl(nir_function_impl *impl, unsigned execution_mode)
 {
    void *mem_ctx = ralloc_parent(impl);
    bool progress = false;
 
    nir_foreach_block(block, impl) {
-      progress |= constant_fold_block(block, mem_ctx);
+      progress |= constant_fold_block(block, mem_ctx, execution_mode);
    }
 
    if (progress)
@@ -200,10 +261,11 @@ bool
 nir_opt_constant_folding(nir_shader *shader)
 {
    bool progress = false;
+   unsigned execution_mode = shader->info.shader_float_controls_execution_mode;
 
    nir_foreach_function(function, shader) {
       if (function->impl)
-         progress |= nir_opt_constant_folding_impl(function->impl);
+         progress |= nir_opt_constant_folding_impl(function->impl, execution_mode);
    }
 
    return progress;
