@@ -469,7 +469,8 @@ static bool
 test_iterations(int32_t iter_int, nir_const_value *step,
                 nir_const_value *limit, nir_op cond_op, unsigned bit_size,
                 nir_alu_type induction_base_type,
-                nir_const_value *initial, bool limit_rhs, bool invert_cond)
+                nir_const_value *initial, bool limit_rhs, bool invert_cond,
+                unsigned execution_mode)
 {
    assert(nir_op_infos[cond_op].num_inputs == 2);
 
@@ -497,19 +498,20 @@ test_iterations(int32_t iter_int, nir_const_value *step,
     */
    nir_const_value mul_src[2] = { iter_src, *step };
    nir_const_value mul_result =
-      nir_eval_const_opcode(mul_op, 1, bit_size, mul_src);
+      nir_eval_const_opcode(mul_op, 1, bit_size, mul_src, execution_mode);
 
    /* Add the initial value to the accumulated induction variable total */
    nir_const_value add_src[2] = { mul_result, *initial };
    nir_const_value add_result =
-      nir_eval_const_opcode(add_op, 1, bit_size, add_src);
+      nir_eval_const_opcode(add_op, 1, bit_size, add_src, execution_mode);
 
    nir_const_value src[2] = { { {0, } }, { {0, } } };
    src[limit_rhs ? 0 : 1] = add_result;
    src[limit_rhs ? 1 : 0] = *limit;
 
    /* Evaluate the loop exit condition */
-   nir_const_value result = nir_eval_const_opcode(cond_op, 1, bit_size, src);
+   nir_const_value result = nir_eval_const_opcode(cond_op, 1, bit_size, src,
+                                                  execution_mode);
 
    return invert_cond ? (result.u32[0] == 0) : (result.u32[0] != 0);
 }
@@ -517,7 +519,8 @@ test_iterations(int32_t iter_int, nir_const_value *step,
 static int
 calculate_iterations(nir_const_value *initial, nir_const_value *step,
                      nir_const_value *limit, nir_loop_variable *alu_def,
-                     nir_alu_instr *cond_alu, bool limit_rhs, bool invert_cond)
+                     nir_alu_instr *cond_alu, bool limit_rhs, bool invert_cond,
+                     unsigned execution_mode)
 {
    assert(initial != NULL && step != NULL && limit != NULL);
 
@@ -584,7 +587,7 @@ calculate_iterations(nir_const_value *initial, nir_const_value *step,
 
       if (test_iterations(iter_bias, step, limit, cond_alu->op, bit_size,
                           induction_base_type, initial,
-                          limit_rhs, invert_cond)) {
+                          limit_rhs, invert_cond, execution_mode)) {
          return iter_bias > 0 ? iter_bias - trip_offset : iter_bias;
       }
    }
@@ -599,7 +602,7 @@ calculate_iterations(nir_const_value *initial, nir_const_value *step,
  * loop.
  */
 static void
-find_trip_count(loop_info_state *state)
+find_trip_count(loop_info_state *state, unsigned execution_mode)
 {
    bool trip_count_known = true;
    nir_loop_terminator *limiting_terminator = NULL;
@@ -670,7 +673,8 @@ find_trip_count(loop_info_state *state)
                                                &limit_val,
                                                basic_ind->ind->alu_def, alu,
                                                limit_rhs,
-                                               terminator->continue_from_then);
+                                               terminator->continue_from_then,
+                                               execution_mode);
 
          /* Where we not able to calculate the iteration count */
          if (iterations == -1) {
@@ -801,7 +805,7 @@ get_loop_info(loop_info_state *state, nir_function_impl *impl)
       return;
 
    /* Run through each of the terminators and try to compute a trip-count */
-   find_trip_count(state);
+   find_trip_count(state, impl->function->shader->info.shader_float_controls_execution_mode);
 
    nir_foreach_block_in_cf_node(block, &state->loop->cf_node) {
       if (force_unroll_heuristics(state, block)) {
