@@ -381,8 +381,12 @@ build_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x)
     * continuous along the whole positive y = 0 half-line, so it won't affect
     * the result significantly.
     */
-   return nir_bcsel(b, nir_flt(b, nir_fmin(b, y, rcp_scaled_t), zero),
-                    nir_fneg(b, arc), arc);
+   nir_ssa_def *result = nir_bcsel(b, nir_flt(b, nir_fmin(b, y, rcp_scaled_t), zero),
+                                   nir_fneg(b, arc), arc);
+   nir_ssa_def *is_xy_zero = nir_iand(b,
+                                     nir_feq(b, x, zero),
+                                     nir_feq(b, y, zero));
+   return nir_bcsel(b, is_xy_zero, zero, result);
 }
 
 static nir_ssa_def *
