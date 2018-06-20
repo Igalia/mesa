@@ -67,6 +67,37 @@ template = """\
 #include "nir_constant_expressions.h"
 
 /**
+ * Checks if the provided value is a denorm and flushes it to zero.
+*/
+static nir_const_value
+constant_denorm_flush_to_zero(nir_const_value value, unsigned index, unsigned bit_size)
+{
+   switch(bit_size) {
+   case 64:
+      if (value.u64[index] < 0x0010000000000000)
+         value.u64[index] = 0;
+      if (value.u64[index] & 0x8000000000000000 &&
+          !(value.u64[index] & 0x7ff0000000000000))
+         value.u64[index] = 0x8000000000000000;
+      break;
+   case 32:
+      if (value.u32[index] < 0x00800000)
+         value.u32[index] = 0;
+      if (value.u32[index] & 0x80000000 &&
+          !(value.u32[index] & 0x7f800000))
+         value.u32[index] = 0x80000000;
+      break;
+   case 16:
+      if (value.u16[index] < 0x0400)
+         value.u16[index] = 0;
+      if (value.u16[index] & 0x8000 &&
+          !(value.u16[index] & 0x7c00))
+         value.u16[index] = 0x8000;
+   }
+   return value;
+}
+
+/**
  * Evaluate one component of packSnorm4x8.
  */
 static uint8_t
@@ -260,7 +291,7 @@ struct ${type}${width}_vec {
 % endfor
 % endfor
 
-<%def name="evaluate_op(op, bit_size)">
+<%def name="evaluate_op(op, bit_size, execution_mode)">
    <%
    output_type = type_add_size(op.output_type, bit_size)
    input_types = [type_add_size(type_, bit_size) for type_ in op.input_types]
@@ -343,6 +374,18 @@ struct ${type}${width}_vec {
          % else:
             _dst_val.${get_const_field(output_type)}[_i] = dst;
          % endif
+
+         % if op.name != "fquantize2f16" and type_base_type(output_type) == "float":
+            % if type_has_size(output_type):
+               if (nir_is_denorm_flush_to_zero(execution_mode, ${type_size(output_type)})) {
+                  _dst_val = constant_denorm_flush_to_zero(_dst_val, _i, ${type_size(output_type)});
+               }
+            % else:
+               if (nir_is_denorm_flush_to_zero(execution_mode, ${bit_size})) {
+                  _dst_val = constant_denorm_flush_to_zero(_dst_val, _i, bit_size);
+               }
+            %endif
+         % endif
       }
    % else:
       ## In the non-per-component case, create a struct dst with
@@ -375,6 +418,18 @@ struct ${type}${width}_vec {
          % else:
             _dst_val.${get_const_field(output_type)}[${k}] = dst.${"xyzw"[k]};
          % endif
+
+         % if op.name != "fquantize2f16" and type_base_type(output_type) == "float":
+            % if type_has_size(output_type):
+               if (nir_is_denorm_flush_to_zero(execution_mode, ${type_size(output_type)})) {
+                  _dst_val = constant_denorm_flush_to_zero(_dst_val, ${k}, ${type_size(output_type)});
+               }
+            % else:
+               if (nir_is_denorm_flush_to_zero(execution_mode, ${bit_size})) {
+                  _dst_val = constant_denorm_flush_to_zero(_dst_val, ${k}, bit_size);
+               }
+            % endif
+         % endif
       % endfor
    % endif
 </%def>
@@ -383,7 +438,8 @@ struct ${type}${width}_vec {
 static nir_const_value
 evaluate_${name}(MAYBE_UNUSED unsigned num_components,
                  ${"UNUSED" if op_bit_sizes(op) is None else ""} unsigned bit_size,
-                 MAYBE_UNUSED nir_const_value *_src)
+                 MAYBE_UNUSED nir_const_value *_src,
+                 MAYBE_UNUSED unsigned execution_mode)
 {
    nir_const_value _dst_val = { {0, } };
 
@@ -391,7 +447,7 @@ evaluate_${name}(MAYBE_UNUSED unsigned num_components,
       switch (bit_size) {
       % for bit_size in op_bit_sizes(op):
       case ${bit_size}: {
-         ${evaluate_op(op, bit_size)}
+         ${evaluate_op(op, bit_size, execution_mode)}
          break;
       }
       % endfor
@@ -400,7 +456,7 @@ evaluate_${name}(MAYBE_UNUSED unsigned num_components,
          unreachable("unknown bit width");
       }
    % else:
-      ${evaluate_op(op, 0)}
+      ${evaluate_op(op, 0, execution_mode)}
    % endif
 
    return _dst_val;
@@ -409,12 +465,13 @@ evaluate_${name}(MAYBE_UNUSED unsigned num_components,
 
 nir_const_value
 nir_eval_const_opcode(nir_op op, unsigned num_components,
-                      unsigned bit_width, nir_const_value *src)
+                      unsigned bit_width, nir_const_value *src,
+                      unsigned float_controls_execution_mode)
 {
    switch (op) {
 % for name in sorted(opcodes.keys()):
    case nir_op_${name}:
-      return evaluate_${name}(num_components, bit_width, src);
+      return evaluate_${name}(num_components, bit_width, src, float_controls_execution_mode);
 % endfor
    default:
       unreachable("shouldn't get here");
@@ -424,6 +481,8 @@ nir_eval_const_opcode(nir_op op, unsigned num_components,
 from mako.template import Template
 
 print(Template(template).render(opcodes=opcodes, type_sizes=type_sizes,
+                                type_base_type=type_base_type,
+                                type_size=type_size,
                                 type_has_size=type_has_size,
                                 type_add_size=type_add_size,
                                 op_bit_sizes=op_bit_sizes,
