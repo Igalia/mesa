@@ -1994,7 +1994,9 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
          nir_const_value *srcs[3] = {
             src[0], src[1], src[2],
          };
-         nir_eval_const_opcode(op, val->constant->values[0], num_components, bit_size, srcs);
+         nir_eval_const_opcode(op, val->constant->values[0],
+                               num_components, bit_size, srcs,
+                               b->shader->info.shader_float_controls_execution_mode);
          break;
       } /* default */
       }
