@@ -497,19 +497,20 @@ test_iterations(int32_t iter_int, nir_const_value *step,
     */
    nir_const_value mul_src[2] = { iter_src, *step };
    nir_const_value mul_result =
-      nir_eval_const_opcode(mul_op, 1, bit_size, mul_src);
+      nir_eval_const_opcode(mul_op, 1, bit_size, mul_src, SHADER_DEFAULT_FLOAT_CONTROL_MODE);
 
    /* Add the initial value to the accumulated induction variable total */
    nir_const_value add_src[2] = { mul_result, *initial };
    nir_const_value add_result =
-      nir_eval_const_opcode(add_op, 1, bit_size, add_src);
+      nir_eval_const_opcode(add_op, 1, bit_size, add_src, SHADER_DEFAULT_FLOAT_CONTROL_MODE);
 
    nir_const_value src[2] = { { {0, } }, { {0, } } };
    src[limit_rhs ? 0 : 1] = add_result;
    src[limit_rhs ? 1 : 0] = *limit;
 
    /* Evaluate the loop exit condition */
-   nir_const_value result = nir_eval_const_opcode(cond_op, 1, bit_size, src);
+   nir_const_value result = nir_eval_const_opcode(cond_op, 1, bit_size, src,
+                                                  SHADER_DEFAULT_FLOAT_CONTROL_MODE);
 
    return invert_cond ? (result.u32[0] == 0) : (result.u32[0] != 0);
 }
