@@ -84,6 +84,28 @@
  * Additionally, the GLSL (IR) path is already handling and calling them
  * uniform blocks (ie: struct gl_uniform_block can be a individual ubo or
  * ssbo), so for consistency we are doing the same here.
+ *
+ * 3. The code assumes that all structure members have an Offset decoration,
+ * all arrays have an ArrayStride and all matrices have a MatrixStride, even
+ * for nested structures. That way we don’t have to worry about the different
+ * layout modes. This is explicitly required in the SPIR-V spec:
+ *
+ *   "Composite objects in the UniformConstant, Uniform, and PushConstant
+ *    Storage Classes must be explicitly laid out. The following apply to all
+ *    the aggregate and matrix types describing such an object, recursively
+ *    through their nested types:
+ *
+ *    – Each structure-type member must have an Offset Decoration.
+ *    – Each array type must have an ArrayStride Decoration.
+ *    – Each structure-type member that is a matrix or array-of-matrices must
+ *      have be decorated with a MatrixStride Decoration, and one of the
+ *      RowMajor or ColMajor Decorations."
+ *
+ * Additionally, the structure members are expected to be presented in
+ * increasing offset order:
+ *
+ *   "a structure has lower-numbered members appearing at smaller offsets than
+ *    higher-numbered members"
  */
 
 /*
@@ -113,6 +135,24 @@ _get_type_size(const struct glsl_type *type,
                bool row_major,
                enum glsl_interface_packing packing)
 {
+   /* If the type is a struct then the members are supposed to presented in
+    * increasing order of offset so we can just look at the last member.
+    */
+   if (glsl_type_is_struct(type)) {
+      unsigned length = glsl_get_length(type);
+      if (length > 0) {
+         return (glsl_get_struct_field_offset(type, length - 1) +
+                 _get_type_size(glsl_get_struct_field(type, length - 1),
+                                row_major, packing));
+      } else {
+         return 0;
+      }
+   }
+
+   /* FIXME, this is not correct for SPIR-V because in that case the shader
+    * can have completely custom packing with its own array and matrix stride.
+    */
+
    switch(packing) {
    case GLSL_INTERFACE_PACKING_STD140:
       return glsl_type_std140_size(type, row_major);
@@ -410,13 +450,18 @@ iterate_type_fill_variables(const struct glsl_type *type,
                             struct gl_shader_program *prog,
                             struct gl_uniform_block *block)
 {
+   unsigned int base_offset = *offset;
+
    for (unsigned i = 0; i < glsl_get_length(type); i++) {
       const struct glsl_type *field_type;
 
-      if (glsl_type_is_struct(type))
+      if (glsl_type_is_struct(type)) {
          field_type = glsl_get_struct_field(type, i);
-      else
+         *offset = base_offset + glsl_get_struct_field_offset(type, i);
+      } else {
          field_type = glsl_get_array_element(type);
+      }
+
 
       /* FIXME: this would the the placeholder for something more generic that
        * just fill variables.
