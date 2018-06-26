@@ -35,6 +35,7 @@
 #define M_PIf   ((float) M_PI)
 #define M_PI_2f ((float) M_PI_2)
 #define M_PI_4f ((float) M_PI_4)
+#define M_minus_3PI_4f ((float) -3*M_PI_4)
 
 static nir_ssa_def *
 build_mat2_det(nir_builder *b, nir_ssa_def *col[2])
@@ -381,12 +382,16 @@ build_atan2(nir_builder *b, nir_ssa_def *y, nir_ssa_def *x)
     * continuous along the whole positive y = 0 half-line, so it won't affect
     * the result significantly.
     */
-   nir_ssa_def *result = nir_bcsel(b, nir_flt(b, nir_fmin(b, y, rcp_scaled_t), zero),
+   nir_ssa_def *atan2 = nir_bcsel(b, nir_flt(b, nir_fmin(b, y, rcp_scaled_t), zero),
                                    nir_fneg(b, arc), arc);
    nir_ssa_def *is_xy_zero = nir_iand(b,
                                      nir_feq(b, x, zero),
                                      nir_feq(b, y, zero));
-   return nir_bcsel(b, is_xy_zero, zero, result);
+   nir_ssa_def *res_equal = nir_bcsel(b, nir_feq(b, x, y),
+                                      nir_bcsel(b, nir_flt(b, x, zero), nir_imm_floatN_t(b, M_minus_3PI_4f, bit_size), nir_imm_floatN_t(b, M_PI_4f, bit_size)),
+                                      atan2);
+   nir_ssa_def *res =  nir_bcsel(b, is_xy_zero, zero, res_equal);
+   return res;
 }
 
 static nir_ssa_def *
