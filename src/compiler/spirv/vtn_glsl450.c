@@ -554,13 +554,18 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
                        src[0], nir_fneg(nb, src[0]));
       return;
 
-   case GLSLstd450Reflect:
+   case GLSLstd450Reflect: {
       /* I - 2 * dot(N, I) * N */
-      val->ssa->def =
+      nir_ssa_def *reflect =
          nir_fsub(nb, src[0], nir_fmul(nb, NIR_IMM_FP(nb, 2.0),
-                              nir_fmul(nb, nir_fdot(nb, src[0], src[1]),
-                                           src[1])));
+                                       nir_fmul(nb, nir_fdot(nb, src[0], src[1]),
+                                                src[1])));
+      nir_ssa_def *zero = NIR_IMM_FP(nb, 0.0);
+      val->ssa->def = nir_bcsel(nb, nir_iand(nb,
+                                            nir_feq(nb, src[0], zero),
+                                            nir_feq(nb, src[1], zero)), zero, reflect);
       return;
+   }
 
    case GLSLstd450Refract: {
       nir_ssa_def *I = src[0];
