@@ -212,7 +212,7 @@ for src_t in [tint, tuint, tfloat, tbool]:
 
    for dst_t in dst_types:
       for bit_size in type_sizes(dst_t):
-          if bit_size == 16 and dst_t == tfloat and src_t == tfloat:
+          if src_t == tfloat and dst_t == tfloat:
               rnd_modes = ['_rtne', '_rtz', '']
               for rnd_mode in rnd_modes:
                   unop_convert("{0}2{1}{2}{3}".format(src_t[0], dst_t[0],

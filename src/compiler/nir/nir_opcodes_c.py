@@ -76,7 +76,7 @@ nir_type_conversion_op(nir_alu_type src, nir_alu_type dst, nir_rounding_mode rnd
                switch (dst_bit_size) {
 %                 for dst_bits in type_sizes(dst_t):
                   case ${dst_bits}:
-%                    if src_t == 'float' and dst_t == 'float' and dst_bits == 16:
+%                    if src_t == 'float' and dst_t == 'float':
                      switch(rnd) {
 %                       for rnd_t in [('rtne', '_rtne'), ('rtz', '_rtz'), ('undef', '')]:
                         case nir_rounding_mode_${rnd_t[0]}:
@@ -84,7 +84,7 @@ nir_type_conversion_op(nir_alu_type src, nir_alu_type dst, nir_rounding_mode rnd
                                                                    dst_bits, rnd_t[1])};
 %                       endfor
                         default:
-                           unreachable("Invalid 16-bit nir rounding mode");
+                           unreachable("Invalid ${dst_bits}-bit nir rounding mode");
                      }
 %                    else:
                      assert(rnd == nir_rounding_mode_undef);
