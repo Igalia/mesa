@@ -131,6 +131,27 @@ process_atomic_variable(const struct glsl_type *t,
    }
 }
 
+static int
+cmp_actives(const void *a, const void *b)
+{
+   const struct active_atomic_counter_uniform *const first =
+      (struct active_atomic_counter_uniform *) a;
+   const struct active_atomic_counter_uniform *const second =
+      (struct active_atomic_counter_uniform *) b;
+
+   return (int) first->var->data.offset - (int) second->var->data.offset;
+}
+
+static bool
+check_atomic_counters_overlap(const nir_variable *x,
+                              const nir_variable *y)
+{
+   return ((x->data.offset >= y->data.offset &&
+            x->data.offset < y->data.offset + glsl_atomic_size(y->type)) ||
+           (y->data.offset >= x->data.offset &&
+            y->data.offset < x->data.offset + glsl_atomic_size(x->type)));
+}
+
 static struct active_atomic_buffer *
 find_active_atomic_counters(struct gl_context *ctx,
                             struct gl_shader_program *prog,
@@ -164,6 +185,36 @@ find_active_atomic_counters(struct gl_context *ctx,
                                  num_buffers,
                                  &offset,
                                  i);
+      }
+   }
+
+   for (unsigned i = 0; i < ctx->Const.MaxAtomicBufferBindings; i++) {
+      if (buffers[i].size == 0)
+         continue;
+
+      qsort(buffers[i].uniforms,
+            buffers[i].num_uniforms,
+            sizeof (struct active_atomic_counter_uniform),
+            cmp_actives);
+
+      for (unsigned j = 1; j < buffers[i].num_uniforms; j++) {
+         /* If an overlapping counter found, it must be a reference to the
+          * same counter from a different shader stage.
+          *
+          * TODO: What about uniforms with no name?
+          */
+         if (check_atomic_counters_overlap(buffers[i].uniforms[j - 1].var,
+                                           buffers[i].uniforms[j].var) &&
+             buffers[i].uniforms[j - 1].var->name &&
+             buffers[i].uniforms[j].var->name &&
+             strcmp(buffers[i].uniforms[j - 1].var->name,
+                    buffers[i].uniforms[j].var->name) != 0) {
+            linker_error(prog,
+                         "Atomic counter %s declared at offset %d which is "
+                         "already in use.",
+                         buffers[i].uniforms[j].var->name,
+                         buffers[i].uniforms[j].var->data.offset);
+         }
       }
    }
 
