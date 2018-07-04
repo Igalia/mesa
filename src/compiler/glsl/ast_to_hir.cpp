@@ -8302,11 +8302,18 @@ ast_interface_block::hir(exec_list *instructions,
                 * sized at run-time. In all other cases, arrays are sized only
                 * at compile-time."
                 *
-                * In desktop GLSL it is allowed to have unsized-arrays that are
+                * In desktop GLSL < 4.30 it is allowed to have unsized-arrays that are
                 * not last, as long as we can determine that they are implicitly
                 * sized.
+                *
+                * For GLSL >= 4.30, according to section 4.1.9 "Arrays":
+                *
+                * "[...] Except for the last declared member of a shader
+                * storage block (section 4.3.9 “Interface Blocks”), the size
+                * of an array must be declared before it is indexed with
+                * anything other than an integral constant expression. [...]"
                 */
-               if (state->es_shader) {
+               if (state->es_shader || state->language_version >= 430) {
                   _mesa_glsl_error(&loc, state, "unsized array `%s' "
                                    "definition: only last member of a shader "
                                    "storage block can be defined as unsized "
