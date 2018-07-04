@@ -79,6 +79,7 @@ template = """\
 #include <math.h>
 #include "util/rounding.h" /* for _mesa_roundeven */
 #include "util/half_float.h"
+#include "util/double.h"
 #include "nir_constant_expressions.h"
 
 /**
@@ -300,7 +301,15 @@ struct bool32_vec {
          % elif input_types[j] == "float16":
             _mesa_half_to_float(_src[${j}].u16[${k}]),
          % else:
-            _src[${j}].${get_const_field(input_types[j])}[${k}],
+            % if ("rtne" in op.name) and ("float" in input_types[j]) and ("int" in output_type):
+               % if "float32" in input_types[j]:
+                  _mesa_roundevenf(_src[${j}].${get_const_field(input_types[j])}[${k}]),
+               % else:
+                  _mesa_roundeven(_src[${j}].${get_const_field(input_types[j])}[${k}]),
+               % endif
+            % else:
+               _src[${j}].${get_const_field(input_types[j])}[${k}],
+            % endif
          % endif
       % endfor
       % for k in range(op.input_sizes[j], 4):
@@ -328,8 +337,27 @@ struct bool32_vec {
                const float src${j} =
                   _mesa_half_to_float(_src[${j}].u16[_i]);
             % else:
-               const ${input_types[j]}_t src${j} =
-                  _src[${j}].${get_const_field(input_types[j])}[_i];
+               % if ("rtne" in op.name) and ("float" in input_types[j]) and ("int" in output_type):
+                  % if "float32" in input_types[j]:
+                     const ${input_types[j]}_t src${j} =
+                        _mesa_roundevenf(_src[${j}].${get_const_field(input_types[j])}[_i]);
+                  % else:
+                     const ${input_types[j]}_t src${j} =
+                        _mesa_roundeven(_src[${j}].${get_const_field(input_types[j])}[_i]);
+
+                  % endif
+               % elif ("float64" in input_types[j]) and ("float32" in output_type):
+                  % if ("rtz" in op.name):
+                     const ${input_types[j]}_t src${j} =
+                        _mesa_double_to_float_rtz(_src[${j}].${get_const_field(input_types[j])}[_i]);
+                  % else:
+                     const ${input_types[j]}_t src${j} =
+                        _mesa_double_to_float_rtne(_src[${j}].${get_const_field(input_types[j])}[_i]);
+                  % endif
+               % else:
+                  const ${input_types[j]}_t src${j} =
+                     _src[${j}].${get_const_field(input_types[j])}[_i];
+               % endif
             % endif
          % endfor
 
@@ -350,7 +378,11 @@ struct bool32_vec {
             ## Sanitize the C value to a proper NIR bool
             _dst_val.u32[_i] = dst ? NIR_TRUE : NIR_FALSE;
          % elif output_type == "float16":
-            _dst_val.u16[_i] = _mesa_float_to_half(dst);
+            % if "rtz" in op.name:
+               _dst_val.u16[_i] = _mesa_float_to_float16_rtz(dst);
+            % else:
+               _dst_val.u16[_i] = _mesa_float_to_float16_rtne(dst);
+            % endif
          % else:
             _dst_val.${get_const_field(output_type)}[_i] = dst;
          % endif
@@ -379,7 +411,11 @@ struct bool32_vec {
             ## Sanitize the C value to a proper NIR bool
             _dst_val.u32[${k}] = dst.${"xyzw"[k]} ? NIR_TRUE : NIR_FALSE;
          % elif output_type == "float16":
-            _dst_val.u16[${k}] = _mesa_float_to_half(dst.${"xyzw"[k]});
+            % if "rtz" in op.name:
+               _dst_val.u16[${k}] = _mesa_float_to_float16_rtz(dst.${"xyzw"[k]});
+            % else:
+               _dst_val.u16[${k}] = _mesa_float_to_float16_rtne(dst.${"xyzw"[k]});
+            % endif
          % else:
             _dst_val.${get_const_field(output_type)}[${k}] = dst.${"xyzw"[k]};
          % endif
