@@ -28,6 +28,7 @@
 #include <assert.h>
 #include "half_float.h"
 #include "rounding.h"
+#include "softfloat.h"
 #include "macros.h"
 
 typedef union { float f; int32_t i; uint32_t u; } fi_type;
@@ -125,6 +126,80 @@ _mesa_float_to_half(float val)
    return result;
 }
 
+uint16_t
+_mesa_float_to_float16_rtz(float val)
+{
+   const fi_type fi = {val};
+   const int flt_m = fi.i & 0x7fffff;
+   const int flt_e = (fi.i >> 23) & 0xff;
+   const int flt_s = (fi.i >> 31) & 0x1;
+   int s, e, m = 0;
+   uint16_t result;
+
+   /* sign bit */
+   s = flt_s;
+
+   /* handle special cases */
+   if ((flt_e == 0) && (flt_m == 0)) {
+      /* zero */
+      /* m = 0; - already set */
+      e = 0;
+   }
+   else if ((flt_e == 0) && (flt_m != 0)) {
+      /* denorm -- denorm float maps to 0 half */
+      /* m = 0; - already set */
+      e = 0;
+   }
+   else if ((flt_e == 0xff) && (flt_m == 0)) {
+      /* infinity */
+      /* m = 0; - already set */
+      e = 31;
+   }
+   else if ((flt_e == 0xff) && (flt_m != 0)) {
+      /* NaN */
+      m = 1;
+      e = 31;
+   }
+   else {
+      /* regular number */
+      const int new_exp = flt_e - 127;
+      if (new_exp < -14) {
+         /* The float32 lies in the range (0.0, min_normal16) and is rounded
+          * to a nearby float16 value. The result will be either zero, subnormal,
+          * or normal.
+          */
+         e = 0;
+         m = _mesa_lroundtozerof((1 << 24) * fabsf(fi.f));
+      }
+      else if (new_exp > 15) {
+         /* map this value to infinity */
+         /* m = 0; - already set */
+         e = 31;
+      }
+      else {
+         /* The float32 lies in the range
+          *   [min_normal16, max_normal16 + max_step16)
+          * and is rounded to a nearby float16 value. The result will be
+          * either normal or infinite.
+          */
+         e = new_exp + 15;
+         m = _mesa_lroundtozerof(flt_m / (float) (1 << 13));
+      }
+   }
+
+   assert(0 <= m && m <= 1024);
+   if (m == 1024) {
+      /* The float32 was rounded upwards into the range of the next exponent,
+       * so bump the exponent. This correctly handles the case where f32
+       * should be rounded up to float16 infinity.
+       */
+      ++e;
+      m = 0;
+   }
+
+   result = (s << 15) | (e << 10) | m;
+   return result;
+}
 
 /**
  * Convert a 2-byte half float to a 4-byte float.
