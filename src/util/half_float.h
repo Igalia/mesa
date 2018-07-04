@@ -39,6 +39,13 @@ uint16_t _mesa_float_to_half(float val);
 float _mesa_half_to_float(uint16_t val);
 uint8_t _mesa_half_to_unorm8(uint16_t v);
 uint16_t _mesa_uint16_div_64k_to_half(uint16_t v);
+uint16_t _mesa_float_to_float16_rtz(float val);
+
+static inline uint16_t
+_mesa_float_to_float16_rtne(float val)
+{
+   return _mesa_float_to_half(val);
+}
 
 static inline bool
 _mesa_half_is_negative(uint16_t h)
