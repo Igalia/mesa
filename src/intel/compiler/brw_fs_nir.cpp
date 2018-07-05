@@ -801,6 +801,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_f2f64_rtne:
+   case nir_op_f2f64_rtz:
    case nir_op_f2f64:
    case nir_op_f2i64:
    case nir_op_f2u64:
@@ -814,7 +816,23 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
        *    or a DWord integer type as an intermediate type."
        */
       if (nir_src_bit_size(instr->src[0].src) == 16) {
-         fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_F, 1);
+         brw_reg_type type;
+         switch (instr->op) {
+         case nir_op_f2f64:
+         case nir_op_f2f64_rtne:
+         case nir_op_f2f64_rtz:
+            type = BRW_REGISTER_TYPE_F;
+            break;
+         case nir_op_f2i64:
+            type = BRW_REGISTER_TYPE_D;
+            break;
+         case nir_op_f2u64:
+            type = BRW_REGISTER_TYPE_UD;
+            break;
+         default:
+            unreachable("Not supported");
+         }
+         fs_reg tmp = bld.vgrf(type, 1);
          inst = bld.MOV(tmp, op[0]);
          inst->saturate = instr->dest.saturate;
          op[0] = tmp;
@@ -978,6 +996,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       }
       /* Fallthrough */
 
+   case nir_op_f2f32_rtne:
+   case nir_op_f2f32_rtz:
    case nir_op_f2f32:
    case nir_op_f2i32:
    case nir_op_f2u32:
