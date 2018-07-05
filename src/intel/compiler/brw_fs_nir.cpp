@@ -872,6 +872,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_f2f64_rtne:
+   case nir_op_f2f64_rtz:
    case nir_op_f2f64:
    case nir_op_f2i64:
    case nir_op_f2u64:
@@ -900,6 +902,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       if (fixup_64bit_conversion(bld, result, op[0], instr->dest.saturate, devinfo))
          break;
       /* fallthrough */
+   case nir_op_f2f32_rtne:
+   case nir_op_f2f32_rtz:
    case nir_op_f2f32:
    case nir_op_f2i32:
    case nir_op_f2u32:
