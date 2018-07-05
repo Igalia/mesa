@@ -801,11 +801,15 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_i2i64:
    case nir_op_u2f64:
    case nir_op_u2u64:
+   case nir_op_f2f64_rtne:
+   case nir_op_f2f64_rtz:
    case nir_op_f2f64:
    case nir_op_f2i64:
    case nir_op_f2u64:
    case nir_op_i2i32:
    case nir_op_u2u32:
+   case nir_op_f2f32_rtne:
+   case nir_op_f2f32_rtz:
    case nir_op_f2f32:
    case nir_op_f2i32:
    case nir_op_f2u32:
