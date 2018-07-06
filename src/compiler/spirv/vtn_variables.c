@@ -1800,6 +1800,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                                 var_is_patch_cb, &var->patch);
       }
 
+      var->var = rzalloc(b->shader, nir_variable);
+      var->var->name = ralloc_strdup(var->var, val->name);
+      var->var->type = var->type->type;
+      var->var->data.mode = nir_mode;
+      var->var->data.patch = var->patch;
+
       /* For inputs and outputs, we immediately split structures.  This
        * is for a couple of reasons.  For one, builtins may all come in
        * a struct and we really want those split out into separate
@@ -1819,14 +1825,9 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
          interface_type = var->type->array_element;
       }
 
-      var->var = rzalloc(b->shader, nir_variable);
-      var->var->name = ralloc_strdup(var->var, val->name);
-      var->var->type = var->type->type;
-      var->var->interface_type = interface_type->type;
-      var->var->data.mode = nir_mode;
-      var->var->data.patch = var->patch;
-
       if (glsl_type_is_struct(interface_type->type)) {
+         var->var->interface_type = interface_type->type;
+
          /* It's a struct.  Set it up as per-member. */
          var->var->num_members = glsl_get_length(interface_type->type);
          var->var->members = rzalloc_array(var->var, struct nir_variable_data,
