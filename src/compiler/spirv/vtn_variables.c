@@ -1836,6 +1836,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
             var->var->members[i].mode = nir_mode;
             var->var->members[i].patch = var->patch;
          }
+      } else {
+         var->var->interface_type = NULL;
       }
 
       /* For inputs and outputs, we need to grab locations and builtin
