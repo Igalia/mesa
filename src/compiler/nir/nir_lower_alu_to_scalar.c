@@ -132,6 +132,7 @@ lower_alu_instr_scalar(nir_alu_instr *instr, nir_builder *b)
        */
       return false;
 
+   case nir_op_unpack_half_2x16_flush_to_zero:
    case nir_op_unpack_half_2x16: {
       if (!b->shader->options->lower_unpack_half_2x16)
          return false;
@@ -139,8 +140,14 @@ lower_alu_instr_scalar(nir_alu_instr *instr, nir_builder *b)
       nir_ssa_def *packed = nir_ssa_for_alu_src(b, instr, 0);
 
       nir_ssa_def *comps[2];
-      comps[0] = nir_unpack_half_2x16_split_x(b, packed);
-      comps[1] = nir_unpack_half_2x16_split_y(b, packed);
+
+      if (instr->op == nir_op_unpack_half_2x16_flush_to_zero) {
+         comps[0] = nir_unpack_half_2x16_split_x_flush_to_zero(b, packed);
+         comps[1] = nir_unpack_half_2x16_split_y_flush_to_zero(b, packed);
+      } else {
+         comps[0] = nir_unpack_half_2x16_split_x(b, packed);
+         comps[1] = nir_unpack_half_2x16_split_y(b, packed);
+      }
       nir_ssa_def *vec = nir_vec(b, comps, 2);
 
       nir_ssa_def_rewrite_uses(&instr->dest.dest.ssa, nir_src_for_ssa(vec));
