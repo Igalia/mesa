@@ -1445,10 +1445,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       unreachable("not reached: should be handled by lower_packing_builtins");
 
    case nir_op_unpack_half_2x16_split_x:
+   case nir_op_unpack_half_2x16_split_x_flush_to_zero:
       inst = bld.emit(FS_OPCODE_UNPACK_HALF_2x16_SPLIT_X, result, op[0]);
       inst->saturate = instr->dest.saturate;
       break;
    case nir_op_unpack_half_2x16_split_y:
+   case nir_op_unpack_half_2x16_split_y_flush_to_zero:
       inst = bld.emit(FS_OPCODE_UNPACK_HALF_2x16_SPLIT_Y, result, op[0]);
       inst->saturate = instr->dest.saturate;
       break;
