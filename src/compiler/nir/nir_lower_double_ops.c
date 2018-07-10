@@ -289,9 +289,14 @@ lower_sqrt_rsq(nir_builder *b, nir_ssa_def *src, bool sqrt)
        * 0 -> 0 and
        * +inf -> +inf
        */
-      res = nir_bcsel(b, nir_ior(b, nir_feq(b, src, nir_imm_double(b, 0.0)),
+      nir_ssa_def *src_flushed = nir_bcsel(b,
+                                           nir_flt(b, nir_fabs(b, src),
+                                                   nir_imm_double(b, 2.22507385850720138309023271733e-308)),
+                                           nir_imm_double(b, 0.0),
+                                           src);
+      res = nir_bcsel(b, nir_ior(b, nir_feq(b, src_flushed, nir_imm_double(b, 0.0)),
                                  nir_feq(b, src, nir_imm_double(b, INFINITY))),
-                                 src, res);
+                                 src_flushed, res);
    } else {
       res = fix_inv_result(b, res, src, new_exp);
    }
