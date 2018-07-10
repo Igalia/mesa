@@ -558,6 +558,18 @@ lower_doubles_instr(nir_alu_instr *instr, nir_lower_doubles_options options)
       unreachable("unhandled opcode");
    }
 
+   bool denorm_flush_to_zero =
+      bld.shader->info.shader_float_controls_execution_mode & SHADER_DENORM_FLUSH_TO_ZERO_FP64;
+   if (denorm_flush_to_zero) {
+      /* TODO: add support for flushing negative denorms to -0.0 */
+      /* Flush to zero if the result value is a denorm */
+      result = nir_bcsel(&bld,
+                      nir_flt(&bld, nir_fabs(&bld, result),
+                              nir_imm_double(&bld, 2.22507385850720138309023271733e-308)),
+                      nir_imm_double(&bld, 0.0),
+                      result);
+   }
+
    nir_ssa_def_rewrite_uses(&instr->dest.dest.ssa, nir_src_for_ssa(result));
    nir_instr_remove(&instr->instr);
    return true;
