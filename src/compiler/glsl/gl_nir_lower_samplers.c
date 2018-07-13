@@ -103,47 +103,74 @@ calc_sampler_offsets(nir_builder *b, nir_ssa_def *ptr,
       shader_program->data->UniformStorage[location].opaque[stage].index;
 }
 
+static void
+lower_tex_src_to_offset(nir_builder *b,
+                        nir_tex_instr *instr, unsigned src_idx,
+                        unsigned *index, unsigned *array_size,
+                        const struct gl_shader_program *shader_program)
+{
+   nir_ssa_def *indirect;
+   unsigned base_offset, array_elements;
+   nir_tex_src *src = &instr->src[src_idx];
+   bool is_sampler = src->src_type == nir_tex_src_sampler_deref;
+
+   calc_sampler_offsets(b, src->src.ssa, shader_program, &base_offset,
+                        &indirect, &array_elements);
+   if (indirect) {
+      nir_instr_rewrite_src(&instr->instr, &src->src,
+                            nir_src_for_ssa(indirect));
+
+      src->src_type = is_sampler ?
+         nir_tex_src_sampler_offset :
+         nir_tex_src_texture_offset;
+
+      instr->texture_array_size = array_elements;
+   } else {
+      nir_tex_instr_remove_src(instr, src_idx);
+   }
+
+   if (index)
+      *index = base_offset;
+
+   if (array_size)
+      *array_size = array_elements;
+}
+
 static bool
 lower_sampler(nir_builder *b, nir_tex_instr *instr,
               const struct gl_shader_program *shader_program)
 {
    int texture_idx =
       nir_tex_instr_src_index(instr, nir_tex_src_texture_deref);
+
+   if (texture_idx >= 0) {
+      unsigned texture_index;
+      unsigned texture_array_size;
+
+      b->cursor = nir_before_instr(&instr->instr);
+
+      lower_tex_src_to_offset(b, instr, texture_idx,
+                              &texture_index, &texture_array_size,
+                              shader_program);
+
+      instr->texture_index = texture_index;
+      instr->texture_array_size = texture_array_size;
+   }
+
    int sampler_idx =
       nir_tex_instr_src_index(instr, nir_tex_src_sampler_deref);
 
-   if (texture_idx < 0)
-      return false;
+   if (sampler_idx >= 0) {
+      unsigned sampler_index;
 
-   assert(texture_idx >= 0 && sampler_idx >= 0);
-   assert(instr->src[texture_idx].src.is_ssa);
-   assert(instr->src[sampler_idx].src.is_ssa);
-   assert(instr->src[texture_idx].src.ssa == instr->src[sampler_idx].src.ssa);
-
-   b->cursor = nir_before_instr(&instr->instr);
-
-   unsigned base_offset, array_elements;
-   nir_ssa_def *indirect;
-   calc_sampler_offsets(b, instr->src[texture_idx].src.ssa, shader_program,
-                        &base_offset, &indirect, &array_elements);
-
-   instr->texture_index = base_offset;
-   instr->sampler_index = base_offset;
-   if (indirect) {
-      nir_instr_rewrite_src(&instr->instr, &instr->src[texture_idx].src,
-                            nir_src_for_ssa(indirect));
-      instr->src[texture_idx].src_type = nir_tex_src_texture_offset;
-      nir_instr_rewrite_src(&instr->instr, &instr->src[sampler_idx].src,
-                            nir_src_for_ssa(indirect));
-      instr->src[sampler_idx].src_type = nir_tex_src_sampler_offset;
-
-      instr->texture_array_size = array_elements;
-   } else {
-      nir_tex_instr_remove_src(instr, texture_idx);
-      /* The sampler index may have changed */
-      sampler_idx = nir_tex_instr_src_index(instr, nir_tex_src_sampler_deref);
-      nir_tex_instr_remove_src(instr, sampler_idx);
+      lower_tex_src_to_offset(b, instr, sampler_idx,
+                              &sampler_index, NULL,
+                              shader_program);
+      instr->sampler_index = sampler_index;
    }
+
+   if (texture_idx < 0 && sampler_idx < 0)
+      return false;
 
    return true;
 }
