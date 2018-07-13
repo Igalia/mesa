@@ -906,11 +906,28 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
        *  Predicated OR sets 1 if val is positive.
        */
       uint32_t bit_size = nir_dest_bit_size(instr->dest.dest);
-      assert(bit_size == 32 || bit_size == 16);
 
-      fs_reg zero = bit_size == 32 ? brw_imm_d(0) : brw_imm_w(0);
-      fs_reg one = bit_size == 32 ? brw_imm_d(1) : brw_imm_w(1);
-      fs_reg shift = bit_size == 32 ? brw_imm_d(31) : brw_imm_w(15);
+      fs_reg zero, one, shift;
+      switch (bit_size) {
+      case 32:
+         zero = brw_imm_d(0);
+         one = brw_imm_d(1);
+         shift = brw_imm_d(31);
+         break;
+      case 16:
+         zero = brw_imm_w(0);
+         one = brw_imm_w(1);
+         shift = brw_imm_w(15);
+         break;
+      case 8: {
+         zero = setup_imm_b(bld, 0);
+         one = setup_imm_b(bld, 1);
+         shift = setup_imm_b(bld, 7);
+         break;
+      }
+      default:
+         unreachable("unsupported bit-size");
+      };
 
       bld.CMP(bld.null_reg_d(), op[0], zero, BRW_CONDITIONAL_G);
       bld.ASR(result, op[0], shift);
