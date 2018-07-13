@@ -971,7 +971,7 @@ void anv_GetPhysicalDeviceFeatures2(
          ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
 
          features->shaderFloat16 = pdevice->info.gen >= 8;
-         features->shaderInt8 = false;
+         features->shaderInt8 = pdevice->info.gen >= 8;
          break;
       }
 
