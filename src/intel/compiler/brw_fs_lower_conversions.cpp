@@ -90,6 +90,13 @@ fs_visitor::lower_conversions()
             fs_reg temp = ibld.vgrf(get_exec_type(inst));
             fs_reg strided_temp = subscript(temp, dst.type, 0);
 
+            /* Make sure we don't exceed hardware limits here. If we have code
+             * that hits this assertion it means that we need to split the
+             * instruction in two, using intermediary types (see for
+             * example nir_op_i2i8).
+             */
+            assert(strided_temp.stride <= 4);
+
             assert(inst->size_written == inst->dst.component_size(inst->exec_size));
             inst->dst = strided_temp;
             inst->saturate = false;
