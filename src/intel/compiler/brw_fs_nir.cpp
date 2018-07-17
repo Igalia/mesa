@@ -881,6 +881,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_i2i8:
+   case nir_op_u2u8:
    case nir_op_i2f16:
    case nir_op_u2f16:
       /* BDW PRM, vol02, Command Reference Instructions, mov - MOVE:
@@ -888,10 +890,13 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
        *    "There is no direct conversion from HF to Q/UQ or Q/UQ to HF.
        *     Use two instructions and F (Float) or a word integer type or a
        *     DWord integer type as an intermediate type."
+       *
+       * Similar text exists for conversions between Q/UQ and B/UB.
        */
       if (nir_src_bit_size(instr->src[0].src) == 64) {
-         brw_reg_type reg_type = instr->op == nir_op_i2f16 ?
-            BRW_REGISTER_TYPE_D : BRW_REGISTER_TYPE_UD;
+         brw_reg_type reg_type =
+            (instr->op == nir_op_i2f16 || instr->op == nir_op_i2i8) ?
+               BRW_REGISTER_TYPE_D : BRW_REGISTER_TYPE_UD;
          fs_reg tmp = bld.vgrf(reg_type, 1);
          inst = bld.MOV(tmp, op[0]);
          inst->saturate = instr->dest.saturate;
@@ -912,8 +917,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_u2u32:
    case nir_op_i2i16:
    case nir_op_u2u16:
-   case nir_op_i2i8:
-   case nir_op_u2u8:
       inst = bld.MOV(result, op[0]);
       inst->saturate = instr->dest.saturate;
       break;
