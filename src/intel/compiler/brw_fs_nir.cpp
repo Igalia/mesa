@@ -854,6 +854,22 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_i2i64:
    case nir_op_u2f64:
    case nir_op_u2u64:
+      /* SKL PRM, vol 02a, Command Reference: Instructions, Move:
+       *
+       *   "There is no direct conversion from B/UB to DF or DF to B/UB. Use
+       *    two instructions and a word or DWord intermediate type."
+       *
+       *   "There is no direct conversion from B/UB to Q/UQ or Q/UQ to B/UB.
+       *    Use two instructions and a word or DWord intermediate integer
+       *    type."
+       */
+      if (nir_src_bit_size(instr->src[0].src) == 8) {
+         fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_D, 1);
+         inst = bld.MOV(tmp, op[0]);
+         inst->saturate = instr->dest.saturate;
+         op[0] = tmp;
+      }
+
       /* CHV PRM, vol07, 3D Media GPGPU Engine, Register Region Restrictions:
        *
        *    "When source or destination is 64b (...), regioning in Align1
@@ -867,15 +883,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
        * 64-bit need to have the source data elements aligned to 64-bit.
        * This restriction does not apply to BDW and later.
        */
-      if (nir_dest_bit_size(instr->dest.dest) == 64 &&
-          nir_src_bit_size(instr->src[0].src) < 64 &&
+      if (type_sz(result.type) == 8 && type_sz(op[0].type) < 8 &&
           (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
          fs_reg tmp = bld.vgrf(result.type, 1);
          tmp = subscript(tmp, op[0].type, 0);
          inst = bld.MOV(tmp, op[0]);
-         inst = bld.MOV(result, tmp);
-         inst->saturate = instr->dest.saturate;
-         break;
+         op[0] = tmp;
       }
       inst = bld.MOV(result, op[0]);
       inst->saturate = instr->dest.saturate;
