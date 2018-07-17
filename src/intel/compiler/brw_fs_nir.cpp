@@ -921,6 +921,24 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_f2i8:
+   case nir_op_f2u8:
+      /* BDW PRM, vol02, Command Reference Instructions, mov - MOVE:
+       *
+       *    "There is no direct conversion from B/UB to DF or DF to B/UB. Use
+       *     two instructions and a word or DWord intermediate type."
+       */
+      if (nir_src_bit_size(instr->src[0].src) == 64 &&
+          nir_dest_bit_size(instr->dest.dest) == 8) {
+         fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_F, 1);
+         inst = bld.MOV(tmp, op[0]);
+         inst->saturate = instr->dest.saturate;
+         inst = bld.MOV(result, tmp);
+         inst->saturate = instr->dest.saturate;
+         break;
+      }
+      /* Fallthrough */
+
    case nir_op_f2f32:
    case nir_op_f2i32:
    case nir_op_f2u32:
