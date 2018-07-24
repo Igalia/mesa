@@ -103,6 +103,7 @@ public:
    void setup_vs_payload();
    void setup_gs_payload();
    void setup_cs_payload();
+   void fixup_hf_mad();
    void fixup_3src_null_dest();
    void assign_curb_setup();
    void calculate_urb_setup();

@@ -6541,6 +6541,48 @@ fs_visitor::optimize()
 }
 
 /**
+ * Broadwell hardware has a bug that manifests in SIMD8 executions of 16-bit
+ * MAD instructions when any of the sources is a Y or W component. We pack
+ * these components in the same SIMD register as components X and Z
+ * respectively, but starting at offset 16B (so they live in the second half
+ * of the register).
+ *
+ * We work around this issue by moving any such sources to a temporary
+ * starting at offset 0B. We want to do this after the main optimization loop
+ * to prevent copy-propagation and friends to undo the fix.
+ */
+void
+fs_visitor::fixup_hf_mad()
+{
+   if (devinfo->gen != 8)
+      return;
+
+   bool progress = false;
+
+   foreach_block_and_inst_safe (block, fs_inst, inst, cfg) {
+      if (inst->opcode != BRW_OPCODE_MAD ||
+          inst->dst.type != BRW_REGISTER_TYPE_HF ||
+          inst->exec_size > 8)
+         continue;
+
+      for (int i = 0; i < 3; i++) {
+         if (inst->src[i].offset > 0) {
+            assert(inst->src[i].type == BRW_REGISTER_TYPE_HF);
+            const fs_builder ibld =
+               bld.at(block, inst).exec_all().group(inst->exec_size, 0);
+            fs_reg tmp = ibld.vgrf(inst->src[i].type);
+            ibld.MOV(tmp, inst->src[i]);
+            inst->src[i] = tmp;
+            progress = true;
+         }
+      }
+   }
+
+   if (progress)
+      invalidate_live_intervals();
+}
+
+/**
  * Three source instruction must have a GRF/MRF destination register.
  * ARF NULL is not allowed.  Fix that up by allocating a temporary GRF.
  */
@@ -6698,6 +6740,7 @@ fs_visitor::run_vs()
    assign_curb_setup();
    assign_vs_urb_setup();
 
+   fixup_hf_mad();
    fixup_3src_null_dest();
    allocate_registers(8, true);
 
@@ -6782,6 +6825,7 @@ fs_visitor::run_tcs_single_patch()
    assign_curb_setup();
    assign_tcs_single_patch_urb_setup();
 
+   fixup_hf_mad();
    fixup_3src_null_dest();
    allocate_registers(8, true);
 
@@ -6816,6 +6860,7 @@ fs_visitor::run_tes()
    assign_curb_setup();
    assign_tes_urb_setup();
 
+   fixup_hf_mad();
    fixup_3src_null_dest();
    allocate_registers(8, true);
 
@@ -6865,6 +6910,7 @@ fs_visitor::run_gs()
    assign_curb_setup();
    assign_gs_urb_setup();
 
+   fixup_hf_mad();
    fixup_3src_null_dest();
    allocate_registers(8, true);
 
@@ -6965,6 +7011,7 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
 
       assign_urb_setup();
 
+      fixup_hf_mad();
       fixup_3src_null_dest();
       allocate_registers(8, allow_spilling);
 
@@ -7009,6 +7056,7 @@ fs_visitor::run_cs(unsigned min_dispatch_width)
 
    assign_curb_setup();
 
+   fixup_hf_mad();
    fixup_3src_null_dest();
    allocate_registers(min_dispatch_width, true);
 
