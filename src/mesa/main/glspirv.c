@@ -300,6 +300,14 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
    if (nir->info.stage == MESA_SHADER_VERTEX)
       nir_remap_dual_slot_attributes(nir, &linked_shader->Program->DualSlotInputs);
 
+   nir_foreach_variable(var, &nir->inputs) {
+      /* FIXME: reminder, right now it is using always INTERP_MODE_NONE if it
+       * is not specified. For the same shaders, some uses FLAT. Need to
+       * investigate by spec which one are setting the correct value.
+       */
+      /* var->data.interpolation = INTERP_MODE_FLAT; */
+   }
+
    return nir;
 }
 
