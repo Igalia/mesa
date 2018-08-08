@@ -33,6 +33,58 @@
  * Also note that this is tailored for ARB_gl_spirv needs and particularities
  */
 
+static bool
+add_interface_variables(const struct gl_context *cts,
+                        struct gl_shader_program *prog,
+                        struct set *resource_set,
+                        unsigned stage, GLenum programInterface)
+{
+   const struct exec_list *var_list = NULL;
+
+   struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+   if (!sh)
+      return true;
+
+   nir_shader *nir = sh->Program->nir;
+   assert(nir);
+
+   switch (programInterface) {
+   case GL_PROGRAM_INPUT:
+      var_list = &nir->inputs;
+      break;
+   case GL_PROGRAM_OUTPUT:
+      var_list = &nir->outputs;
+      break;
+   default:
+      assert("!Should not get here");
+      break;
+   }
+
+   nir_foreach_variable(var, var_list) {
+      if (var->data.how_declared == nir_var_hidden)
+         continue;
+
+      struct gl_shader_variable *sh_var =
+         rzalloc(prog, struct gl_shader_variable);
+
+      /* In the ARB_gl_spirv spec, names are considered optional debug info, so
+       * the linker needs to work without them. Returning them is optional.
+       * For simplicity, we ignore names.
+       */
+      sh_var->name = NULL;
+      sh_var->type = var->type;
+      sh_var->location = var->data.location;
+
+      if (!link_util_add_program_resource(prog, resource_set,
+                                          programInterface,
+                                          sh_var, 1 << stage)) {
+         return false;
+      }
+   }
+
+   return true;
+}
+
 void
 nir_build_program_resource_list(struct gl_context *ctx,
                                 struct gl_shader_program *prog)
@@ -44,9 +96,36 @@ nir_build_program_resource_list(struct gl_context *ctx,
       prog->data->NumProgramResourceList = 0;
    }
 
+   int input_stage = MESA_SHADER_STAGES, output_stage = 0;
+
+   /* Determine first input and final output stage. These are used to
+    * detect which variables should be enumerated in the resource list
+    * for GL_PROGRAM_INPUT and GL_PROGRAM_OUTPUT.
+    */
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (!prog->_LinkedShaders[i])
+         continue;
+      if (input_stage == MESA_SHADER_STAGES)
+         input_stage = i;
+      output_stage = i;
+   }
+
+   /* Empty shader, no resources. */
+   if (input_stage == MESA_SHADER_STAGES && output_stage == 0)
+      return;
+
    struct set *resource_set = _mesa_set_create(NULL,
                                                _mesa_hash_pointer,
                                                _mesa_key_pointer_equal);
+
+   /* Add inputs and outputs to the resource list. */
+   if (!add_interface_variables(ctx, prog, resource_set, input_stage,
+                                GL_PROGRAM_INPUT))
+      return;
+
+   if (!add_interface_variables(ctx, prog, resource_set, output_stage,
+                                GL_PROGRAM_OUTPUT))
+      return;
 
    /* Add uniforms
     *
