@@ -44,6 +44,24 @@ nir_build_program_resource_list(struct gl_context *ctx,
       prog->data->NumProgramResourceList = 0;
    }
 
+   int input_stage = MESA_SHADER_STAGES, output_stage = 0;
+
+   /* Determine first input and final output stage. These are used to
+    * detect which variables should be enumerated in the resource list
+    * for GL_PROGRAM_INPUT and GL_PROGRAM_OUTPUT.
+    */
+   for (unsigned i = 0; i < MESA_SHADER_STAGES; i++) {
+      if (!prog->_LinkedShaders[i])
+         continue;
+      if (input_stage == MESA_SHADER_STAGES)
+         input_stage = i;
+      output_stage = i;
+   }
+
+   /* Empty shader, no resources. */
+   if (input_stage == MESA_SHADER_STAGES && output_stage == 0)
+      return;
+
    struct set *resource_set = _mesa_set_create(NULL,
                                                _mesa_hash_pointer,
                                                _mesa_key_pointer_equal);
