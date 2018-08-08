@@ -48,6 +48,10 @@ nir_build_program_resource_list(struct gl_context *ctx,
                                                _mesa_hash_pointer,
                                                _mesa_key_pointer_equal);
 
+   /* @FIXME: Program interface needs to expose varyings in case of SSO. */
+
+   /* @FIXME: Do we have to do add_fragdata_arrays()? */
+
    /* Add uniforms
     *
     * Here, it is expected that nir_link_uniforms() has already been
