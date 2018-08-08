@@ -56,6 +56,10 @@ nir_build_program_resource_list(struct gl_context *ctx,
    for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
       struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
 
+      /* Do not add uniforms internally used by Mesa. */
+      if (uniform->hidden)
+         continue;
+
       /* FIXME: ubo and ssbo resource count is different. Here is missing a
        * equivalent to should_add_buffer_variable (linker.cpp)
        */
