@@ -777,7 +777,15 @@ add_index_to_name(struct gl_program_resource *res)
 extern unsigned
 _mesa_program_resource_name_len(struct gl_program_resource *res)
 {
-   unsigned length = strlen(_mesa_program_resource_name(res));
+   const char* name = _mesa_program_resource_name(res);
+
+   /* For shaders constructed from SPIR-V binaries, variables may not
+    * have names associated with them.
+    */
+   if (!name)
+      return 0;
+
+   unsigned length = strlen(name);
    if (_mesa_program_resource_array_size(res) && add_index_to_name(res))
       length += 3;
    return length;
