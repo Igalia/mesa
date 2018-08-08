@@ -33,6 +33,60 @@
  * Also note that this is tailored for ARB_gl_spirv needs and particularities
  */
 
+static bool
+add_interface_variables(const struct gl_context *cts,
+                        struct gl_shader_program *prog,
+                        struct set *resource_set,
+                        unsigned stage, GLenum programInterface)
+{
+   const struct exec_list *var_list = NULL;
+
+   struct gl_linked_shader *sh = prog->_LinkedShaders[stage];
+   if (!sh)
+      return true;
+
+   nir_shader *nir = sh->Program->nir;
+   assert(nir);
+
+   switch (programInterface) {
+   case GL_PROGRAM_INPUT:
+      var_list = &nir->inputs;
+      break;
+   case GL_PROGRAM_OUTPUT:
+      var_list = &nir->outputs;
+      break;
+   default:
+      assert("!Should not get here");
+      break;
+   }
+
+   nir_foreach_variable(var, var_list) {
+      if (var->data.how_declared == nir_var_hidden)
+         continue;
+
+      struct gl_shader_variable *sh_var =
+         rzalloc(prog, struct gl_shader_variable);
+
+      /* In the ARB_gl_spirv spec, names are considered optional debug info, so
+       * the linker needs to work without them. Returning them is optional.
+       * For simplicity, we ignore names.
+       */
+      sh_var->name = NULL;
+      sh_var->type = var->type;
+      sh_var->location = var->data.location;
+
+      /* @TODO: Fill in the rest of gl_shader_variable data. */
+      /* @FIXME: manage arrays, structs, etc */
+      if (!link_util_add_program_resource(prog, resource_set,
+                                          programInterface,
+                                          sh_var, 1 << stage)) {
+         return false;
+      }
+   }
+
+   return true;
+}
+
 void
 nir_build_program_resource_list(struct gl_context *ctx,
                                 struct gl_shader_program *prog)
@@ -70,6 +124,15 @@ nir_build_program_resource_list(struct gl_context *ctx,
 
    /* @FIXME: Do we have to do add_fragdata_arrays()? */
 
+   /* Add inputs and outputs to the resource list. */
+   if (!add_interface_variables(ctx, prog, resource_set, input_stage,
+                                GL_PROGRAM_INPUT))
+      return;
+
+   if (!add_interface_variables(ctx, prog, resource_set, output_stage,
+                                GL_PROGRAM_OUTPUT))
+      return;
+
    /* Add uniforms
     *
     * Here, it is expected that nir_link_uniforms() has already been
@@ -95,7 +158,6 @@ nir_build_program_resource_list(struct gl_context *ctx,
          return;
       }
    }
-
 
    /* Add program uniform blocks. */
    for (unsigned i = 0; i < prog->data->NumUniformBlocks; i++) {
