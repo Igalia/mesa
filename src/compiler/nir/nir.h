@@ -220,6 +220,8 @@ typedef struct nir_variable {
       unsigned patch:1;
       unsigned invariant:1;
 
+      unsigned precision:2;
+
       /**
        * When separate shader programs are enabled, only input/outputs between
        * the stages of a multi-stage separate program can be safely removed

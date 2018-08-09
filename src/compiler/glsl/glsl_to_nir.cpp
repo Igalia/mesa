@@ -316,6 +316,7 @@ nir_visitor::visit(ir_variable *ir)
    var->data.sample = ir->data.sample;
    var->data.patch = ir->data.patch;
    var->data.invariant = ir->data.invariant;
+   var->data.precision = ir->data.precision;
    var->data.location = ir->data.location;
    var->data.stream = ir->data.stream;
    var->data.compact = false;
