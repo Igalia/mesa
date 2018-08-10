@@ -247,6 +247,10 @@ gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
                     active_varyings.num_varyings);
    linked_xfb->NumVarying = active_varyings.num_varyings;
 
+   int buffer_index = 0; /* Corresponds to GL_TRANSFORM_FEEDBACK_BUFFER_INDEX */
+   int xfb_buffer =
+      (active_varyings.num_varyings > 0) ?
+      active_varyings.varyings[0]->data.xfb_buffer : 0;
    struct gl_transform_feedback_output *output = linked_xfb->Outputs;
    for (unsigned i = 0; i < active_varyings.num_varyings; i++) {
       struct nir_variable *var = active_varyings.varyings[i];
@@ -285,13 +289,18 @@ gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
       assert(varying_outputs == get_num_outputs(var));
       output = output + varying_outputs;
 
+      if (xfb_buffer != var->data.xfb_buffer) {
+         buffer_index++;
+         xfb_buffer = var->data.xfb_buffer;
+      }
+
       struct gl_transform_feedback_varying_info *varying =
          linked_xfb->Varyings + i;
 
       /* ARB_gl_spirv: see above. */
       varying->Name = NULL;
       varying->Type = glsl_get_gl_type(var->type);
-      varying->BufferIndex = var->data.xfb_buffer;
+      varying->BufferIndex = buffer_index;
       varying->Size = glsl_get_length(var->type);
       varying->Offset = var->data.offset;
    }
