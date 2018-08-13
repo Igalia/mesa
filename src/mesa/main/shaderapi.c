@@ -764,10 +764,12 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
          break;
 
       for (i = 0; i < shProg->TransformFeedback.NumVarying; i++) {
-         /* Add one for the terminating NUL character.
+         /* Add one for the terminating NULL character. We have to check for
+          * NULL, as for shaders constructed from SPIR-V binaries, it is
+          * possible that no name reflection information is available.
           */
-         const GLint len =
-            strlen(shProg->TransformFeedback.VaryingNames[i]) + 1;
+         const GLint len = shProg->TransformFeedback.VaryingNames[i] ?
+            strlen(shProg->TransformFeedback.VaryingNames[i]) + 1 : 1;
 
          if (len > max_len)
             max_len = len;
