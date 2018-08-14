@@ -961,6 +961,9 @@ glsl_type::record_compare(const glsl_type *b, bool match_locations) const
       if (this->fields.structure[i].xfb_stride
           != b->fields.structure[i].xfb_stride)
          return false;
+      if (this->fields.structure[i].matrix_stride
+          != b->fields.structure[i].matrix_stride)
+         return false;
    }
 
    return true;
