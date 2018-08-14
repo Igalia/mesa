@@ -1008,6 +1008,11 @@ struct glsl_struct_field {
    unsigned matrix_layout:2;
 
    /**
+    * Matrix stride. Since ARB_gl_spirv, it is possible to set it explicitly.
+    */
+   unsigned matrix_stride;
+
+   /**
     * For interface blocks, 1 if this variable is a per-patch input or output
     * (as in ir_variable::patch). 0 otherwise.
     */
@@ -1045,7 +1050,7 @@ struct glsl_struct_field {
    glsl_struct_field(const struct glsl_type *_type, const char *_name)
       : type(_type), name(_name), location(-1), offset(0), xfb_buffer(0),
         xfb_stride(0), interpolation(0), centroid(0),
-        sample(0), matrix_layout(GLSL_MATRIX_LAYOUT_INHERITED), patch(0),
+        sample(0), matrix_layout(GLSL_MATRIX_LAYOUT_INHERITED), matrix_stride(0), patch(0),
         precision(GLSL_PRECISION_NONE), memory_read_only(0),
         memory_write_only(0), memory_coherent(0), memory_volatile(0),
         memory_restrict(0), image_format(0), explicit_xfb_buffer(0),
@@ -1057,7 +1062,7 @@ struct glsl_struct_field {
    glsl_struct_field()
       : type(NULL), name(NULL), location(0), offset(0), xfb_buffer(0),
         xfb_stride(0), interpolation(0), centroid(0),
-        sample(0), matrix_layout(0), patch(0),
+        sample(0), matrix_layout(0), matrix_stride(0), patch(0),
         precision(0), memory_read_only(0),
         memory_write_only(0), memory_coherent(0), memory_volatile(0),
         memory_restrict(0), image_format(0), explicit_xfb_buffer(0),
