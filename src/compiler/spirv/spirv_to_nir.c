@@ -816,6 +816,12 @@ struct_member_matrix_stride_cb(struct vtn_builder *b,
       vtn_assert(mat_type->array_element->stride > 0);
       mat_type->stride = dec->literals[0];
    }
+
+   /* For the glsl_type we use the stride defined at SPIR-V, as anyone (ie:
+    * ARB_gl_spirv linker) that wants to use it would be also using the matrix
+    * layout.
+    */
+   ctx->fields[member].explicit_matrix_stride = dec->literals[0];
 }
 
 static void
