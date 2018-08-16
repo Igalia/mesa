@@ -418,11 +418,6 @@ fill_individual_variable(const struct glsl_type *type,
    variables[*variable_index].Type = type;
 
    if (glsl_type_is_matrix(type)) {
-      /* See comments on _RowMajor. RowMajor is a decoration that member
-       * structure type. Right now we are not getting it directly from the type,
-       * but from the parent type (FIXME: that is somewhat out of sync, and
-       * perhaps it should be fixed)
-       */
       variables[*variable_index].RowMajor =
          (glsl_get_struct_field_matrix_layout(parent_type, index_in_parent) ==
           GLSL_MATRIX_LAYOUT_ROW_MAJOR);
