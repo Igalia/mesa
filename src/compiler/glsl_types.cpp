@@ -44,7 +44,7 @@ glsl_type::glsl_type(GLenum gl_type,
    sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
    interface_packing(0), interface_row_major(0),
    vector_elements(vector_elements), matrix_columns(matrix_columns),
-   length(0)
+   length(0), array_stride(0)
 {
    /* Values of these types must fit in the two bits of
     * glsl_type::sampled_type.
@@ -77,7 +77,7 @@ glsl_type::glsl_type(GLenum gl_type, glsl_base_type base_type,
    base_type(base_type), sampled_type(type),
    sampler_dimensionality(dim), sampler_shadow(shadow),
    sampler_array(array), interface_packing(0),
-   interface_row_major(0), length(0)
+   interface_row_major(0), length(0), array_stride(0)
 {
    this->mem_ctx = ralloc_context(NULL);
    assert(this->mem_ctx != NULL);
@@ -97,7 +97,7 @@ glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
    sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
    interface_packing(0), interface_row_major(0),
    vector_elements(0), matrix_columns(0),
-   length(num_fields)
+   length(num_fields), array_stride(0)
 {
    unsigned int i;
 
@@ -127,7 +127,7 @@ glsl_type::glsl_type(const glsl_struct_field *fields, unsigned num_fields,
    interface_packing((unsigned) packing),
    interface_row_major((unsigned) row_major),
    vector_elements(0), matrix_columns(0),
-   length(num_fields)
+   length(num_fields), array_stride(0)
 {
    unsigned int i;
 
@@ -152,7 +152,7 @@ glsl_type::glsl_type(const glsl_type *return_type,
    sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
    interface_packing(0), interface_row_major(0),
    vector_elements(0), matrix_columns(0),
-   length(num_params)
+   length(num_params), array_stride(0)
 {
    unsigned int i;
 
@@ -181,7 +181,7 @@ glsl_type::glsl_type(const char *subroutine_name) :
    sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
    interface_packing(0), interface_row_major(0),
    vector_elements(1), matrix_columns(1),
-   length(0)
+   length(0), array_stride(0)
 {
    this->mem_ctx = ralloc_context(NULL);
    assert(this->mem_ctx != NULL);
@@ -434,12 +434,12 @@ _mesa_glsl_release_types(void)
 }
 
 
-glsl_type::glsl_type(const glsl_type *array, unsigned length) :
+glsl_type::glsl_type(const glsl_type *array, unsigned length, unsigned array_stride) :
    base_type(GLSL_TYPE_ARRAY), sampled_type(GLSL_TYPE_VOID),
    sampler_dimensionality(0), sampler_shadow(0), sampler_array(0),
    interface_packing(0), interface_row_major(0),
    vector_elements(0), matrix_columns(0),
-   length(length), name(NULL)
+   length(length), name(NULL), array_stride(array_stride)
 {
    this->fields.array = array;
    /* Inherit the gl type of the base. The GL type is used for
@@ -848,13 +848,21 @@ glsl_type::get_image_instance(enum glsl_sampler_dim dim,
 const glsl_type *
 glsl_type::get_array_instance(const glsl_type *base, unsigned array_size)
 {
+   return get_array_instance(base, array_size, 0);
+}
+
+const glsl_type *
+glsl_type::get_array_instance(const glsl_type *base,
+                              unsigned array_size,
+                              unsigned array_stride)
+{
    /* Generate a name using the base type pointer in the key.  This is
     * done because the name of the base type may not be unique across
     * shaders.  For example, two shaders may have different record types
     * named 'foo'.
     */
    char key[128];
-   util_snprintf(key, sizeof(key), "%p[%u]", (void *) base, array_size);
+   util_snprintf(key, sizeof(key), "%p[%u]%u", (void *) base, array_size, array_stride);
 
    mtx_lock(&glsl_type::hash_mutex);
 
@@ -865,7 +873,7 @@ glsl_type::get_array_instance(const glsl_type *base, unsigned array_size)
 
    const struct hash_entry *entry = _mesa_hash_table_search(array_types, key);
    if (entry == NULL) {
-      const glsl_type *t = new glsl_type(base, array_size);
+      const glsl_type *t = new glsl_type(base, array_size, array_stride);
 
       entry = _mesa_hash_table_insert(array_types,
                                       strdup(key),
@@ -892,6 +900,9 @@ glsl_type::record_compare(const glsl_type *b, bool match_locations) const
       return false;
 
    if (this->interface_row_major != b->interface_row_major)
+      return false;
+
+   if (this->array_stride != b->array_stride)
       return false;
 
    /* From the GLSL 4.20 specification (Sec 4.2):
