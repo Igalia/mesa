@@ -58,7 +58,8 @@ wrap_type_in_array(const struct glsl_type *type,
 
    const struct glsl_type *elem_type =
       wrap_type_in_array(type, glsl_get_array_element(array_type));
-   return glsl_array_type(elem_type, glsl_get_length(array_type));
+   return glsl_full_array_type(elem_type, glsl_get_length(array_type),
+                               glsl_get_explicit_array_stride(array_type));
 }
 
 static int
@@ -506,7 +507,9 @@ split_var_list_arrays(nir_shader *shader,
                                           glsl_get_components(split_type),
                                           info->levels[i].array_len);
          } else {
-            split_type = glsl_array_type(split_type, info->levels[i].array_len);
+            split_type = glsl_full_array_type(split_type,
+                                              info->levels[i].array_len,
+                                              glsl_get_explicit_array_stride(var->type));
          }
       }
 
