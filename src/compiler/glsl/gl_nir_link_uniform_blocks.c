@@ -131,7 +131,9 @@ _glsl_type_is_leaf(const struct glsl_type *type)
 }
 
 static unsigned
-_get_type_size(const struct glsl_type *type)
+_get_type_size(const struct glsl_type *type,
+               const struct glsl_type *parent_type,
+               unsigned int index_in_parent)
 {
    /* If the type is a struct then the members are supposed to presented in
     * increasing order of offset so we can just look at the last member.
@@ -140,7 +142,8 @@ _get_type_size(const struct glsl_type *type)
       unsigned length = glsl_get_length(type);
       if (length > 0) {
          return (glsl_get_struct_field_offset(type, length - 1) +
-                 _get_type_size(glsl_get_struct_field(type, length - 1)));
+                 _get_type_size(glsl_get_struct_field(type, length - 1),
+                                type, length - 1));
       } else {
          return 0;
       }
@@ -150,17 +153,26 @@ _get_type_size(const struct glsl_type *type)
    if (glsl_type_is_array(type)) {
       /* FIXME: the array stride needs to be passed through from the SPIR-V.
        */
-      return (_get_type_size(glsl_get_array_element(type)) *
+      return (_get_type_size(glsl_get_array_element(type), type, 0) *
               glsl_get_length(type));
    }
 
    /* Matrices must have a matrix stride and either RowMajor or ColMajor */
    if (glsl_type_is_matrix(type)) {
-      /* FIXME: the matrix stride and *Major needs to be passed through from
-       * the SPIR-V.
+      unsigned matrix_stride =
+         glsl_get_struct_field_matrix_stride(parent_type, index_in_parent);
+
+      bool row_major =
+         glsl_get_struct_field_matrix_layout(parent_type, index_in_parent) ==
+         GLSL_MATRIX_LAYOUT_ROW_MAJOR;
+
+      unsigned length = row_major ? glsl_get_vector_elements(type)
+         : glsl_get_length(type);
+
+      /* We don't really need to compute the type_size of the matrix element
+       * type. That should be already included as part of matrix_stride
        */
-      return (_get_type_size(glsl_get_array_element(type)) *
-              glsl_get_length(type));
+      return matrix_stride * length;
    }
 
    unsigned N = glsl_type_is_64bit(type) ? 8 : 4;
@@ -433,7 +445,7 @@ fill_individual_variable(const struct glsl_type *type,
     * over non-trivial types, like aoa. So we compute the offset always.
     */
    variables[*variable_index].Offset = *offset;
-   (*offset) += _get_type_size(type);
+   (*offset) += _get_type_size(type, parent_type, index_in_parent);
 
    (*variable_index)++;
 }
@@ -564,7 +576,26 @@ _fill_block(struct gl_uniform_block *block,
    iterate_type_fill_variables(type, variables, variable_index, &offset, prog, block);
    block->NumUniforms = *variable_index - old_variable_index;
 
-   block->UniformBufferSize =  _get_type_size(type);
+   block->UniformBufferSize =  _get_type_size(type, NULL, 0);
+
+   /* From OpenGL 4.6 spec, section 7.6.2.3, "SPIR-V Uniform Offsets and strides"
+    *
+    *   "If the variable is decorated as a BufferBlock , its offsets and
+    *    strides must not contra- dict std430 alignment and minimum offset
+    *    requirements. Otherwise, its offsets and strides must not contradict
+    *    std140 alignment and minimum offset requirements."
+    *
+    * So although we are computing the size based on the offsets and
+    * array/matrix strides, at the end we need to ensure that the alignment is
+    * the same that with std140. From ARB_uniform_buffer_object spec:
+    *
+    *   "For uniform blocks laid out according to [std140] rules, the minimum
+    *    buffer object size returned by the UNIFORM_BLOCK_DATA_SIZE query is
+    *    derived by taking the offset of the last basic machine unit consumed
+    *    by the last uniform of the uniform block (including any end-of-array
+    *    or end-of-structure padding), adding one, and rounding up to the next
+    *    multiple of the base alignment required for a vec4."
+    */
    block->UniformBufferSize = glsl_align(block->UniformBufferSize, 16);
 }
 
