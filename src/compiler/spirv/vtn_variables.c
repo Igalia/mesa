@@ -390,7 +390,8 @@ repair_atomic_type(const struct glsl_type *type)
       const struct glsl_type *atomic =
          repair_atomic_type(glsl_get_array_element(type));
 
-      return glsl_array_type(atomic, glsl_get_length(type));
+      return glsl_full_array_type(atomic, glsl_get_length(type),
+                                  glsl_get_explicit_array_stride(type));
    } else {
       return glsl_atomic_uint_type();
    }
