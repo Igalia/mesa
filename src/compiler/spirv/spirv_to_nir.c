@@ -1125,9 +1125,14 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       }
 
       val->type->base_type = vtn_base_type_array;
-      val->type->type = glsl_array_type(array_element->type, val->type->length);
+      /* We need to call type_decoration_cb earlier, in order to get the
+       * proper value of ArrayStride
+       */
+      vtn_foreach_decoration(b, val, type_decoration_cb, NULL);
+
+      val->type->type = glsl_full_array_type(array_element->type, val->type->length,
+                                             val->type->stride);
       val->type->array_element = array_element;
-      val->type->stride = 0;
       break;
    }
 
@@ -1306,7 +1311,11 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       vtn_fail("Unhandled opcode");
    }
 
-   vtn_foreach_decoration(b, val, type_decoration_cb, NULL);
+   /* For Arrays we already called foreach_decoration */
+   if (opcode != SpvOpTypeRuntimeArray && opcode != SpvOpTypeArray) {
+      vtn_foreach_decoration(b, val, type_decoration_cb, NULL);
+   }
+
 }
 
 static nir_constant *
