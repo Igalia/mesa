@@ -99,7 +99,7 @@ remove_struct_derefs_prep(nir_deref_instr **p, char **name,
 
       remove_struct_derefs_prep(&p[1], name, location, type);
 
-      *type = glsl_get_array_instance(*type, length);
+      *type = glsl_get_array_instance(*type, length, glsl_get_explicit_array_stride(cur->type));
       break;
    }
 
