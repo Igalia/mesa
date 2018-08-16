@@ -214,8 +214,8 @@ nir_lower_atomics_to_ssbo(nir_shader *shader, unsigned ssbo_offset)
             nir_variable *ssbo;
             char name[16];
 
-            /* A length of 0 is used to denote unsized arrays */
-            const struct glsl_type *type = glsl_array_type(glsl_uint_type(), 0);
+            /* A length/stride of 0 is used to denote unsized arrays */
+            const struct glsl_type *type = glsl_array_type(glsl_uint_type(), 0, 0);
 
             snprintf(name, sizeof(name), "counter%d", var->data.binding);
 
