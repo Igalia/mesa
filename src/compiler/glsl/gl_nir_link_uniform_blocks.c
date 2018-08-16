@@ -151,10 +151,7 @@ _get_type_size(const struct glsl_type *type,
 
    /* Arrays must have an array stride */
    if (glsl_type_is_array(type)) {
-      /* FIXME: the array stride needs to be passed through from the SPIR-V.
-       */
-      return (_get_type_size(glsl_get_array_element(type), type, 0) *
-              glsl_get_length(type));
+      return glsl_get_array_stride(type) * glsl_get_length(type);
    }
 
    /* Matrices must have a matrix stride and either RowMajor or ColMajor */
