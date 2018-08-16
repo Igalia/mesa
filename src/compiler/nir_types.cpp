@@ -61,9 +61,10 @@ glsl_without_array_or_matrix(const glsl_type *type)
 
 const glsl_type *
 glsl_get_array_instance(const glsl_type *type,
-                        unsigned array_size)
+                        unsigned array_size,
+                        unsigned array_stride)
 {
-   return glsl_type::get_array_instance(type, array_size);
+   return glsl_type::get_array_instance(type, array_size, array_stride);
 }
 
 const glsl_type *
@@ -91,6 +92,12 @@ glsl_get_struct_field_matrix_stride(const struct glsl_type *type,
                                     unsigned index)
 {
    return type->fields.structure[index].matrix_stride;
+}
+
+const unsigned
+glsl_get_array_stride(const struct glsl_type *type)
+{
+   return type->array_stride;
 }
 
 const glsl_type *
@@ -449,9 +456,9 @@ glsl_matrix_type(enum glsl_base_type base_type, unsigned rows, unsigned columns)
 }
 
 const glsl_type *
-glsl_array_type(const glsl_type *base, unsigned elements)
+glsl_array_type(const glsl_type *base, unsigned elements, unsigned array_stride)
 {
-   return glsl_type::get_array_instance(base, elements);
+   return glsl_type::get_array_instance(base, elements, array_stride);
 }
 
 const glsl_type *
@@ -513,7 +520,7 @@ glsl_channel_type(const glsl_type *t)
    switch (glsl_get_base_type(t)) {
    case GLSL_TYPE_ARRAY: {
       const glsl_type *base = glsl_channel_type(glsl_get_array_element(t));
-      return glsl_array_type(base, glsl_get_length(t));
+      return glsl_array_type(base, glsl_get_length(t), glsl_get_array_stride(t));
    }
    case GLSL_TYPE_UINT:
       return glsl_uint_type();

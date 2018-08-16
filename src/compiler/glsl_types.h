@@ -210,6 +210,11 @@ public:
    const char *name;
 
    /**
+    * Array stride. Since ARB_gl_spirv, it is possible to set it explicitly.
+    */
+   unsigned array_stride;
+
+   /**
     * Subtype of composite data types.
     */
    union {
@@ -293,6 +298,13 @@ public:
     */
    static const glsl_type *get_array_instance(const glsl_type *base,
 					      unsigned elements);
+
+   /**
+    * Get the instance of an array type with explicit array stride
+    */
+   static const glsl_type *get_array_instance(const glsl_type *base,
+                                              unsigned elements,
+                                              unsigned array_stride);
 
    /**
     * Get the instance of a record type
@@ -899,8 +911,8 @@ private:
    glsl_type(const glsl_type *return_type,
              const glsl_function_param *params, unsigned num_params);
 
-   /** Constructor for array types */
-   glsl_type(const glsl_type *array, unsigned length);
+   // /** Constructor for array types */
+   glsl_type(const glsl_type *array, unsigned length, unsigned array_stride = 0);
 
    /** Constructor for subroutine types */
    glsl_type(const char *name);
