@@ -1113,9 +1113,6 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
 
    case SpvOpTypeRuntimeArray:
    case SpvOpTypeArray: {
-      struct vtn_type *array_element =
-         vtn_value(b, w[2], vtn_value_type_type)->type;
-
       if (opcode == SpvOpTypeRuntimeArray) {
          /* A length of 0 is used to denote unsized arrays */
          val->type->length = 0;
@@ -1125,10 +1122,10 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       }
 
       val->type->base_type = vtn_base_type_array;
-      val->type->stride = 0;
-      val->type->type = glsl_array_type(array_element->type, val->type->length, val->type->stride);
-      val->type->array_element = array_element;
-      fprintf(stderr, "val->type->stride is %i\n", val->type->stride);
+
+      /* We postpone create the type until foreach_decoration is called, as we
+       * need some info from them, like ArrayStride
+       */
       break;
    }
 
@@ -1308,6 +1305,16 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
    }
 
    vtn_foreach_decoration(b, val, type_decoration_cb, NULL);
+
+   if (opcode == SpvOpTypeRuntimeArray || opcode == SpvOpTypeArray) {
+      struct vtn_type *array_element =
+         vtn_value(b, w[2], vtn_value_type_type)->type;
+
+      val->type->array_element = array_element;
+      val->type->type = glsl_array_type(array_element->type, val->type->length,
+                                        val->type->stride);
+   }
+
 }
 
 static nir_constant *
