@@ -726,6 +726,20 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
    /* Lower a bunch of stuff */
    OPT(nir_lower_var_copies);
 
+   /* Now that deref copies are lowered to load-store one can consider if
+    * precision can be lowered.
+    */
+   if (allow_lower_precision) {
+      struct nir_lower_precision_options options = {
+         .has_16_bit_tex_coords = devinfo->gen >= 10,
+         .has_16_bit_input_varyings = false,
+         .has_var_sized_bool = true
+      };
+      nir_lower_var_precision(nir, &options);
+      nir_lower_precision(nir, &options);
+      nir_lower_sample_precision(nir);
+   }
+
    OPT(nir_lower_system_values);
 
    const nir_lower_subgroups_options subgroups_options = {
