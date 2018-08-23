@@ -3253,6 +3253,14 @@ typedef enum {
 bool nir_lower_doubles(nir_shader *shader, nir_lower_doubles_options options);
 bool nir_lower_pack(nir_shader *shader);
 
+struct nir_lower_precision_options {
+   bool has_16_bit_input_varyings;
+};
+
+bool nir_lower_var_precision(
+        nir_shader *shader,
+        const struct nir_lower_precision_options *options);
+
 bool nir_normalize_cubemap_coords(nir_shader *shader);
 
 void nir_live_ssa_defs_impl(nir_function_impl *impl);
