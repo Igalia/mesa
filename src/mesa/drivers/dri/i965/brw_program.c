@@ -102,7 +102,10 @@ brw_create_nir(struct brw_context *brw,
    }
    nir_validate_shader(nir, "before brw_preprocess_nir");
 
-   nir = brw_preprocess_nir(brw->screen->compiler, nir);
+   const bool allow_lower_precision = stage == MESA_SHADER_FRAGMENT &&
+                                      shader_prog && shader_prog->IsES;
+   nir = brw_preprocess_nir(brw->screen->compiler, nir,
+                            allow_lower_precision);
 
    NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
 

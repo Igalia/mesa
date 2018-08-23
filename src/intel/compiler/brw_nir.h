@@ -95,7 +95,7 @@ enum {
 void brw_nir_analyze_boolean_resolves(nir_shader *nir);
 
 nir_shader *brw_preprocess_nir(const struct brw_compiler *compiler,
-                               nir_shader *nir);
+                               nir_shader *nir, bool allow_lower_precision);
 
 void
 brw_nir_link_shaders(const struct brw_compiler *compiler,
