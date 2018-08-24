@@ -64,6 +64,33 @@ add_interface_variables(const struct gl_context *cts,
       if (var->data.how_declared == nir_var_hidden)
          continue;
 
+      int loc_bias = 0;
+      switch(var->data.mode) {
+      case nir_var_system_value:
+      case nir_var_shader_in:
+         if (programInterface != GL_PROGRAM_INPUT)
+            continue;
+         loc_bias = (stage == MESA_SHADER_VERTEX) ? VERT_ATTRIB_GENERIC0
+                                                  : VARYING_SLOT_VAR0;
+         break;
+      case nir_var_shader_out:
+         if (programInterface != GL_PROGRAM_OUTPUT)
+            continue;
+         loc_bias = (stage == MESA_SHADER_FRAGMENT) ? FRAG_RESULT_DATA0
+                                                    : VARYING_SLOT_VAR0;
+         break;
+      default:
+         continue;
+      }
+
+      if (var->data.patch)
+         loc_bias = VARYING_SLOT_PATCH0;
+
+      /* @FIXME: in the GLSL linker, there is some code to skip packed varyings
+       * and fragdata arrays identifying them by name.
+       * For the moment, we are not adding them to the program resource list, so
+       * there is nothing to do here. Check if we have to add them.
+       */
       struct gl_shader_variable *sh_var =
          rzalloc(prog, struct gl_shader_variable);
 
@@ -73,10 +100,12 @@ add_interface_variables(const struct gl_context *cts,
        */
       sh_var->name = NULL;
       sh_var->type = var->type;
-      sh_var->location = var->data.location;
+      sh_var->location = var->data.location - loc_bias;
 
       /* @TODO: Fill in the rest of gl_shader_variable data. */
-      /* @FIXME: manage arrays, structs, etc */
+      /* @FIXME: manage arrays, structs, etc. in other words, implement the
+       * equivalent to add_shader_variable.
+       */
       if (!link_util_add_program_resource(prog, resource_set,
                                           programInterface,
                                           sh_var, 1 << stage)) {
