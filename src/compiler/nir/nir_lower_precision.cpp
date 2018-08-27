@@ -180,13 +180,15 @@ lower_alu_precision(nir_builder *b, nir_alu_instr *alu)
     * lower precision source operands need to be promoted to higher precision.
     *
     * Otherwise (in case of lower precision sources only), adjust the
-    * destination accordingly.
+    * destination size accordingly. As there isn't a bool16 type in NIR,
+    * one leaves the bit size intact and relies on the compiler backend to
+    * handle it.
     */
    if (has_high_precision_srcs) {
       for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
          promote_src_to_high_precision(b, &alu->instr, &alu->src[i].src);
       }
-   } else {
+   } else if (nir_op_infos[alu->op].output_type != nir_type_bool32) {
       assert(alu->dest.dest.is_ssa);
       alu->dest.dest.ssa.bit_size = 16;
    }
