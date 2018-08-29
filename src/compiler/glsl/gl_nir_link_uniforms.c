@@ -498,11 +498,33 @@ gl_nir_link_uniforms(struct gl_context *ctx,
 
          state.current_var = var;
 
+         /*
+          * From OpenGL 4.6 spec, section 7.3.1.1, "Naming Active Resources":
+          *
+          *   "* For an active shader storage block member declared as an
+          *      array of an aggregate type, an entry will be generated only
+          *      for the first array element, regardless of its type. Such
+          *      block members are referred to as top-level arrays. If the
+          *      block member is an aggregate type, the enumeration rules are
+          *      then applied recursively.
+          *    * For an active interface block not declared as an array of
+          *      block instances, a single entry will be generated, using the
+          *      block name from the shader source."
+          *
+          * So for the UBO and SSBO case, we expand only the array element
+          * type.
+          */
+         const struct glsl_type *type = var->type;
+         if (nir_variable_is_in_block(var) &&
+             glsl_type_is_array(type)) {
+            type = glsl_get_array_element(type);
+         }
+
          struct type_tree_entry *type_tree =
-            build_type_tree_for_type(var->type);
+            build_type_tree_for_type(type);
          state.current_type = type_tree;
 
-         int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, var->type,
+         int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, type,
                                     location, &state);
 
          free_type_tree(type_tree);
