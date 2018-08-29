@@ -272,6 +272,9 @@ get_next_index(struct nir_link_uniforms_state *state,
 }
 
 
+/* FIXME: _var_is_ssbo and _var_is_ubo defined on both gl_nir_link_uniforms
+ * and gl_nir_link_uniform_blocks
+ */
 static bool
 _var_is_ssbo(nir_variable *var)
 {
