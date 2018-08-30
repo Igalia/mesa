@@ -110,6 +110,8 @@ log_error(validate_state *state, const char *cond, const char *file, int line)
 {
    const void *obj;
 
+   unreachable("");
+
    if (state->instr)
       obj = state->instr;
    else if (state->var)
