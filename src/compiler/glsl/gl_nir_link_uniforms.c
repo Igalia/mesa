@@ -282,6 +282,8 @@ nir_link_uniform(struct gl_context *ctx,
                  struct gl_program *stage_program,
                  gl_shader_stage stage,
                  const struct glsl_type *type,
+                 const struct glsl_type *parent_type,
+                 unsigned index_in_parent,
                  int location,
                  struct nir_link_uniforms_state *state)
 {
@@ -309,7 +311,7 @@ nir_link_uniform(struct gl_context *ctx,
             field_type = glsl_get_array_element(type);
 
          int entries = nir_link_uniform(ctx, prog, stage_program, stage,
-                                        field_type, location,
+                                        field_type, type, i, location,
                                         state);
          if (entries == -1)
             return -1;
@@ -352,9 +354,11 @@ nir_link_uniform(struct gl_context *ctx,
       if (glsl_type_is_array(type)) {
          uniform->type = type_no_array;
          uniform->array_elements = glsl_get_length(type);
+         uniform->array_stride = glsl_get_explicit_array_stride(type);
       } else {
          uniform->type = type;
          uniform->array_elements = 0;
+         uniform->array_stride = 0;
       }
       uniform->active_shader_mask |= 1 << stage;
 
@@ -371,15 +375,31 @@ nir_link_uniform(struct gl_context *ctx,
 
       uniform->is_shader_storage = nir_variable_is_in_ssbo(state->current_var);
 
+      if (nir_variable_is_in_block(state->current_var) &&
+          glsl_type_is_matrix(type)) {
+         assert(parent_type);
+
+         uniform->matrix_stride =
+            glsl_get_struct_field_explicit_matrix_stride(parent_type, index_in_parent);
+
+         uniform->row_major =
+            glsl_get_struct_field_matrix_layout(parent_type, index_in_parent) ==
+            GLSL_MATRIX_LAYOUT_ROW_MAJOR;
+      } else {
+         uniform->matrix_stride = 0;
+         uniform->row_major = false;
+      }
+
+      if (parent_type)
+         uniform->offset = glsl_get_struct_field_offset(parent_type, index_in_parent);
+      else
+         uniform->offset = 0;
+
       /* @FIXME: the initialization of the following will be done as we
        * implement support for their specific features, like SSBO, atomics,
        * etc.
        */
       uniform->block_index = -1;
-      uniform->offset = -1;
-      uniform->matrix_stride = -1;
-      uniform->array_stride = -1;
-      uniform->row_major = false;
       uniform->builtin = false;
       uniform->atomic_buffer_index = -1;
       uniform->top_level_array_size = 0;
@@ -543,6 +563,7 @@ gl_nir_link_uniforms(struct gl_context *ctx,
          state.current_type = type_tree;
 
          int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, type,
+                                    NULL, 0,
                                     location, &state);
 
          free_type_tree(type_tree);
