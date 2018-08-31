@@ -161,7 +161,8 @@ brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
     * range of slots covered by this variable.
     */
    unsigned uniform_index = var->data.driver_location / 4;
-   unsigned num_slots = count_uniform_storage_slots(var->type);
+   const unsigned num_slots = count_uniform_storage_slots(
+      prog->sh.data->UniformStorage[var->data.location].type);
    for (unsigned u = 0; u < num_slots; u++) {
       struct gl_uniform_storage *storage =
          &prog->sh.data->UniformStorage[var->data.location + u];

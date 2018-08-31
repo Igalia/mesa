@@ -535,6 +535,19 @@ type_size_scalar(const struct glsl_type *type)
    return 0;
 }
 
+extern "C" int
+brw_uniform_type_size_scalar(const struct glsl_type *type)
+{
+   /* TODO: Rework i965 gl-driver uniform mapping between frontend storage
+    *       and driver backend. Until then use full 32-bit slots to store
+    *       16-bit values.
+    */
+   if (type->base_type == GLSL_TYPE_FLOAT16)
+      return type->components() * 4;
+
+   return type_size_scalar(type) * 4;
+}
+
 /**
  * Create a MOV to read the timestamp register.
  *

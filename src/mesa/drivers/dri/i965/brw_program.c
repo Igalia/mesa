@@ -58,8 +58,9 @@ brw_nir_lower_uniforms(nir_shader *nir, bool is_scalar)
 {
    if (is_scalar) {
       nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms,
-                               type_size_scalar_bytes);
-      return nir_lower_io(nir, nir_var_uniform, type_size_scalar_bytes, 0);
+                               brw_uniform_type_size_scalar);
+      return nir_lower_io(nir, nir_var_uniform,
+                          brw_uniform_type_size_scalar, 0);
    } else {
       nir_assign_var_locations(&nir->uniforms, &nir->num_uniforms,
                                type_size_vec4_bytes);

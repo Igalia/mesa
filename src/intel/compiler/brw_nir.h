@@ -36,6 +36,8 @@ int type_size_scalar(const struct glsl_type *type);
 int type_size_vec4(const struct glsl_type *type);
 int type_size_dvec4(const struct glsl_type *type);
 
+int brw_uniform_type_size_scalar(const struct glsl_type *type);
+
 static inline int
 type_size_scalar_bytes(const struct glsl_type *type)
 {
