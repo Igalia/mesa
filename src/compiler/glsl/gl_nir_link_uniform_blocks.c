@@ -613,23 +613,6 @@ _link_linked_shader_uniform_blocks(void *mem_ctx,
                                    enum block_type block_type)
 {
    struct gl_uniform_buffer_variable *variables = NULL;
-
-   /* In opposite to GLSL IR linking we don't compute which uniform blocks are
-    * inactive. From ARB_gl_spirv spec:
-    *   " Removal of features from GLSL, as removed by GL_KHR_vulkan_glsl:
-    *     <skip>
-    *    - *shared* and *packed* block layouts"
-    *
-    * And as std430 was never allowed for ubos, only std140 remains as
-    * allowed. From 4.6 spec (and before), section 7.6, "Uniform Variables":
-    *   "All members of a named uniform block declared with a shared or std140
-    *    layout qualifier are considered active, even if they are not
-    *    referenced in any shader in the program. The uniform block itself is
-    *    also considered active, even if no member of the block is referenced"
-    *
-    * Conclusion: alls ubos coming from a SPIR-V shader should be considered
-    * as active, so we just count them.
-    */
    unsigned num_variables = 0;
 
    _allocate_uniform_blocks(mem_ctx, shader,
