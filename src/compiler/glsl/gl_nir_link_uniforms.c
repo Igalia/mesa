@@ -38,6 +38,22 @@
 
 #define UNMAPPED_UNIFORM_LOC ~0u
 
+/* FIXME: _var_is_ssbo and _var_is_ubo defined on both gl_nir_link_uniforms
+ * and gl_nir_link_uniform_blocks
+ */
+static bool
+_var_is_ssbo(nir_variable *var)
+{
+   return (var->data.mode == nir_var_shader_storage);
+}
+
+static bool
+_var_is_ubo(nir_variable *var)
+{
+   return (var->data.mode == nir_var_uniform &&
+           var->interface_type != NULL);
+}
+
 static void
 nir_setup_uniform_remap_tables(struct gl_context *ctx,
                                struct gl_shader_program *prog)
@@ -271,15 +287,6 @@ get_next_index(struct nir_link_uniforms_state *state,
    return index;
 }
 
-
-/* FIXME: _var_is_ssbo and _var_is_ubo defined on both gl_nir_link_uniforms
- * and gl_nir_link_uniform_blocks
- */
-static bool
-_var_is_ssbo(nir_variable *var)
-{
-   return (var->data.mode == nir_var_shader_storage);
-}
 
 /**
  * Creates the neccessary entries in UniformStorage for the uniform. Returns
