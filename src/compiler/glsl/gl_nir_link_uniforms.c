@@ -54,6 +54,12 @@ _var_is_ubo(nir_variable *var)
            var->interface_type != NULL);
 }
 
+static bool
+_var_is_block(nir_variable *var)
+{
+   return _var_is_ssbo(var) || _var_is_ubo(var);
+}
+
 static void
 nir_setup_uniform_remap_tables(struct gl_context *ctx,
                                struct gl_shader_program *prog)
