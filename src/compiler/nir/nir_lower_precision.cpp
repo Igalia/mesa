@@ -219,6 +219,24 @@ lower_deref_precision(nir_deref_instr *deref)
    deref->dest.ssa.bit_size = 16;
 }
 
+/* TODO: Allow 16-bit coordinates if hardware supports them. */
+static void
+adjust_tex_src_precision(nir_builder *b, nir_tex_instr *tex,
+                         bool has_16_bit_tex_coords)
+{
+   for (unsigned i = 0; i < tex->num_srcs; ++i) {
+      assert(tex->src[i].src.is_ssa);
+      if (tex->src[i].src.ssa->bit_size != 16)
+         continue;
+
+      /* TODO: Check individual tex parameters and skip coords if needed. */
+
+      nir_src promoted = nir_src_for_ssa(nir_f2f32(b, tex->src[i].src.ssa));
+      nir_instr_rewrite_src(&tex->instr, &tex->src[i].src, promoted);
+      nir_src_copy(&tex->src[i].src, &promoted, &tex->instr);
+   }
+}
+
 static void
 convert_deref_store_src(nir_builder *b, nir_intrinsic_instr *store,
                         nir_op conversion_op)
@@ -269,7 +287,8 @@ lower_intrinsic_precision(nir_builder *b, nir_intrinsic_instr *intr)
 }
 
 static void
-lower_instr_precision(nir_function_impl *impl)
+lower_instr_precision(nir_function_impl *impl,
+                      const struct nir_lower_precision_options *options)
 {
    nir_builder b;
    nir_builder_init(&b, impl);
@@ -285,6 +304,10 @@ lower_instr_precision(nir_function_impl *impl)
          case nir_instr_type_deref:
             lower_deref_precision(nir_instr_as_deref(instr));
             break;
+         case nir_instr_type_tex:
+            adjust_tex_src_precision(&b, nir_instr_as_tex(instr),
+                                     options->has_16_bit_tex_coords);
+            break;
          case nir_instr_type_intrinsic:
             lower_intrinsic_precision(&b, nir_instr_as_intrinsic(instr));
             break;
@@ -296,7 +319,8 @@ lower_instr_precision(nir_function_impl *impl)
 }
 
 bool
-nir_lower_precision(nir_shader *shader)
+nir_lower_precision(nir_shader *shader,
+                    const struct nir_lower_precision_options *options)
 {
    bool progress = false;
 
@@ -304,7 +328,7 @@ nir_lower_precision(nir_shader *shader)
       if (!function->impl)
          continue;
 
-      lower_instr_precision(function->impl);
+      lower_instr_precision(function->impl, options);
    }
 
    return progress;
