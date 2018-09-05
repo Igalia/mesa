@@ -220,6 +220,55 @@ lower_deref_precision(nir_deref_instr *deref)
 }
 
 static void
+convert_deref_store_src(nir_builder *b, nir_intrinsic_instr *store,
+                        nir_op conversion_op)
+{
+   nir_src converted = nir_src_for_ssa(
+      nir_build_alu(b, conversion_op, store->src[1].ssa, NULL, NULL, NULL));
+   nir_instr_rewrite_src(&store->instr, &store->src[1], converted);
+   nir_src_copy(&store->src[1], &converted, &store->instr);
+}
+
+static void
+lower_intrinsic_precision(nir_builder *b, nir_intrinsic_instr *intr)
+{
+   switch (intr->intrinsic) {
+   case nir_intrinsic_load_deref:
+      if (intr->src[0].ssa->bit_size == 16) {
+         assert(intr->dest.is_ssa);
+         intr->dest.ssa.bit_size = 16;
+      }
+      break;
+
+   /* If destination has lower precision but source doesn't, emit conversion
+    * from higher to low. Otherwise consider if destination requires higher
+    * precision but source is lower, and emit equivalent conversion. This can
+    * happen with dereferences to temporaries. They don't have any precision
+    * qualifiers and one can't tell if lower precision is allowed without
+    * examining the expressions consuming their values.
+    * Here one simply treats temporaries with full precision and emits
+    * converting copies that preserves correctness. Later optimization passes
+    * can remove the copies when all uses are known and it becomes clear if
+    * lower/higher precision alone is sufficient.
+    */
+   case nir_intrinsic_store_deref:
+      if (intr->src[0].ssa->bit_size == 16 &&
+          intr->src[1].ssa->bit_size > 16)
+         convert_deref_store_src(b, intr, nir_op_f2f16);
+      else if (intr->src[1].ssa->bit_size == 16 &&
+               intr->src[0].ssa->bit_size > 16)
+         convert_deref_store_src(b, intr, nir_op_f2f32);
+      break;
+
+   case nir_intrinsic_copy_deref:
+      unreachable("copy derefs should have been lowered to load-stores");
+
+   default:
+      break;
+   }
+}
+
+static void
 lower_instr_precision(nir_function_impl *impl)
 {
    nir_builder b;
@@ -235,6 +284,9 @@ lower_instr_precision(nir_function_impl *impl)
             break;
          case nir_instr_type_deref:
             lower_deref_precision(nir_instr_as_deref(instr));
+            break;
+         case nir_instr_type_intrinsic:
+            lower_intrinsic_precision(&b, nir_instr_as_intrinsic(instr));
             break;
          default:
             break;
