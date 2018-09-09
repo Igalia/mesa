@@ -3945,7 +3945,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          src.offset = load_offset + instr->const_index[0] % 4;
 
          for (unsigned j = 0; j < instr->num_components; j++) {
-            bld.MOV(offset(dest, bld, j), offset(src, bld, j));
+            /* Currently 16-bit uniforms occupy 32-bit slots. */
+            const unsigned delta =
+               src.type == BRW_REGISTER_TYPE_HF ? 2 * j : j;
+
+            bld.MOV(offset(dest, bld, j), offset(src, bld, delta));
          }
       } else {
          fs_reg indirect = retype(get_nir_src(instr->src[0]),
