@@ -917,6 +917,25 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
          inst->saturate = instr->dest.saturate;
          break;
       }
+
+      /* CHV PRM, 3D Media GPGPU Engine, Register Region Restrictions,
+       * Special Restrictions:
+       *
+       *    "Conversion between Integer and HF (Half Float) must be DWord
+       *     aligned and strided by a DWord on the destination."
+       *
+       * The same restriction is listed for other hardware platforms, however,
+       * empirical testing suggests that only atom platforms are affected.
+       */
+      if ((devinfo->is_cherryview || gen_device_info_is_9lp(devinfo)) &&
+          nir_dest_bit_size(instr->dest.dest) == 16) {
+         assert(result.type == BRW_REGISTER_TYPE_HF);
+         fs_reg tmp =
+            horiz_stride(retype(bld.vgrf(BRW_REGISTER_TYPE_F, 1), result.type), 2);
+         bld.MOV(tmp, op[0]);
+         op[0] = tmp;
+      }
+
       inst = bld.MOV(result, op[0]);
       inst->saturate = instr->dest.saturate;
       break;
@@ -939,11 +958,29 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       }
       /* Fallthrough */
 
+   case nir_op_f2i16:
+   case nir_op_f2u16:
+      /* CHV PRM, 3D Media GPGPU Engine, Register Region Restrictions,
+       * Special Restrictions:
+       *
+       *    "Conversion between Integer and HF (Half Float) must be DWord
+       *     aligned and strided by a DWord on the destination."
+       *
+       * The same restriction is listed for other hardware platforms, however,
+       * empirical testing suggests that only atom platforms are affected.
+       */
+      if ((devinfo->is_cherryview || gen_device_info_is_9lp(devinfo)) &&
+          nir_src_bit_size(instr->src[0].src) == 16) {
+         fs_reg tmp =
+            horiz_stride(retype(bld.vgrf(BRW_REGISTER_TYPE_D, 1), result.type), 2);
+         bld.MOV(tmp, op[0]);
+         op[0] = tmp;
+      }
+      /* Fallthrough */
+
    case nir_op_f2f32:
    case nir_op_f2i32:
    case nir_op_f2u32:
-   case nir_op_f2i16:
-   case nir_op_f2u16:
    case nir_op_i2i32:
    case nir_op_u2u32:
    case nir_op_i2i16:
