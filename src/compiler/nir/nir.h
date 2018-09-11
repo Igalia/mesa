@@ -3471,6 +3471,28 @@ uint64_t nir_get_single_slot_attribs_mask(uint64_t attribs, uint64_t dual_slot);
 nir_intrinsic_op nir_intrinsic_from_system_value(gl_system_value val);
 gl_system_value nir_system_value_from_intrinsic(nir_intrinsic_op intrin);
 
+
+static inline bool
+nir_variable_is_in_ubo(const nir_variable *var)
+{
+   return (var->data.mode == nir_var_mem_ubo &&
+           var->interface_type != NULL);
+}
+
+static inline bool
+nir_variable_is_in_ssbo(const nir_variable *var)
+{
+   return (var->data.mode == nir_var_mem_ssbo &&
+           var->interface_type != NULL);
+}
+
+static inline bool
+nir_variable_is_in_block(const nir_variable *var)
+{
+   return nir_variable_is_in_ubo(var) || nir_variable_is_in_ssbo(var);
+}
+
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
