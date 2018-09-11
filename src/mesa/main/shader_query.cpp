@@ -829,7 +829,7 @@ _mesa_get_program_resource_name(struct gl_shader_program *shProg,
    /* The resource name can be NULL for shaders constructed from SPIR-V
     * binaries. In that case, we do not add the '[0]'.
     */
-   if (name[0] != '\0' &&
+   if (name && name[0] != '\0' &&
        _mesa_program_resource_array_size(res) && add_index_to_name(res)) {
       int i;
 
