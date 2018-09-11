@@ -3012,13 +3012,32 @@ emit_coherent_fb_read(const fs_builder &bld, const fs_reg &dst, unsigned target)
 }
 
 static fs_reg
-alloc_temporary(const fs_builder &bld, unsigned size, fs_reg *regs, unsigned n)
+alloc_output_regs(const fs_builder &bld, unsigned type_bit_size,
+                  unsigned size, fs_reg *regs, unsigned n)
 {
    if (n && regs[0].file != BAD_FILE) {
       return regs[0];
 
    } else {
-      const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_F, size);
+      /* Outputs need to be float typed, otherwise things such as marking
+       * sampler sends with eot can't match with data port writes.
+       */
+      const enum brw_reg_type type =
+         brw_reg_type_from_bit_size(type_bit_size, BRW_REGISTER_TYPE_F);
+
+      /*
+       * From the Sky Lake PRM Vol. 7, SIMD8, Return Format = 16-bit:
+       *
+       *   A SIMD8* writeback message with Return Format of 16-bit consists
+       *   of up to 4 destination registers).
+       *
+       * Each channel takes full register where half of the register is just
+       * left unused. Hence allocate full register per channel and marked it
+       * padded in case of SIMD8. In case of SIMD16 each channel takes full
+       * register and the padding has no effect.
+       */
+      const bool pad_to_full_regs = type_bit_size == 16;
+      const fs_reg tmp = bld.vgrf(type, size, pad_to_full_regs);
 
       for (unsigned i = 0; i < n; i++)
          regs[i] = tmp;
@@ -3028,7 +3047,7 @@ alloc_temporary(const fs_builder &bld, unsigned size, fs_reg *regs, unsigned n)
 }
 
 static fs_reg
-alloc_frag_output(fs_visitor *v, unsigned location)
+alloc_frag_output(fs_visitor *v, unsigned bit_size, unsigned location)
 {
    assert(v->stage == MESA_SHADER_FRAGMENT);
    const brw_wm_prog_key *const key =
@@ -3037,25 +3056,25 @@ alloc_frag_output(fs_visitor *v, unsigned location)
    const unsigned i = GET_FIELD(location, BRW_NIR_FRAG_OUTPUT_INDEX);
 
    if (i > 0 || (key->force_dual_color_blend && l == FRAG_RESULT_DATA1))
-      return alloc_temporary(v->bld, 4, &v->dual_src_output, 1);
+      return alloc_output_regs(v->bld, bit_size, 4, &v->dual_src_output, 1);
 
    else if (l == FRAG_RESULT_COLOR)
-      return alloc_temporary(v->bld, 4, v->outputs,
-                             MAX2(key->nr_color_regions, 1));
+      return alloc_output_regs(v->bld, bit_size, 4, v->outputs,
+                               MAX2(key->nr_color_regions, 1));
 
    else if (l == FRAG_RESULT_DEPTH)
-      return alloc_temporary(v->bld, 1, &v->frag_depth, 1);
+      return alloc_output_regs(v->bld, bit_size, 1, &v->frag_depth, 1);
 
    else if (l == FRAG_RESULT_STENCIL)
-      return alloc_temporary(v->bld, 1, &v->frag_stencil, 1);
+      return alloc_output_regs(v->bld, bit_size, 1, &v->frag_stencil, 1);
 
    else if (l == FRAG_RESULT_SAMPLE_MASK)
-      return alloc_temporary(v->bld, 1, &v->sample_mask, 1);
+      return alloc_output_regs(v->bld, bit_size, 1, &v->sample_mask, 1);
 
    else if (l >= FRAG_RESULT_DATA0 &&
             l < FRAG_RESULT_DATA0 + BRW_MAX_DRAW_BUFFERS)
-      return alloc_temporary(v->bld, 4,
-                             &v->outputs[l - FRAG_RESULT_DATA0], 1);
+      return alloc_output_regs(v->bld, bit_size, 4,
+                               &v->outputs[l - FRAG_RESULT_DATA0], 1);
 
    else
       unreachable("Invalid location");
@@ -3107,8 +3126,9 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
       const unsigned store_offset = nir_src_as_uint(instr->src[1]);
       const unsigned location = nir_intrinsic_base(instr) +
          SET_FIELD(store_offset, BRW_NIR_FRAG_OUTPUT_LOCATION);
-      const fs_reg new_dest = retype(alloc_frag_output(this, location),
-                                     src.type);
+      const fs_reg new_dest =
+         retype(alloc_frag_output(this, 8 * type_sz(src.type), location),
+                src.type);
 
       for (unsigned j = 0; j < instr->num_components; j++)
          bld.MOV(offset(new_dest, bld, nir_intrinsic_component(instr) + j),
