@@ -423,12 +423,11 @@ nir_link_uniform(struct gl_context *ctx,
       if (glsl_type_is_array(type)) {
          uniform->type = type_no_array;
          uniform->array_elements = glsl_get_length(type);
-         uniform->array_stride = glsl_get_explicit_array_stride(type);
       } else {
          uniform->type = type;
          uniform->array_elements = 0;
-         uniform->array_stride = 0;
       }
+
       uniform->active_shader_mask |= 1 << stage;
 
       if (location >= 0) {
@@ -444,19 +443,46 @@ nir_link_uniform(struct gl_context *ctx,
 
       uniform->is_shader_storage = nir_variable_is_in_ssbo(state->current_var);
 
-      if (nir_variable_is_in_block(state->current_var) &&
-          glsl_type_is_matrix(type)) {
-         assert(parent_type);
+      /* Set fields whose default value depend on the variable being inside a
+       * block.
+       *
+       * From the OpenGL 4.6 spec, 7.3 Program objects:
+       *
+       * "For the property ARRAY_STRIDE, ... For active variables not declared
+       * as an array of basic types, zero is written to params. For active
+       * variables not backed by a buffer object, -1 is written to params,
+       * regardless of the variable type."
+       *
+       * "For the property MATRIX_STRIDE, ... For active variables not declared
+       * as a matrix or array of matrices, zero is written to params. For active
+       * variables not backed by a buffer object, -1 is written to params,
+       * regardless of the variable type."
+       *
+       * For the property IS_ROW_MAJOR, ... For active variables backed by a
+       * buffer object, declared as a single matrix or array of matrices, and
+       * stored in row-major order, one is written to params. For all other
+       * active variables, zero is written to params.
+       */
+      uniform->array_stride = -1;
+      uniform->matrix_stride = -1;
+      uniform->row_major = false;
 
-         uniform->matrix_stride =
-            glsl_get_struct_field_explicit_matrix_stride(parent_type, index_in_parent);
+      if (nir_variable_is_in_block(state->current_var)) {
+         uniform->array_stride = glsl_type_is_array(type) ?
+            glsl_get_explicit_array_stride(type) : 0;
 
-         uniform->row_major =
-            glsl_get_struct_field_matrix_layout(parent_type, index_in_parent) ==
-            GLSL_MATRIX_LAYOUT_ROW_MAJOR;
-      } else {
-         uniform->matrix_stride = 0;
-         uniform->row_major = false;
+         if (glsl_type_is_matrix(type)) {
+            assert(parent_type);
+            uniform->matrix_stride =
+               glsl_get_struct_field_explicit_matrix_stride(parent_type,
+                                                            index_in_parent);
+            uniform->row_major =
+               glsl_get_struct_field_matrix_layout(parent_type,
+                                                   index_in_parent) ==
+               GLSL_MATRIX_LAYOUT_ROW_MAJOR;
+         } else {
+            uniform->matrix_stride = 0;
+         }
       }
 
       uniform->offset = *offset;
