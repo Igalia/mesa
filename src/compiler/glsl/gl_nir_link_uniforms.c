@@ -365,6 +365,7 @@ nir_link_uniform(struct gl_context *ctx,
                  const struct glsl_type *parent_type,
                  unsigned index_in_parent,
                  int location,
+                 int *offset,
                  struct nir_link_uniforms_state *state)
 {
    struct gl_uniform_storage *uniform = NULL;
@@ -382,13 +383,20 @@ nir_link_uniform(struct gl_context *ctx,
       for (unsigned i = 0; i < glsl_get_length(type); i++) {
          const struct glsl_type *field_type;
 
-         if (glsl_type_is_struct(type))
+         if (glsl_type_is_struct(type)) {
             field_type = glsl_get_struct_field(type, i);
-         else
+            /* Use the offset inside the struct only for variables backed by
+             * a buffer object. For variables not backed by a buffer object,
+             * offset is -1.
+             */
+            if (_var_is_block(state->current_var))
+               *offset = glsl_get_struct_field_offset(type, i);
+         } else {
             field_type = glsl_get_array_element(type);
+         }
 
          int entries = nir_link_uniform(ctx, prog, stage_program, stage,
-                                        field_type, type, i, location,
+                                        field_type, type, i, location, offset,
                                         state);
          if (entries == -1)
             return -1;
@@ -467,10 +475,13 @@ nir_link_uniform(struct gl_context *ctx,
          uniform->row_major = false;
       }
 
-      if (parent_type)
-         uniform->offset = glsl_get_struct_field_offset(parent_type, index_in_parent);
-      else
-         uniform->offset = 0;
+      uniform->offset = *offset;
+      /* If the variable is backed by a buffer object, compute its offset for
+       * non-trivial types. For variables not backed by a buffer object,
+       * offset it -1.
+       */
+      if (_var_is_block(state->current_var))
+         (*offset) += _get_type_size(type, parent_type, index_in_parent);
 
       int buffer_block_index = -1;
       /* If the uniform is inside a uniform block determine its block index by
@@ -762,9 +773,10 @@ gl_nir_link_uniforms(struct gl_context *ctx,
             build_type_tree_for_type(type);
          state.current_type = type_tree;
 
+         int offset = _var_is_block(var) ? 0 : -1;
          int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, type,
                                     NULL, 0,
-                                    location, &state);
+                                    location, &offset, &state);
 
          free_type_tree(type_tree);
 
