@@ -373,10 +373,7 @@ nir_link_uniform(struct gl_context *ctx,
     * composite type or an array where each element occupies more than one
     * location than we need to recursively process it.
     */
-   if (glsl_type_is_struct(type) ||
-       (glsl_type_is_array(type) &&
-        (glsl_type_is_array(glsl_get_array_element(type)) ||
-         glsl_type_is_struct(glsl_get_array_element(type))))) {
+   if (!_glsl_type_is_leaf(type)) {
       int location_count = 0;
       struct type_tree_entry *old_type = state->current_type;
 
