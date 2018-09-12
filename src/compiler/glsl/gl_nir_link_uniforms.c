@@ -471,7 +471,7 @@ nir_link_uniform(struct gl_context *ctx,
             glsl_get_struct_field_matrix_layout(parent_type, index_in_parent) ==
             GLSL_MATRIX_LAYOUT_ROW_MAJOR;
       } else {
-         uniform->matrix_stride = 0;
+         uniform->matrix_stride = _var_is_block(state->current_var) ? 0 : -1;
          uniform->row_major = false;
       }
 
