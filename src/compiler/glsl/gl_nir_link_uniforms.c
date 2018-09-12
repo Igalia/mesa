@@ -439,12 +439,14 @@ nir_link_uniform(struct gl_context *ctx,
       if (glsl_type_is_array(type)) {
          uniform->type = type_no_array;
          uniform->array_elements = glsl_get_length(type);
-         uniform->array_stride = glsl_get_array_stride(type);
       } else {
          uniform->type = type;
          uniform->array_elements = 0;
-         uniform->array_stride = 0;
       }
+
+      uniform->array_stride =
+         _var_is_block(state->current_var) ? glsl_get_array_stride(type) : -1;
+
       uniform->active_shader_mask |= 1 << stage;
 
       if (location >= 0) {
