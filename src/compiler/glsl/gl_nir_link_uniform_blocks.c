@@ -117,19 +117,6 @@ enum block_type {
    BLOCK_SSBO
 };
 
-static bool
-_glsl_type_is_leaf(const struct glsl_type *type)
-{
-   if (glsl_type_is_struct(type) ||
-       (glsl_type_is_array(type) &&
-        (glsl_type_is_array(glsl_get_array_element(type)) ||
-         glsl_type_is_struct(glsl_get_array_element(type))))) {
-      return false;
-   } else {
-      return true;
-   }
-}
-
 static unsigned
 _get_type_size(const struct glsl_type *type,
                const struct glsl_type *parent_type,
