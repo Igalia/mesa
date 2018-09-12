@@ -344,6 +344,7 @@ nir_link_uniform(struct gl_context *ctx,
                  const struct glsl_type *parent_type,
                  unsigned index_in_parent,
                  int location,
+                 int *offset,
                  struct nir_link_uniforms_state *state)
 {
    struct gl_uniform_storage *uniform = NULL;
@@ -358,19 +359,31 @@ nir_link_uniform(struct gl_context *ctx,
          glsl_type_is_struct(glsl_get_array_element(type))))) {
       int location_count = 0;
       struct type_tree_entry *old_type = state->current_type;
+      unsigned int struct_base_offset;
 
       state->current_type = old_type->children;
 
       for (unsigned i = 0; i < glsl_get_length(type); i++) {
          const struct glsl_type *field_type;
 
-         if (glsl_type_is_struct(type))
+         if (glsl_type_is_struct(type)) {
             field_type = glsl_get_struct_field(type, i);
-         else
+            /* Use the offset inside the struct only for variables backed by
+             * a buffer object. For variables not backed by a buffer object,
+             * offset is -1.
+             */
+            if (nir_variable_is_in_block(state->current_var)) {
+               if (i == 0)
+                  struct_base_offset = *offset;
+               *offset =
+                  struct_base_offset + glsl_get_struct_field_offset(type, i);
+            }
+         } else {
             field_type = glsl_get_array_element(type);
+         }
 
          int entries = nir_link_uniform(ctx, prog, stage_program, stage,
-                                        field_type, type, i, location,
+                                        field_type, type, i, location, offset,
                                         state);
          if (entries == -1)
             return -1;
@@ -470,16 +483,13 @@ nir_link_uniform(struct gl_context *ctx,
          }
       }
 
-      if (parent_type)
-         uniform->offset = glsl_get_struct_field_offset(parent_type, index_in_parent);
-      else
-         uniform->offset = 0;
+      uniform->offset = *offset;
 
       int buffer_block_index = -1;
-      /* If the uniform is inside a uniform block determine its block index by
-       * comparing the bindings, we can not use names.
-       */
       if (nir_variable_is_in_block(state->current_var)) {
+         /* Determine the block index by comparing the bindings, we can not use
+          * names.
+          */
          struct gl_uniform_block *blocks = nir_variable_is_in_ssbo(state->current_var) ?
             prog->data->ShaderStorageBlocks : prog->data->UniformBlocks;
 
@@ -492,6 +502,9 @@ nir_link_uniform(struct gl_context *ctx,
             }
          }
          assert(buffer_block_index >= 0);
+
+         /* Compute the next offset. */
+         (*offset) += glsl_get_explicit_size(type);
       }
 
       uniform->block_index = buffer_block_index;
@@ -661,9 +674,10 @@ gl_nir_link_uniforms(struct gl_context *ctx,
             build_type_tree_for_type(type);
          state.current_type = type_tree;
 
+         int offset = nir_variable_is_in_block(var) ? 0 : -1;
          int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, type,
                                     NULL, 0,
-                                    location, &state);
+                                    location, &offset, &state);
 
          free_type_tree(type_tree);
 
