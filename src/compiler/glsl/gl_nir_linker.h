@@ -51,6 +51,8 @@ bool gl_nir_link_uniform_blocks(struct gl_context *ctx,
 
 bool _glsl_type_is_leaf(const struct glsl_type *type);
 
+unsigned _get_type_size(const struct glsl_type *type);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

@@ -46,6 +46,47 @@ _glsl_type_is_leaf(const struct glsl_type *type)
    }
 }
 
+unsigned
+_get_type_size(const struct glsl_type *type)
+{
+   /* If the type is a struct then the members are supposed to presented in
+    * increasing order of offset so we can just look at the last member.
+    */
+   if (glsl_type_is_struct(type)) {
+      unsigned length = glsl_get_length(type);
+      if (length > 0) {
+         return (glsl_get_struct_field_offset(type, length - 1) +
+                 _get_type_size(glsl_get_struct_field(type, length - 1)));
+      } else {
+         return 0;
+      }
+   }
+
+   /* Arrays must have an array stride */
+   if (glsl_type_is_array(type)) {
+      return glsl_get_explicit_stride(type) * glsl_get_length(type);
+   }
+
+   /* Matrices must have a matrix stride and either RowMajor or ColMajor */
+   if (glsl_type_is_matrix(type)) {
+      unsigned matrix_stride = glsl_get_explicit_stride(type);
+
+      bool row_major = glsl_matrix_type_is_row_major(type);
+
+      unsigned length = row_major ? glsl_get_vector_elements(type)
+         : glsl_get_length(type);
+
+      /* We don't really need to compute the type_size of the matrix element
+       * type. That should be already included as part of matrix_stride
+       */
+      return matrix_stride * length;
+   }
+
+   unsigned N = glsl_type_is_64bit(type) ? 8 : 4;
+
+   return glsl_get_vector_elements(type) * N;
+}
+
 static bool
 add_interface_variables(const struct gl_context *cts,
                         struct gl_shader_program *prog,
