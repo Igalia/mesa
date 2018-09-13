@@ -162,6 +162,7 @@ add_interface_variables(const struct gl_context *cts,
       sh_var->name = NULL;
       sh_var->type = var->type;
       sh_var->location = var->data.location - loc_bias;
+      sh_var->index = var->data.index;
 
       /* @TODO: Fill in the rest of gl_shader_variable data. */
       /* @FIXME: manage arrays, structs, etc. in other words, implement the
