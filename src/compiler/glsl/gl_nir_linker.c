@@ -267,10 +267,7 @@ nir_build_program_resource_list(struct gl_context *ctx,
        * equivalent to should_add_buffer_variable (linker.cpp). For the
        * moment we are adding all of them.
        */
-      bool is_shader_storage =
-         prog->data->UniformStorage[i].is_shader_storage;
-
-      GLenum interface = is_shader_storage ? GL_BUFFER_VARIABLE : GL_UNIFORM;
+      GLenum interface = uniform->is_shader_storage ? GL_BUFFER_VARIABLE : GL_UNIFORM;
       if (!link_util_add_program_resource(prog, resource_set, interface, uniform,
                                           uniform->active_shader_mask)) {
          return;
