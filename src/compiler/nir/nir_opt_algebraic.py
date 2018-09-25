@@ -566,6 +566,9 @@ optimizations = [
    (('~f2u32', ('i2f', 'a@32')), a),
    (('~f2u32', ('u2f', 'a@32')), a),
 
+   # TODO: Should this be imprecise?
+   (('f2f32', ('f2f16', 'a@32')), a),
+
    # Packing and then unpacking does nothing
    (('unpack_64_2x32_split_x', ('pack_64_2x32_split', a, b)), a),
    (('unpack_64_2x32_split_y', ('pack_64_2x32_split', a, b)), b),
