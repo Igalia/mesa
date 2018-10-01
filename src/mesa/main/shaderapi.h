@@ -296,6 +296,11 @@ extern struct gl_program_resource *
 _mesa_program_resource_find_index(struct gl_shader_program *shProg,
                                   GLenum programInterface, GLuint index);
 
+extern struct gl_program_resource *
+_mesa_program_resource_find_binding_offset(struct gl_shader_program *shProg,
+                                           GLenum programInterface,
+                                           const GLuint binding,
+                                           const int offset);
 extern bool
 _mesa_get_program_resource_name(struct gl_shader_program *shProg,
                                 GLenum programInterface, GLuint index,
