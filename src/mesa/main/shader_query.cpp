@@ -745,6 +745,70 @@ _mesa_program_resource_find_index(struct gl_shader_program *shProg,
    return NULL;
 }
 
+/* Find a program resource inside a block with specific binding and offset.
+ * Valid interfaces are GL_BUFFER_VARIABLE and GL_UNIFORM.
+ */
+struct gl_program_resource *
+_mesa_program_resource_find_binding_offset(struct gl_shader_program *shProg,
+                                           GLenum programInterface,
+                                           const GLuint binding,
+                                           const int offset)
+{
+   GLenum blockInterface;
+
+   switch (programInterface) {
+   case GL_BUFFER_VARIABLE:
+      blockInterface = GL_SHADER_STORAGE_BLOCK;
+      break;
+   case GL_UNIFORM:
+      blockInterface = GL_UNIFORM_BLOCK;
+      break;
+   default:
+      /* @FIXME: add assert or warning? */
+      return NULL;
+   }
+
+   /* Find the block index */
+   int block_index = -1;
+   int starting_index = -1;
+
+   for (unsigned i = 0; i < shProg->data->NumProgramResourceList; i++) {
+      if (shProg->data->ProgramResourceList[i].Type != blockInterface)
+         continue;
+
+      /* Store the first index where a resource of the specific interface is. */
+      if (starting_index == -1)
+         starting_index = i;
+
+      struct gl_uniform_block *block =
+         (gl_uniform_block *) shProg->data->ProgramResourceList[i].Data;
+
+      /* @FIXME: look for a better implementation for the block index. */
+      if (block->Binding == binding) {
+         block_index = i - starting_index;
+         break;
+      }
+   }
+
+   if (block_index == -1)
+      return NULL;
+
+   /* Find the resource using the block index and offset */
+   for (unsigned i = 0; i < shProg->data->NumProgramResourceList; i++) {
+      if (shProg->data->ProgramResourceList[i].Type != programInterface)
+         continue;
+
+      struct gl_uniform_storage *uniform =
+         (gl_uniform_storage*) shProg->data->ProgramResourceList[i].Data;
+
+      if (uniform->block_index == block_index && uniform->offset == offset) {
+         return &(shProg->data->ProgramResourceList[i]);
+      }
+   }
+
+   return NULL;
+}
+
 /* Function returns if resource name is expected to have index
  * appended into it.
  *
