@@ -746,6 +746,74 @@ _mesa_program_resource_find_index(struct gl_shader_program *shProg,
    return NULL;
 }
 
+/* Find an uniform or buffer variable program resource with an specific offset
+ * inside a block with an specific binding.
+ *
+ * Valid interfaces are GL_BUFFER_VARIABLE and GL_UNIFORM.
+ */
+struct gl_program_resource *
+_mesa_program_resource_find_binding_offset(struct gl_shader_program *shProg,
+                                           GLenum programInterface,
+                                           const GLuint binding,
+                                           const int offset)
+{
+
+   /* First we need to get the BLOCK_INDEX from the BUFFER_BINDING */
+   GLenum blockInterface;
+
+   switch (programInterface) {
+   case GL_BUFFER_VARIABLE:
+      blockInterface = GL_SHADER_STORAGE_BLOCK;
+      break;
+   case GL_UNIFORM:
+      blockInterface = GL_UNIFORM_BLOCK;
+      break;
+   default:
+      assert("Invalid program interface");
+      return NULL;
+   }
+
+   int block_index = -1;
+   int starting_index = -1;
+
+   for (unsigned i = 0; i < shProg->data->NumProgramResourceList; i++) {
+      if (shProg->data->ProgramResourceList[i].Type != blockInterface)
+         continue;
+
+      /* Store the first index where a resource of the specific interface is. */
+      if (starting_index == -1)
+         starting_index = i;
+
+      struct gl_uniform_block *block =
+         (gl_uniform_block *) shProg->data->ProgramResourceList[i].Data;
+
+      if (block->Binding == binding) {
+         block_index = i - starting_index;
+         break;
+      }
+   }
+
+   if (block_index == -1)
+      return NULL;
+
+   /* We now look for the resource corresponding to the uniform or buffer
+    * variable using the BLOCK_INDEX and OFFSET.
+    */
+   for (unsigned i = 0; i < shProg->data->NumProgramResourceList; i++) {
+      if (shProg->data->ProgramResourceList[i].Type != programInterface)
+         continue;
+
+      struct gl_uniform_storage *uniform =
+         (gl_uniform_storage*) shProg->data->ProgramResourceList[i].Data;
+
+      if (uniform->block_index == block_index && uniform->offset == offset) {
+         return &(shProg->data->ProgramResourceList[i]);
+      }
+   }
+
+   return NULL;
+}
+
 /* Function returns if resource name is expected to have index
  * appended into it.
  *
