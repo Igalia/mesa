@@ -377,6 +377,7 @@ nir_link_uniform(struct gl_context *ctx,
    if (!_glsl_type_is_leaf(type)) {
       int location_count = 0;
       struct type_tree_entry *old_type = state->current_type;
+      unsigned int struct_base_offset;
 
       state->current_type = old_type->children;
 
@@ -389,8 +390,12 @@ nir_link_uniform(struct gl_context *ctx,
              * a buffer object. For variables not backed by a buffer object,
              * offset is -1.
              */
-            if (_var_is_block(state->current_var))
-               *offset = glsl_get_struct_field_offset(type, i);
+            if (_var_is_block(state->current_var)) {
+               if (i == 0)
+                  struct_base_offset = *offset;
+               *offset =
+                  struct_base_offset + glsl_get_struct_field_offset(type, i);
+            }
          } else {
             field_type = glsl_get_array_element(type);
          }
