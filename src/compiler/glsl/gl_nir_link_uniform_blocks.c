@@ -399,12 +399,19 @@ iterate_type_fill_variables(const struct glsl_type *type,
                             struct gl_shader_program *prog,
                             struct gl_uniform_block *block)
 {
+   unsigned int struct_base_offset;
+
    for (unsigned i = 0; i < glsl_get_length(type); i++) {
       const struct glsl_type *field_type;
 
       if (glsl_type_is_struct(type)) {
          field_type = glsl_get_struct_field(type, i);
-         *offset = glsl_get_struct_field_offset(type, i);
+
+         if (i == 0) {
+            struct_base_offset = *offset;
+         }
+
+         *offset = struct_base_offset + glsl_get_struct_field_offset(type, i);
       } else {
          field_type = glsl_get_array_element(type);
       }
