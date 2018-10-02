@@ -61,6 +61,45 @@ is_byte_raw_mov (const fs_inst *inst)
           !inst->src[0].abs;
 }
 
+static bool
+is_tex(const fs_inst *inst)
+{
+   switch (inst->opcode) {
+   case SHADER_OPCODE_TEX:
+   case SHADER_OPCODE_TXD:
+   case SHADER_OPCODE_TXF:
+   case SHADER_OPCODE_TXF_LZ:
+   case SHADER_OPCODE_TXL:
+   case SHADER_OPCODE_TXL_LZ:
+   case SHADER_OPCODE_TXS:
+   case FS_OPCODE_TXB:
+   case SHADER_OPCODE_TXF_CMS:
+   case SHADER_OPCODE_TXF_CMS_W:
+   case SHADER_OPCODE_TXF_UMS:
+   case SHADER_OPCODE_TXF_MCS:
+   case SHADER_OPCODE_LOD:
+   case SHADER_OPCODE_TG4:
+      return true;
+   case SHADER_OPCODE_TG4_OFFSET:
+   case SHADER_OPCODE_TEX_LOGICAL:
+   case SHADER_OPCODE_TXD_LOGICAL:
+   case SHADER_OPCODE_TXF_LOGICAL:
+   case SHADER_OPCODE_TXL_LOGICAL:
+   case SHADER_OPCODE_TXS_LOGICAL:
+   case FS_OPCODE_TXB_LOGICAL:
+   case SHADER_OPCODE_TXF_CMS_LOGICAL:
+   case SHADER_OPCODE_TXF_CMS_W_LOGICAL:
+   case SHADER_OPCODE_TXF_UMS_LOGICAL:
+   case SHADER_OPCODE_TXF_MCS_LOGICAL:
+   case SHADER_OPCODE_LOD_LOGICAL:
+   case SHADER_OPCODE_TG4_LOGICAL:
+   case SHADER_OPCODE_TG4_OFFSET_LOGICAL:
+      unreachable("These should have been lowered already");
+   default:
+      return false;
+   }
+}
+
 bool
 fs_visitor::lower_conversions()
 {
@@ -70,6 +109,9 @@ fs_visitor::lower_conversions()
       const fs_builder ibld(this, block, inst);
       fs_reg dst = inst->dst;
       bool saturate = inst->saturate;
+
+      if (is_tex(inst))
+         continue;
 
       if (supports_type_conversion(inst)) {
          if (type_sz(inst->dst.type) < get_exec_type_size(inst) &&
