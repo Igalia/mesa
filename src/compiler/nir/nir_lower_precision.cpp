@@ -98,3 +98,66 @@ nir_lower_var_precision(nir_shader *shader,
 
    return progress;
 }
+
+static bool
+var_has_lower_precision(const nir_variable *var)
+{
+   return var->type->get_scalar_type()->base_type == GLSL_TYPE_FLOAT16;
+}
+
+static void
+lower_deref_precision(nir_deref_instr *deref)
+{
+   /* Clean up any dead derefs we find lying around. They may refer
+    * to variables whose precision got lowered.
+    */
+   if (nir_deref_instr_remove_if_unused(deref))
+      return;
+
+   nir_variable *var = nir_deref_instr_get_variable(deref);
+   assert(var);
+
+   if (!var_has_lower_precision(var))
+      return;
+
+   deref->type = get_lower_precision_type(deref->type);
+
+   assert(deref->dest.is_ssa);
+   deref->dest.ssa.bit_size = 16;
+}
+
+static void
+lower_instr_precision(nir_function_impl *impl)
+{
+   nir_builder b;
+   nir_builder_init(&b, impl);
+       
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         b.cursor = nir_before_instr(instr);
+
+         switch(instr->type) {
+         case nir_instr_type_deref:
+            lower_deref_precision(nir_instr_as_deref(instr));
+            break;
+         default:
+            break;
+         }
+      }
+   }
+}
+
+bool
+nir_lower_precision(nir_shader *shader)
+{
+   bool progress = false;
+
+   nir_foreach_function(function, shader) {
+      if (!function->impl)
+         continue;
+
+      lower_instr_precision(function->impl);
+   }
+
+   return progress;
+}
