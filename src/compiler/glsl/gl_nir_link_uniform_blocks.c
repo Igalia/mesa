@@ -215,6 +215,9 @@ link_blocks_are_compatible(const struct gl_uniform_block *a,
       if (a->Uniforms[i].RowMajor != b->Uniforms[i].RowMajor)
          return false;
 
+      if (a->Uniforms[i].Offset != b->Uniforms[i].Offset)
+         return false;
+
       /* See comment on previous assert */
       assert(a->Uniforms[i].Name == NULL);
       assert(b->Uniforms[i].Name == NULL);
