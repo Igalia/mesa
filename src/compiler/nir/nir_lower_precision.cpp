@@ -335,3 +335,92 @@ nir_lower_precision(nir_shader *shader,
 
    return progress;
 }
+
+/* Consider all uses of the samples returned by the given texturing operation
+ * and determine if the samples are allowed with reduced precision. This can
+ * deduced by checking if all uses are conversions from 32-bit to lower.
+ *
+ * If that holds than one can safely omit the conversions and just let the
+ * sampler to return lower precision.
+ */
+static bool
+lower_sample_precision(nir_builder *b, nir_tex_instr *tex)
+{
+   assert(tex->dest.is_ssa);
+
+   /* Any direct 32-bit use in condition rules out lower precision. */
+   if (!list_empty(&tex->dest.ssa.if_uses))
+      return false;
+
+   nir_foreach_use(use_src, &tex->dest.ssa) {
+      if (use_src->parent_instr->type != nir_instr_type_alu ||
+          nir_instr_as_alu(use_src->parent_instr)->op != nir_op_f2f16) {
+         return false;
+      }
+   }
+
+   /* First, modify the sampling operation to return 16-bit values. */
+   tex->dest.ssa.bit_size = 16;
+   tex->dest_type = nir_type_float16;
+
+   /* Then consider each instruction consuming the samples. At this point
+    * all of those are known to be conversions from 32-bit to 16-bits.
+    */
+   nir_foreach_use_safe(tex_use, &tex->dest.ssa) {
+      assert(tex_use->parent_instr->type == nir_instr_type_alu);
+
+      const nir_alu_instr *f2f16 = nir_instr_as_alu(tex_use->parent_instr);
+
+      /* Texture uses get updated below. Skip the instructions already
+       * modified to use the sample value directly.
+       */
+      if (f2f16->op != nir_op_f2f16)
+         continue;
+         
+      assert(f2f16->dest.dest.is_ssa);
+
+      /* Now consider each instruction that uses the converted 16-bit value.
+       * Simply modify these instructions to use the original sample value
+       * instead (which now has 16-bit precision itself).
+       */
+      nir_foreach_use_safe(f2f16_use, &f2f16->dest.dest.ssa) {
+         nir_instr_rewrite_src(f2f16_use->parent_instr, f2f16_use,
+                               f2f16->src[0].src);
+
+         if (f2f16_use->parent_instr->type == nir_instr_type_intrinsic) {
+            nir_intrinsic_instr *store =
+               nir_instr_as_intrinsic(f2f16_use->parent_instr);
+            nir_src_copy(&store->src[1], &f2f16->src[0].src, &store->instr);
+         }
+      }
+   }
+
+   return true;
+}
+
+bool
+nir_lower_sample_precision(nir_shader *shader)
+{
+   bool progress = false;
+
+   nir_foreach_function(function, shader) {
+      if (!function->impl)
+         continue;
+
+      nir_builder b;
+      nir_builder_init(&b, function->impl);
+          
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr_safe(instr, block) {
+            b.cursor = nir_before_instr(instr);
+
+            if (instr->type != nir_instr_type_tex)
+               continue;
+
+            progress |= lower_sample_precision(&b, nir_instr_as_tex(instr));
+         }
+      }
+   }
+
+   return progress;
+}

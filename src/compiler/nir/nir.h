@@ -3263,6 +3263,7 @@ bool nir_lower_var_precision(
         const struct nir_lower_precision_options *options);
 bool nir_lower_precision(nir_shader *shader,
                          const struct nir_lower_precision_options *options);
+bool nir_lower_sample_precision(nir_shader *shader);
 
 bool nir_normalize_cubemap_coords(nir_shader *shader);
 
