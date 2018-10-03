@@ -348,9 +348,26 @@ nir_link_uniform(struct gl_context *ctx,
                  unsigned index_in_parent,
                  int location,
                  int *offset,
+                 int *top_level_array_size,
+                 int *top_level_array_stride,
                  struct nir_link_uniforms_state *state)
 {
    struct gl_uniform_storage *uniform = NULL;
+
+   if (parent_type == state->current_var->type &&
+       nir_variable_is_in_ssbo(state->current_var)) {
+      /* Type is the top level SSBO member */
+      if (glsl_type_is_array(type) &&
+          (glsl_type_is_array(glsl_get_array_element(type)) ||
+           glsl_type_is_struct_or_ifc(glsl_get_array_element(type)))) {
+         /* Type is a top-level array (array of aggregate types) */
+         *top_level_array_size = glsl_get_length(type);
+         *top_level_array_stride = glsl_get_explicit_stride(type);
+      } else {
+         *top_level_array_size = 1;
+         *top_level_array_stride = 0;
+      }
+   }
 
    /* gl_uniform_storage can cope with one level of array, so if the type is a
     * composite type or an array where each element occupies more than one
@@ -387,6 +404,7 @@ nir_link_uniform(struct gl_context *ctx,
 
          int entries = nir_link_uniform(ctx, prog, stage_program, stage,
                                         field_type, type, i, location, offset,
+                                        top_level_array_size, top_level_array_stride,
                                         state);
          if (entries == -1)
             return -1;
@@ -433,6 +451,9 @@ nir_link_uniform(struct gl_context *ctx,
          uniform->type = type;
          uniform->array_elements = 0;
       }
+      uniform->top_level_array_size = *top_level_array_size;
+      uniform->top_level_array_stride = *top_level_array_stride;
+
       uniform->active_shader_mask |= 1 << stage;
 
       if (location >= 0) {
@@ -519,8 +540,6 @@ nir_link_uniform(struct gl_context *ctx,
        */
       uniform->builtin = false;
       uniform->atomic_buffer_index = -1;
-      uniform->top_level_array_size = 0;
-      uniform->top_level_array_stride = 0;
       uniform->is_bindless = false;
 
       /* The following are not for features not supported by ARB_gl_spirv */
@@ -679,9 +698,14 @@ gl_nir_link_uniforms(struct gl_context *ctx,
          state.current_type = type_tree;
 
          int offset = nir_variable_is_in_block(var) ? 0 : -1;
+         int top_level_array_size = 0;
+         int top_level_array_stride = 0;
          int res = nir_link_uniform(ctx, prog, sh->Program, shader_type, type,
                                     NULL, 0,
-                                    location, &offset, &state);
+                                    location, &offset,
+                                    &top_level_array_size,
+                                    &top_level_array_stride,
+                                    &state);
 
          free_type_tree(type_tree);
 
