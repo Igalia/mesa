@@ -674,10 +674,6 @@ brw_broadcast(struct brw_codegen *p,
               struct brw_reg idx);
 
 void
-brw_rounding_mode(struct brw_codegen *p,
-                  enum brw_rnd_mode mode);
-
-void
 brw_float_controls_mode(struct brw_codegen *p,
                         unsigned mode, unsigned mask);
 
