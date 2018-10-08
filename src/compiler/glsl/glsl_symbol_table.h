@@ -73,6 +73,13 @@ struct glsl_symbol_table {
    /*@}*/
 
    /**
+    * By the time builtin variables are initialised one hasn't yet parsed any
+    * default precision declarations. This will set them once default
+    * specifier is found.
+    */
+   void set_precision_for_builtin_vars(const char *type_name, int precision);
+
+   /**
     * Add an function at global scope without checking for scoping conflicts.
     */
    void add_global_function(ir_function *f);

@@ -203,6 +203,24 @@ bool glsl_symbol_table::add_function(ir_function *f)
    return _mesa_symbol_table_add_symbol(table, f->name, entry) == 0;
 }
 
+void glsl_symbol_table::set_precision_for_builtin_vars(const char *type_name,
+                                                       int precision)
+{
+   if (strcmp(type_name, "float") == 0) {
+      ir_variable *var = get_variable("gl_FragColor");
+      if (var)
+         var->data.precision = precision;
+
+      var = get_variable("gl_FragData");
+      if (var)
+         var->data.precision = precision;
+
+      var = get_variable("gl_FragCoord");
+      if (var)
+         var->data.precision = precision;
+   }
+}
+
 bool glsl_symbol_table::add_default_precision_qualifier(const char *type_name,
                                                         int precision)
 {
@@ -210,6 +228,8 @@ bool glsl_symbol_table::add_default_precision_qualifier(const char *type_name,
 
    ast_type_specifier *default_specifier = new(linalloc) ast_type_specifier(name);
    default_specifier->default_precision = precision;
+
+   set_precision_for_builtin_vars(type_name, precision);
 
    symbol_table_entry *entry =
       new(linalloc) symbol_table_entry(default_specifier);
