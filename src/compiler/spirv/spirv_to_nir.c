@@ -774,7 +774,7 @@ struct_member_decoration_cb(struct vtn_builder *b,
 
    case SpvDecorationXfbBuffer:
    case SpvDecorationXfbStride:
-      vtn_warn("Vulkan does not have transform feedback");
+      /* Handled at vtn_variables.c, apply_var_decoration */
       break;
 
    case SpvDecorationCPacked:
