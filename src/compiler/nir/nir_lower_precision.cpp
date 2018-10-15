@@ -247,6 +247,14 @@ lower_alu_precision(nir_builder *b, nir_alu_instr *alu)
     */
    if (has_flexible_sized_srcs && !has_high_precision_srcs) {
       for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
+         /* Booleans are special, their presentation is dependent on hardware
+          * and type of the expression producing them. At NIR level they are
+          * simply always treated as 32-bits. It is left for the backend to
+          * decide case by case if the presentation needs any treatment.
+          */
+         if (nir_op_infos[alu->op].input_types[i] == nir_type_bool32)
+            continue;
+
          if (demote_src_to_medium_precision(b, &alu->instr, &alu->src[i].src))
             src_bit_sizes |= op_src_bit_size_16;
       }
