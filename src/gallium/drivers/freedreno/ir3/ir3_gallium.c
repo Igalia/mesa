@@ -113,6 +113,23 @@ copy_stream_out(struct ir3_stream_output_info *i,
 	}
 }
 
+static void
+lower_precision(nir_shader *nir)
+{
+	/* This is encapsulated in a function here so that it can be run as a
+	 * single NIR pass. Otherwise the individual functions leave the shader in
+	 * an intermediate invalid state which cause the validation to assert.
+	 */
+	struct nir_lower_precision_options options = {
+		.has_16_bit_tex_coords = true,
+		.has_16_bit_input_varyings = false,
+		.has_var_sized_bool = true
+	};
+	nir_lower_var_precision(nir, &options);
+	nir_lower_precision(nir, &options);
+	nir_lower_sample_precision(nir);
+}
+
 struct ir3_shader *
 ir3_shader_create(struct ir3_compiler *compiler,
 		const struct pipe_shader_state *cso, gl_shader_stage type,
@@ -122,6 +139,7 @@ ir3_shader_create(struct ir3_compiler *compiler,
 	if (cso->type == PIPE_SHADER_IR_NIR) {
 		/* we take ownership of the reference: */
 		nir = cso->ir.nir;
+		NIR_PASS_V(nir, lower_precision);
 	} else {
 		debug_assert(cso->type == PIPE_SHADER_IR_TGSI);
 		if (ir3_shader_debug & IR3_DBG_DISASM) {
