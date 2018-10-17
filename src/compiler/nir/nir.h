@@ -3256,6 +3256,7 @@ bool nir_lower_pack(nir_shader *shader);
 struct nir_lower_precision_options {
    bool has_16_bit_input_varyings;
    bool has_16_bit_tex_coords;
+   bool has_var_sized_bool;
 };
 
 bool nir_lower_var_precision(

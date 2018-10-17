@@ -155,12 +155,46 @@ is_instr_size_fixed(const nir_src *src)
  *   f(3.3);                     // 3.3 will be passed in at highp precisi
  */
 static unsigned
-get_alu_bit_sizes(const nir_alu_instr *alu)
+get_src_bit_size(const nir_src *src, nir_alu_type type,
+                 bool has_var_sized_bool)
+{
+   /* Booleans are special, at NIR level they are treated as 32-bits. There
+    * are, however, hardware (such as Intel) where the presentation of
+    * booleans is dependent on type of the expression producing them.
+    * Logical operations evolving 16-bit sources produce 16-bit booleans.
+    */
+   if (has_var_sized_bool && type == nir_type_bool32) {
+      assert(src->is_ssa);
+       
+      /* Only an ALU can produce booleans. */
+      assert(src->ssa->parent_instr->type == nir_instr_type_alu);
+
+      const nir_alu_instr *alu = nir_instr_as_alu(src->ssa->parent_instr);
+
+      assert(nir_op_infos[alu->op].num_inputs);
+
+      const unsigned src_bit_size = nir_src_bit_size(alu->src[0].src);
+
+      /* All operands have to agree. */
+      for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
+         assert(src_bit_size == nir_src_bit_size(alu->src[i].src));
+      }
+
+      return src_bit_size;
+   }
+
+   return nir_src_bit_size(*src);
+}
+
+static unsigned
+get_alu_bit_sizes(const nir_alu_instr *alu, bool has_var_sized_bool)
 {
    unsigned src_bit_sizes = op_src_bit_size_undef;
 
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
-      const unsigned src_i_bit_size = nir_src_bit_size(alu->src[i].src);
+      const unsigned src_i_bit_size = get_src_bit_size(
+         &alu->src[i].src, nir_op_infos[alu->op].input_types[i],
+         has_var_sized_bool);
 
       if (src_i_bit_size < 32 || is_instr_size_fixed(&alu->src[i].src))
          src_bit_sizes |= src_i_bit_size;
@@ -226,10 +260,12 @@ demote_src_to_medium_precision(nir_builder *b, nir_instr *instr, nir_src *src)
 }
 
 static void
-lower_alu_precision(nir_builder *b, nir_alu_instr *alu)
+lower_alu_precision(nir_builder *b, nir_alu_instr *alu,
+                    const struct nir_lower_precision_options *options)
 {
    const unsigned dest_bit_size = nir_dest_bit_size(alu->dest.dest);
-   unsigned src_bit_sizes = get_alu_bit_sizes(alu);
+   unsigned src_bit_sizes = get_alu_bit_sizes(
+                               alu, options->has_var_sized_bool);
    const bool has_flexible_sized_srcs = src_bit_sizes & op_src_bit_size_any;
    const bool has_high_precision_srcs =
       src_bit_sizes & (op_src_bit_size_32 | op_src_bit_size_64);
@@ -391,7 +427,7 @@ lower_instr_precision(nir_function_impl *impl,
 
          switch(instr->type) {
          case nir_instr_type_alu:
-            lower_alu_precision(&b, nir_instr_as_alu(instr));
+            lower_alu_precision(&b, nir_instr_as_alu(instr), options);
             break;
          case nir_instr_type_deref:
             lower_deref_precision(nir_instr_as_deref(instr));
