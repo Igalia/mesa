@@ -29,6 +29,14 @@
 #include "nir_builder.h"
 #include "compiler/glsl_types.h"
 
+typedef enum {
+   op_src_bit_size_undef = 0,
+   op_src_bit_size_8     = 8,
+   op_src_bit_size_16    = 16,
+   op_src_bit_size_32    = 32,
+   op_src_bit_size_64    = 64,
+} op_src_bit_size;
+
 static const struct glsl_type *
 get_lower_precision_type(const struct glsl_type *highp)
 {
@@ -99,6 +107,91 @@ nir_lower_var_precision(nir_shader *shader,
    return progress;
 }
 
+static unsigned
+get_alu_bit_sizes(const nir_alu_instr *alu)
+{
+   unsigned src_bit_sizes = op_src_bit_size_undef;
+
+   for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
+      const unsigned src_i_bit_size = nir_src_bit_size(alu->src[i].src);
+
+      src_bit_sizes |= src_i_bit_size;
+   }
+
+   return src_bit_sizes;
+}
+
+/* Insert the conversion just after the instruction producing the given
+ * source. This is needed when phi sources are converted - they can't have
+ * non-phi predecessors in the block. Insert the conversion to the block
+ * hosting the source instead.
+ */
+static nir_ssa_def *
+insert_conversion_after_src(nir_shader *shader, nir_src *src, nir_op op)
+{
+   assert(src->is_ssa);
+
+   const nir_op_info *op_info = &nir_op_infos[op];
+   const unsigned bit_size = nir_alu_type_get_type_size(op_info->output_type);
+   const unsigned num_components = src->ssa->num_components;
+   nir_alu_instr *instr = nir_alu_instr_create(shader, op);
+
+   instr->src[0].src = *src;
+
+   nir_ssa_dest_init(&instr->instr, &instr->dest.dest, num_components,
+                     bit_size, NULL);
+   instr->dest.write_mask = (1 << num_components) - 1;
+
+   nir_instr_insert_after(src->ssa->parent_instr, &instr->instr);
+
+   return &instr->dest.dest.ssa;
+}
+
+static void
+promote_src_to_high_precision(nir_builder *b, nir_instr *instr, nir_src *src)
+{
+   /* No need if source already has high precision. */
+   if (nir_src_bit_size(*src) >= 32)
+      return;
+
+   const nir_src promoted = nir_src_for_ssa(
+      insert_conversion_after_src(b->shader, src, nir_op_f2f32));
+   nir_instr_rewrite_src(instr, src, promoted);
+   nir_src_copy(src, &promoted, instr);
+}
+
+static void
+lower_alu_precision(nir_builder *b, nir_alu_instr *alu)
+{
+   const unsigned dest_bit_size = nir_dest_bit_size(alu->dest.dest);
+   unsigned src_bit_sizes = get_alu_bit_sizes(alu);
+   const bool has_high_precision_srcs =
+      src_bit_sizes & (op_src_bit_size_32 | op_src_bit_size_64);
+
+   assert(dest_bit_size >= 32);
+
+   /* First consider the case where the operation doesn't involve any medium
+    * precision source operands.
+    */
+   if (!(src_bit_sizes & op_src_bit_size_16))
+      return;
+
+   /* In case of mixed mode operands one needs to consider case-by-case if
+    * lower precision source operands need to be promoted to higher precision.
+    *
+    * Otherwise (in case of lower precision sources only), adjust the
+    * destination accordingly.
+    */
+   if (has_high_precision_srcs) {
+      for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
+         promote_src_to_high_precision(b, &alu->instr, &alu->src[i].src);
+      }
+   } else {
+      assert(alu->dest.dest.is_ssa);
+      alu->dest.dest.ssa.bit_size = 16;
+   }
+}
+
 static bool
 var_has_lower_precision(const nir_variable *var)
 {
@@ -137,6 +230,9 @@ lower_instr_precision(nir_function_impl *impl)
          b.cursor = nir_before_instr(instr);
 
          switch(instr->type) {
+         case nir_instr_type_alu:
+            lower_alu_precision(&b, nir_instr_as_alu(instr));
+            break;
          case nir_instr_type_deref:
             lower_deref_precision(nir_instr_as_deref(instr));
             break;
