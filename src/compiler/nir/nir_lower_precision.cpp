@@ -35,6 +35,7 @@ typedef enum {
    op_src_bit_size_16    = 16,
    op_src_bit_size_32    = 32,
    op_src_bit_size_64    = 64,
+   op_src_bit_size_any   = 1 << 31,
 } op_src_bit_size;
 
 static const struct glsl_type *
@@ -107,6 +108,52 @@ nir_lower_var_precision(nir_shader *shader,
    return progress;
 }
 
+static bool
+is_instr_size_fixed(const nir_src *src)
+{
+   assert(src->is_ssa);
+
+   switch(src->ssa->parent_instr->type) {
+   case nir_instr_type_alu:
+      return true;
+   case nir_instr_type_tex:
+   case nir_instr_type_load_const:
+      return false;
+   default:
+      return true;
+   }
+}
+
+/* Consider alu expressions according to the rules found in GLES 3.2
+ * Specification, 4.7.3 Precision Qualifiers:
+ *
+ * In cases where operands do not have a precision qualifier, the precision
+ * qualification will come from the other operands.  If no operands have a
+ * precision qualifier, then the precision qualifications of the operands of
+ * the next consuming operation in the expression will be used.  This rule can
+ * be applied recursively until a precision qualified operand is found.  If
+ * necessary, it will also include the precision qualification of l-values for
+ * assignments, of the declared variable for initializers, of formal
+ * parameters for function call arguments, or of function return types for
+ * function return values.  If the precision cannot be determined by this
+ * method e.g.  if an entire expression is composed only of operands with no
+ * precision qualifier, and the result is not assigned or passed as an
+ * argument,  then it is evaluated at the default precision of the type or
+ * greater.  When this occurs in the fragment shader, the default precision
+ * must be defined.
+ * 
+ * For example, consider the statements:
+ * 
+ *   uniform highp float h1;
+ *   highp float h2 = 2.3 * 4.7; // operation and result are highp precision
+ *   mediump float m;
+ *   m = 3.7 * h1 * h2;          // all operations are highp precision
+ *   h2 = m * h1;                // operation is highp precision
+ *   m = h2 - h1;                // operation is highp precision
+ *   h2 = m + m;                 // addition and result at mediump precision
+ *   void f(highp float p);
+ *   f(3.3);                     // 3.3 will be passed in at highp precisi
+ */
 static unsigned
 get_alu_bit_sizes(const nir_alu_instr *alu)
 {
@@ -115,7 +162,10 @@ get_alu_bit_sizes(const nir_alu_instr *alu)
    for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
       const unsigned src_i_bit_size = nir_src_bit_size(alu->src[i].src);
 
-      src_bit_sizes |= src_i_bit_size;
+      if (src_i_bit_size < 32 || is_instr_size_fixed(&alu->src[i].src))
+         src_bit_sizes |= src_i_bit_size;
+      else
+         src_bit_sizes |= op_src_bit_size_any;
    }
 
    return src_bit_sizes;
@@ -160,18 +210,50 @@ promote_src_to_high_precision(nir_builder *b, nir_instr *instr, nir_src *src)
    nir_src_copy(src, &promoted, instr);
 }
 
+static bool
+demote_src_to_medium_precision(nir_builder *b, nir_instr *instr, nir_src *src)
+{
+   /* No need if source already has lower precision. */
+   if (nir_src_bit_size(*src) < 32)
+      return false;
+
+   const nir_src demoted = nir_src_for_ssa(
+      insert_conversion_after_src(b->shader, src, nir_op_f2f16));
+   nir_instr_rewrite_src(instr, src, demoted);
+   nir_src_copy(src, &demoted, instr);
+
+   return true;
+}
+
 static void
 lower_alu_precision(nir_builder *b, nir_alu_instr *alu)
 {
    const unsigned dest_bit_size = nir_dest_bit_size(alu->dest.dest);
    unsigned src_bit_sizes = get_alu_bit_sizes(alu);
+   const bool has_flexible_sized_srcs = src_bit_sizes & op_src_bit_size_any;
    const bool has_high_precision_srcs =
       src_bit_sizes & (op_src_bit_size_32 | op_src_bit_size_64);
 
    assert(dest_bit_size >= 32);
 
-   /* First consider the case where the operation doesn't involve any medium
-    * precision source operands.
+   /* First consider the case where there are sources for which precision
+    * isn't fixed. If, in addition, there aren't any fixed high precision
+    * sources involved then it is possible to treat the operation with lower
+    * precision.
+    * Since at this point it is not known if all the consumers of each
+    * non-fixed source are allowed to use lower precision, insert conversions
+    * for now. These can be removed later on if and when all uses are known
+    * to cope with lower precision.
+    */
+   if (has_flexible_sized_srcs && !has_high_precision_srcs) {
+      for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
+         if (demote_src_to_medium_precision(b, &alu->instr, &alu->src[i].src))
+            src_bit_sizes |= op_src_bit_size_16;
+      }
+   }
+
+   /* If there are no lower precision source operands there is nothing to
+    * adjust.
     */
    if (!(src_bit_sizes & op_src_bit_size_16))
       return;
