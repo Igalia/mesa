@@ -414,6 +414,48 @@ lower_intrinsic_precision(nir_builder *b, nir_intrinsic_instr *intr)
    }
 }
 
+/* This follows closely the logic in lower_alu_precision(), only the way of
+ * iterating sources differs.
+ */
+static void
+lower_phi_precision(nir_builder *b, nir_phi_instr *phi,
+                    const struct nir_lower_precision_options *options)
+{
+   unsigned src_bit_sizes = op_src_bit_size_undef;
+
+   nir_foreach_phi_src(src, phi) {
+      const unsigned bit_size = nir_src_bit_size(src->src);
+
+      if (bit_size < 32 || is_instr_size_fixed(&src->src))
+         src_bit_sizes |= bit_size;
+      else
+         src_bit_sizes |= op_src_bit_size_any;
+   }
+
+   const bool has_high_precision_srcs =
+      src_bit_sizes & (op_src_bit_size_32 | op_src_bit_size_64);
+   const bool has_flexible_sized_srcs = src_bit_sizes & op_src_bit_size_any;
+
+   if (has_flexible_sized_srcs && !has_high_precision_srcs) {
+      nir_foreach_phi_src(src, phi) {
+         if (demote_src_to_medium_precision(b, &phi->instr, &src->src))
+            src_bit_sizes |= op_src_bit_size_16;
+      }
+   }
+
+   if (!(src_bit_sizes & op_src_bit_size_16))
+      return;
+
+   if (has_high_precision_srcs) {
+      nir_foreach_phi_src(src, phi) {
+         promote_src_to_high_precision(b, &phi->instr, &src->src);
+      }
+   } else {
+      assert(phi->dest.is_ssa);
+      phi->dest.ssa.bit_size = 16;
+   }
+}
+
 static void
 lower_instr_precision(nir_function_impl *impl,
                       const struct nir_lower_precision_options *options)
@@ -439,6 +481,8 @@ lower_instr_precision(nir_function_impl *impl,
          case nir_instr_type_intrinsic:
             lower_intrinsic_precision(&b, nir_instr_as_intrinsic(instr));
             break;
+         case nir_instr_type_phi:
+            lower_phi_precision(&b, nir_instr_as_phi(instr), options);
          default:
             break;
          }
