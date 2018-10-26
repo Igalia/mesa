@@ -3218,6 +3218,8 @@ bool nir_lower_bit_size(nir_shader *shader,
                         nir_lower_bit_size_callback callback,
                         void *callback_data);
 
+bool nir_lower_bool_size(nir_shader *shader);
+
 typedef enum {
    nir_lower_imul64 = (1 << 0),
    nir_lower_isign64 = (1 << 1),
