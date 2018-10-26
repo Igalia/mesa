@@ -671,6 +671,20 @@ brw_rnd_mode_from_nir_op (const nir_op op) {
    }
 }
 
+static enum brw_reg_type
+brw_type_for_nir_alu_dest(const struct gen_device_info *devinfo,
+                          nir_alu_type output_type, unsigned output_size)
+{
+   /* Consider booleans produced with instructions that use 16-bit sources.
+    * In such case hardware produces 16-bit results as well.
+    */
+   if (output_type == nir_type_bool32 && output_size == 16)
+      return BRW_REGISTER_TYPE_W;
+
+   return brw_type_for_nir_type(devinfo,
+                                (nir_alu_type)(output_type | output_size));
+}
+
 void
 fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 {
@@ -678,16 +692,18 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    fs_inst *inst;
 
    fs_reg result = get_nir_alu_dest(instr);
-   result.type = brw_type_for_nir_type(devinfo,
-      (nir_alu_type)(nir_op_infos[instr->op].output_type |
-                     nir_dest_bit_size(instr->dest.dest)));
+   result.type = brw_type_for_nir_alu_dest(
+      devinfo,
+      nir_op_infos[instr->op].output_type,
+      nir_dest_bit_size(instr->dest.dest));
 
    fs_reg op[4];
    for (unsigned i = 0; i < nir_op_infos[instr->op].num_inputs; i++) {
       op[i] = get_nir_src(instr->src[i].src);
-      op[i].type = brw_type_for_nir_type(devinfo,
-         (nir_alu_type)(nir_op_infos[instr->op].input_types[i] |
-                        nir_src_bit_size(instr->src[i].src)));
+      op[i].type = brw_type_for_nir_alu_dest(
+         devinfo,
+         nir_op_infos[instr->op].input_types[i],
+         nir_src_bit_size(instr->src[i].src));
       op[i].abs = instr->src[i].abs;
       op[i].negate = instr->src[i].negate;
    }
