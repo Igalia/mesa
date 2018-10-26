@@ -866,6 +866,11 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    if (devinfo->gen <= 5)
       brw_nir_analyze_boolean_resolves(nir);
 
+   /* Now we don't validate anymore. Alter the sizes of booleans that
+    * would trip validation.
+    */
+   nir_lower_bool_size(nir);
+
    nir_sweep(nir);
 
    if (unlikely(debug_enabled)) {
