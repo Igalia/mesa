@@ -41,6 +41,10 @@
 #include "util/u_math.h"
 #include "program.h"
 
+extern "C" void
+dump_xfb_info(struct gl_context *ctx,
+              struct gl_program *xfb_prog);
+
 
 /**
  * Get the varying type stripped of the outermost array if we're processing
@@ -1449,6 +1453,9 @@ store_tfeedback_info(struct gl_context *ctx, struct gl_shader_program *prog,
    assert(xfb_prog->sh.LinkedTransformFeedback->NumOutputs == num_outputs);
 
    xfb_prog->sh.LinkedTransformFeedback->ActiveBuffers = buffers;
+
+   dump_xfb_info(ctx, xfb_prog);
+
    return true;
 }
 

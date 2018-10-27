@@ -26,7 +26,80 @@
 #include "gl_nir_linker.h"
 #include "linker_util.h"
 #include "main/context.h"
+#include "main/enums.h"
 
+
+void
+dump_xfb_info(struct gl_context *ctx,
+              struct gl_program *xfb_prog);
+
+static void
+dump_xfb_output(struct gl_transform_feedback_output *xfb_output)
+{
+   fprintf(stderr, "(%2i, %2i, %2i, %2i, %2i, %2i)\n",
+           xfb_output->OutputRegister,
+           xfb_output->OutputBuffer,
+           xfb_output->NumComponents,
+           xfb_output->StreamId,
+           xfb_output->DstOffset,
+           xfb_output->ComponentOffset);
+}
+
+static void
+dump_xfb_varying(struct gl_transform_feedback_varying_info *xfb_varying)
+{
+   fprintf(stderr, "(%2i, %15s, %2i, %2i, %s)\n",
+           xfb_varying->Offset, _mesa_enum_to_string(xfb_varying->Type),
+           xfb_varying->BufferIndex, xfb_varying->Size,
+           xfb_varying->Name);
+}
+
+static void
+dump_xfb_buffer(struct gl_transform_feedback_buffer *xfb_buffer)
+{
+   fprintf(stderr, "(%2i, %2i, %2i, %2i)\n",
+           xfb_buffer->Binding, xfb_buffer->NumVaryings, xfb_buffer->Stride * 4, xfb_buffer->Stream);
+}
+
+/* Note: it assumes that there are xfb info to dump. No null-checks */
+void
+dump_xfb_info(struct gl_context *ctx,
+              struct gl_program *xfb_prog)
+{
+   fprintf(stderr, "[gl_transform_feedback_info]\n");
+   /* gl_program sh LinkedTransformFeedback */
+   struct gl_transform_feedback_info *linked_xfb = xfb_prog->sh.LinkedTransformFeedback;
+
+   fprintf(stderr, "\tNumOuputs = %i, (OutputRegister, OutputBuffer, NumComponents, "
+           "StreamId, DstOffset, ComponentOffset) \n", linked_xfb->NumOutputs);
+   for (unsigned i = 0; i < linked_xfb->NumOutputs; i++) {
+      fprintf(stderr, "\t\t\t%i:", i);
+      dump_xfb_output(&linked_xfb->Outputs[i]);
+   }
+
+   fprintf(stderr, "\tNumVarying=%i, (Offset, Type, BufferIndex, Size, Name) \n",
+           linked_xfb->NumVarying);
+   for (unsigned i = 0; i < linked_xfb->NumVarying; i++) {
+      fprintf(stderr, "\t\t\t%i:", i);
+      dump_xfb_varying(&linked_xfb->Varyings[i]);
+   }
+
+   fprintf(stderr, "\tActiveBuffers=%i, (Binding, NumVaryings, Stride, Stream):\n",
+           linked_xfb->ActiveBuffers);
+   for (unsigned i = 0; i < MAX_FEEDBACK_BUFFERS; i++) {
+      if ((linked_xfb->ActiveBuffers >> i) & 1) {
+         fprintf(stderr, "\t\t\t%i:", i);
+         dump_xfb_buffer(&linked_xfb->Buffers[i]);
+      }
+   }
+
+   /* We don't dump TransformFeedback structure at gl_shader_program, as on
+    * GLSL that is set with glTransformFeedbackVaryings and on SPIR-V it is
+    * filled, but overriding with shader info. So not really useful for GLSL
+    * vs SPIR-V comparison. See comment at mtypes.h line 2972 */
+
+   /* gl_shader TransformFeedbackBuffersStride */
+}
 /*
  * This file does the linking of GLSL transform feedback using NIR.
  *
@@ -205,4 +278,6 @@ gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
    linked_xfb->ActiveBuffers = buffers;
 
    ralloc_free(xfb_info);
+
+   dump_xfb_info(ctx, xfb_prog);
 }
