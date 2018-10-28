@@ -260,6 +260,59 @@ demote_src_to_medium_precision(nir_builder *b, nir_instr *instr, nir_src *src)
 }
 
 static void
+adjust_int_precision(nir_builder *b, const nir_ssa_def *def,
+                     nir_instr *instr, nir_src *src)
+{
+   assert(src->is_ssa);
+   if (src->ssa->index != def->index)
+      return;
+
+   const nir_src demoted = nir_src_for_ssa(
+      insert_conversion_after_src(b->shader, src, nir_op_i2i16));
+   nir_instr_rewrite_src(instr, src, demoted);
+   nir_src_copy(src, &demoted, instr);
+}
+
+/* Integer values may be produced with expressions producing booleans without
+ * explicit conversions from boolean to the integer. Therefore one checks here
+ * all the uses of the boolean and makes adjustments if needed.
+ */
+static void
+adjust_bool_uses(nir_builder *b, nir_ssa_def *def)
+{
+   nir_foreach_if_use(use, def) {
+   }
+
+   nir_foreach_use_safe(use, def) {
+      assert(use->is_ssa);
+
+      switch (use->parent_instr->type) {
+      case nir_instr_type_alu: {
+         nir_alu_instr *alu = nir_instr_as_alu(use->parent_instr);
+
+         /* Validation does not allow booleans to have 16-bit size. But
+          * further analysis needs to know the real precisions in order to
+          * allow later expressions with lower precision. Trick here is to
+          * emit "false" conversions from 16-bits to 16-bits, in NIR terms
+          * conversions from 32-bit booleans to 16-bit integers. Later passes
+          * will notice them as no-op and remove them.
+          */
+         for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
+            if (nir_op_infos[alu->op].input_types[i] == nir_type_int ||
+                nir_op_infos[alu->op].input_types[i] == nir_type_uint) {
+               adjust_int_precision(b, def, &alu->instr, &alu->src[i].src);
+            }
+         }
+      }
+      break;
+      
+      default:
+         unreachable("");
+      }
+   }
+}
+
+static void
 lower_alu_precision(nir_builder *b, nir_alu_instr *alu,
                     const struct nir_lower_precision_options *options)
 {
@@ -307,14 +360,20 @@ lower_alu_precision(nir_builder *b, nir_alu_instr *alu,
     *
     * Otherwise (in case of lower precision sources only), adjust the
     * destination size accordingly. As there isn't a bool16 type in NIR,
-    * one leaves the bit size intact and relies on the compiler backend to
-    * handle it.
+    * one must leave the bit size intact. There can be, however, uses of the
+    * value as integer without explicit conversion and hence one needs to go
+    * and adjust them.
     */
    if (has_high_precision_srcs) {
       for (unsigned i = 0; i < nir_op_infos[alu->op].num_inputs; i++) {
          promote_src_to_high_precision(b, &alu->instr, &alu->src[i].src);
       }
-   } else if (nir_op_infos[alu->op].output_type != nir_type_bool32) {
+   } else if (nir_op_infos[alu->op].output_type == nir_type_bool32) {
+      if (options->has_var_sized_bool) {
+         assert(alu->dest.dest.is_ssa);
+         adjust_bool_uses(b, &alu->dest.dest.ssa);
+      }
+   } else {
       assert(alu->dest.dest.is_ssa);
       alu->dest.dest.ssa.bit_size = 16;
    }
