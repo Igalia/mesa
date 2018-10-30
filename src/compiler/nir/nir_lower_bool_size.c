@@ -24,6 +24,36 @@
 #include "nir_builder.h"
 
 static bool
+lower_b2f(nir_builder *b, nir_alu_instr *alu)
+{
+   nir_src *src = &alu->src[0].src;
+   assert(src->is_ssa);
+
+   if (src->ssa->parent_instr->type != nir_instr_type_alu)
+      return false;
+
+   nir_alu_instr *parent_alu = nir_instr_as_alu(src->ssa->parent_instr);
+   if (parent_alu->op != nir_op_i2i32)
+      return false;
+
+   const nir_src *parent_src = &parent_alu->src[0].src;
+   assert(parent_src->is_ssa);
+
+   if (parent_src->ssa->bit_size > 16)
+      return false;
+
+   /* Drop the conversion from 16-bit integer to 32-bit and convert
+    * directly from 16-bit integer to boolean.
+    */
+   nir_instr_rewrite_src(&alu->instr, src, *parent_src);
+   nir_src_copy(src, parent_src, &alu->instr);
+
+   alu->dest.dest.ssa.bit_size = 16;
+
+   return true;
+}
+
+static bool
 lower_bool_dest(nir_builder *b, nir_alu_instr *alu)
 {
    unsigned bit_size = 0;
@@ -61,7 +91,9 @@ lower_impl(nir_function_impl *impl)
 
          nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-         if (nir_op_infos[alu->op].output_type == nir_type_bool32)
+         if (alu->op == nir_op_b2f)
+            progress |= lower_b2f(&b, alu);
+         else if (nir_op_infos[alu->op].output_type == nir_type_bool32)
             progress |= lower_bool_dest(&b, alu);
       }
    }
