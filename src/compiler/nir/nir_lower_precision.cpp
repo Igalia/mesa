@@ -355,6 +355,17 @@ lower_alu_precision(nir_builder *b, nir_alu_instr *alu,
    if (!(src_bit_sizes & op_src_bit_size_16))
       return;
 
+   /* Validation doesn't allow b2f from 16-bit value. Therefore convert
+    * source first to 32-bits and only then to float.
+    */
+   if (alu->op == nir_op_b2f) {
+      const nir_src promoted = nir_src_for_ssa(
+         insert_conversion_after_src(b->shader, &alu->src[0].src,
+                                     nir_op_i2i32));
+      nir_instr_rewrite_src(&alu->instr, &alu->src[0].src, promoted);
+      nir_src_copy(&alu->src[0].src, &promoted, &alu->instr);
+   }   
+
    /* In case of mixed mode operands one needs to consider case-by-case if
     * lower precision source operands need to be promoted to higher precision.
     *
