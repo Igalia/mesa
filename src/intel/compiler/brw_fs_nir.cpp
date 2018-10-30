@@ -384,10 +384,13 @@ fs_visitor::nir_emit_cf_list(exec_list *list)
 void
 fs_visitor::nir_emit_if(nir_if *if_stmt)
 {
+   fs_reg cond = get_nir_src(if_stmt->condition);
+   const brw_reg_type cond_type = brw_reg_type_from_bit_size(
+      8 * type_sz(cond.type), BRW_REGISTER_TYPE_D);
+
    /* first, put the condition into f0 */
-   fs_inst *inst = bld.MOV(bld.null_reg_d(),
-                            retype(get_nir_src(if_stmt->condition),
-                                   BRW_REGISTER_TYPE_D));
+   fs_inst *inst = bld.MOV(retype(bld.null_reg_d(), cond_type),
+                           retype(cond, cond_type));
    inst->conditional_mod = BRW_CONDITIONAL_NZ;
 
    bld.IF(BRW_PREDICATE_NORMAL);
