@@ -305,6 +305,21 @@ adjust_bool_uses(nir_builder *b, nir_ssa_def *def)
          }
       }
       break;
+
+      case nir_instr_type_intrinsic: {
+         nir_intrinsic_instr *intr =
+            nir_instr_as_intrinsic(use->parent_instr);
+
+         switch (intr->intrinsic) {
+         case nir_intrinsic_discard_if:
+            adjust_int_precision(b, def, use->parent_instr, &intr->src[0]);
+            break;
+
+         default:
+            unreachable("");
+         }
+      }
+      break;
       
       default:
          unreachable("");
