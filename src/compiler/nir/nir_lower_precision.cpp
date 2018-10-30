@@ -119,6 +119,23 @@ is_instr_size_fixed(const nir_src *src)
    case nir_instr_type_tex:
    case nir_instr_type_load_const:
       return false;
+   case nir_instr_type_intrinsic: {
+      nir_intrinsic_instr *intr =
+         nir_instr_as_intrinsic(src->ssa->parent_instr);
+
+      if (intr->intrinsic != nir_intrinsic_load_deref)
+         return true;
+
+      assert(intr->src[0].is_ssa);
+      const nir_deref_instr *deref =
+         nir_instr_as_deref(intr->src[0].ssa->parent_instr);
+
+      if (deref->var->data.mode != nir_var_shader_in)
+         return true;
+
+      return (deref->var->data.precision != GLSL_PRECISION_MEDIUM) &&
+             (deref->var->data.precision != GLSL_PRECISION_LOW);
+      }
    default:
       return true;
    }
