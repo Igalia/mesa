@@ -107,6 +107,51 @@ dump_xfb_info(struct gl_context *ctx,
  * particularities.
  */
 
+static void
+dump_nir_xfb_varying_info(nir_xfb_varying_info *varying)
+{
+   fprintf(stderr, "(%10s, %2i, %2i)\n",
+           glsl_get_type_name(varying->type), varying->buffer, varying->offset);
+}
+
+static void
+dump_nir_xfb_output_info(nir_xfb_output_info *output)
+{
+   fprintf(stderr, "(%2i, %2i, %2i, %2i)\n",
+           output->buffer, output->offset, output->location, output->component_mask);
+}
+
+static void
+dump_nir_xfb_info(nir_xfb_info *xfb_info)
+{
+   fprintf(stderr, "[nir_xfb_info]\n");
+   fprintf(stderr, "\tbuffers_written=%i, (stride, varyings):\n", xfb_info->buffers_written);
+   for(unsigned int i = 0; i < NIR_MAX_XFB_BUFFERS; i++) {
+      if ((xfb_info->buffers_written >> i) & 1) {
+         fprintf(stderr, "\t\t%i: (%i, %i)\n", i, xfb_info->buffers[i].stride, xfb_info->buffers[i].varying_count);
+      }
+   }
+   fprintf(stderr, "\tstreams_written=%i, buffer_to_stream:\n", xfb_info->streams_written);
+   for(unsigned int i = 0; i < NIR_MAX_XFB_STREAMS; i++) {
+      if ((xfb_info->streams_written >> i) & 1) {
+         fprintf(stderr, "\t\t%i: %i\n", i, xfb_info->buffer_to_stream[i]);
+      }
+   }
+
+   fprintf(stderr, "\tOutputs=%i, (buffer, offset, location, component_mask)\n", xfb_info->output_count);
+   for (unsigned int i = 0; i < xfb_info->output_count; i++) {
+      fprintf(stderr, "\t\t%i:", i);
+      dump_nir_xfb_output_info(&xfb_info->outputs[i]);
+   }
+
+   fprintf(stderr, "\tVaryings=%i, (type, buffer, offset)\n", xfb_info->varying_count);
+   for (unsigned int i = 0; i < xfb_info->varying_count; i++) {
+      fprintf(stderr, "\t\t%i:", i);
+      dump_nir_xfb_varying_info(&xfb_info->varyings[i]);
+   }
+
+}
+
 static int
 count_bits(uint8_t mask)
 {
@@ -162,6 +207,7 @@ gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
 
       if (sh) {
          xfb_info = nir_gather_xfb_info(sh->Program->nir, ctx);
+         dump_nir_xfb_info(xfb_info);
          break;
       }
    }
