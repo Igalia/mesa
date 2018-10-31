@@ -181,6 +181,8 @@ brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
                                   storage->type->matrix_columns);
          unsigned vector_size = storage->type->vector_elements;
          unsigned max_vector_size = 4;
+         const bool is_half_float =
+            var->type->get_scalar_type()->base_type == GLSL_TYPE_FLOAT16;
          if (storage->type->base_type == GLSL_TYPE_DOUBLE ||
              storage->type->base_type == GLSL_TYPE_UINT64 ||
              storage->type->base_type == GLSL_TYPE_INT64) {
@@ -193,7 +195,8 @@ brw_nir_setup_glsl_uniform(gl_shader_stage stage, nir_variable *var,
             unsigned i;
             for (i = 0; i < vector_size; i++) {
                uint32_t idx = components - prog->sh.data->UniformDataSlots;
-               stage_prog_data->param[uniform_index++] = BRW_PARAM_UNIFORM(idx);
+               stage_prog_data->param[uniform_index++] =
+                  BRW_PARAM_UNIFORM(idx, is_half_float);
                components++;
             }
 

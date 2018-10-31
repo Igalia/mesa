@@ -29,12 +29,20 @@
 #include "intel_buffer_objects.h"
 #include "program/prog_parameter.h"
 #include "main/shaderapi.h"
+#include "util/half_float.h"
 
 static uint32_t
 f_as_u32(float f)
 {
    union fi fi = { .f = f };
    return fi.ui;
+}
+
+static float
+u32_as_f(uint32_t ui)
+{
+   union fi fi = { .ui = ui };
+   return fi.f;
 }
 
 static uint32_t
@@ -102,8 +110,12 @@ brw_populate_constant_data(struct brw_context *brw,
                            unsigned nr_params)
 {
    uint32_t *dst = void_dst;
-   for (unsigned i = 0; i < nr_params; i++)
+   for (unsigned i = 0; i < nr_params; i++) {
       dst[i] = brw_param_value(brw, prog, stage_state, param[i]);
+
+      if (BRW_PARAM_UNIFORM_IS_HF(param[i]))
+         dst[i] = _mesa_float_to_half(u32_as_f(dst[i]));
+   }
 }
 
 

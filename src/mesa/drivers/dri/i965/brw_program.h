@@ -51,8 +51,10 @@ enum brw_param_domain {
 #define BRW_PARAM_PARAMETER_IDX(param)    (BRW_PARAM_VALUE(param) >> 2)
 #define BRW_PARAM_PARAMETER_COMP(param)   (BRW_PARAM_VALUE(param) & 0x3)
 
-#define BRW_PARAM_UNIFORM(idx)            BRW_PARAM(UNIFORM, (idx))
-#define BRW_PARAM_UNIFORM_IDX(param)      BRW_PARAM_VALUE(param)
+#define BRW_PARAM_UNIFORM(idx, is_hf) \
+   BRW_PARAM(UNIFORM, ((idx) | (((is_hf) ? 1 : 0) << 23)))
+#define BRW_PARAM_UNIFORM_IDX(param)      BRW_PARAM_VALUE((param) & 0x7ff)
+#define BRW_PARAM_UNIFORM_IS_HF(param)    (BRW_PARAM_VALUE(param) >> 23)
 
 #define BRW_PARAM_IMAGE(idx, offset) BRW_PARAM(IMAGE, ((idx) << 8) | (offset))
 #define BRW_PARAM_IMAGE_IDX(value)        (BRW_PARAM_VALUE(value) >> 8)
