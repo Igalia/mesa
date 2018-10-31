@@ -692,6 +692,26 @@ nir_lower_sample_precision(nir_shader *shader)
             progress |= lower_sample_precision(&b, nir_instr_as_tex(instr));
          }
       }
+
+      foreach_list_typed_safe(nir_cf_node, node, node, &function->impl->body) {
+         if (node->type != nir_cf_node_if)
+            continue;
+
+         nir_if *if_stmt = nir_cf_node_as_if(node);
+         nir_src *cond = &if_stmt->condition;
+
+         assert(cond->is_ssa);
+         if (cond->ssa->bit_size > 16)
+            continue;
+
+         /* Validation wants source for nir_if to be 32-bit as it is boolean.
+          * Just like before, emit a conversion that keeps validation happy
+          * but such that can be removed later on.
+          */ 
+         const nir_src promoted = nir_src_for_ssa(
+            insert_conversion_after_src(shader, cond, nir_op_i2i32));
+         nir_if_rewrite_condition(if_stmt, promoted);
+      }
    }
 
    return progress;
