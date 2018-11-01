@@ -21,8 +21,110 @@
  * IN THE SOFTWARE.
  */
 
-/* TODO: Introduce helpers in C++ space for examining GLSL types and make
- *       this file just C.
+/*
+ * This lowering pass seeks to change precision for float values and for the
+ * expressions producing them. Decision making follows the rules described in
+ * GLES 3.2 Specification and section 4.7.3 Precision Qualifiers. Shortly the
+ * idea is that an arithmetic expression can be performed in 16-bit precision
+ * if and only if all its operands are either already fixed to 16-bits or are
+ * such that compiler is free to use either 32 or 16-bit precision.
+ *
+ * First step is to go over the variables as these are the only things that
+ * are marked by the shader author with explicit instructions if high
+ * precision is needed (or lower precision allowed respectively). This
+ * implementation sets precision unconditionally to 16-bits whenever allowed
+ * by the shader author. (This may not produce the most optimal end result
+ * but is a design choice to keep the complexity at bay).
+ *
+ * This is followed by manipulation of instructions themselves. Variable
+ * derefs and intrinsics dealing with derefs are straight-forward. For them
+ * one only needs to consult the variables themselves and adjust the precision
+ * of the instruction in question accordingly.
+ *
+ * At this point things get more complex as the rest are dependent on context.
+ * Precision for texturing return values (sample values) and constant loads 
+ * depend on the needs of consuming expressions. As there may be need for
+ * both 16 and 32-bit precision, one cannot simply just set them as 16-bits.
+ * There may be, for example, two separate multiplications of a sample value
+ * S. One multiplying it with 32-bit value A and the other with 16-bit
+ * value B. (Recall that the rules mandate that if one of the source operands
+ * has full precision then the rest need to have full precision as well).
+ * Hence A * S requires the sample value S with full precision. This in turn
+ * means that texturing needs to return full precision and needs to convert
+ * sample value as to 16-bits for the other multiplication (B * S).
+ * NOTE: Hardware may have capability for mixed mode instructions and it is
+ *       left for the backend to drop any unnecessary conversions.
+ *
+ * Here the implementation leaves all texturing and constant load operations
+ * to 32-bit precision until all instructions are analysed. Instead it inserts
+ * conversions from 32-bits to 16-bits for expressions that can operate with
+ * lower precision. In the example above, the multiplication of the sample
+ * with 16-bit value B would become C = B * f2f16(S). This is important for
+ * the analysis of the rest of the instructions. Once the pass examines
+ * expressions consuming C the pass can allow these expressions with lower
+ * precision if all the operands are allowed in lower precision. If one had
+ * left C with 32-bit precision it would have prevented the use of 16-bit
+ * precision in the consuming expressions even though all other operands would
+ * have allowed that.
+ *
+ * Once all instructions are examined there is separate pass that goes thru
+ * all the uses of texturing return values. If all are happy with lower
+ * precision, the pass removes the conversions (f2f16) and switches the
+ * texturing itself to directly return 16-bit samples (given that hardware
+ * support 16-bit sample values of course).
+ *
+ * For input varyings marked with lower precision there is an alternative to
+ * uploading 16-bit values into the shader. One can load them with using full
+ * precision but immediately convert them into 16-bits before they are used.
+ * This allows one to perform all calculations based on them in 16-bit
+ * precision but still keep the upload mechanism intact in the backend.
+ *
+ * TODO:
+ *
+ * 1) There is still major flaw: logic is against the rules as it considers
+ *    arithmetic expressions without consider to their consuming expressions.
+ *    As alus at nir level are just sub-expressions of larger expressions they
+ *    are subject to the uses and shouldn't be examined just based on their
+ *    own sources.
+ *    One should recursively examaine uses until either a fixed search depth
+ *    (heuristic to avoid runtime explosion) or it becomes clear which
+ *    precision is needed. Naturally there may be both low and high precision
+ *    uses. In order to keep things simple one could just force all lower
+ *    precision uses to high in case even one high precision use is found or
+ *    the search depth boundary is hit.
+ *
+ * 2) Validation (NIR) expects expression producing booleans to have
+ *    destination size of 32-bits. This prevents one from marking expressions
+ *    that operate with 16-bit sources and producing booleans as having
+ *    16-bit destination. Some hardware (such as Intel) works this way.
+ *    Implementation here inserts dummy conversions to 16-bits (namely i2i16
+ *    beacuse NIR allows treating SSA values produced as booleans to be
+ *    treated as integers without explicit conversions). This allows the
+ *    aforementioned analysis to use 16-bit precision in consuming expressions
+ *    such as logical and/or that have integer typed sources that could be
+ *    produced using, for example, with less-than comparison.
+ *
+ *    Similar treatment is needed for boolean sources produced using integer
+ *    expressions. For example, "bcsel" and "if" can operate with values
+ *    produced with 16-bit iand. In order to keep validation happy that
+ *    expects the bit size to be 32 one emits dummy i2i32.
+ *
+ *    At least Intel backend is capable enough to remove most of these
+ *    redundant expressions and adjust the consumers to use the original
+ *    value. In order to get rid of the rest, there is additional lowering
+ *    pass that adjust boolean sized ssa definitions. This is hooked after
+ *    all validation is done (see nir_lower_bool_size.c).
+ *
+ * 3) Allow interpolation of input varyings in 16-bit precision. Currently
+ *    the conversion from 32-bits to 16-bits takes place after the conversion.
+ *
+ * 4) When only 32-bit tex coordinates are supported, see if backend supports
+ *    conversion from 16-bits to 32-bits during the last alu producing the
+ *    actual value. (Most likely belongs to backend such as described above).
+ *
+ * 5) Introduce helpers in C++ space for examining GLSL types and make this
+ *    file just C.
+ *
  */
 
 #include "nir.h"
