@@ -718,8 +718,16 @@ fs_generator::generate_linterp(fs_inst *inst,
    struct brw_reg interp = src[1];
    brw_inst *i[4];
 
-   if (devinfo->gen >= 11) {
-      struct brw_reg acc = retype(brw_acc_reg(8), BRW_REGISTER_TYPE_NF);
+   if (devinfo->gen >= 11 || dst.type == BRW_REGISTER_TYPE_HF) {
+      if (dst.type == BRW_REGISTER_TYPE_HF)
+         brw_set_default_access_mode(p, BRW_ALIGN_16);
+        
+      /* In case of half floats one can simply use the final destination as a
+       * temporary for holding the results of first mad(). Otherwise one needs
+       * to use the accumulator.
+       */
+      struct brw_reg acc = dst.type == BRW_REGISTER_TYPE_HF ?
+         dst : retype(brw_acc_reg(8), BRW_REGISTER_TYPE_NF);
       struct brw_reg dwP = suboffset(interp, 0);
       struct brw_reg dwQ = suboffset(interp, 1);
       struct brw_reg dwR = suboffset(interp, 3);
