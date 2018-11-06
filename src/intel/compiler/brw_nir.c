@@ -708,6 +708,20 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
                         nir_lower_divmod64 |
                         nir_lower_imul_high64);
 
+   /* Now that deref copies are lowered to load-store one can consider if
+    * precision can be lowered.
+    */
+   if (allow_lower_precision) {
+      struct nir_lower_precision_options options = {
+         .has_16_bit_tex_coords = devinfo->gen >= 10,
+         .has_16_bit_input_varyings = false,
+         .has_var_sized_bool = true
+      };
+      nir_lower_var_precision(nir, &options);
+      nir_lower_precision(nir, &options);
+      nir_lower_sample_precision(nir);
+   }
+
    nir = brw_nir_optimize(nir, compiler, is_scalar, true);
 
    /* This needs to be run after the first optimization pass but before we
@@ -725,20 +739,6 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 
    /* Lower a bunch of stuff */
    OPT(nir_lower_var_copies);
-
-   /* Now that deref copies are lowered to load-store one can consider if
-    * precision can be lowered.
-    */
-   if (allow_lower_precision) {
-      struct nir_lower_precision_options options = {
-         .has_16_bit_tex_coords = devinfo->gen >= 10,
-         .has_16_bit_input_varyings = false,
-         .has_var_sized_bool = true
-      };
-      nir_lower_var_precision(nir, &options);
-      nir_lower_precision(nir, &options);
-      nir_lower_sample_precision(nir);
-   }
 
    OPT(nir_lower_system_values);
 
