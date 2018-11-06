@@ -70,6 +70,7 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
 
       assert(var->data.location_frac + comp_slots <= 8);
       uint8_t comp_mask = ((1 << comp_slots) - 1) << var->data.location_frac;
+      unsigned location_frac = var->data.location_frac;
 
       assert(attrib_slots <= 2);
       for (unsigned s = 0; s < attrib_slots; s++) {
@@ -79,6 +80,7 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
          output->offset = *offset;
          output->location = *location;
          output->component_mask = (comp_mask >> (s * 4)) & 0xf;
+         output->component_offset = location_frac;
 
          (*location)++;
          /* attrib_slots would be only > 1 for doubles. On that case
@@ -87,6 +89,7 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
           */
          assert(comp_slots % attrib_slots == 0);
          *offset += (comp_slots / attrib_slots) * 4;
+         location_frac = 0;
       }
    }
 }
