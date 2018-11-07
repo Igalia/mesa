@@ -81,7 +81,12 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
          output->component_mask = (comp_mask >> (s * 4)) & 0xf;
 
          (*location)++;
-         *offset += comp_slots * 4;
+         /* attrib_slots would be only > 1 for doubles. On that case
+          * comp_slots will be a multiple of 2, so the following doesn't need
+          * to use DIV_ROUND_UP or similar
+          */
+         assert(comp_slots % attrib_slots == 0);
+         *offset += (comp_slots / attrib_slots) * 4;
       }
    }
 }
