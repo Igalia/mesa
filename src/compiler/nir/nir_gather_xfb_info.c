@@ -36,25 +36,61 @@ nir_gather_xfb_info_create(void *mem_ctx, uint16_t output_count, uint16_t varyin
    return xfb;
 }
 
+static bool
+glsl_type_is_leaf(const struct glsl_type *type)
+{
+   if (glsl_type_is_struct(type) ||
+       (glsl_type_is_array(type) &&
+        (glsl_type_is_array(glsl_get_array_element(type)) ||
+         glsl_type_is_struct(glsl_get_array_element(type))))) {
+      return false;
+   } else {
+      return true;
+   }
+}
+
+static void
+add_var_xfb_varying(nir_xfb_info *xfb,
+                    nir_variable *var,
+                    unsigned offset,
+                    const struct glsl_type *type)
+{
+   nir_xfb_varying_info *varying = &xfb->varyings[xfb->varying_count++];
+
+   varying->type = type;
+   varying->buffer = var->data.xfb_buffer;
+   varying->offset = offset;
+   xfb->buffers[var->data.xfb_buffer].varying_count++;
+}
+
 static void
 add_var_xfb_outputs(nir_xfb_info *xfb,
                     nir_variable *var,
                     unsigned *location,
                     unsigned *offset,
                     unsigned buffer,
-                    const struct glsl_type *type)
+                    const struct glsl_type *type,
+                    bool varying_added)
 {
    if (glsl_type_is_array(type) || glsl_type_is_matrix(type)) {
       unsigned length = glsl_get_length(type);
+      bool local_varying_added = varying_added;
+
       const struct glsl_type *child_type = glsl_get_array_element(type);
+      if (!glsl_type_is_array_of_arrays(type) &&
+          glsl_type_is_leaf(child_type)) {
+
+         add_var_xfb_varying(xfb, var, *offset, type);
+         local_varying_added = true;
+      }
 
       for (unsigned i = 0; i < length; i++)
-         add_var_xfb_outputs(xfb, var, location, offset, buffer, child_type);
+         add_var_xfb_outputs(xfb, var, location, offset, buffer, child_type, local_varying_added);
    } else if (glsl_type_is_struct(type)) {
       unsigned length = glsl_get_length(type);
       for (unsigned i = 0; i < length; i++) {
          const struct glsl_type *child_type = glsl_get_struct_field(type, i);
-         add_var_xfb_outputs(xfb, var, location, offset, buffer, child_type);
+         add_var_xfb_outputs(xfb, var, location, offset, buffer, child_type, varying_added);
       }
    } else {
       assert(buffer < NIR_MAX_XFB_BUFFERS);
@@ -85,11 +121,9 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       uint8_t comp_mask = ((1 << comp_slots) - 1) << var->data.location_frac;
       unsigned location_frac = var->data.location_frac;
 
-      nir_xfb_varying_info *varying = &xfb->varyings[xfb->varying_count++];
-      varying->type = type;
-      varying->buffer = var->data.xfb_buffer;
-      varying->offset = *offset;
-      xfb->buffers[var->data.xfb_buffer].varying_count++;
+      if (!varying_added) {
+         add_var_xfb_varying(xfb, var, *offset, type);
+      }
 
       assert(attrib_slots <= 2);
       for (unsigned s = 0; s < attrib_slots; s++) {
@@ -209,7 +243,7 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
          for (unsigned i = 0; i < num_iterations; i++, buffer++) {
             unsigned offset = var->data.offset;
 
-            add_var_xfb_outputs(xfb, var, &location, &offset, buffer, top_level_type);
+            add_var_xfb_outputs(xfb, var, &location, &offset, buffer, top_level_type, false);
          }
       }
    }
