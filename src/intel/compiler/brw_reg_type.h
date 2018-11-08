@@ -112,6 +112,10 @@ brw_reg_type_to_size(enum brw_reg_type type);
 const char *
 brw_reg_type_to_letters(enum brw_reg_type type);
 
+enum brw_reg_type
+brw_reg_type_from_bit_size(unsigned bit_size,
+                           enum brw_reg_type reference_type);
+
 #ifdef __cplusplus
 }
 #endif
