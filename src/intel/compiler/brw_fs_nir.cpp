@@ -4746,11 +4746,12 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       fs_reg src = get_nir_src(instr->src[i].src);
       switch (instr->src[i].src_type) {
       case nir_tex_src_bias:
-         srcs[TEX_LOGICAL_SRC_LOD] =
-            retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
+         srcs[TEX_LOGICAL_SRC_LOD] = retype_keep_size(
+            get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
          break;
       case nir_tex_src_comparator:
-         srcs[TEX_LOGICAL_SRC_SHADOW_C] = retype(src, BRW_REGISTER_TYPE_F);
+         srcs[TEX_LOGICAL_SRC_SHADOW_C] = retype_keep_size(
+                                             src, BRW_REGISTER_TYPE_F);
          break;
       case nir_tex_src_coord:
          switch (instr->op) {
@@ -4758,33 +4759,37 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
          case nir_texop_txf_ms:
          case nir_texop_txf_ms_mcs:
          case nir_texop_samples_identical:
-            srcs[TEX_LOGICAL_SRC_COORDINATE] = retype(src, BRW_REGISTER_TYPE_D);
+            srcs[TEX_LOGICAL_SRC_COORDINATE] = retype_keep_size(
+                                                  src, BRW_REGISTER_TYPE_D);
             break;
          default:
-            srcs[TEX_LOGICAL_SRC_COORDINATE] = retype(src, BRW_REGISTER_TYPE_F);
+            srcs[TEX_LOGICAL_SRC_COORDINATE] = retype_keep_size(
+                                                  src, BRW_REGISTER_TYPE_F);
             break;
          }
          break;
       case nir_tex_src_ddx:
-         srcs[TEX_LOGICAL_SRC_LOD] = retype(src, BRW_REGISTER_TYPE_F);
+         srcs[TEX_LOGICAL_SRC_LOD] = retype_keep_size(
+                                        src, BRW_REGISTER_TYPE_F);
          lod_components = nir_tex_instr_src_size(instr, i);
          break;
       case nir_tex_src_ddy:
-         srcs[TEX_LOGICAL_SRC_LOD2] = retype(src, BRW_REGISTER_TYPE_F);
+         srcs[TEX_LOGICAL_SRC_LOD2] = retype_keep_size(
+                                         src, BRW_REGISTER_TYPE_F);
          break;
       case nir_tex_src_lod:
          switch (instr->op) {
          case nir_texop_txs:
-            srcs[TEX_LOGICAL_SRC_LOD] =
-               retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_UD);
+            srcs[TEX_LOGICAL_SRC_LOD] = retype_keep_size(
+               get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_UD);
             break;
          case nir_texop_txf:
-            srcs[TEX_LOGICAL_SRC_LOD] =
-               retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_D);
+            srcs[TEX_LOGICAL_SRC_LOD] = retype_keep_size(
+               get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_D);
             break;
          default:
-            srcs[TEX_LOGICAL_SRC_LOD] =
-               retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
+            srcs[TEX_LOGICAL_SRC_LOD] = retype_keep_size(
+               get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
             break;
          }
          break;
@@ -4793,7 +4798,8 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
             retype(get_nir_src_imm(instr->src[i].src), BRW_REGISTER_TYPE_F);
          break;
       case nir_tex_src_ms_index:
-         srcs[TEX_LOGICAL_SRC_SAMPLE_INDEX] = retype(src, BRW_REGISTER_TYPE_UD);
+         srcs[TEX_LOGICAL_SRC_SAMPLE_INDEX] = retype_keep_size(
+                                                 src, BRW_REGISTER_TYPE_UD);
          break;
 
       case nir_tex_src_offset: {
@@ -4808,7 +4814,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
             header_bits |= offset_bits;
          } else {
             srcs[TEX_LOGICAL_SRC_TG4_OFFSET] =
-               retype(src, BRW_REGISTER_TYPE_D);
+               retype_keep_size(src, BRW_REGISTER_TYPE_D);
          }
          break;
       }
@@ -4843,7 +4849,8 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
 
       case nir_tex_src_ms_mcs:
          assert(instr->op == nir_texop_txf_ms);
-         srcs[TEX_LOGICAL_SRC_MCS] = retype(src, BRW_REGISTER_TYPE_D);
+         srcs[TEX_LOGICAL_SRC_MCS] =
+            retype_keep_size(src, BRW_REGISTER_TYPE_D);
          break;
 
       case nir_tex_src_plane: {
@@ -4923,7 +4930,8 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       opcode = SHADER_OPCODE_SAMPLEINFO_LOGICAL;
       break;
    case nir_texop_samples_identical: {
-      fs_reg dst = retype(get_nir_dest(instr->dest), BRW_REGISTER_TYPE_D);
+      fs_reg dst = retype_keep_size(
+                      get_nir_dest(instr->dest), BRW_REGISTER_TYPE_D);
 
       /* If mcs is an immediate value, it means there is no MCS.  In that case
        * just return false.
