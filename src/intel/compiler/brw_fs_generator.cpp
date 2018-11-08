@@ -1097,6 +1097,11 @@ fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst, struct brw_reg src
    }
    assert(msg_type != -1);
 
+   if (devinfo->gen >= 10 && brw_reg_type_to_size(src.type) == 2) {
+      simd_mode = inst->exec_size == 8 ?
+         GEN10_SAMPLER_SIMD_MODE_SIMD8H : GEN10_SAMPLER_SIMD_MODE_SIMD16H;
+   }
+
    if (simd_mode == BRW_SAMPLER_SIMD_MODE_SIMD16) {
       dst = vec16(dst);
    }

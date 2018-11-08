@@ -1038,6 +1038,9 @@ enum brw_message_target {
 #define BRW_SAMPLER_SIMD_MODE_SIMD16                    2
 #define BRW_SAMPLER_SIMD_MODE_SIMD32_64                 3
 
+#define GEN10_SAMPLER_SIMD_MODE_SIMD8H                  5
+#define GEN10_SAMPLER_SIMD_MODE_SIMD16H                 6
+
 /* GEN9 changes SIMD mode 0 to mean SIMD8D, but lets us get the SIMD4x2
  * behavior by setting bit 22 of dword 2 in the message header. */
 #define GEN9_SAMPLER_SIMD_MODE_SIMD8D                   0
