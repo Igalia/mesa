@@ -4521,15 +4521,22 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
                                 const fs_reg &surface,
                                 const fs_reg &sampler,
                                 const fs_reg &tg4_offset,
+                                unsigned payload_type_bit_size,
                                 unsigned coord_components,
                                 unsigned grad_components)
 {
    const gen_device_info *devinfo = bld.shader->devinfo;
+   const enum brw_reg_type payload_type =
+      brw_reg_type_from_bit_size(payload_type_bit_size, BRW_REGISTER_TYPE_F);
+   const enum brw_reg_type payload_unsigned_type =
+      brw_reg_type_from_bit_size(payload_type_bit_size, BRW_REGISTER_TYPE_UD);
+   const enum brw_reg_type payload_signed_type =
+      brw_reg_type_from_bit_size(payload_type_bit_size, BRW_REGISTER_TYPE_D);
    unsigned reg_width = bld.dispatch_width() / 8;
    unsigned header_size = 0, length = 0;
    fs_reg sources[MAX_SAMPLER_MESSAGE_SIZE];
    for (unsigned i = 0; i < ARRAY_SIZE(sources); i++)
-      sources[i] = bld.vgrf(BRW_REGISTER_TYPE_F);
+      sources[i] = bld.vgrf(payload_type);
 
    if (op == SHADER_OPCODE_TG4 || op == SHADER_OPCODE_TG4_OFFSET ||
        inst->offset != 0 || inst->eot ||
@@ -4543,7 +4550,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
        * larger sampler numbers we need to offset the Sampler State Pointer in
        * the header.
        */
-      fs_reg header = retype(sources[0], BRW_REGISTER_TYPE_UD);
+      fs_reg header = retype(sources[0], payload_unsigned_type);
       header_size = 1;
       length++;
 
@@ -4560,7 +4567,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
       /* Build the actual header */
       const fs_builder ubld = bld.exec_all().group(8, 0);
       const fs_builder ubld1 = ubld.group(1, 0);
-      ubld.MOV(header, retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
+      ubld.MOV(header, retype(brw_vec8_grf(0, 0), payload_unsigned_type));
       if (inst->offset) {
          ubld1.MOV(component(header, 2), brw_imm_ud(inst->offset));
       } else if (bld.shader->stage != MESA_SHADER_VERTEX &&
@@ -4579,14 +4586,14 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
             const int sampler_state_size = 16; /* 16 bytes */
 
             ubld1.ADD(component(header, 3),
-                      retype(brw_vec1_grf(0, 3), BRW_REGISTER_TYPE_UD),
+                      retype(brw_vec1_grf(0, 3), payload_unsigned_type),
                       brw_imm_ud(16 * (sampler.ud / 16) * sampler_state_size));
          } else {
             fs_reg tmp = ubld1.vgrf(BRW_REGISTER_TYPE_UD);
             ubld1.AND(tmp, sampler, brw_imm_ud(0x0f0));
             ubld1.SHL(tmp, tmp, brw_imm_ud(4));
             ubld1.ADD(component(header, 3),
-                      retype(brw_vec1_grf(0, 3), BRW_REGISTER_TYPE_UD),
+                      retype(brw_vec1_grf(0, 3), payload_unsigned_type),
                       tmp);
          }
       }
@@ -4632,18 +4639,18 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
       coordinate_done = true;
       break;
    case SHADER_OPCODE_TXS:
-      bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_UD), lod);
+      bld.MOV(retype(sources[length], payload_unsigned_type), lod);
       length++;
       break;
    case SHADER_OPCODE_TXF:
       /* Unfortunately, the parameters for LD are intermixed: u, lod, v, r.
        * On Gen9 they are u, v, lod, r
        */
-      bld.MOV(retype(sources[length++], BRW_REGISTER_TYPE_D), coordinate);
+      bld.MOV(retype(sources[length++], payload_signed_type), coordinate);
 
       if (devinfo->gen >= 9) {
          if (coord_components >= 2) {
-            bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_D),
+            bld.MOV(retype(sources[length], payload_signed_type),
                     offset(coordinate, bld, 1));
          } else {
             sources[length] = brw_imm_d(0);
@@ -4654,12 +4661,12 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
       if (devinfo->gen >= 9 && lod.is_zero()) {
          op = SHADER_OPCODE_TXF_LZ;
       } else {
-         bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_D), lod);
+         bld.MOV(retype(sources[length], payload_signed_type), lod);
          length++;
       }
 
       for (unsigned i = devinfo->gen >= 9 ? 2 : 1; i < coord_components; i++)
-         bld.MOV(retype(sources[length++], BRW_REGISTER_TYPE_D),
+         bld.MOV(retype(sources[length++], payload_signed_type),
                  offset(coordinate, bld, i));
 
       coordinate_done = true;
@@ -4672,20 +4679,20 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
       if (op == SHADER_OPCODE_TXF_UMS ||
           op == SHADER_OPCODE_TXF_CMS ||
           op == SHADER_OPCODE_TXF_CMS_W) {
-         bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_UD), sample_index);
+         bld.MOV(retype(sources[length], payload_unsigned_type), sample_index);
          length++;
       }
 
       if (op == SHADER_OPCODE_TXF_CMS || op == SHADER_OPCODE_TXF_CMS_W) {
          /* Data from the multisample control surface. */
-         bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_UD), mcs);
+         bld.MOV(retype(sources[length], payload_unsigned_type), mcs);
          length++;
 
          /* On Gen9+ we'll use ld2dms_w instead which has two registers for
           * the MCS data.
           */
          if (op == SHADER_OPCODE_TXF_CMS_W) {
-            bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_UD),
+            bld.MOV(retype(sources[length], payload_unsigned_type),
                     mcs.file == IMM ?
                     mcs :
                     offset(mcs, bld, 1));
@@ -4697,7 +4704,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
        * texture coordinates.
        */
       for (unsigned i = 0; i < coord_components; i++)
-         bld.MOV(retype(sources[length++], BRW_REGISTER_TYPE_D),
+         bld.MOV(retype(sources[length++], payload_signed_type),
                  offset(coordinate, bld, i));
 
       coordinate_done = true;
@@ -4708,7 +4715,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
          bld.MOV(sources[length++], offset(coordinate, bld, i));
 
       for (unsigned i = 0; i < 2; i++) /* offu, offv */
-         bld.MOV(retype(sources[length++], BRW_REGISTER_TYPE_D),
+         bld.MOV(retype(sources[length++], payload_signed_type),
                  offset(tg4_offset, bld, i));
 
       if (coord_components == 3) /* r if present */
@@ -4742,7 +4749,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
       mlen = length * reg_width;
 
    const fs_reg src_payload = fs_reg(VGRF, bld.shader->alloc.allocate(mlen),
-                                     BRW_REGISTER_TYPE_F);
+                                     payload_type);
    bld.LOAD_PAYLOAD(src_payload, sources, length, header_size);
 
    /* Generate the SEND. */
@@ -4756,6 +4763,34 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
 
    /* Message length > MAX_SAMPLER_MESSAGE_SIZE disallowed by hardware. */
    assert(inst->mlen <= MAX_SAMPLER_MESSAGE_SIZE);
+}
+
+static unsigned
+get_sampler_msg_payload_type_bit_size(const fs_reg *src)
+{
+   unsigned src_type_size = 0;
+
+   /* All sources need to have the same size, therefore seek the first valid
+    * and take the size from there.
+    */
+   for (unsigned i = 0; i < TEX_LOGICAL_NUM_SRCS; i++) {
+      if (src[i].file != BAD_FILE) {
+         src_type_size = brw_reg_type_to_size(src[i].type);
+         break;
+      }
+   }
+
+   assert(src_type_size == 2 || src_type_size == 4);
+
+#ifndef NDEBUG
+   /* Make sure all sources agree. */
+   for (unsigned i = 0; i < TEX_LOGICAL_NUM_SRCS; i++) {
+      assert(src[i].file == BAD_FILE ||
+             brw_reg_type_to_size(src[i].type) == src_type_size);
+   }
+#endif
+
+   return src_type_size * 8;
 }
 
 static void
@@ -4778,10 +4813,17 @@ lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
    const unsigned grad_components = inst->src[TEX_LOGICAL_SRC_GRAD_COMPONENTS].ud;
 
    if (devinfo->gen >= 7) {
+      const unsigned msg_payload_type_bit_size =
+         get_sampler_msg_payload_type_bit_size(inst->src);
+    
+      /* 16-bit payloads are available only on gen10+ */
+      assert(msg_payload_type_bit_size != 16 || devinfo->gen >= 10);
+
       lower_sampler_logical_send_gen7(bld, inst, op, coordinate,
                                       shadow_c, lod, lod2, min_lod,
                                       sample_index,
                                       mcs, surface, sampler, tg4_offset,
+                                      msg_payload_type_bit_size,
                                       coord_components, grad_components);
    } else if (devinfo->gen >= 5) {
       lower_sampler_logical_send_gen5(bld, inst, op, coordinate,
