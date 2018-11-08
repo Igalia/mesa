@@ -73,6 +73,14 @@ retype(fs_reg reg, enum brw_reg_type type)
 }
 
 static inline fs_reg
+retype_keep_size(fs_reg reg, enum brw_reg_type type)
+{
+   reg.type = brw_reg_type_from_bit_size(
+                 brw_reg_type_to_size(reg.type) * 8, type);
+   return reg;
+}
+
+static inline fs_reg
 retype_pad_to_full_register(fs_reg reg, unsigned dispatch_width,
                             enum brw_reg_type type)
 {
