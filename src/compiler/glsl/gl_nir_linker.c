@@ -67,7 +67,9 @@ _get_type_size(const struct glsl_type *type,
 
    /* Arrays must have an array stride */
    if (glsl_type_is_array(type)) {
-      return glsl_get_explicit_array_stride(type) * glsl_get_length(type);
+      unsigned length =
+         glsl_type_is_unsized_array(type) ? 1 : glsl_get_length(type);
+      return glsl_get_explicit_array_stride(type) * length;
    }
 
    /* Matrices must have a matrix stride and either RowMajor or ColMajor */
