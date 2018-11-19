@@ -302,8 +302,8 @@ struct intel_mipmap_tree
     *
     * \see intel_update_r8stencil()
     */
-   struct intel_mipmap_tree *r8stencil_mt;
-   bool r8stencil_needs_update;
+   struct intel_mipmap_tree *shadow_mt;
+   bool shadow_needs_update;
 
    /**
     * \brief CCS, MCS, or HiZ auxiliary buffer.
