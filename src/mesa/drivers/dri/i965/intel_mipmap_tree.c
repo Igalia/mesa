@@ -4015,15 +4015,16 @@ intel_update_decompressed_shadow(struct brw_context *brw,
    int img_h = smt->surf.logical_level0_px.height;
    int img_d = smt->surf.logical_level0_px.depth;
 
-   ptrdiff_t shadow_stride = _mesa_format_row_stride(smt->format, img_w);
+   int level_w = img_w;
+   int level_h = img_h;
 
    for (int level = smt->first_level; level <= smt->last_level; level++) {
-      struct compressed_pixelstore store;
-      _mesa_compute_compressed_pixelstore(mt->surf.dim,
-                                          mt->format,
-                                          img_w, img_h, img_d,
-                                          &brw->ctx.Unpack,
-                                          &store);
+      ptrdiff_t shadow_stride = _mesa_format_row_stride(smt->format,
+                                                        level_w);
+
+      ptrdiff_t main_stride = _mesa_format_row_stride(mt->format,
+                                                      level_w);
+
       for (unsigned int slice = 0; slice < img_d; slice++) {
          GLbitfield mmode = GL_MAP_READ_BIT | BRW_MAP_DIRECT_BIT |
                             BRW_MAP_ETC_BIT;
@@ -4031,30 +4032,39 @@ intel_update_decompressed_shadow(struct brw_context *brw,
                             GL_MAP_INVALIDATE_RANGE_BIT |
                             BRW_MAP_DIRECT_BIT;
 
-         uint32_t img_x, img_y;
-         intel_miptree_get_image_offset(smt, level, slice, &img_x, &img_y);
+         uint32_t slevel_x, slevel_y;
+         intel_miptree_get_image_offset(smt, level, slice, &slevel_x,
+                                        &slevel_y);
 
-         void *mptr = intel_miptree_map_raw(brw, mt, mmode) + mt->offset
-                    + img_y * store.TotalBytesPerRow
-                    + img_x * store.TotalBytesPerRow / img_w;
+         uint32_t mlevel_x, mlevel_y;
+         intel_miptree_get_image_offset(mt, level, slice, &mlevel_x,
+                                        &mlevel_y);
+
+         void *mptr;
+         intel_miptree_map(brw, mt, level, slice, 0, 0,
+                           level_w, level_h, mmode, &mptr, &main_stride);
+
 
          void *sptr;
-         intel_miptree_map(brw, smt, level, slice, img_x, img_y, img_w, img_h,
-                           smode, &sptr, &shadow_stride);
+         intel_miptree_map(brw, smt, level, slice, 0, 0, level_w,
+                           level_h, smode, &sptr, &shadow_stride);
 
          if (mt->format == MESA_FORMAT_ETC1_RGB8) {
             _mesa_etc1_unpack_rgba8888(sptr, shadow_stride,
-                                       mptr, store.TotalBytesPerRow,
-                                       img_w, img_h);
+                                       mptr, main_stride,
+                                       level_w, level_h);
          } else {
             _mesa_unpack_etc2_format(sptr, shadow_stride,
-                                     mptr, store.TotalBytesPerRow,
-                                     img_w, img_h, mt->format, true);
+                                     mptr, main_stride,
+                                     level_w, level_h, mt->format, true);
          }
 
-         intel_miptree_unmap_raw(mt);
+         intel_miptree_unmap(brw, mt, level, slice);
          intel_miptree_unmap(brw, smt, level, slice);
       }
+
+      level_w /= 2;
+      level_h /= 2;
    }
 
    mt->shadow_needs_update = false;
