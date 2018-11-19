@@ -74,6 +74,7 @@ struct intel_texture_image;
  * without transcoding back.  This flag to intel_miptree_map() gets you that.
  */
 #define BRW_MAP_DIRECT_BIT	0x80000000
+#define BRW_MAP_ETC_BIT 0x40000000
 
 struct intel_miptree_map {
    /** Bitfield of GL_MAP_*_BIT and BRW_MAP_*_BIT. */
@@ -304,6 +305,22 @@ struct intel_mipmap_tree
     */
    struct intel_mipmap_tree *shadow_mt;
    bool shadow_needs_update;
+
+   /**
+	 * \brief Indicates that the shadow miptree needs to be updated
+    *
+    * It's necessary when we map the shadow tree to fake the ETC2 compression
+    * so that we know that we have to unmap the shadow and not the main.\n
+    */
+   bool is_shadow_mapped;
+
+   /**
+    * \brief Indicates that we fake the ETC2 compression support
+    *
+    * GPUs Gen < 8 don't support sampling and rendering of ETC2 formats so
+    * we need to fake it. This variable is set to true when we fake it.
+    */
+   bool needs_fake_etc;
 
    /**
     * \brief CCS, MCS, or HiZ auxiliary buffer.

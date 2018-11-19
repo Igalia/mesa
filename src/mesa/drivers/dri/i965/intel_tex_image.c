@@ -894,6 +894,43 @@ flush_astc_denorms(struct gl_context *ctx, GLuint dims,
    }
 }
 
+static void intel_compressed_texsubimage(struct gl_context *ctx,
+                                         GLuint dims,
+                                         struct gl_texture_image *texImage,
+                                         GLint xoffset, GLint yoffset,
+                                         GLint zoffset, GLsizei width,
+                                         GLsizei height, GLsizei depth,
+                                         GLenum format, GLsizei imageSize,
+                                         const GLvoid *data)
+{
+   GLbitfield mode = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
+   struct compressed_pixelstore store;
+
+   if (dims == 1) {
+      _mesa_problem(ctx, "Unexpected 1D compressed texsubimage call");
+      return;
+   }
+
+   _mesa_compute_compressed_pixelstore(dims, texImage->TexFormat,
+                                       width, height, depth,
+                                       &ctx->Unpack, &store);
+
+   data = _mesa_validate_pbo_compressed_teximage(ctx, dims, imageSize,
+                                                 data, &ctx->Unpack,
+                                                 "glCompressedTexSubImage");
+   if (!data)
+      return;
+
+   GLbitfield etc_mode = mode;
+   if (intel_texture_image(texImage)->mt->needs_fake_etc)
+      etc_mode |= BRW_MAP_ETC_BIT;
+
+   _mesa_upload_compressed_texsubimage(ctx, dims, &store, texImage,
+                                       xoffset, yoffset, zoffset, width,
+                                       height, depth, etc_mode, data);
+
+   _mesa_unmap_teximage_pbo(ctx, &ctx->Unpack);
+}
 
 static void
 intelCompressedTexSubImage(struct gl_context *ctx, GLuint dims,
@@ -904,10 +941,10 @@ intelCompressedTexSubImage(struct gl_context *ctx, GLuint dims,
                         GLsizei imageSize, const GLvoid *data)
 {
    /* Upload the compressed data blocks */
-   _mesa_store_compressed_texsubimage(ctx, dims, texImage,
-                                      xoffset, yoffset, zoffset,
-                                      width, height, depth,
-                                      format, imageSize, data);
+   intel_compressed_texsubimage(ctx, dims, texImage,
+                                xoffset, yoffset, zoffset,
+                                width, height, depth,
+                                format, imageSize, data);
 
    /* Fix up copied ASTC blocks if necessary */
    GLenum gl_format = _mesa_compressed_format_to_glenum(ctx,
