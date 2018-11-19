@@ -3793,12 +3793,15 @@ intel_miptree_map(struct brw_context *brw,
    assert(mt->surf.samples == 1);
 
    if (mt->needs_fake_etc) {
-      if (!(mode & BRW_MAP_ETC_BIT)) {
+      if (!(mode & BRW_MAP_ETC_BIT) && !(mode & GL_MAP_READ_BIT)) {
          assert(mt->shadow_mt);
 
-         mt->is_shadow_mapped = true;
+         if (mt->shadow_needs_update) {
+            intel_update_decompressed_shadow(brw, mt);
+            mt->shadow_needs_update = false;
+         }
 
-         mt->shadow_needs_update = false;
+         mt->is_shadow_mapped = true;
          mt = miptree->shadow_mt;
       } else {
          mt->is_shadow_mapped = false;
@@ -3815,6 +3818,8 @@ intel_miptree_map(struct brw_context *brw,
 
    map = intel_miptree_attach_map(mt, level, slice, x, y, w, h, mode);
    if (!map){
+      miptree->is_shadow_mapped = false;
+
       *out_ptr = NULL;
       *out_stride = 0;
       return;
@@ -3994,4 +3999,63 @@ intel_miptree_get_clear_color(const struct gen_device_info *devinfo,
       *clear_color_offset = mt->aux_buf->clear_color_offset;
       return mt->fast_clear_color;
    }
+}
+
+void
+intel_update_decompressed_shadow(struct brw_context *brw,
+                                 struct intel_mipmap_tree *mt)
+{
+   struct intel_mipmap_tree *smt = mt->shadow_mt;
+
+   assert(smt);
+   assert(mt->needs_fake_etc);
+   assert(mt->surf.size_B > 0);
+
+   int img_w = smt->surf.logical_level0_px.width;
+   int img_h = smt->surf.logical_level0_px.height;
+   int img_d = smt->surf.logical_level0_px.depth;
+
+   ptrdiff_t shadow_stride = _mesa_format_row_stride(smt->format, img_w);
+
+   for (int level = smt->first_level; level <= smt->last_level; level++) {
+      struct compressed_pixelstore store;
+      _mesa_compute_compressed_pixelstore(mt->surf.dim,
+                                          mt->format,
+                                          img_w, img_h, img_d,
+                                          &brw->ctx.Unpack,
+                                          &store);
+      for (unsigned int slice = 0; slice < img_d; slice++) {
+         GLbitfield mmode = GL_MAP_READ_BIT | BRW_MAP_DIRECT_BIT |
+                            BRW_MAP_ETC_BIT;
+         GLbitfield smode = GL_MAP_WRITE_BIT |
+                            GL_MAP_INVALIDATE_RANGE_BIT |
+                            BRW_MAP_DIRECT_BIT;
+
+         uint32_t img_x, img_y;
+         intel_miptree_get_image_offset(smt, level, slice, &img_x, &img_y);
+
+         void *mptr = intel_miptree_map_raw(brw, mt, mmode) + mt->offset
+                    + img_y * store.TotalBytesPerRow
+                    + img_x * store.TotalBytesPerRow / img_w;
+
+         void *sptr;
+         intel_miptree_map(brw, smt, level, slice, img_x, img_y, img_w, img_h,
+                           smode, &sptr, &shadow_stride);
+
+         if (mt->format == MESA_FORMAT_ETC1_RGB8) {
+            _mesa_etc1_unpack_rgba8888(sptr, shadow_stride,
+                                       mptr, store.TotalBytesPerRow,
+                                       img_w, img_h);
+         } else {
+            _mesa_unpack_etc2_format(sptr, shadow_stride,
+                                     mptr, store.TotalBytesPerRow,
+                                     img_w, img_h, mt->format, true);
+         }
+
+         intel_miptree_unmap_raw(mt);
+         intel_miptree_unmap(brw, smt, level, slice);
+      }
+   }
+
+   mt->shadow_needs_update = false;
 }
