@@ -4018,6 +4018,8 @@ intel_update_decompressed_shadow(struct brw_context *brw,
    int level_w = img_w;
    int level_h = img_h;
 
+   int num_slices = img_d * smt->surf.logical_level0_px.array_len;
+
    for (int level = smt->first_level; level <= smt->last_level; level++) {
       ptrdiff_t shadow_stride = _mesa_format_row_stride(smt->format,
                                                         level_w);
@@ -4025,7 +4027,7 @@ intel_update_decompressed_shadow(struct brw_context *brw,
       ptrdiff_t main_stride = _mesa_format_row_stride(mt->format,
                                                       level_w);
 
-      for (unsigned int slice = 0; slice < img_d; slice++) {
+      for (unsigned int slice = 0; slice < num_slices; slice++) {
          GLbitfield mmode = GL_MAP_READ_BIT | BRW_MAP_DIRECT_BIT |
                             BRW_MAP_ETC_BIT;
          GLbitfield smode = GL_MAP_WRITE_BIT |
