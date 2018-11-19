@@ -1320,6 +1320,54 @@ _mesa_compute_compressed_pixelstore(GLuint dims, mesa_format texFormat,
    }
 }
 
+void
+_mesa_upload_compressed_texsubimage(struct gl_context *ctx, GLuint dims,
+                                    struct compressed_pixelstore *store,
+                                    struct gl_texture_image *texImage,
+                                    GLint xoffset, GLint yoffset,
+                                    GLint zoffset, GLsizei width,
+                                    GLsizei height, GLsizei depth,
+                                    GLbitfield mode, const GLvoid *data)
+{
+   GLubyte *dstMap = NULL;
+   GLint dstRowStride;
+   GLint i, slice;
+   const GLubyte *src = (const GLubyte *) data + store->SkipBytes;
+
+   for (slice = 0; slice < store->CopySlices; slice++) {
+      /* Map dest texture buffer */
+      ctx->Driver.MapTextureImage(ctx, texImage, slice + zoffset,
+                                  xoffset, yoffset, width, height,
+                                  mode,
+                                  &dstMap, &dstRowStride);
+
+      if (dstMap) {
+         /* copy rows of blocks */
+         if (dstRowStride == store->TotalBytesPerRow &&
+             dstRowStride == store->CopyBytesPerRow) {
+            memcpy(dstMap, src, store->CopyBytesPerRow * store->CopyRowsPerSlice);
+            src += store->CopyBytesPerRow * store->CopyRowsPerSlice;
+         }
+         else {
+            for (i = 0; i < store->CopyRowsPerSlice; i++) {
+               memcpy(dstMap, src, store->CopyBytesPerRow);
+               dstMap += dstRowStride;
+               src += store->TotalBytesPerRow;
+            }
+         }
+
+         ctx->Driver.UnmapTextureImage(ctx, texImage, slice + zoffset);
+
+         /* advance to next slice */
+         src += store->TotalBytesPerRow * (store->TotalRowsPerSlice
+                                          - store->CopyRowsPerSlice);
+      }
+      else {
+         _mesa_error(ctx, GL_OUT_OF_MEMORY, "glCompressedTexSubImage%uD",
+                     dims);
+      }
+   }
+}
 
 /**
  * Fallback for Driver.CompressedTexSubImage()
@@ -1333,10 +1381,7 @@ _mesa_store_compressed_texsubimage(struct gl_context *ctx, GLuint dims,
                                    GLsizei imageSize, const GLvoid *data)
 {
    struct compressed_pixelstore store;
-   GLint dstRowStride;
-   GLint i, slice;
-   GLubyte *dstMap;
-   const GLubyte *src;
+   GLbitfield mode = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
 
    if (dims == 1) {
       _mesa_problem(ctx, "Unexpected 1D compressed texsubimage call");
@@ -1354,42 +1399,9 @@ _mesa_store_compressed_texsubimage(struct gl_context *ctx, GLuint dims,
    if (!data)
       return;
 
-   src = (const GLubyte *) data + store.SkipBytes;
-
-   for (slice = 0; slice < store.CopySlices; slice++) {
-      /* Map dest texture buffer */
-      ctx->Driver.MapTextureImage(ctx, texImage, slice + zoffset,
-                                  xoffset, yoffset, width, height,
-                                  GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT,
-                                  &dstMap, &dstRowStride);
-
-      if (dstMap) {
-
-         /* copy rows of blocks */
-         if (dstRowStride == store.TotalBytesPerRow &&
-             dstRowStride == store.CopyBytesPerRow) {
-            memcpy(dstMap, src, store.CopyBytesPerRow * store.CopyRowsPerSlice);
-            src += store.CopyBytesPerRow * store.CopyRowsPerSlice;
-         }
-         else {
-            for (i = 0; i < store.CopyRowsPerSlice; i++) {
-               memcpy(dstMap, src, store.CopyBytesPerRow);
-               dstMap += dstRowStride;
-               src += store.TotalBytesPerRow;
-            }
-         }
-
-         ctx->Driver.UnmapTextureImage(ctx, texImage, slice + zoffset);
-
-         /* advance to next slice */
-         src += store.TotalBytesPerRow * (store.TotalRowsPerSlice
-                                          - store.CopyRowsPerSlice);
-      }
-      else {
-         _mesa_error(ctx, GL_OUT_OF_MEMORY, "glCompressedTexSubImage%uD",
-                     dims);
-      }
-   }
+   _mesa_upload_compressed_texsubimage(ctx, dims, &store, texImage,
+                                       xoffset, yoffset, zoffset, width,
+                                       height, depth, mode, data);
 
    _mesa_unmap_teximage_pbo(ctx, &ctx->Unpack);
 }
