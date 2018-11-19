@@ -733,6 +733,9 @@ intel_miptree_get_clear_color(const struct gen_device_info *devinfo,
                               struct brw_bo **clear_color_bo,
                               uint64_t *clear_color_offset);
 
+void
+intel_update_decompressed_shadow(struct brw_context *brw,
+                                 struct intel_mipmap_tree *mt);
 
 static inline int
 intel_miptree_blt_pitch(struct intel_mipmap_tree *mt)
