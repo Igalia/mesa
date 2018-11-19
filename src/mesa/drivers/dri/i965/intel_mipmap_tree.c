@@ -3497,9 +3497,6 @@ intel_miptree_map_etc(struct brw_context *brw,
       assert(mt->format == MESA_FORMAT_R8G8B8X8_UNORM);
    }
 
-   assert(map->mode & GL_MAP_WRITE_BIT);
-   assert(map->mode & GL_MAP_INVALIDATE_RANGE_BIT);
-
    intel_miptree_access_raw(brw, mt, level, slice, true);
 
    map->stride = _mesa_format_row_stride(mt->etc_format, map->w);
