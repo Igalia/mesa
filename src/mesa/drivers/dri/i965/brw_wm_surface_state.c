@@ -329,6 +329,17 @@ brw_get_texture_swizzle(const struct gl_context *ctx,
 {
    const struct gl_texture_image *img = t->Image[0][t->BaseLevel];
 
+   struct brw_context *brw = brw_context((struct gl_context *)ctx);
+   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   bool is_fake_etc = _mesa_is_format_etc2(img->TexFormat) &&
+                      devinfo->gen < 8;
+
+   mesa_format format;
+   if (is_fake_etc)
+      format = intel_lower_compressed_format(brw, img->TexFormat);
+   else
+      format = img->TexFormat;
+
    int swizzles[SWIZZLE_NIL + 1] = {
       SWIZZLE_X,
       SWIZZLE_Y,
@@ -381,7 +392,7 @@ brw_get_texture_swizzle(const struct gl_context *ctx,
       }
    }
 
-   GLenum datatype = _mesa_get_format_datatype(img->TexFormat);
+   GLenum datatype = _mesa_get_format_datatype(format);
 
    /* If the texture's format is alpha-only, force R, G, and B to
     * 0.0. Similarly, if the texture's format has no alpha channel,
@@ -430,9 +441,9 @@ brw_get_texture_swizzle(const struct gl_context *ctx,
       /* fallthrough */
    case GL_RG:
    case GL_RGB:
-      if (_mesa_get_format_bits(img->TexFormat, GL_ALPHA_BITS) > 0 ||
-          img->TexFormat == MESA_FORMAT_RGB_DXT1 ||
-          img->TexFormat == MESA_FORMAT_SRGB_DXT1)
+      if (_mesa_get_format_bits(format, GL_ALPHA_BITS) > 0 ||
+          format == MESA_FORMAT_RGB_DXT1 ||
+          format == MESA_FORMAT_SRGB_DXT1)
          swizzles[3] = SWIZZLE_ONE;
       break;
    }
@@ -482,6 +493,11 @@ static void brw_update_texture_surface(struct gl_context *ctx,
       struct intel_texture_object *intel_obj = intel_texture_object(obj);
       struct intel_mipmap_tree *mt = intel_obj->mt;
 
+      if (mt->needs_fake_etc) {
+         assert(mt->shadow_mt);
+         mt = mt->shadow_mt;
+      }
+
       if (plane > 0) {
          if (mt->plane[plane - 1] == NULL)
             return;
@@ -520,7 +536,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
           * is safe because texture views aren't allowed on depth/stencil.
           */
          mesa_fmt = mt->format;
-      } else if (mt->etc_format != MESA_FORMAT_NONE) {
+      } else if (intel_obj->mt->etc_format != MESA_FORMAT_NONE) {
          mesa_fmt = mt->format;
       } else if (plane > 0) {
          mesa_fmt = mt->format;
