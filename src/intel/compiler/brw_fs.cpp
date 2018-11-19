@@ -3457,10 +3457,15 @@ bool
 fs_visitor::remove_extra_rounding_modes()
 {
    bool progress = false;
+   unsigned execution_mode = this->nir->info.shader_float_controls_execution_mode;
+
+   brw_rnd_mode prev_mode = BRW_RND_MODE_UNSPECIFIED;
+   if (execution_mode & SHADER_ROUNDING_MODE_RTE)
+      prev_mode = BRW_RND_MODE_RTNE;
+   if (execution_mode & SHADER_ROUNDING_MODE_RTZ)
+      prev_mode = BRW_RND_MODE_RTZ;
 
    foreach_block (block, cfg) {
-      brw_rnd_mode prev_mode = BRW_RND_MODE_UNSPECIFIED;
-
       foreach_inst_in_block_safe (fs_inst, inst, block) {
          if (inst->opcode == SHADER_OPCODE_RND_MODE) {
             assert(inst->src[0].file == BRW_IMMEDIATE_VALUE);
