@@ -587,6 +587,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
 
       if (obj->StencilSampling && firstImage->_BaseFormat == GL_DEPTH_STENCIL) {
          if (devinfo->gen <= 7) {
+            assert(!intel_obj->mt->needs_fake_etc);
             assert(mt->shadow_mt && !mt->stencil_mt->shadow_needs_update);
             mt = mt->shadow_mt;
          } else {
