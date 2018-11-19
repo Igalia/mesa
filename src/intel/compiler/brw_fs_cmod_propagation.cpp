@@ -244,8 +244,7 @@ opt_cmod_propagation_local(const gen_device_info *devinfo,
             /* CMP's result is the same regardless of dest type. */
             if (inst->conditional_mod == BRW_CONDITIONAL_NZ &&
                 scan_inst->opcode == BRW_OPCODE_CMP &&
-                (inst->dst.type == BRW_REGISTER_TYPE_D ||
-                 inst->dst.type == BRW_REGISTER_TYPE_UD)) {
+                brw_reg_type_is_integer(inst->dst.type)) {
                inst->remove(block);
                progress = true;
                break;
@@ -265,9 +264,14 @@ opt_cmod_propagation_local(const gen_device_info *devinfo,
                break;
 
             /* Comparisons operate differently for ints and floats */
-            if (scan_inst->dst.type != inst->dst.type &&
-                (scan_inst->dst.type == BRW_REGISTER_TYPE_F ||
-                 inst->dst.type == BRW_REGISTER_TYPE_F))
+            if (brw_reg_type_is_floating_point(scan_inst->dst.type) !=
+                brw_reg_type_is_floating_point(inst->dst.type))
+               break;
+
+            /* Comparison result may be altered if the bit-size changes
+             * since that affects range, denorms, etc
+             */
+            if (type_sz(scan_inst->dst.type) != type_sz(inst->dst.type))
                break;
 
             /* If the instruction generating inst's source also wrote the
