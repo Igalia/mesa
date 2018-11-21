@@ -72,8 +72,10 @@ program_resource_visitor::process(ir_variable *var, bool use_std430_as_default)
          get_internal_ifc_packing(use_std430_as_default) :
       var->type->get_internal_ifc_packing(use_std430_as_default);
 
-   const glsl_type *t =
-      var->data.from_named_ifc_block ? var->get_interface_type() : var->type;
+   const glsl_type *t = var->data.from_named_ifc_block ?
+      (var->data.is_xfb_per_vertex_output ?
+       var->get_interface_type()->without_array() :
+       var->get_interface_type()) : var->type;
    const glsl_type *t_without_array = t->without_array();
 
    /* false is always passed for the row_major parameter to the other
