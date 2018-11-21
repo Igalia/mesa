@@ -2155,7 +2155,10 @@ private:
       tfeedback_candidate *candidate
          = rzalloc(this->mem_ctx, tfeedback_candidate);
       candidate->toplevel_var = this->toplevel_var;
-      candidate->type = type;
+      if (this->toplevel_var->data.is_xfb_per_vertex_output)
+         candidate->type = type->without_array();
+      else
+         candidate->type = type;
       candidate->offset = this->varying_floats;
       _mesa_hash_table_insert(this->tfeedback_candidates,
                               ralloc_strdup(this->mem_ctx, name),
@@ -2504,6 +2507,9 @@ assign_varying_locations(struct gl_context *ctx,
 
          if (num_tfeedback_decls > 0) {
             tfeedback_candidate_generator g(mem_ctx, tfeedback_candidates);
+            if (producer->Stage == MESA_SHADER_TESS_CTRL &&
+                !output_var->data.patch)
+               output_var->data.is_xfb_per_vertex_output = true;
             g.process(output_var);
          }
 

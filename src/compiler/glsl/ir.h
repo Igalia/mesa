@@ -767,6 +767,12 @@ public:
       unsigned is_xfb_only:1;
 
       /**
+       * Is this varying a TSC per-vertex output candidate for transform
+       * feedback?
+       */
+      unsigned is_xfb_per_vertex_output:1;
+
+      /**
        * Was a transfor feedback buffer set in the shader?
        */
       unsigned explicit_xfb_buffer:1;
