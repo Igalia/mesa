@@ -1750,6 +1750,7 @@ ir_variable::ir_variable(const struct glsl_type *type, const char *name,
    this->data.fb_fetch_output = false;
    this->data.bindless = false;
    this->data.bound = false;
+   this->data.is_xfb_per_vertex_output = false;
 
    if (type != NULL) {
       if (type->is_interface())
