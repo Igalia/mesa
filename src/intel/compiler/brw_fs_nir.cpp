@@ -833,7 +833,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
        * 64-bit need to have the source data elements aligned to 64-bit.
        * This restriction does not apply to BDW and later.
        */
-      if (type_sz(result.type) == 8 && type_sz(op[0].type) < 8 &&
+      if (type_sz(op[0].type) < 8 &&
           (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
          fs_reg tmp = bld.vgrf(result.type, 1);
          tmp = subscript(tmp, op[0].type, 0);
