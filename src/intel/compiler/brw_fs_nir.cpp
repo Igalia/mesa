@@ -801,11 +801,6 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_b2i:
-   case nir_op_b2f:
-      op[0].type = BRW_REGISTER_TYPE_D;
-      op[0].negate = !op[0].negate;
-      /* fallthrough */
    case nir_op_f2f64:
    case nir_op_f2i64:
    case nir_op_f2u64:
@@ -850,6 +845,11 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_b2i:
+   case nir_op_b2f:
+      op[0].type = BRW_REGISTER_TYPE_D;
+      op[0].negate = !op[0].negate;
+      /* fallthrough */
    case nir_op_i2f64:
    case nir_op_i2i64:
    case nir_op_u2f64:
