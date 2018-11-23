@@ -101,6 +101,27 @@ compare_xfb_output_offsets(const void *_a, const void *_b)
    return a->offset - b->offset;
 }
 
+static void
+fix_struct_array_xfb_offset(nir_variable *var)
+{
+   if (!glsl_type_is_array(var->type))
+      return;
+
+   const struct glsl_type *child_type = glsl_get_array_element(var->type);
+
+   if (!glsl_type_is_struct(child_type))
+      return;
+
+   if (var->data.explicit_offset)
+      return;
+
+   int offset = glsl_get_struct_field_offset(child_type, 0);
+   if (offset != -1) {
+      var->data.explicit_offset = 1;
+      var->data.offset = offset;
+   }
+}
+
 nir_xfb_info *
 nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
 {
@@ -115,6 +136,8 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
     */
    unsigned num_outputs = 0;
    nir_foreach_variable(var, &shader->outputs) {
+      fix_struct_array_xfb_offset(var);
+
       if (var->data.explicit_xfb_buffer &&
           var->data.explicit_offset) {
 
