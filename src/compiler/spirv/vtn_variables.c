@@ -1948,6 +1948,26 @@ add_missing_member_locations(struct vtn_variable *var,
    }
 }
 
+static void
+vtn_fix_struct_array_xfb_offset(nir_variable *var)
+{
+   if (!glsl_type_is_array(var->type))
+      return;
+
+   const struct glsl_type *child_type = glsl_get_array_element(var->type);
+
+   if (!glsl_type_is_struct(child_type))
+      return;
+
+   if (var->data.explicit_offset)
+      return;
+
+   int offset = glsl_get_struct_field_offset(child_type, 0);
+   if (offset != -1) {
+      var->data.explicit_offset = 1;
+      var->data.offset = offset;
+   }
+}
 
 static void
 vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
@@ -2142,6 +2162,8 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       vtn_foreach_decoration(b, vtn_value(b, interface_type->id,
                                           vtn_value_type_type),
                              var_decoration_cb, var);
+
+      vtn_fix_struct_array_xfb_offset(var->var);
       break;
    }
 
