@@ -2461,6 +2461,11 @@ fs_visitor::opt_algebraic()
          }
 
          if (inst->src[0].file == IMM) {
+            /* We produce these from the MAD optimization below, which
+             * should only be happening for 32-bit float because we
+             * prevent constant propagation to MAD sources for other
+             * bit-sizes.
+             */
             assert(inst->src[0].type == BRW_REGISTER_TYPE_F);
             inst->opcode = BRW_OPCODE_MOV;
             inst->src[0].f *= inst->src[1].f;
@@ -2482,6 +2487,11 @@ fs_visitor::opt_algebraic()
          }
 
          if (inst->src[0].file == IMM) {
+            /* We produce these from the MAD optimization below, which
+             * should only be happening for 32-bit float because we
+             * prevent constant propagation to MAD sources for other
+             * bit-sizes.
+             */
             assert(inst->src[0].type == BRW_REGISTER_TYPE_F);
             inst->opcode = BRW_OPCODE_MOV;
             inst->src[0].f += inst->src[1].f;
@@ -2565,6 +2575,11 @@ fs_visitor::opt_algebraic()
          }
          break;
       case BRW_OPCODE_MAD:
+         /* ALign16 MAD can't do immediate sources, however we allow constant
+          * propagation to these instructions to enable these algebraic
+          * optimizations. For the cases that we can't optmize here, we
+          * rely on the combine constants pass to fix it up later.
+          */
          if (inst->src[1].is_zero() || inst->src[2].is_zero()) {
             inst->opcode = BRW_OPCODE_MOV;
             inst->src[1] = reg_undef;
@@ -2585,6 +2600,13 @@ fs_visitor::opt_algebraic()
             inst->src[2] = reg_undef;
             progress = true;
          } else if (inst->src[1].file == IMM && inst->src[2].file == IMM) {
+            /* We should not be getting here for anything other than 32-bit
+             * float since we prevent constant-propagation to MAD instructions
+             * for everything else.
+             */
+            assert(inst->src[1].type == inst->src[2].type &&
+                   inst->src[1].type == BRW_REGISTER_TYPE_F);
+
             inst->opcode = BRW_OPCODE_ADD;
             inst->src[1].f *= inst->src[2].f;
             inst->src[2] = reg_undef;
