@@ -2481,13 +2481,19 @@ fs_visitor::opt_algebraic()
 
          if (inst->src[0].file == IMM) {
             /* We produce these from the MAD optimization below, which
-             * should only be happening for 32-bit float because we
-             * prevent constant propagation to MAD sources for other
-             * bit-sizes.
+             * should only be happening for 16/32-bit float
              */
-            assert(inst->src[0].type == BRW_REGISTER_TYPE_F);
+            assert(inst->src[0].type == BRW_REGISTER_TYPE_F ||
+                   inst->src[0].type == BRW_REGISTER_TYPE_HF);
             inst->opcode = BRW_OPCODE_MOV;
-            inst->src[0].f *= inst->src[1].f;
+            if (inst->src[0].type == BRW_REGISTER_TYPE_F) {
+               inst->src[0].f *= inst->src[1].f;
+            } else {
+               float val1_f = _mesa_half_to_float(inst->src[0].d & 0xffff);
+               float val2_f = _mesa_half_to_float(inst->src[1].d & 0xffff);
+               uint16_t res_hf = _mesa_float_to_half(val1_f * val2_f);
+               inst->src[0] = retype(brw_imm_uw(res_hf), BRW_REGISTER_TYPE_HF);
+            }
             inst->src[1] = reg_undef;
             progress = true;
             break;
@@ -2507,13 +2513,19 @@ fs_visitor::opt_algebraic()
 
          if (inst->src[0].file == IMM) {
             /* We produce these from the MAD optimization below, which
-             * should only be happening for 32-bit float because we
-             * prevent constant propagation to MAD sources for other
-             * bit-sizes.
+             * should only be happening for 16/32-bit float
              */
-            assert(inst->src[0].type == BRW_REGISTER_TYPE_F);
+            assert(inst->src[0].type == BRW_REGISTER_TYPE_F ||
+                   inst->src[0].type == BRW_REGISTER_TYPE_HF);
             inst->opcode = BRW_OPCODE_MOV;
-            inst->src[0].f += inst->src[1].f;
+            if (inst->src[0].type == BRW_REGISTER_TYPE_F) {
+               inst->src[0].f += inst->src[1].f;
+            } else {
+               float val1_f = _mesa_half_to_float(inst->src[0].d & 0xffff);
+               float val2_f = _mesa_half_to_float(inst->src[1].d & 0xffff);
+               uint16_t res_hf = _mesa_float_to_half(val1_f + val2_f);
+               inst->src[0] = retype(brw_imm_uw(res_hf), BRW_REGISTER_TYPE_HF);
+            }
             inst->src[1] = reg_undef;
             progress = true;
             break;
@@ -2619,15 +2631,23 @@ fs_visitor::opt_algebraic()
             inst->src[2] = reg_undef;
             progress = true;
          } else if (inst->src[1].file == IMM && inst->src[2].file == IMM) {
-            /* We should not be getting here for anything other than 32-bit
+            /* We should not be getting here for anything other than 16/32-bit
              * float since we prevent constant-propagation to MAD instructions
              * for everything else.
              */
             assert(inst->src[1].type == inst->src[2].type &&
-                   inst->src[1].type == BRW_REGISTER_TYPE_F);
+                   (inst->src[1].type == BRW_REGISTER_TYPE_F ||
+                    inst->src[1].type == BRW_REGISTER_TYPE_HF));
 
             inst->opcode = BRW_OPCODE_ADD;
-            inst->src[1].f *= inst->src[2].f;
+            if (inst->src[1].type == BRW_REGISTER_TYPE_F) {
+               inst->src[1].f *= inst->src[2].f;
+            } else {
+               float val1_f = _mesa_half_to_float(inst->src[1].d & 0xffff);
+               float val2_f = _mesa_half_to_float(inst->src[2].d & 0xffff);
+               uint16_t res_hf = _mesa_float_to_half(val1_f * val2_f);
+               inst->src[1] = retype(brw_imm_uw(res_hf), BRW_REGISTER_TYPE_HF);
+            }
             inst->src[2] = reg_undef;
             progress = true;
          }
