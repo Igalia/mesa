@@ -772,16 +772,14 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
 
       case BRW_OPCODE_MAD:
       case BRW_OPCODE_LRP:
-         /* 3-src instructions can't take IMM registers, however, for 32-bit
-          * floating instructions we rely on the combine constants pass to fix
-          * it up. For anything else, we shouldn't be promoting immediates
-          * until we can make the pass capable of combining constants of
-          * different sizes.
+         /* 3-src instructions can't take IMM registers, but we allow this
+          * here anyway and rely on the combine constants pass to fix it up
+          * later, hopefully leading to better register pressure.
           */
-         if (val.type == BRW_REGISTER_TYPE_F) {
-            inst->src[i] = val;
-            progress = true;
-         }
+         assert(val.type == BRW_REGISTER_TYPE_F ||
+                val.type == BRW_REGISTER_TYPE_HF);
+         inst->src[i] = val;
+         progress = true;
          break;
 
       default:
