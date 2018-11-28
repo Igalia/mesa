@@ -36,6 +36,7 @@
 
 #include "brw_fs.h"
 #include "brw_cfg.h"
+#include "util/half_float.h"
 
 using namespace brw;
 
@@ -114,8 +115,9 @@ struct imm {
     */
    exec_list *uses;
 
-   /** The immediate value.  We currently only handle floats. */
+   /** The immediate value.  We currently only handle float and half-float. */
    float val;
+   brw_reg_type type;
 
    /**
     * The GRF register and subregister number where we've decided to store the
@@ -145,10 +147,10 @@ struct table {
 };
 
 static struct imm *
-find_imm(struct table *table, float val)
+find_imm(struct table *table, float val, brw_reg_type type)
 {
    for (int i = 0; i < table->len; i++) {
-      if (table->imm[i].val == val) {
+      if (table->imm[i].val == val && table->imm[i].type == type) {
          return &table->imm[i];
       }
    }
@@ -190,6 +192,20 @@ compare(const void *_a, const void *_b)
    return a->first_use_ip - b->first_use_ip;
 }
 
+static bool
+needs_negate(float reg_val, float imm_val, brw_reg_type type)
+{
+   /* reg_val represents the immediate value in the register in its original
+    * bit-size, while imm_val is always a valid 32-bit float value.
+    */
+   if (type == BRW_REGISTER_TYPE_HF) {
+      uint32_t reg_val_ud = *((uint32_t *) &reg_val);
+      reg_val = _mesa_half_to_float(reg_val_ud & 0xffff);
+   }
+
+   return signbit(imm_val) != signbit(reg_val);
+}
+
 bool
 fs_visitor::opt_combine_constants()
 {
@@ -215,12 +231,20 @@ fs_visitor::opt_combine_constants()
 
       for (int i = 0; i < inst->sources; i++) {
          if (inst->src[i].file != IMM ||
-             inst->src[i].type != BRW_REGISTER_TYPE_F)
+             (inst->src[i].type != BRW_REGISTER_TYPE_F &&
+              inst->src[i].type != BRW_REGISTER_TYPE_HF))
             continue;
 
-         float val = !inst->can_do_source_mods(devinfo) ? inst->src[i].f :
-                     fabs(inst->src[i].f);
-         struct imm *imm = find_imm(&table, val);
+         float val;
+         if (inst->src[i].type == BRW_REGISTER_TYPE_F) {
+            val = !inst->can_do_source_mods(devinfo) ? inst->src[i].f :
+                        fabs(inst->src[i].f);
+         } else {
+            val = !inst->can_do_source_mods(devinfo) ?
+               _mesa_half_to_float(inst->src[i].d & 0xffff) :
+               fabs(_mesa_half_to_float(inst->src[i].d & 0xffff));
+         }
+         struct imm *imm = find_imm(&table, val, inst->src[i].type);
 
          if (imm) {
             bblock_t *intersection = cfg_t::intersect(block, imm->block);
@@ -238,6 +262,7 @@ fs_visitor::opt_combine_constants()
             imm->uses = new(const_ctx) exec_list();
             imm->uses->push_tail(link(const_ctx, &inst->src[i]));
             imm->val = val;
+            imm->type = inst->src[i].type;
             imm->uses_by_coissue = could_coissue(devinfo, inst);
             imm->must_promote = must_promote_imm(devinfo, inst);
             imm->first_use_ip = ip;
@@ -278,12 +303,23 @@ fs_visitor::opt_combine_constants()
                       imm->block->last_non_control_flow_inst()->next);
       const fs_builder ibld = bld.at(imm->block, n).exec_all().group(1, 0);
 
-      ibld.MOV(reg, brw_imm_f(imm->val));
+      reg = retype(reg, imm->type);
+      if (imm->type == BRW_REGISTER_TYPE_F) {
+         ibld.MOV(reg, brw_imm_f(imm->val));
+      } else {
+         const uint16_t val_hf = _mesa_float_to_half(imm->val);
+         ibld.MOV(reg, retype(brw_imm_uw(val_hf), BRW_REGISTER_TYPE_HF));
+      }
       imm->nr = reg.nr;
       imm->subreg_offset = reg.offset;
 
+      /* Keep offsets 32-bit aligned since we are mixing 32-bit and 16-bit
+       * constants into the same register
+       *
+       * TODO: try to pack pairs of HF constants into each 32-bit slot
+       */
       reg.offset += sizeof(float);
-      if (reg.offset == 8 * sizeof(float)) {
+      if (reg.offset == REG_SIZE) {
          reg.nr = alloc.allocate(1);
          reg.offset = 0;
       }
@@ -295,12 +331,14 @@ fs_visitor::opt_combine_constants()
       foreach_list_typed(reg_link, link, link, table.imm[i].uses) {
          fs_reg *reg = link->reg;
          assert((isnan(reg->f) && isnan(table.imm[i].val)) ||
-                fabsf(reg->f) == fabs(table.imm[i].val));
+                fabsf(reg->f) == fabs(table.imm[i].val) ||
+                table.imm[i].type == BRW_REGISTER_TYPE_HF);
 
          reg->file = VGRF;
+         reg->type = table.imm[i].type;
          reg->offset = table.imm[i].subreg_offset;
          reg->stride = 0;
-         reg->negate = signbit(reg->f) != signbit(table.imm[i].val);
+         reg->negate = needs_negate(reg->f, table.imm[i].val, table.imm[i].type);
          reg->nr = table.imm[i].nr;
       }
    }
