@@ -30,28 +30,30 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
                     nir_variable *var,
                     unsigned *location,
                     unsigned *offset,
+                    unsigned buffer,
                     const struct glsl_type *type)
 {
    if (glsl_type_is_array(type) || glsl_type_is_matrix(type)) {
       unsigned length = glsl_get_length(type);
       const struct glsl_type *child_type = glsl_get_array_element(type);
+
       for (unsigned i = 0; i < length; i++)
-         add_var_xfb_outputs(xfb, var, location, offset, child_type);
+         add_var_xfb_outputs(xfb, var, location, offset, buffer, child_type);
    } else if (glsl_type_is_struct(type)) {
       unsigned length = glsl_get_length(type);
       for (unsigned i = 0; i < length; i++) {
          const struct glsl_type *child_type = glsl_get_struct_field(type, i);
-         add_var_xfb_outputs(xfb, var, location, offset, child_type);
+         add_var_xfb_outputs(xfb, var, location, offset, buffer, child_type);
       }
    } else {
-      assert(var->data.xfb_buffer < NIR_MAX_XFB_BUFFERS);
-      if (xfb->buffers_written & (1 << var->data.xfb_buffer)) {
-         assert(xfb->strides[var->data.xfb_buffer] == var->data.xfb_stride);
-         assert(xfb->buffer_to_stream[var->data.xfb_buffer] == var->data.stream);
+      assert(buffer < NIR_MAX_XFB_BUFFERS);
+      if (xfb->buffers_written & (1 << buffer)) {
+         assert(xfb->strides[buffer] == var->data.xfb_stride);
+         assert(xfb->buffer_to_stream[buffer] == var->data.stream);
       } else {
-         xfb->buffers_written |= (1 << var->data.xfb_buffer);
-         xfb->strides[var->data.xfb_buffer] = var->data.xfb_stride;
-         xfb->buffer_to_stream[var->data.xfb_buffer] = var->data.stream;
+         xfb->buffers_written |= (1 << buffer);
+         xfb->strides[buffer] = var->data.xfb_stride;
+         xfb->buffer_to_stream[buffer] = var->data.stream;
       }
 
       assert(var->data.stream < NIR_MAX_XFB_STREAMS);
@@ -76,7 +78,7 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       for (unsigned s = 0; s < attrib_slots; s++) {
          nir_xfb_output_info *output = &xfb->outputs[xfb->output_count++];
 
-         output->buffer = var->data.xfb_buffer;
+         output->buffer = buffer;
          output->offset = *offset;
          output->location = *location;
          output->component_mask = (comp_mask >> (s * 4)) & 0xf;
@@ -154,9 +156,40 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
       if (var->data.explicit_xfb_buffer &&
           var->data.explicit_offset) {
 
+         unsigned buffer = var->data.xfb_buffer;
          unsigned location = var->data.location;
-         unsigned offset = var->data.offset;
-         add_var_xfb_outputs(xfb, var, &location, &offset, var->type);
+
+         /* The last check is needed to distinguish a block array from a block
+          * that contains an array. That becomes messy due all the
+          * nir_split_per_members passes, as at this point we are not going to
+          * receive the original block array type, but splitted
+          */
+         bool block_array = glsl_type_is_array(var->type) &&
+            var->interface_type != NULL &&
+            glsl_get_array_element(var->type) == var->interface_type;
+
+         /*
+          * From GLSL 4.60 spec, Section 4.4.2. Output Layout Qualifiers,
+          * subsection Transform Feedback Layout Qualifiers:
+          *
+          * "When a block is declared as an array, all members of block
+          *  array-element 0 are captured, as previously described, by the
+          *  declared or inherited xfb_buffer. Generally, an array of size N
+          *  of blocks is captured by N consecutive buffers, with all members
+          *  of block array-element E captured by buffer B, where B equals the
+          *  declared or inherited xfb_buffer plus E"
+          *
+          * We handle it here, externally to add_var_xfb_outputs, in order to
+          * not make it overly complicated.
+          */
+         unsigned num_iterations = block_array ? glsl_get_length(var->type) : 1;
+         const struct glsl_type *top_level_type = block_array ? var->interface_type : var->type;
+
+         for (unsigned i = 0; i < num_iterations; i++, buffer++) {
+            unsigned offset = var->data.offset;
+
+            add_var_xfb_outputs(xfb, var, &location, &offset, buffer, top_level_type);
+         }
       }
    }
    assert(xfb->output_count == num_outputs);
