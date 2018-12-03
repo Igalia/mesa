@@ -301,7 +301,26 @@ fs_visitor::opt_combine_constants()
        */
       exec_node *n = (imm->inst ? imm->inst :
                       imm->block->last_non_control_flow_inst()->next);
-      const fs_builder ibld = bld.at(imm->block, n).exec_all().group(1, 0);
+
+      /* Prior to gen9 we also have to deal with this restriction:
+       *
+       * "In Align16 mode, the channel selects and channel enables apply to a
+       *  pair of half-floats, because these parameters are defined for DWord
+       *  elements ONLY. This is applicable when both source and destination
+       *  are half-floats."
+       *
+       * This means that when we emit a 3-src instruction such as MAD or LRP,
+       * for which we use Align16, if we need to promote an HF constant to a
+       * register we need to be aware that the  <0,1,0>:HF region would still
+       * read 2 HF slots and not not replicate the single one like we want.
+       * We fix this by populating both HF slots with the constant we need to
+       * read.
+       */
+      const uint32_t width =
+         devinfo->gen < 9 &&
+         imm->type == BRW_REGISTER_TYPE_HF &&
+         (!imm->inst || imm->inst->is_3src(devinfo)) ? 2 : 1;
+      const fs_builder ibld = bld.at(imm->block, n).exec_all().group(width, 0);
 
       reg = retype(reg, imm->type);
       if (imm->type == BRW_REGISTER_TYPE_F) {
@@ -314,7 +333,8 @@ fs_visitor::opt_combine_constants()
       imm->subreg_offset = reg.offset;
 
       /* Keep offsets 32-bit aligned since we are mixing 32-bit and 16-bit
-       * constants into the same register
+       * constants into the same register (and we are writing 32-bit slots
+       * prior to gen9 for HF constants anyway).
        *
        * TODO: try to pack pairs of HF constants into each 32-bit slot
        */
