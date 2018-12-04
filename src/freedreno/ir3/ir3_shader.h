@@ -340,6 +340,8 @@ struct ir3_shader_variant {
 		uint8_t slot;
 		uint8_t regid;
 	} outputs[16 + 2];  /* +POSITION +PSIZE */
+	/* 1 bit for each output to specify whether it is a half register */
+	uint32_t half_outputs;
 	bool writes_pos, writes_psize;
 
 	/* attributes (VS) / varyings (FS):

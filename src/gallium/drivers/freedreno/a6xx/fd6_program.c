@@ -305,6 +305,8 @@ setup_stateobj(struct fd_ringbuffer *ring,
 {
 	struct stage s[MAX_STAGES];
 	uint32_t pos_regid, psize_regid, color_regid[8], posz_regid;
+	/* One bit for each color_regid to mark whether it is half-float */
+	uint32_t color_half_mask = 0;
 	uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid, samp_mask_regid;
 	uint32_t vcoord_regid, vertex_regid, instance_regid;
 	enum a3xx_threadsize fssz;
@@ -324,15 +326,17 @@ setup_stateobj(struct fd_ringbuffer *ring,
 		color_regid[0] = color_regid[1] = color_regid[2] = color_regid[3] =
 		color_regid[4] = color_regid[5] = color_regid[6] = color_regid[7] =
 			ir3_find_output_regid(s[FS].v, FRAG_RESULT_COLOR);
+		int output = ir3_find_output(s[FS].v, FRAG_RESULT_COLOR);
+		if ((s[FS].v->half_outputs & (1 << output)))
+			color_half_mask |= (1 << 8) - 1;
 	} else {
-		color_regid[0] = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DATA0);
-		color_regid[1] = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DATA1);
-		color_regid[2] = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DATA2);
-		color_regid[3] = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DATA3);
-		color_regid[4] = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DATA4);
-		color_regid[5] = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DATA5);
-		color_regid[6] = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DATA6);
-		color_regid[7] = ir3_find_output_regid(s[FS].v, FRAG_RESULT_DATA7);
+		for (i = 0; i < 8; i++) {
+			color_regid[i] = ir3_find_output_regid(s[FS].v,
+												   FRAG_RESULT_DATA0 + i);
+			int output = ir3_find_output(s[FS].v, FRAG_RESULT_DATA0 + i);
+			if ((s[FS].v->half_outputs & (1 << output)))
+				color_half_mask |= 1 << i;
+		}
 	}
 
 	samp_id_regid   = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_SAMPLE_ID);
@@ -564,10 +568,8 @@ setup_stateobj(struct fd_ringbuffer *ring,
 
 	OUT_PKT4(ring, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
 	for (i = 0; i < 8; i++) {
-		// TODO we could have a mix of half and full precision outputs,
-		// we really need to figure out half-precision from IR3_REG_HALF
 		OUT_RING(ring, A6XX_SP_FS_OUTPUT_REG_REGID(color_regid[i]) |
-				COND(false,
+				COND(color_half_mask & (1 << i),
 					A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION));
 	}
 
