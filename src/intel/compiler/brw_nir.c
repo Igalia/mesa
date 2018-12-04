@@ -751,8 +751,10 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir)
 
    /* See also brw_nir_trig_workarounds.py */
    if (compiler->precise_trig &&
-       !(devinfo->gen >= 10 || devinfo->is_kabylake))
+       !(devinfo->gen >= 10 || devinfo->is_kabylake)) {
+      OPT(nir_opt_constant_folding);
       OPT(brw_nir_apply_trig_workarounds);
+   }
 
    static const nir_lower_tex_options tex_options = {
       .lower_txp = ~0,
