@@ -2801,6 +2801,8 @@ setup_output(struct ir3_context *ctx, nir_variable *out)
 
 	so->outputs[n].slot = slot;
 	so->outputs[n].regid = regid(n, comp);
+	if (glsl_type_is_16bit(out->type))
+		so->half_outputs |= 1 << n;
 	so->outputs_count = MAX2(so->outputs_count, n + 1);
 
 	for (int i = 0; i < ncomp; i++) {
