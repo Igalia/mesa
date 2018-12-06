@@ -2157,6 +2157,9 @@ emit_tex(struct ir3_context *ctx, nir_tex_instr *tex)
 	case nir_type_bool:
 		type = TYPE_U32;
 		break;
+	case nir_type_float16:
+		type = TYPE_F16;
+		break;
 	default:
 		unreachable("bad dest_type");
 	}
