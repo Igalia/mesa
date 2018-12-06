@@ -325,6 +325,9 @@ setup_stateobj(struct fd_ringbuffer *ring,
 		color_regid[0] = color_regid[1] = color_regid[2] = color_regid[3] =
 		color_regid[4] = color_regid[5] = color_regid[6] = color_regid[7] =
 			ir3_find_output_regid(s[FS].v, FRAG_RESULT_COLOR);
+		int output = ir3_find_output(s[FS].v, FRAG_RESULT_COLOR);
+		if ((s[FS].v->half_outputs & (1 << output)))
+			color_half_mask |= (1 << 8) - 1;
 	} else {
 		for (i = 0; i < 8; i++) {
 			color_regid[i] = ir3_find_output_regid(s[FS].v,
