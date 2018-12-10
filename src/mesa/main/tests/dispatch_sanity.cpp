@@ -503,6 +503,10 @@ const struct function common_desktop_functions_possible[] = {
    { "glClearBufferfi", 30, -1 },
    { "glGetStringi", 30, -1 },
 
+   // /* GL_EXT_multisampled_render_to_texture */
+   // { "glRenderbufferStorageMultisampleEXT", 20, -1 },
+   // { "glFramebufferTexture2DMultisampleEXT", 20, -1 },
+
    /* GL 3.1 */
    { "glDrawArraysInstanced", 31, -1 },
    { "glDrawElementsInstanced", 31, -1 },
@@ -2209,6 +2213,10 @@ const struct function gles2_functions_possible[] = {
    /* GL_KHR_blend_equation_advanced */
    { "glBlendBarrierKHR", 20, -1 },
 
+   /* GL_EXT_multisampled_render_to_texture */
+   { "glRenderbufferStorageMultisampleEXT", 20, -1 },
+   { "glFramebufferTexture2DMultisampleEXT", 20, -1 },
+
    /* GL_EXT_occlusion_query_boolean */
    { "glGenQueriesEXT", 20, -1 },
    { "glDeleteQueriesEXT", 20, -1 },
@@ -2330,7 +2338,8 @@ const struct function gles3_functions_possible[] = {
    // glProgramParameteri aliases glProgramParameteriEXT in GLES 2
    // We check for the aliased -NV version in GLES 2
    // { "glReadBuffer", 30, -1 },
-   { "glRenderbufferStorageMultisample", 30, -1 },
+   // We check for the aliased -EXT version in GLES 2
+   // { "glRenderbufferStorageMultisample", 30, -1 },
    { "glResumeTransformFeedback", 30, -1 },
    { "glSamplerParameterf", 30, -1 },
    { "glSamplerParameterfv", 30, -1 },

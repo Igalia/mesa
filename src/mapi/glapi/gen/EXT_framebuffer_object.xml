@@ -204,7 +204,7 @@
         <size name="Get" mode="get"/>
     </enum>
 
-    <function name="RenderbufferStorageMultisampleEXT" alias="RenderbufferStorageMultisample">
+    <function name="RenderbufferStorageMultisampleEXT" alias="RenderbufferStorageMultisample" es2="2.0">
         <param name="target" type="GLenum"/>
         <param name="samples" type="GLsizei"/>
         <param name="internalformat" type="GLenum"/>
