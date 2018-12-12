@@ -1896,11 +1896,22 @@ is_user_defined_block_array(const struct vtn_variable *var, gl_shader_stage stag
 
 static void
 add_missing_member_locations(struct vtn_variable *var,
-                             bool is_vertex_input)
+                             gl_shader_stage stage)
 {
+   bool is_vertex_input = stage == MESA_SHADER_VERTEX &&
+      var->mode == vtn_variable_mode_input;
+
    unsigned length =
       glsl_get_length(glsl_without_array(var->type->type));
    int location = var->base_location;
+
+   /* User defined array of blocks for some stage are needed to be splitted in
+    * order to support interpolator qualifiers, xfb special rules for
+    * offset/buffer and others. In those case we need to adjut the location to
+    * avoid overlaps
+    */
+   int adjustment = is_user_defined_block_array(var, stage) ?
+      glsl_get_length(var->type->type) : 1;
 
    for (unsigned i = 0; i < length; i++) {
       /* From the Vulkan spec:
@@ -1933,7 +1944,7 @@ add_missing_member_locations(struct vtn_variable *var,
          glsl_get_struct_field(glsl_without_array(var->type->type), i);
 
       location +=
-         glsl_count_attribute_slots(member_type, is_vertex_input);
+         glsl_count_attribute_slots(member_type, is_vertex_input) * adjustment;
    }
 }
 
@@ -2151,9 +2162,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
    if ((var->mode == vtn_variable_mode_input ||
         var->mode == vtn_variable_mode_output) &&
        var->var->members) {
-      bool is_vertex_input = (b->shader->info.stage == MESA_SHADER_VERTEX &&
-                              var->mode == vtn_variable_mode_input);
-      add_missing_member_locations(var, is_vertex_input);
+      add_missing_member_locations(var, b->shader->info.stage);
    }
 
    if (var->mode == vtn_variable_mode_uniform) {
