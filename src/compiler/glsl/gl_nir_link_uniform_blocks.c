@@ -462,7 +462,8 @@ _fill_block(struct gl_uniform_block *block,
             struct gl_uniform_buffer_variable *variables,
             unsigned *variable_index,
             unsigned array_index,
-            struct gl_shader_program *prog)
+            struct gl_shader_program *prog,
+            const gl_shader_stage stage)
 {
    const struct glsl_type *type = glsl_without_array(var->type);
 
@@ -475,7 +476,7 @@ _fill_block(struct gl_uniform_block *block,
     */
    block->Binding = var->data.binding + array_index;
    block->Uniforms = &variables[*variable_index];
-
+   block->stageref = 1U << stage;
 
    /* From SPIR-V 1.0 spec, 3.20, Decoration:
     *    "RowMajor
@@ -571,7 +572,7 @@ _link_linked_shader_uniform_blocks(void *mem_ctx,
 
       for (unsigned array_index = 0; array_index < buffer_count; array_index++) {
          _fill_block(&blks[block_index], var, variables, &variable_index,
-                     array_index, prog);
+                     array_index, prog, shader->Stage);
          block_index++;
       }
    }
