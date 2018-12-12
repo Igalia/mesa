@@ -1067,7 +1067,7 @@ ${pass_name}_pre_block(nir_block *block, uint16_t *states)
 
 static bool
 ${pass_name}_block(nir_builder *build, nir_block *block,
-                   const uint16_t *states, const bool *condition_flags)
+                   const uint16_t *states, const bool *condition_flags, unsigned execution_mode)
 {
    bool progress = false;
 
@@ -1079,6 +1079,7 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
       if (!alu->dest.dest.is_ssa)
          continue;
 
+      unsigned bit_size = alu->dest.dest.ssa.bit_size;
       switch (states[alu->dest.dest.ssa.index]) {
 % for i in range(len(automaton.state_patterns)):
       case ${i}:
@@ -1086,6 +1087,9 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
          for (unsigned i = 0; i < ARRAY_SIZE(${pass_name}_state${i}_xforms); i++) {
             const struct transform *xform = &${pass_name}_state${i}_xforms[i];
             if (condition_flags[xform->condition_offset] &&
+                !(xform->search->inexact &&
+                  (nir_is_float_control_signed_zero_inf_nan_preserve(execution_mode, bit_size) ||
+                   nir_is_denorm_flush_to_zero(execution_mode, bit_size))) &&
                 nir_replace_instr(build, alu, xform->search, xform->replace)) {
                progress = true;
                break;
@@ -1102,7 +1106,7 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
 }
 
 static bool
-${pass_name}_impl(nir_function_impl *impl, const bool *condition_flags)
+${pass_name}_impl(nir_function_impl *impl, const bool *condition_flags, unsigned execution_mode)
 {
    bool progress = false;
 
@@ -1120,7 +1124,7 @@ ${pass_name}_impl(nir_function_impl *impl, const bool *condition_flags)
    }
 
    nir_foreach_block_reverse(block, impl) {
-      progress |= ${pass_name}_block(&build, block, states, condition_flags);
+      progress |= ${pass_name}_block(&build, block, states, condition_flags, execution_mode);
    }
 
    free(states);
@@ -1145,6 +1149,7 @@ ${pass_name}(nir_shader *shader)
    bool condition_flags[${len(condition_list)}];
    const nir_shader_compiler_options *options = shader->options;
    const shader_info *info = &shader->info;
+   const unsigned execution_mode = info->shader_float_controls_execution_mode;
    (void) options;
    (void) info;
 
@@ -1154,7 +1159,7 @@ ${pass_name}(nir_shader *shader)
 
    nir_foreach_function(function, shader) {
       if (function->impl)
-         progress |= ${pass_name}_impl(function->impl, condition_flags);
+         progress |= ${pass_name}_impl(function->impl, condition_flags, execution_mode);
    }
 
    return progress;
