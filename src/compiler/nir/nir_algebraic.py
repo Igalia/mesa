@@ -686,7 +686,7 @@ static const struct transform ${pass_name}_${opcode}_xforms[] = {
 
 static bool
 ${pass_name}_block(nir_builder *build, nir_block *block,
-                   const bool *condition_flags)
+                   const bool *condition_flags, unsigned execution_mode)
 {
    bool progress = false;
 
@@ -697,13 +697,15 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
       nir_alu_instr *alu = nir_instr_as_alu(instr);
       if (!alu->dest.dest.is_ssa)
          continue;
-
+      unsigned bit_size = alu->dest.dest.ssa.bit_size;
       switch (alu->op) {
       % for opcode in sorted(opcode_xforms.keys()):
       case nir_op_${opcode}:
          for (unsigned i = 0; i < ARRAY_SIZE(${pass_name}_${opcode}_xforms); i++) {
             const struct transform *xform = &${pass_name}_${opcode}_xforms[i];
             if (condition_flags[xform->condition_offset] &&
+                !(xform->search->inexact &&
+                  nir_is_float_control_signed_zero_inf_nan_preserve(execution_mode, bit_size)) &&
                 nir_replace_instr(build, alu, xform->search, xform->replace)) {
                progress = true;
                break;
@@ -720,7 +722,7 @@ ${pass_name}_block(nir_builder *build, nir_block *block,
 }
 
 static bool
-${pass_name}_impl(nir_function_impl *impl, const bool *condition_flags)
+${pass_name}_impl(nir_function_impl *impl, const bool *condition_flags, unsigned execution_mode)
 {
    bool progress = false;
 
@@ -728,7 +730,7 @@ ${pass_name}_impl(nir_function_impl *impl, const bool *condition_flags)
    nir_builder_init(&build, impl);
 
    nir_foreach_block_reverse(block, impl) {
-      progress |= ${pass_name}_block(&build, block, condition_flags);
+      progress |= ${pass_name}_block(&build, block, condition_flags, execution_mode);
    }
 
    if (progress) {
@@ -750,6 +752,7 @@ ${pass_name}(nir_shader *shader)
    bool progress = false;
    bool condition_flags[${len(condition_list)}];
    const nir_shader_compiler_options *options = shader->options;
+   const unsigned execution_mode = shader->info.shader_float_controls_execution_mode;
    (void) options;
 
    % for index, condition in enumerate(condition_list):
@@ -758,7 +761,7 @@ ${pass_name}(nir_shader *shader)
 
    nir_foreach_function(function, shader) {
       if (function->impl)
-         progress |= ${pass_name}_impl(function->impl, condition_flags);
+         progress |= ${pass_name}_impl(function->impl, condition_flags, execution_mode);
    }
 
    return progress;
