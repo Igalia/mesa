@@ -1876,6 +1876,27 @@ is_per_vertex_inout(const struct vtn_variable *var, gl_shader_stage stage)
    return false;
 }
 
+static bool
+is_user_defined_block_array(const struct vtn_variable *var, gl_shader_stage stage)
+{
+   if (!glsl_type_is_array(var->type->type))
+      return false;
+
+   if (!var->type->array_element->block)
+      return false;
+
+   if (var->mode == vtn_variable_mode_input) {
+      return stage == MESA_SHADER_FRAGMENT;
+   }
+
+   if (var->mode == vtn_variable_mode_output) {
+      return stage == MESA_SHADER_VERTEX;
+   }
+
+   return false;
+}
+
+
 static void
 vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                     struct vtn_type *ptr_type, SpvStorageClass storage_class,
@@ -2024,6 +2045,17 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
          interface_type = var->type->array_element;
       }
 
+      if (is_user_defined_block_array(var, b->shader->info.stage)) {
+         /* For Vertex shader outputs, and fragment shader inputs, block
+          * arrays need to be splitted, in order to support interpolator
+          * qualifiers for that case, and some xfb cases. For other similar
+          * cases, like an array of structs, we leave the original type, as
+          * the split is not needed, and in fact is more easy to handle the
+          * full type (like on xfb gathering info)
+          */
+         interface_type = var->type->array_element;
+      }
+
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
       /* In Vulkan, shader I/O variables don't have any explicit layout but
@@ -2031,9 +2063,12 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
        * the SPIR-V.
        */
       var->var->type = glsl_get_bare_type(var->type->type);
-      var->var->interface_type = interface_type->type;
       var->var->data.mode = nir_mode;
       var->var->data.patch = var->patch;
+
+      if (interface_type->block) {
+         var->var->interface_type = interface_type->type;
+      }
 
       if (glsl_type_is_struct(interface_type->type)) {
          /* It's a struct.  Set it up as per-member. */
