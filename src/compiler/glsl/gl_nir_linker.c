@@ -108,6 +108,48 @@ add_interface_variables(const struct gl_context *cts,
    return true;
 }
 
+/* From the OpenGL 4.6 specification, 7.3.1.1 Naming Active Resources:
+ *
+ * For an active shader storage block member declared as an array of an
+ * aggregate type, an entry will be generated only for the first array
+ * element, regardless of its type. Such block members are referred to
+ * as top-level arrays. If the block member is an aggregate type, the
+ * enumeration rules are then applied recursively.
+ */
+static bool
+should_add_buffer_variable(struct gl_shader_program *prog,
+                           struct gl_uniform_storage *uniform,
+                           int *top_level_array_base_offset,
+                           int *top_level_array_size_in_bytes,
+                           int *block_index)
+{
+   /* The uniform is not in an SSBO or it is not part of a top-level array. */
+   if (!uniform->is_shader_storage || uniform->top_level_array_size <= 1)
+      return true;
+
+   /* New top-level array, initialize its base offset. */
+   if (*top_level_array_base_offset == -1 ||
+       *block_index != uniform->block_index ||
+       uniform->offset >=
+       (*top_level_array_base_offset + *top_level_array_size_in_bytes)) {
+      *top_level_array_base_offset = uniform->offset;
+      *top_level_array_size_in_bytes =
+         uniform->top_level_array_size * uniform->top_level_array_stride;
+      *block_index = uniform->block_index;
+   }
+
+   if (uniform->offset >= *top_level_array_base_offset &&
+       uniform->offset < (*top_level_array_base_offset +
+                          uniform->top_level_array_stride)) {
+      /* The uniform is a member of the first array element of the top-level
+       * array. It should be added to the resource list.
+       */
+      return true;
+   }
+
+   return false;
+}
+
 void
 nir_build_program_resource_list(struct gl_context *ctx,
                                 struct gl_shader_program *prog)
@@ -153,6 +195,9 @@ nir_build_program_resource_list(struct gl_context *ctx,
     * Here, it is expected that nir_link_uniforms() has already been
     * called, so that UniformStorage table is already available.
     */
+   int base_offset = -1;
+   int block_index = -1;
+   int size = -1;
    for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
       struct gl_uniform_storage *uniform = &prog->data->UniformStorage[i];
 
@@ -160,7 +205,11 @@ nir_build_program_resource_list(struct gl_context *ctx,
       if (uniform->hidden)
          continue;
 
-      if (!link_util_add_program_resource(prog, resource_set, GL_UNIFORM, uniform,
+      if (!should_add_buffer_variable(prog, uniform, &base_offset, &size, &block_index))
+         continue;
+
+      GLenum interface = uniform->is_shader_storage ? GL_BUFFER_VARIABLE : GL_UNIFORM;
+      if (!link_util_add_program_resource(prog, resource_set, interface, uniform,
                                           uniform->active_shader_mask)) {
          return;
       }
