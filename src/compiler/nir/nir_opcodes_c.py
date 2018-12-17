@@ -121,7 +121,9 @@ const nir_op_info nir_op_infos[nir_num_opcodes] = {
    .algebraic_properties =
       ${ "0" if opcode.algebraic_properties == "" else " | ".join(
             "NIR_OP_IS_" + prop.upper() for prop in
-               opcode.algebraic_properties.strip().split(" ")) }
+               opcode.algebraic_properties.strip().split(" ")) },
+   .rounding_mode =
+      ${ "nir_rounding_mode_undef" if opcode.rounding_mode == "" else "nir_rounding_mode" + opcode.rounding_mode }
 },
 % endfor
 };

@@ -995,6 +995,9 @@ typedef struct {
 
    /* Whether this represents a numeric conversion opcode */
    bool is_conversion;
+
+   /* Shader float controls mode */
+   nir_rounding_mode rounding_mode;
 } nir_op_info;
 
 extern const nir_op_info nir_op_infos[nir_num_opcodes];
