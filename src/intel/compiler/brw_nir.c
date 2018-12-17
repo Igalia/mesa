@@ -808,6 +808,8 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    OPT(nir_opt_dce);
    OPT(nir_opt_move_comparisons);
 
+   OPT(brw_nir_lower_conversions);
+
    OPT(nir_lower_locals_to_regs);
 
    if (unlikely(debug_enabled)) {
