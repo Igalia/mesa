@@ -329,7 +329,12 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
       }
       src_type |= src_bit_size;
       dst_type |= dst_bit_size;
-      return nir_type_conversion_op(src_type, dst_type, nir_rounding_mode_undef);
+      unsigned float_controls =
+         b->shader->info.shader_float_controls_execution_mode;
+      nir_rounding_mode rounding_mode =
+         nir_get_rounding_mode_from_float_controls(float_controls,
+                                                   src_type);
+      return nir_type_conversion_op(src_type, dst_type, rounding_mode);
    }
    /* Derivatives: */
    case SpvOpDPdx:         return nir_op_fddx;
@@ -585,12 +590,21 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
                                          glsl_get_bit_size(type));
       break;
 
+   case SpvOpConvertFToS:
+   case SpvOpConvertFToU:
    case SpvOpFConvert: {
       nir_alu_type src_alu_type = nir_get_nir_type_for_glsl_type(vtn_src[0]->type);
       nir_alu_type dst_alu_type = nir_get_nir_type_for_glsl_type(type);
       nir_rounding_mode rounding_mode = nir_rounding_mode_undef;
+      unsigned float_controls = b->shader->info.shader_float_controls_execution_mode;
 
       vtn_foreach_decoration(b, val, handle_rounding_mode, &rounding_mode);
+
+      if (rounding_mode == nir_rounding_mode_undef && float_controls) {
+         rounding_mode =
+            nir_get_rounding_mode_from_float_controls(float_controls,
+                                                      src_alu_type);
+      }
       nir_op op = nir_type_conversion_op(src_alu_type, dst_alu_type, rounding_mode);
 
       val->ssa->def = nir_build_alu(&b->nb, op, src[0], src[1], NULL, NULL);
