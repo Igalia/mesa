@@ -655,10 +655,15 @@ emit_find_msb_using_lzd(const fs_builder &bld,
 }
 
 static brw_rnd_mode
-brw_rnd_mode_from_nir_op (const nir_op op) {
+brw_rnd_mode_from_nir_op (const nir_op op)
+{
    switch (op) {
+   case nir_op_f2f64_rtz:
+   case nir_op_f2f32_rtz:
    case nir_op_f2f16_rtz:
       return BRW_RND_MODE_RTZ;
+   case nir_op_f2f64_rtne:
+   case nir_op_f2f32_rtne:
    case nir_op_f2f16_rtne:
       return BRW_RND_MODE_RTNE;
    default:
@@ -874,6 +879,9 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 
    case nir_op_f2f64_rtne:
    case nir_op_f2f64_rtz:
+      bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
+               brw_imm_d(brw_rnd_mode_from_nir_op(instr->op)));
+      /* fallthrough */
    case nir_op_f2f64:
    case nir_op_f2i64:
    case nir_op_f2u64:
@@ -901,9 +909,15 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       assert(type_sz(op[0].type) > 1); /* brw_nir_lower_conversions */
       if (fixup_64bit_conversion(bld, result, op[0], instr->dest.saturate, devinfo))
          break;
-      /* fallthrough */
+      inst = bld.MOV(result, op[0]);
+      inst->saturate = instr->dest.saturate;
+      break;
+
    case nir_op_f2f32_rtne:
    case nir_op_f2f32_rtz:
+      bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
+               brw_imm_d(brw_rnd_mode_from_nir_op(instr->op)));
+      /* Fallthrough */
    case nir_op_f2f32:
    case nir_op_f2i32:
    case nir_op_f2u32:
