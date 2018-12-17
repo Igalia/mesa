@@ -877,6 +877,21 @@ nir_get_nir_type_for_glsl_type(const struct glsl_type *type)
 nir_op nir_type_conversion_op(nir_alu_type src, nir_alu_type dst,
                               nir_rounding_mode rnd);
 
+static inline nir_rounding_mode
+nir_get_rounding_mode_from_float_controls(unsigned rounding_mode,
+                                          nir_alu_type type)
+{
+   if (nir_alu_type_get_base_type(type) != nir_type_float)
+      return nir_rounding_mode_undef;
+
+   if (rounding_mode & SHADER_ROUNDING_MODE_RTZ)
+      return nir_rounding_mode_rtz;
+   if (rounding_mode & SHADER_ROUNDING_MODE_RTE)
+      return nir_rounding_mode_rtne;
+
+   return nir_rounding_mode_undef;
+}
+
 typedef enum {
    NIR_OP_IS_COMMUTATIVE = (1 << 0),
    NIR_OP_IS_ASSOCIATIVE = (1 << 1),
