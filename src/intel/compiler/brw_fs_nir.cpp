@@ -696,6 +696,38 @@ fixup_64bit_conversion(const fs_builder &bld,
    return false;
 }
 
+static bool
+fixup_int_half_float_conversion(const fs_builder &bld,
+                                fs_reg dst, fs_reg src,
+                                bool saturate,
+                                const struct gen_device_info *devinfo)
+{
+   /* CHV PRM, 3D Media GPGPU Engine, Register Region Restrictions,
+    * Special Restrictions:
+    *
+    *    "Conversion between Integer and HF (Half Float) must be DWord
+    *     aligned and strided by a DWord on the destination."
+    *
+    * The same restriction is listed for other hardware platforms, however,
+    * empirical testing suggests that only atom platforms are affected.
+    */
+   if (!devinfo->is_cherryview && !gen_device_info_is_9lp(devinfo))
+      return false;
+
+   if (!((dst.type == BRW_REGISTER_TYPE_HF && !brw_reg_type_is_floating_point(src.type)) ||
+         (src.type == BRW_REGISTER_TYPE_HF && !brw_reg_type_is_floating_point(dst.type))))
+      return false;
+
+   fs_reg tmp = horiz_stride(retype(bld.vgrf(BRW_REGISTER_TYPE_F, 1),
+                                    dst.type),
+                             2);
+   bld.MOV(tmp, src);
+   fs_inst *inst = bld.MOV(dst, tmp);
+   inst->saturate = saturate;
+
+   return true;
+}
+
 void
 fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 {
