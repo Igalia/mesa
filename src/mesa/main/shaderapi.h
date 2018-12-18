@@ -296,6 +296,13 @@ extern struct gl_program_resource *
 _mesa_program_resource_find_index(struct gl_shader_program *shProg,
                                   GLenum programInterface, GLuint index);
 
+extern struct gl_program_resource *
+_mesa_program_resource_find_active_variable(struct gl_shader_program *shProg,
+                                            GLenum programInterface,
+                                            const GLchar *name,
+                                            const GLuint binding,
+                                            const GLint offset);
+
 extern bool
 _mesa_get_program_resource_name(struct gl_shader_program *shProg,
                                 GLenum programInterface, GLuint index,
