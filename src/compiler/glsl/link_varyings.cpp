@@ -798,26 +798,29 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
                return;
             }
 
-            while (idx < slot_limit) {
-               if (idx >= MAX_VARYING) {
-                  linker_error(prog,
-                               "Invalid location %u in %s shader\n", idx,
-                               _mesa_shader_stage_to_string(consumer->Stage));
-                  return;
-               }
+            if (slot_limit > MAX_VARYING) {
+               linker_error(prog,
+                            "Invalid location %u in %s shader\n",
+                            MAX2(idx, MAX_VARYING),
+                            _mesa_shader_stage_to_string(consumer->Stage));
+               return;
+            }
 
-               output = output_explicit_locations[idx][input->data.location_frac].var;
+            if (!prog->SeparateShader) {
+               while (idx < slot_limit) {
+                  output =output_explicit_locations[idx][input->data.location_frac].var;
 
-               if (output == NULL ||
-                   input->data.location != output->data.location) {
-                  linker_error(prog,
-                               "%s shader input `%s' with explicit location "
-                               "has no matching output\n",
-                               _mesa_shader_stage_to_string(consumer->Stage),
-                               input->name);
-                  break;
+                  if (output == NULL ||
+                      input->data.location != output->data.location) {
+                     linker_error(prog,
+                                  "%s shader input `%s' with explicit location "
+                                  "has no matching output\n",
+                                  _mesa_shader_stage_to_string(consumer->Stage),
+                                  input->name);
+                     return;
+                  }
+                  idx++;
                }
-               idx++;
             }
          } else {
             output = parameters.get_variable(input->name);
