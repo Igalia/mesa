@@ -768,8 +768,29 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
 
                output = explicit_locations[idx][input->data.location_frac].var;
 
-               if (output == NULL ||
-                   input->data.location != output->data.location) {
+               if (output == NULL) {
+                  /* A linker failure shouldn't happen when there is no output
+                   * declaration but there is no Static Use of the declared
+                   * input.  However, it should happen when there is a
+                   * matching-by-name output which didn't match the explicit
+                   * location.
+                   */
+                  if (input->data.used && !prog->SeparateShader) {
+                     linker_error(prog,
+                                  "%s shader input `%s' with explicit location "
+                                  "has no matching output\n",
+                                  _mesa_shader_stage_to_string(consumer->Stage),
+                                  input->name);
+                     break;
+                  } else if (parameters.get_variable(input->name)) {
+                     linker_error(prog,
+                                  "%s shader input `%s' with explicit location "
+                                  "has no matching output\n",
+                                  _mesa_shader_stage_to_string(consumer->Stage),
+                                  input->name);
+                     break;
+                  }
+               } else if (input->data.location != output->data.location) {
                   linker_error(prog,
                                "%s shader input `%s' with explicit location "
                                "has no matching output\n",
