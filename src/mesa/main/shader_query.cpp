@@ -684,7 +684,13 @@ program_resource_find_binding_offset(struct gl_shader_program *shProg,
       const struct gl_uniform_block *block = RESOURCE_UBO(res);
 
       if (block->Binding == binding) {
-         block_index = i - starting_index;
+         /* For arrays, or arrays of arrays of blocks, it is usual that
+          * resources are only added for the block with base index. But most
+          * properties for members of each index are basically inherited from
+          * the base index, including a uniform being active or not. So we use
+          * linearized_array_index to get the block with the base index.
+          */
+         block_index = i - starting_index - block->linearized_array_index;
          break;
       }
    }
