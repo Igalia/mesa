@@ -212,8 +212,11 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
 
    const struct spirv_to_nir_options spirv_options = {
       .lower_workgroup_access_to_offsets = true,
-      .lower_ubo_ssbo_access_to_offsets = true,
-      .caps = ctx->Const.SpirVCapabilities
+      .caps = ctx->Const.SpirVCapabilities,
+      .ubo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
+      .ssbo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
+      .push_const_ptr_type = glsl_uint_type(),
+      .shared_ptr_type = glsl_uint_type(),
    };
 
    nir_function *entry_point =
@@ -260,6 +263,9 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
     */
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_split_per_member_structs);
+
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo | nir_var_mem_ssbo,
+              nir_address_format_32bit_index_offset);
 
    if (nir->info.stage == MESA_SHADER_VERTEX)
       nir_remap_dual_slot_attributes(nir, &linked_shader->Program->DualSlotInputs);
