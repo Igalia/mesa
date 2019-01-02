@@ -1012,6 +1012,7 @@ brw_type_for_nir_type(const struct gen_device_info *devinfo, nir_alu_type type)
       return devinfo->gen < 8 ? BRW_REGISTER_TYPE_DF : BRW_REGISTER_TYPE_Q;
    case nir_type_uint64:
       return devinfo->gen < 8 ? BRW_REGISTER_TYPE_DF : BRW_REGISTER_TYPE_UQ;
+   case nir_type_bool16:
    case nir_type_int16:
       return BRW_REGISTER_TYPE_W;
    case nir_type_uint16:

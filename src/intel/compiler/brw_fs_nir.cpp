@@ -386,9 +386,12 @@ void
 fs_visitor::nir_emit_if(nir_if *if_stmt)
 {
    /* first, put the condition into f0 */
+   brw_reg_type reg_type =
+      brw_reg_type_from_bit_size(nir_src_bit_size(if_stmt->condition),
+                                 BRW_REGISTER_TYPE_D);
+
    fs_inst *inst = bld.MOV(bld.null_reg_d(),
-                            retype(get_nir_src(if_stmt->condition),
-                                   BRW_REGISTER_TYPE_D));
+                           retype(get_nir_src(if_stmt->condition), reg_type));
    inst->conditional_mod = BRW_CONDITIONAL_NZ;
 
    bld.IF(BRW_PREDICATE_NORMAL);
@@ -819,7 +822,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_b2f16:
    case nir_op_b2f32:
    case nir_op_b2f64:
-      op[0].type = BRW_REGISTER_TYPE_D;
+      op[0].type = nir_src_bit_size(instr->src[0].src) == 32 ?
+         BRW_REGISTER_TYPE_D : BRW_REGISTER_TYPE_W;
       op[0].negate = !op[0].negate;
       /* fallthrough */
    case nir_op_i2f64:
@@ -1082,6 +1086,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_flt16:
+   case nir_op_fge16:
+   case nir_op_feq16:
+   case nir_op_fne16:
    case nir_op_flt32:
    case nir_op_fge32:
    case nir_op_feq32:
@@ -1089,20 +1097,24 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       fs_reg dest = result;
 
       const uint32_t bit_size =  nir_src_bit_size(instr->src[0].src);
-      if (bit_size != 32)
+      if (bit_size > 32)
          dest = bld.vgrf(op[0].type, 1);
 
       brw_conditional_mod cond;
       switch (instr->op) {
+      case nir_op_flt16:
       case nir_op_flt32:
          cond = BRW_CONDITIONAL_L;
          break;
+      case nir_op_fge16:
       case nir_op_fge32:
          cond = BRW_CONDITIONAL_GE;
          break;
+      case nir_op_feq16:
       case nir_op_feq32:
          cond = BRW_CONDITIONAL_Z;
          break;
+      case nir_op_fne16:
       case nir_op_fne32:
          cond = BRW_CONDITIONAL_NZ;
          break;
@@ -1112,20 +1124,17 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 
       bld.CMP(dest, op[0], op[1], cond);
 
-      if (bit_size > 32) {
+      if (bit_size > 32)
          bld.MOV(result, subscript(dest, BRW_REGISTER_TYPE_UD, 0));
-      } else if(bit_size < 32) {
-         /* When we convert the result to 32-bit we need to be careful and do
-          * it as a signed conversion to get sign extension (for 32-bit true)
-          */
-         const brw_reg_type src_type =
-            brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_D);
-
-         bld.MOV(retype(result, BRW_REGISTER_TYPE_D), retype(dest, src_type));
-      }
       break;
    }
 
+   case nir_op_ilt16:
+   case nir_op_ult16:
+   case nir_op_ige16:
+   case nir_op_uge16:
+   case nir_op_ieq16:
+   case nir_op_ine16:
    case nir_op_ilt32:
    case nir_op_ult32:
    case nir_op_ige32:
@@ -1135,22 +1144,28 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       fs_reg dest = result;
 
       const uint32_t bit_size = nir_src_bit_size(instr->src[0].src);
-      if (bit_size != 32)
+      if (bit_size > 32)
          dest = bld.vgrf(op[0].type, 1);
 
       brw_conditional_mod cond;
       switch (instr->op) {
+      case nir_op_ilt16:
+      case nir_op_ult16:
       case nir_op_ilt32:
       case nir_op_ult32:
          cond = BRW_CONDITIONAL_L;
          break;
+      case nir_op_ige16:
+      case nir_op_uge16:
       case nir_op_ige32:
       case nir_op_uge32:
          cond = BRW_CONDITIONAL_GE;
          break;
+      case nir_op_ieq16:
       case nir_op_ieq32:
          cond = BRW_CONDITIONAL_Z;
          break;
+      case nir_op_ine16:
       case nir_op_ine32:
          cond = BRW_CONDITIONAL_NZ;
          break;
@@ -1159,17 +1174,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       }
       bld.CMP(dest, op[0], op[1], cond);
 
-      if (bit_size > 32) {
+      if (bit_size > 32)
          bld.MOV(result, subscript(dest, BRW_REGISTER_TYPE_UD, 0));
-      } else if (bit_size < 32) {
-         /* When we convert the result to 32-bit we need to be careful and do
-          * it as a signed conversion to get sign extension (for 32-bit true)
-          */
-         const brw_reg_type src_type =
-            brw_reg_type_from_bit_size(bit_size, BRW_REGISTER_TYPE_D);
-
-         bld.MOV(retype(result, BRW_REGISTER_TYPE_D), retype(dest, src_type));
-      }
       break;
    }
 
@@ -1204,6 +1210,18 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_fdot2:
    case nir_op_fdot3:
    case nir_op_fdot4:
+   case nir_op_b16all_fequal2:
+   case nir_op_b16all_iequal2:
+   case nir_op_b16all_fequal3:
+   case nir_op_b16all_iequal3:
+   case nir_op_b16all_fequal4:
+   case nir_op_b16all_iequal4:
+   case nir_op_b16any_fnequal2:
+   case nir_op_b16any_inequal2:
+   case nir_op_b16any_fnequal3:
+   case nir_op_b16any_inequal3:
+   case nir_op_b16any_fnequal4:
+   case nir_op_b16any_inequal4:
    case nir_op_b32all_fequal2:
    case nir_op_b32all_iequal2:
    case nir_op_b32all_fequal3:
@@ -1249,6 +1267,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_i2b16:
+   case nir_op_f2b16:
    case nir_op_i2b32:
    case nir_op_f2b32: {
       uint32_t bit_size = nir_src_bit_size(instr->src[0].src);
@@ -1257,7 +1277,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
          fs_reg zero;
          fs_reg tmp;
 
-         if (instr->op == nir_op_f2b32) {
+         if (instr->op == nir_op_f2b32 || instr->op == nir_op_f2b16) {
             zero = vgrf(glsl_type::double_type);
             tmp = vgrf(glsl_type::double_type);
             bld.MOV(zero, setup_imm_df(bld, 0.0));
@@ -1272,14 +1292,18 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
           * works
           */
          bld.CMP(tmp, op[0], zero, BRW_CONDITIONAL_NZ);
-         bld.MOV(result, subscript(tmp, BRW_REGISTER_TYPE_UD, 0));
+         const brw_reg_type reg_type =
+            brw_reg_type_from_bit_size(nir_dest_bit_size(instr->dest.dest),
+                                       BRW_REGISTER_TYPE_D);
+         bld.MOV(result, subscript(tmp, reg_type, 0));
       } else {
          fs_reg zero;
          if (bit_size == 32) {
-            zero = instr->op == nir_op_f2b32 ? brw_imm_f(0.0f) : brw_imm_d(0);
+            zero = instr->op == nir_op_f2b32 || instr->op == nir_op_f2b16 ?
+               brw_imm_f(0.0f) : brw_imm_d(0);
          } else {
             assert(bit_size == 16);
-            zero = instr->op == nir_op_f2b32 ?
+            zero = instr->op == nir_op_f2b32  || instr->op == nir_op_f2b16 ?
                retype(brw_imm_w(0), BRW_REGISTER_TYPE_HF) : brw_imm_w(0);
          }
          bld.CMP(result, op[0], zero, BRW_CONDITIONAL_NZ);
@@ -1514,14 +1538,17 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
-   case nir_op_b32csel:
+   case nir_op_b16csel:
+   case nir_op_b32csel: {
       if (optimize_frontfacing_ternary(instr, result))
          return;
 
-      bld.CMP(bld.null_reg_d(), op[0], brw_imm_d(0), BRW_CONDITIONAL_NZ);
+      fs_reg zero = instr->op == nir_op_b32csel ? brw_imm_d(0) : brw_imm_w(0);
+      bld.CMP(bld.null_reg_d(), op[0], zero, BRW_CONDITIONAL_NZ);
       inst = bld.SEL(result, op[1], op[2]);
       inst->predicate = BRW_PREDICATE_NORMAL;
       break;
+   }
 
    case nir_op_extract_u8:
    case nir_op_extract_i8: {
