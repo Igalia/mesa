@@ -193,6 +193,20 @@ static const struct hw_3src_type {
 #undef E
 };
 
+static inline const struct hw_type *
+get_hw_type_map(const struct gen_device_info *devinfo, uint32_t *size)
+{
+   if (devinfo->gen >= 11) {
+      if (size)
+         *size = ARRAY_SIZE(gen11_hw_type);
+      return gen11_hw_type;
+   } else {
+      if (size)
+         *size = ARRAY_SIZE(gen4_hw_type);
+      return gen4_hw_type;
+   }
+}
+
 /**
  * Convert a brw_reg_type enumeration value into the hardware representation.
  *
@@ -203,16 +217,10 @@ brw_reg_type_to_hw_type(const struct gen_device_info *devinfo,
                         enum brw_reg_file file,
                         enum brw_reg_type type)
 {
-   const struct hw_type *table;
+   uint32_t table_size;
+   const struct hw_type *table = get_hw_type_map(devinfo, &table_size);
 
-   if (devinfo->gen >= 11) {
-      assert(type < ARRAY_SIZE(gen11_hw_type));
-      table = gen11_hw_type;
-   } else {
-      assert(type < ARRAY_SIZE(gen4_hw_type));
-      table = gen4_hw_type;
-   }
-
+   assert(type < table_size);
    assert(devinfo->has_64bit_types || brw_reg_type_to_size(type) < 8 ||
           type == BRW_REGISTER_TYPE_NF);
 
@@ -234,13 +242,7 @@ enum brw_reg_type
 brw_hw_type_to_reg_type(const struct gen_device_info *devinfo,
                         enum brw_reg_file file, unsigned hw_type)
 {
-   const struct hw_type *table;
-
-   if (devinfo->gen >= 11) {
-      table = gen11_hw_type;
-   } else {
-      table = gen4_hw_type;
-   }
+   const struct hw_type *table = get_hw_type_map(devinfo, NULL);
 
    if (file == BRW_IMMEDIATE_VALUE) {
       for (enum brw_reg_type i = 0; i <= BRW_REGISTER_TYPE_LAST; i++) {
