@@ -424,7 +424,7 @@ compute_variable_location_slot(ir_variable *var, gl_shader_stage stage)
 
 struct explicit_location_info {
    ir_variable *var;
-   unsigned numerical_type;
+   unsigned aliasing_type;
    unsigned interpolation;
    bool centroid;
    bool sample;
@@ -432,17 +432,20 @@ struct explicit_location_info {
 };
 
 static inline unsigned
-get_numerical_type(const glsl_type *type)
+get_aliasing_type(const glsl_type *type)
 {
-   /* From the OpenGL 4.6 spec, section 4.4.1 Input Layout Qualifiers, Page 68,
-    * (Location aliasing):
+   /* From the OpenGL 4.6 v.5 spec, section 4.4.1 Input Layout Qualifiers,
+    * Page 67, (Location aliasing):
     *
     *    "Further, when location aliasing, the aliases sharing the location
-    *     must have the same underlying numerical type  (floating-point or
-    *     integer)
+    *     must have the same underlying numerical type and bit width
+    *     (floating-point or integer, 32-bit versus 64-bit, etc.)"
+    *
     */
-   if (type->is_float() || type->is_double())
+   if (type->is_float())
       return GLSL_TYPE_FLOAT;
+   if (type->is_double())
+      return GLSL_TYPE_DOUBLE;
    return GLSL_TYPE_INT;
 }
 
@@ -491,12 +494,12 @@ check_location_aliasing(struct explicit_location_info explicit_locations[][4],
                /* For all other used components we need to have matching
                 * types, interpolation and auxiliary storage
                 */
-               if (info->numerical_type !=
-                   get_numerical_type(type->without_array())) {
+               if (info->aliasing_type !=
+                   get_aliasing_type(type->without_array())) {
                   linker_error(prog,
                                "Varyings sharing the same location must "
-                               "have the same underlying numerical type. "
-                               "Location %u component %u\n",
+                               "have the same underlying numerical type and "
+                               "bit width. Location %u component %u\n",
                                location, comp);
                   return false;
                }
@@ -526,7 +529,7 @@ check_location_aliasing(struct explicit_location_info explicit_locations[][4],
             }
          } else if (comp >= component && comp < last_comp) {
             info->var = var;
-            info->numerical_type = get_numerical_type(type->without_array());
+            info->aliasing_type = get_aliasing_type(type->without_array());
             info->interpolation = interpolation;
             info->centroid = centroid;
             info->sample = sample;
