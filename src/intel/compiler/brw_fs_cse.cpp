@@ -267,8 +267,8 @@ fs_visitor::opt_cse_local(bblock_t *block)
 
          if (!found) {
             if (inst->opcode != BRW_OPCODE_MOV ||
-                (inst->opcode == BRW_OPCODE_MOV &&
-                 inst->src[0].file == IMM &&
+                inst->dst.is_null() ||
+                (inst->src[0].file == IMM &&
                  inst->src[0].type == BRW_REGISTER_TYPE_VF)) {
                /* Our first sighting of this expression.  Create an entry. */
                aeb_entry *entry = ralloc(cse_ctx, aeb_entry);
