@@ -518,9 +518,10 @@ is_unordered(const fs_inst *inst)
 }
 
 /**
- * Return whether the following regioning restriction applies to the specified
- * instruction.  From the Cherryview PRM Vol 7. "Register Region
- * Restrictions":
+ * Return whether one of the the following regioning restrictions apply to the
+ * specified instruction.
+ *
+ * From the Cherryview PRM Vol 7. "Register Region Restrictions":
  *
  * "When source or destination datatype is 64b or operation is integer DWord
  *  multiply, regioning in Align1 must follow these rules:
@@ -529,6 +530,14 @@ is_unordered(const fs_inst *inst)
  *  2. Regioning must ensure Src.Vstride = Src.Width * Src.Hstride.
  *  3. Source and Destination offset must be the same, except the case of
  *     scalar source."
+ *
+ * From the Cherryview PRM Vol 7. "Register Region Restrictions":
+ *
+ *    "Conversion between Integer and HF (Half Float) must be DWord
+ *     aligned and strided by a DWord on the destination."
+ *
+ *    The same restriction is listed for other hardware platforms, however,
+ *    empirical testing suggests that only atom platforms are affected.
  */
 static inline bool
 has_dst_aligned_region_restriction(const gen_device_info *devinfo,
@@ -539,10 +548,20 @@ has_dst_aligned_region_restriction(const gen_device_info *devinfo,
          (inst->opcode == BRW_OPCODE_MUL || inst->opcode == BRW_OPCODE_MAD);
 
    if (type_sz(inst->dst.type) > 4 || type_sz(exec_type) > 4 ||
-       (type_sz(exec_type) == 4 && is_int_multiply))
-      return devinfo->is_cherryview || gen_device_info_is_9lp(devinfo);
-   else
-      return false;
+       (type_sz(exec_type) == 4 && is_int_multiply)) {
+      if (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))
+         return true;
+   }
+
+   const bool dst_type_is_hf = inst->dst.type == BRW_REGISTER_TYPE_HF;
+   const bool exec_type_is_hf = exec_type == BRW_REGISTER_TYPE_HF;
+   if ((dst_type_is_hf && !brw_reg_type_is_floating_point(exec_type)) ||
+       (exec_type_is_hf && !brw_reg_type_is_floating_point(inst->dst.type))) {
+      if (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))
+         return true;
+   }
+
+   return false;
 }
 
 #endif
