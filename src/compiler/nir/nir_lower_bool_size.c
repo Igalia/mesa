@@ -91,7 +91,7 @@ lower_impl(nir_function_impl *impl)
 
          nir_alu_instr *alu = nir_instr_as_alu(instr);
 
-         if (alu->op == nir_op_b2f)
+         if (alu->op == nir_op_b2f32)
             progress |= lower_b2f(&b, alu);
          else if (nir_op_infos[alu->op].output_type == nir_type_bool32)
             progress |= lower_bool_dest(&b, alu);
