@@ -25,6 +25,17 @@
 
 #include <util/u_math.h>
 
+static nir_xfb_info *
+nir_gather_xfb_info_create(void *mem_ctx, uint16_t output_count, uint16_t varying_count)
+{
+   nir_xfb_info *xfb = rzalloc_size(mem_ctx, sizeof(nir_xfb_info));
+
+   xfb->varyings = rzalloc_size(xfb, sizeof(nir_xfb_varying_info) * varying_count);
+   xfb->outputs = rzalloc_size(xfb, sizeof(nir_xfb_output_info) * output_count);
+
+   return xfb;
+}
+
 static void
 add_var_xfb_outputs(nir_xfb_info *xfb,
                     nir_variable *var,
@@ -47,11 +58,11 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
    } else {
       assert(buffer < NIR_MAX_XFB_BUFFERS);
       if (xfb->buffers_written & (1 << buffer)) {
-         assert(xfb->strides[buffer] == var->data.xfb_stride);
+         assert(xfb->buffers[buffer].stride == var->data.xfb_stride);
          assert(xfb->buffer_to_stream[buffer] == var->data.stream);
       } else {
          xfb->buffers_written |= (1 << buffer);
-         xfb->strides[buffer] = var->data.xfb_stride;
+         xfb->buffers[buffer].stride = var->data.xfb_stride;
          xfb->buffer_to_stream[buffer] = var->data.stream;
       }
 
@@ -72,6 +83,12 @@ add_var_xfb_outputs(nir_xfb_info *xfb,
       assert(var->data.location_frac + comp_slots <= 8);
       uint8_t comp_mask = ((1 << comp_slots) - 1) << var->data.location_frac;
       unsigned location_frac = var->data.location_frac;
+
+      nir_xfb_varying_info *varying = &xfb->varyings[xfb->varying_count++];
+      varying->type = type;
+      varying->buffer = var->data.xfb_buffer;
+      varying->offset = *offset;
+      xfb->buffers[var->data.xfb_buffer].varying_count++;
 
       assert(attrib_slots <= 2);
       for (unsigned s = 0; s < attrib_slots; s++) {
@@ -119,7 +136,11 @@ nir_gather_xfb_info(const nir_shader *shader, void *mem_ctx)
    if (num_outputs == 0)
       return NULL;
 
-   nir_xfb_info *xfb = rzalloc_size(mem_ctx, nir_xfb_info_size(num_outputs));
+   /* It is complex to know how many varyings do we have beforehand. We use
+    * num_outputs as an approximation, as num_outputs should be bigger that
+    * num_varyings, and that should be enough for allocation.
+    */
+   nir_xfb_info *xfb = nir_gather_xfb_info_create(mem_ctx, num_outputs, num_outputs);
 
    /* Walk the list of outputs and add them to the array */
    nir_foreach_variable(var, &shader->outputs) {
