@@ -481,7 +481,7 @@ check_location_aliasing(struct explicit_location_info explicit_locations[][4],
             &explicit_locations[location][comp];
 
          if (info->var) {
-            /* Component aliasing is not alloed */
+            /* Component aliasing is not allowed */
             if (comp >= component && comp < last_comp) {
                linker_error(prog,
                             "%s shader has multiple %sputs explicitly "
