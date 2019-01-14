@@ -47,6 +47,9 @@ bool gl_nir_lower_buffers(nir_shader *shader,
 bool gl_nir_lower_vulkan_resource_index(nir_shader *shader,
                                         struct gl_linked_shader *linked_shader);
 
+bool gl_nir_lower_vulkan_descriptor(nir_shader *shader,
+                                    struct gl_linked_shader *linked_shader);
+
 #ifdef __cplusplus
 }
 #endif
