@@ -148,6 +148,64 @@ convert_impl(nir_function_impl *impl,
    return progress;
 }
 
+static bool
+lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
+                             nir_builder *b)
+{
+   b->cursor = nir_before_instr(&intrin->instr);
+
+   /* We follow the nir_address_format_vk_index_offset model */
+   assert(intrin->src[0].is_ssa);
+   nir_ssa_def *vec2 = nir_vec2(b, intrin->src[0].ssa, nir_imm_int(b, 0));
+
+   assert(intrin->dest.is_ssa);
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(vec2));
+   nir_instr_remove(&intrin->instr);
+
+   return true;
+}
+
+static bool
+lower_vulkan_descriptor_impl(nir_function_impl *impl,
+                             struct gl_linked_shader *linked_shader)
+{
+   bool progress = false;
+   nir_builder builder;
+   nir_builder_init(&builder, impl);
+
+   nir_foreach_block(block, impl) {
+      nir_foreach_instr_safe(instr, block) {
+         if (instr->type != nir_instr_type_intrinsic)
+            continue;
+
+         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+         if (intrin->intrinsic != nir_intrinsic_load_vulkan_descriptor)
+            continue;
+
+         progress |= lower_load_vulkan_descriptor(intrin, &builder);
+      }
+   }
+
+   nir_metadata_preserve(impl, nir_metadata_block_index |
+                               nir_metadata_dominance);
+   return progress;
+}
+
+bool
+gl_nir_lower_vulkan_descriptor(nir_shader *shader,
+                               struct gl_linked_shader *linked_shader)
+{
+   bool progress = false;
+
+   nir_foreach_function(function, shader) {
+      if (function->impl)
+         progress = lower_vulkan_descriptor_impl(function->impl, linked_shader) || progress;
+   }
+
+   return progress;
+}
+
+
 bool
 gl_nir_lower_vulkan_resource_index(nir_shader *shader,
                                    struct gl_linked_shader *linked_shader)
