@@ -327,8 +327,10 @@ brw_link_shader(struct gl_context *ctx, struct gl_shader_program *shProg)
       NIR_PASS_V(prog->nir, gl_nir_lower_atomics, shProg, false);
       NIR_PASS_V(prog->nir, nir_lower_atomics_to_ssbo,
                  prog->nir->info.num_abos);
-      if (shProg->data->spirv)
+      if (shProg->data->spirv) {
+         NIR_PASS_V(prog->nir, gl_nir_lower_vulkan_descriptor, shader);
          NIR_PASS_V(prog->nir, gl_nir_lower_vulkan_resource_index, shader);
+      }
 
       nir_sweep(prog->nir);
 
