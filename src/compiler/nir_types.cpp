@@ -634,3 +634,9 @@ glsl_contains_atomic(const struct glsl_type *type)
 {
    return type->contains_atomic();
 }
+
+unsigned
+glsl_get_explicit_size(const struct glsl_type *type)
+{
+   return type->explicit_size();
+}
