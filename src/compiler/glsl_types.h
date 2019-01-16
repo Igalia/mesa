@@ -432,6 +432,19 @@ public:
    unsigned std430_size(bool row_major) const;
 
    /**
+    * Size in bytes of this type based on it explicit data.
+    *
+    * When using SPIR-V shaders (ARB_gl_spirv), memory layouts are expressed
+    * through explicit offset, stride and matrix layout, so the size
+    * can/should be computed used those values.
+    *
+    * Note that the value returned by this method is only correct if such
+    * values are set, so only with SPIR-V shaders. Should not use with GLSL
+    * shaders.
+    */
+   unsigned explicit_size(bool align_to_stride=false) const;
+
+   /**
     * \brief Can this type be implicitly converted to another?
     *
     * \return True if the types are identical or if this type can be converted

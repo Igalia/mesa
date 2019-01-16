@@ -94,6 +94,8 @@ unsigned glsl_get_record_location_offset(const struct glsl_type *type,
 
 unsigned glsl_atomic_size(const struct glsl_type *type);
 
+unsigned glsl_get_explicit_size(const struct glsl_type *type, bool align_to_stride);
+
 static inline unsigned
 glsl_get_bit_size(const struct glsl_type *type)
 {

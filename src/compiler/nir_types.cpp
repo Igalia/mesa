@@ -640,3 +640,9 @@ glsl_contains_atomic(const struct glsl_type *type)
 {
    return type->contains_atomic();
 }
+
+unsigned
+glsl_get_explicit_size(const struct glsl_type *type, bool align_to_stride)
+{
+   return type->explicit_size(align_to_stride);
+}
