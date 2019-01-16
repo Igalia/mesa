@@ -1962,6 +1962,48 @@ glsl_type::std430_array_stride(bool row_major) const
 }
 
 unsigned
+glsl_type::explicit_size() const
+{
+   /* If the type is a struct then the members are supposed to presented in
+    * increasing order of offset so we can just look at the last member.
+    */
+   if (this->is_struct()) {
+      if (this->length > 0) {
+         const glsl_type * last_field = this->fields.structure[this->length - 1].type;
+
+         return (this->fields.structure[this->length - 1].offset +
+                 last_field->explicit_size());
+      } else {
+         return 0;
+      }
+   }
+
+   /* Arrays must have an array stride */
+   if (this->is_array()) {
+      unsigned length =
+         this->is_unsized_array() ? 1 : this->length;
+
+      return this->explicit_stride * length;
+   }
+
+   /* Matrices must have a matrix stride and either RowMajor or ColMajor */
+   if (this->is_matrix()) {
+      unsigned length = this->interface_row_major ? this->vector_elements
+         : this->matrix_columns;
+
+      /* We don't really need to compute the type_size of the matrix element
+       * type. That should be already included as part of matrix_stride.
+       */
+      assert(this->explicit_stride);
+      return this->explicit_stride * length;
+   }
+
+   unsigned N = this->is_64bit() ? 8 : 4;
+
+   return this->vector_elements * N;
+}
+
+unsigned
 glsl_type::std430_size(bool row_major) const
 {
    unsigned N = is_64bit() ? 8 : 4;
