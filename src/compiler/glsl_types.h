@@ -658,6 +658,14 @@ public:
    }
 
    /**
+    * Query wheter or not a type is an structure-like type.
+    */
+   bool is_struct() const
+   {
+      return is_record() || is_interface();
+   }
+
+   /**
     * Query whether or not a type is the void type singleton.
     */
    bool is_void() const
