@@ -203,7 +203,7 @@ glsl_type::contains_sampler() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_sampler();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_sampler())
             return true;
@@ -217,7 +217,7 @@ glsl_type::contains_sampler() const
 bool
 glsl_type::contains_array() const
 {
-   if (this->is_record() || this->is_interface()) {
+   if (this->is_struct()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_array())
             return true;
@@ -233,7 +233,7 @@ glsl_type::contains_integer() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_integer();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_integer())
             return true;
@@ -249,7 +249,7 @@ glsl_type::contains_double() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_double();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_double())
             return true;
@@ -302,7 +302,7 @@ glsl_type::contains_subroutine() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_subroutine();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_subroutine())
             return true;
@@ -348,7 +348,7 @@ glsl_type::contains_image() const
 {
    if (this->is_array()) {
       return this->fields.array->contains_image();
-   } else if (this->is_record() || this->is_interface()) {
+   } else if (this->is_struct()) {
       for (unsigned int i = 0; i < this->length; i++) {
          if (this->fields.structure[i].type->contains_image())
             return true;
@@ -1527,8 +1527,7 @@ glsl_type::varying_count() const
       return size;
    case GLSL_TYPE_ARRAY:
       /* Don't count innermost array elements */
-      if (this->without_array()->is_record() ||
-          this->without_array()->is_interface() ||
+      if (this->without_array()->is_struct() ||
           this->fields.array->is_array())
          return this->length * this->fields.array->varying_count();
       else
@@ -1811,7 +1810,7 @@ glsl_type::std140_size(bool row_major) const
     *     rounded up to the next multiple of the base alignment of the
     *     structure.
     */
-   if (this->is_record() || this->is_interface()) {
+   if (this->is_struct()) {
       unsigned size = 0;
       unsigned max_align = 0;
 
@@ -2037,7 +2036,7 @@ glsl_type::std430_size(bool row_major) const
             this->without_array()->std430_base_alignment(row_major);
    }
 
-   if (this->is_record() || this->is_interface()) {
+   if (this->is_struct()) {
       unsigned size = 0;
       unsigned max_align = 0;
 
