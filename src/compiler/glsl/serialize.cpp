@@ -825,8 +825,12 @@ write_program_resource_data(struct blob *metadata,
    case GL_TESS_EVALUATION_SUBROUTINE_UNIFORM:
    case GL_UNIFORM:
       for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
-         if (strcmp(((gl_uniform_storage *)res->Data)->name,
-                    prog->data->UniformStorage[i].name) == 0) {
+         //if (strcmp(((gl_uniform_storage *)res->Data)->name,
+         //           prog->data->UniformStorage[i].name) == 0) {
+         if ((((gl_uniform_storage *)res->Data)->block_index
+              == prog->data->UniformStorage[i].block_index) &&
+
+             (((gl_uniform_storage *)res->Data)->offset == prog->data->UniformStorage[i].offset)) {
             blob_write_uint32(metadata, i);
             break;
          }
