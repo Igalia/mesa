@@ -822,8 +822,9 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_b2f16:
    case nir_op_b2f32:
    case nir_op_b2f64:
-      op[0].type = nir_src_bit_size(instr->src[0].src) == 32 ?
-         BRW_REGISTER_TYPE_D : BRW_REGISTER_TYPE_W;
+      op[0].type =
+         brw_reg_type_from_bit_size(nir_src_bit_size(instr->src[0].src),
+                                    BRW_REGISTER_TYPE_D);
       op[0].negate = !op[0].negate;
       /* fallthrough */
    case nir_op_i2f64:
@@ -1086,6 +1087,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_flt8:
+   case nir_op_fge8:
+   case nir_op_feq8:
+   case nir_op_fne8:
    case nir_op_flt16:
    case nir_op_fge16:
    case nir_op_feq16:
@@ -1102,18 +1107,22 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 
       brw_conditional_mod cond;
       switch (instr->op) {
+      case nir_op_flt8:
       case nir_op_flt16:
       case nir_op_flt32:
          cond = BRW_CONDITIONAL_L;
          break;
+      case nir_op_fge8:
       case nir_op_fge16:
       case nir_op_fge32:
          cond = BRW_CONDITIONAL_GE;
          break;
+      case nir_op_feq8:
       case nir_op_feq16:
       case nir_op_feq32:
          cond = BRW_CONDITIONAL_Z;
          break;
+      case nir_op_fne8:
       case nir_op_fne16:
       case nir_op_fne32:
          cond = BRW_CONDITIONAL_NZ;
@@ -1129,6 +1138,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
    }
 
+   case nir_op_ilt8:
+   case nir_op_ult8:
+   case nir_op_ige8:
+   case nir_op_uge8:
+   case nir_op_ieq8:
+   case nir_op_ine8:
    case nir_op_ilt16:
    case nir_op_ult16:
    case nir_op_ige16:
@@ -1149,22 +1164,28 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
 
       brw_conditional_mod cond;
       switch (instr->op) {
+      case nir_op_ilt8:
+      case nir_op_ult8:
       case nir_op_ilt16:
       case nir_op_ult16:
       case nir_op_ilt32:
       case nir_op_ult32:
          cond = BRW_CONDITIONAL_L;
          break;
+      case nir_op_ige8:
+      case nir_op_uge8:
       case nir_op_ige16:
       case nir_op_uge16:
       case nir_op_ige32:
       case nir_op_uge32:
          cond = BRW_CONDITIONAL_GE;
          break;
+      case nir_op_ieq8:
       case nir_op_ieq16:
       case nir_op_ieq32:
          cond = BRW_CONDITIONAL_Z;
          break;
+      case nir_op_ine8:
       case nir_op_ine16:
       case nir_op_ine32:
          cond = BRW_CONDITIONAL_NZ;
@@ -1210,6 +1231,18 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_fdot2:
    case nir_op_fdot3:
    case nir_op_fdot4:
+   case nir_op_b8all_fequal2:
+   case nir_op_b8all_iequal2:
+   case nir_op_b8all_fequal3:
+   case nir_op_b8all_iequal3:
+   case nir_op_b8all_fequal4:
+   case nir_op_b8all_iequal4:
+   case nir_op_b8any_fnequal2:
+   case nir_op_b8any_inequal2:
+   case nir_op_b8any_fnequal3:
+   case nir_op_b8any_inequal3:
+   case nir_op_b8any_fnequal4:
+   case nir_op_b8any_inequal4:
    case nir_op_b16all_fequal2:
    case nir_op_b16all_iequal2:
    case nir_op_b16all_fequal3:
@@ -1267,6 +1300,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst->saturate = instr->dest.saturate;
       break;
 
+   case nir_op_i2b8:
+   case nir_op_f2b8:
    case nir_op_i2b16:
    case nir_op_f2b16:
    case nir_op_i2b32:
@@ -1276,6 +1311,10 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
          /* two-argument instructions can't take 64-bit immediates */
          fs_reg zero;
          fs_reg tmp;
+
+         /* brw_nir_lower_conversions */
+         assert(nir_dest_bit_size(instr->dest.dest) != 8);
+
 
          if (instr->op == nir_op_f2b32 || instr->op == nir_op_f2b16) {
             zero = vgrf(glsl_type::double_type);
@@ -1298,13 +1337,18 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
          bld.MOV(result, subscript(tmp, reg_type, 0));
       } else {
          fs_reg zero;
+         bool is_float_conv = instr->op == nir_op_f2b32 ||
+                              instr->op == nir_op_f2b16 ||
+                              instr->op == nir_op_f2b8;
+
          if (bit_size == 32) {
-            zero = instr->op == nir_op_f2b32 || instr->op == nir_op_f2b16 ?
-               brw_imm_f(0.0f) : brw_imm_d(0);
-         } else {
-            assert(bit_size == 16);
-            zero = instr->op == nir_op_f2b32  || instr->op == nir_op_f2b16 ?
+            zero = is_float_conv ? brw_imm_f(0.0f) : brw_imm_d(0);
+         } else if (bit_size == 16) {
+            zero = is_float_conv ?
                retype(brw_imm_w(0), BRW_REGISTER_TYPE_HF) : brw_imm_w(0);
+         } else {
+            assert(bit_size == 8 && !is_float_conv);
+            zero = setup_imm_b(bld, 0);
          }
          bld.CMP(result, op[0], zero, BRW_CONDITIONAL_NZ);
       }
@@ -1537,6 +1581,20 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst = bld.LRP(result, op[0], op[1], op[2]);
       inst->saturate = instr->dest.saturate;
       break;
+
+   case nir_op_b8csel: {
+      if (optimize_frontfacing_ternary(instr, result))
+         return;
+
+      /* Since the hardware doesn't support 8-bit immediates we do MOV.NZ
+       * instead of CMP.NZ for 8-bit sel.
+       */
+      inst = bld.MOV(bld.null_reg_d(), op[0]);
+      inst->conditional_mod = BRW_CONDITIONAL_NZ;
+      inst = bld.SEL(result, op[1], op[2]);
+      inst->predicate = BRW_PREDICATE_NORMAL;
+      break;
+   }
 
    case nir_op_b16csel:
    case nir_op_b32csel: {
