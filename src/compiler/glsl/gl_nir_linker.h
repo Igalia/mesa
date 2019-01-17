@@ -46,6 +46,8 @@ void gl_nir_link_assign_atomic_counter_resources(struct gl_context *ctx,
 void gl_nir_link_assign_xfb_resources(struct gl_context *ctx,
                                       struct gl_shader_program *prog);
 
+bool _glsl_type_is_leaf(const struct glsl_type *type);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

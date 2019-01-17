@@ -67,3 +67,16 @@ nir_build_program_resource_list(struct gl_context *ctx,
 
    _mesa_set_destroy(resource_set, NULL);
 }
+
+bool
+_glsl_type_is_leaf(const struct glsl_type *type)
+{
+   if (glsl_type_is_struct(type) ||
+       (glsl_type_is_array(type) &&
+        (glsl_type_is_array(glsl_get_array_element(type)) ||
+         glsl_type_is_struct(glsl_get_array_element(type))))) {
+      return false;
+   } else {
+      return true;
+   }
+}
