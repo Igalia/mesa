@@ -225,7 +225,7 @@ set_uniform_initializer(struct set_uniform_initializer_closure *data,
                                   val->elements[i],
                                   element_type,
                                   data->boolean_true);
-         copy_constant_to_storage(datadefaults,
+         copy_constant_to_storage(datadefaults + idx,
                                   val->elements[i],
                                   element_type,
                                   data->boolean_true);
