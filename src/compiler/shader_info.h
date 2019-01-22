@@ -38,6 +38,7 @@ struct spirv_supported_capabilities {
    bool descriptor_array_dynamic_indexing;
    bool device_group;
    bool draw_parameters;
+   bool float16;
    bool float64;
    bool geometry_streams;
    bool gcn_shader;
