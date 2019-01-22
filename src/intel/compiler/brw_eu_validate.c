@@ -337,17 +337,20 @@ execution_type(const struct gen_device_info *devinfo, const brw_inst *inst)
    unsigned num_sources = num_sources_from_inst(devinfo, inst);
    enum brw_reg_type src0_exec_type, src1_exec_type;
 
-   /* Execution data type is independent of destination data type, except in
-    * mixed F/HF instructions on CHV and SKL+.
+   /* Empirical testing suggests that type conversions involving half-float
+    * promote execution type to 32-bit. See get_exec_type() in brw_ir_fs.h.
     */
    enum brw_reg_type dst_exec_type = brw_inst_dst_type(devinfo, inst);
 
    src0_exec_type = execution_type_for_type(brw_inst_src0_type(devinfo, inst));
    if (num_sources == 1) {
-      if ((devinfo->gen >= 9 || devinfo->is_cherryview) &&
-          src0_exec_type == BRW_REGISTER_TYPE_HF) {
-         return dst_exec_type;
+      if (type_sz(src0_exec_type) == 2 && dst_exec_type != src0_exec_type) {
+         if (src0_exec_type == BRW_REGISTER_TYPE_HF)
+            return BRW_REGISTER_TYPE_F;
+         else if (dst_exec_type == BRW_REGISTER_TYPE_HF)
+            return BRW_REGISTER_TYPE_D;
       }
+
       return src0_exec_type;
    }
 
@@ -379,14 +382,12 @@ execution_type(const struct gen_device_info *devinfo, const brw_inst *inst)
        src1_exec_type == BRW_REGISTER_TYPE_DF)
       return BRW_REGISTER_TYPE_DF;
 
-   if (devinfo->gen >= 9 || devinfo->is_cherryview) {
-      if (dst_exec_type == BRW_REGISTER_TYPE_F ||
-          src0_exec_type == BRW_REGISTER_TYPE_F ||
-          src1_exec_type == BRW_REGISTER_TYPE_F) {
-         return BRW_REGISTER_TYPE_F;
-      } else {
-         return BRW_REGISTER_TYPE_HF;
-      }
+   if (dst_exec_type == BRW_REGISTER_TYPE_F ||
+       src0_exec_type == BRW_REGISTER_TYPE_F ||
+       src1_exec_type == BRW_REGISTER_TYPE_F) {
+      return BRW_REGISTER_TYPE_F;
+   } else {
+      return BRW_REGISTER_TYPE_HF;
    }
 
    assert(src0_exec_type == BRW_REGISTER_TYPE_F);
