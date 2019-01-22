@@ -3584,6 +3584,9 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       case SpvCapabilityInt16:
          spv_check_supported(int16, cap);
          break;
+      case SpvCapabilityInt8:
+         spv_check_supported(int8, cap);
+         break;
 
       case SpvCapabilityTransformFeedback:
          spv_check_supported(transform_feedback, cap);
@@ -3595,10 +3598,6 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
 
       case SpvCapabilityInt64Atomics:
          spv_check_supported(int64_atomics, cap);
-
-      case SpvCapabilityInt8:
-         spv_check_supported(int8, cap);
-         break;
 
       case SpvCapabilityStorageImageMultisample:
          spv_check_supported(storage_image_ms, cap);
