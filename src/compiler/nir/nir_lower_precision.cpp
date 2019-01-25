@@ -495,7 +495,10 @@ lower_alu_precision(nir_builder *b, nir_alu_instr *alu,
    /* Validation doesn't allow b2f from 16-bit value. Therefore convert
     * source first to 32-bits and only then to float.
     */
-   if (alu->op == nir_op_b2f32 || alu->op == nir_op_bcsel) {
+   /* If the source is actually 1-bit then the validator will allow it.
+    */
+   if ((alu->op == nir_op_b2f32 || alu->op == nir_op_bcsel) &&
+       nir_src_bit_size(alu->src[0].src) != 1) {
       const nir_src promoted = nir_src_for_ssa(
          insert_conversion_after_src(b->shader, &alu->src[0].src,
                                      nir_op_i2i32));
