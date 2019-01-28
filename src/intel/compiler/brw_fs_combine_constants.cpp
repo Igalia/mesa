@@ -36,6 +36,7 @@
 
 #include "brw_fs.h"
 #include "brw_cfg.h"
+#include "util/half_float.h"
 
 using namespace brw;
 
@@ -115,7 +116,13 @@ struct imm {
    exec_list *uses;
 
    /** The immediate value.  We currently only handle floats. */
-   float val;
+   union {
+      char bytes[8];
+      float f;
+      int32_t d;
+      int16_t w;
+   };
+   brw_reg_type type;
 
    /**
     * The GRF register and subregister number where we've decided to store the
@@ -145,10 +152,11 @@ struct table {
 };
 
 static struct imm *
-find_imm(struct table *table, float val)
+find_imm(struct table *table, void *data, brw_reg_type type)
 {
    for (int i = 0; i < table->len; i++) {
-      if (table->imm[i].val == val) {
+      if (table->imm[i].type == type &&
+          !memcmp(table->imm[i].bytes, data, type_sz(type))) {
          return &table->imm[i];
       }
    }
@@ -190,6 +198,106 @@ compare(const void *_a, const void *_b)
    return a->first_use_ip - b->first_use_ip;
 }
 
+static bool
+get_constant_value(const struct gen_device_info *devinfo,
+                   const fs_inst *inst, uint32_t src_idx,
+                   void *out, brw_reg_type *out_type)
+{
+   const bool can_do_source_mods = inst->can_do_source_mods(devinfo);
+   const fs_reg *src = &inst->src[src_idx];
+
+   *out_type = src->type;
+
+   switch (*out_type) {
+   case BRW_REGISTER_TYPE_F: {
+      float val = !can_do_source_mods ? src->f : fabs(src->f);
+      memcpy(out, &val, 4);
+      break;
+   }
+   case BRW_REGISTER_TYPE_HF: {
+      uint16_t val = src->d & 0xffffu;
+      if (can_do_source_mods)
+         val = _mesa_float_to_half(fabsf(_mesa_half_to_float(val)));
+      memcpy(out, &val, 2);
+      break;
+   }
+   case BRW_REGISTER_TYPE_D: {
+      int32_t val = !can_do_source_mods ? src->d : abs(src->d);
+      memcpy(out, &val, 4);
+      break;
+   }
+   case BRW_REGISTER_TYPE_UD:
+      memcpy(out, &src->ud, 4);
+      break;
+   case BRW_REGISTER_TYPE_W: {
+      int16_t val = src->d & 0xffffu;
+      if (can_do_source_mods)
+         val = abs(val);
+      memcpy(out, &val, 2);
+      break;
+   }
+   case BRW_REGISTER_TYPE_UW: {
+      uint16_t val = src->ud & 0xffffu;
+      memcpy(out, &val, 2);
+      break;
+   }
+   default:
+      return false;
+   };
+
+   return true;
+}
+
+static struct brw_reg
+build_imm_reg_for_copy(struct imm *imm)
+{
+   switch (type_sz(imm->type)) {
+   case 4:
+      return brw_imm_d(imm->d);
+   case 2:
+      return brw_imm_w(imm->w);
+   default:
+      unreachable("not implemented");
+   }
+}
+
+static uint32_t
+get_alignment_for_type(brw_reg_type type)
+{
+   switch (type) {
+   case BRW_REGISTER_TYPE_F:
+   case BRW_REGISTER_TYPE_D:
+   case BRW_REGISTER_TYPE_UD:
+   case BRW_REGISTER_TYPE_W:
+   case BRW_REGISTER_TYPE_UW:
+      return type_sz(type);
+   case BRW_REGISTER_TYPE_HF:
+      return 4;
+   default:
+      unreachable("not implemented");
+   };
+}
+
+static bool
+needs_negate(const struct fs_reg *reg, const struct imm *imm)
+{
+   switch (reg->type) {
+   case BRW_REGISTER_TYPE_F:
+      return signbit(reg->f) != signbit(imm->f);
+   case BRW_REGISTER_TYPE_HF:
+      return (reg->d & 0x8000u) != (imm->d & 0x8000u);
+   case BRW_REGISTER_TYPE_D:
+      return reg->d < 0;
+   case BRW_REGISTER_TYPE_W:
+      return (int16_t)(reg->d & 0xffffu) < 0;
+   case BRW_REGISTER_TYPE_UD:
+   case BRW_REGISTER_TYPE_UW:
+      return false;
+   default:
+      unreachable("not implemented");
+   };
+}
+
 bool
 fs_visitor::opt_combine_constants()
 {
@@ -214,13 +322,15 @@ fs_visitor::opt_combine_constants()
          continue;
 
       for (int i = 0; i < inst->sources; i++) {
-         if (inst->src[i].file != IMM ||
-             inst->src[i].type != BRW_REGISTER_TYPE_F)
+         if (inst->src[i].file != IMM)
             continue;
 
-         float val = !inst->can_do_source_mods(devinfo) ? inst->src[i].f :
-                     fabs(inst->src[i].f);
-         struct imm *imm = find_imm(&table, val);
+         char data[8];
+         brw_reg_type type;
+         if (!get_constant_value(devinfo, inst, i, data, &type))
+            continue;
+
+         struct imm *imm = find_imm(&table, data, type);
 
          if (imm) {
             bblock_t *intersection = cfg_t::intersect(block, imm->block);
@@ -237,7 +347,8 @@ fs_visitor::opt_combine_constants()
             imm->inst = inst;
             imm->uses = new(const_ctx) exec_list();
             imm->uses->push_tail(link(const_ctx, &inst->src[i]));
-            imm->val = val;
+            memcpy(imm->bytes, data, type_sz(type));
+            imm->type = inst->src[i].type;
             imm->uses_by_coissue = could_coissue(devinfo, inst);
             imm->must_promote = must_promote_imm(devinfo, inst);
             imm->first_use_ip = ip;
@@ -276,14 +387,39 @@ fs_visitor::opt_combine_constants()
        */
       exec_node *n = (imm->inst ? imm->inst :
                       imm->block->last_non_control_flow_inst()->next);
-      const fs_builder ibld = bld.at(imm->block, n).exec_all().group(1, 0);
 
-      ibld.MOV(reg, brw_imm_f(imm->val));
+      /* From the BDW and CHV PRM, 3D Media GPGPU, Special Restrictions:
+       *
+       * "In Align16 mode, the channel selects and channel enables apply to a
+       *  pair of half-floats, because these parameters are defined for DWord
+       *  elements ONLY. This is applicable when both source and destination
+       *  are half-floats."
+       *
+       * This means that when we emit a 3-src instruction such as MAD or LRP,
+       * for which we use Align16, if we need to promote an HF constant to a
+       * register we need to be aware that the  <0,1,0>:HF region would still
+       * read 2 HF slots and not not replicate the single one like we want.
+       * We fix this by populating both HF slots within a DWord with the
+       * constant.
+       */
+      const uint32_t width =
+         devinfo->gen == 8 &&
+         imm->type == BRW_REGISTER_TYPE_HF &&
+         (!imm->inst || imm->inst->is_3src(devinfo)) ? 2 : 1;
+      const fs_builder ibld = bld.at(imm->block, n).exec_all().group(width, 0);
+
+      struct brw_reg imm_reg = build_imm_reg_for_copy(imm);
+      ibld.MOV(retype(reg, imm_reg.type), imm_reg);
       imm->nr = reg.nr;
       imm->subreg_offset = reg.offset;
 
-      reg.offset += sizeof(float);
-      if (reg.offset == 8 * sizeof(float)) {
+      /* It seems that some combinations of instructions with immediates have
+       * alignment restrictions on the immediate region.
+       */
+      assert(type_sz(reg.type) <= 4);
+      reg.offset += type_sz(reg.type);
+      reg.offset = ALIGN(reg.offset, get_alignment_for_type(reg.type));
+      if (reg.offset >= REG_SIZE) {
          reg.nr = alloc.allocate(1);
          reg.offset = 0;
       }
@@ -294,13 +430,40 @@ fs_visitor::opt_combine_constants()
    for (int i = 0; i < table.len; i++) {
       foreach_list_typed(reg_link, link, link, table.imm[i].uses) {
          fs_reg *reg = link->reg;
-         assert((isnan(reg->f) && isnan(table.imm[i].val)) ||
-                fabsf(reg->f) == fabs(table.imm[i].val));
-
+#ifdef DEBUG
+         switch (reg->type) {
+         case BRW_REGISTER_TYPE_F:
+            assert((isnan(reg->f) && isnan(table.imm[i].f)) ||
+                   (fabsf(reg->f) == fabsf(table.imm[i].f)));
+            break;
+         case BRW_REGISTER_TYPE_HF:
+            assert((isnan(_mesa_half_to_float(reg->d & 0xffffu)) &&
+                    isnan(_mesa_half_to_float(table.imm[i].w))) ||
+                   (fabsf(_mesa_half_to_float(reg->d & 0xffffu)) ==
+                    fabsf(_mesa_half_to_float(table.imm[i].w))));
+            break;
+         case BRW_REGISTER_TYPE_D:
+            assert(reg->type == BRW_REGISTER_TYPE_D &&
+                   abs(reg->d) == abs(table.imm[i].d));
+            break;
+         case BRW_REGISTER_TYPE_UD:
+            assert(reg->d == table.imm[i].d);
+            break;
+         case BRW_REGISTER_TYPE_W:
+            assert(abs((int16_t) (reg->d & 0xffff)) == table.imm[i].w);
+            break;
+         case BRW_REGISTER_TYPE_UW:
+            assert(reg->type == BRW_REGISTER_TYPE_UW &&
+                   (reg->ud & 0xffffu) == (uint16_t) table.imm[i].w);
+            break;
+         default:
+            break;
+         }
+#endif
          reg->file = VGRF;
          reg->offset = table.imm[i].subreg_offset;
          reg->stride = 0;
-         reg->negate = signbit(reg->f) != signbit(table.imm[i].val);
+         reg->negate = needs_negate(reg, &table.imm[i]);
          reg->nr = table.imm[i].nr;
       }
    }
@@ -309,9 +472,9 @@ fs_visitor::opt_combine_constants()
       for (int i = 0; i < table.len; i++) {
          struct imm *imm = &table.imm[i];
 
-         printf("%.3fF - block %3d, reg %3d sub %2d, Uses: (%2d, %2d), "
-                "IP: %4d to %4d, length %4d\n",
-                imm->val,
+         printf("0x%016" PRIx64 " - block %3d, reg %3d sub %2d, "
+                "Uses: (%2d, %2d), IP: %4d to %4d, length %4d\n",
+                (uint64_t)(imm->d & BITFIELD64_MASK(type_sz(imm->type) * 8)),
                 imm->block->num,
                 imm->nr,
                 imm->subreg_offset,
