@@ -207,6 +207,8 @@ set_uniform_initializer(struct set_uniform_initializer_closure *data,
        data->location >= data->prog->sh.data->NumUniformStorage)
       return;
 
+   union gl_constant_value *datadefaults =
+      data->prog->sh.data->UniformDataDefaults + data->location;
    struct gl_uniform_storage *storage =
       data->prog->sh.data->UniformStorage + data->location++;
 
@@ -223,11 +225,18 @@ set_uniform_initializer(struct set_uniform_initializer_closure *data,
                                   val->elements[i],
                                   element_type,
                                   data->boolean_true);
-
+         copy_constant_to_storage(datadefaults + idx,
+                                  val->elements[i],
+                                  element_type,
+                                  data->boolean_true);
          idx += elements * dmul;
       }
    } else {
       copy_constant_to_storage(storage->storage,
+                               val,
+                               type,
+                               data->boolean_true);
+      copy_constant_to_storage(datadefaults,
                                val,
                                type,
                                data->boolean_true);
