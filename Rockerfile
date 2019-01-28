@@ -1,0 +1,68 @@
+{{ $image := (or .Env.DOCKER_IMAGE "igalia/mesa") }}
+
+FROM ubuntu:bionic
+
+LABEL maintainer "Juan A. Suarez Romero <jasuarez@igalia.com>"
+
+RUN apt-get update                                                            \
+        && apt-get -y install git sudo python3-pip pkg-config zlib1g-dev wget \
+        libpciaccess-dev bison flex libffi-dev libxml2-dev wayland-protocols  \
+        libx11-dev libxext-dev libxdamage-dev libxcb-glx0-dev libxxf86vm-dev  \
+        libx11-xcb-dev libxcb-dri2-0-dev libxcb-dri3-dev libxcb-present-dev   \
+        libxshmfence-dev libxrandr-dev gettext ccache weston                  \
+        && rm -fr /var/lib/apt/lists/*
+
+RUN pip3 install meson mako ninja
+
+RUN adduser --gecos "" mesa && passwd -d mesa && adduser mesa sudo
+
+USER mesa
+
+WORKDIR /home/mesa
+
+{{ if .Env.MAKEFLAGS }}
+ENV MAKEFLAGS={{ .Env.MAKEFLAGS }}
+{{ end }}
+
+{{ if .Env.CCACHE_DIR }}
+MOUNT {{ .Env.CCACHE_DIR }}:/home/mesa/.ccache:Z
+RUN sudo chown -R mesa:mesa /home/mesa/.ccache
+{{ end }}
+
+RUN wget https://dri.freedesktop.org/libdrm/libdrm-2.4.95.tar.bz2 \
+        && tar xf libdrm-2.4.95.tar.bz2                           \
+        && rm libdrm-2.4.95.tar.bz2                               \
+        && cd libdrm-2.4.95                                       \
+        && meson _build                                           \
+        && ninja -C _build                                        \
+        && sudo ninja -C _build install                           \
+        && rm -fr ../libdrm-2.4.95                                \
+        && sudo ldconfig
+
+RUN wget https://wayland.freedesktop.org/releases/wayland-1.16.0.tar.xz \
+        && tar xf wayland-1.16.0.tar.xz                                 \
+        && rm wayland-1.16.0.tar.xz                                     \
+        && cd wayland-1.16.0                                            \
+        && ./configure --disable-documentation                          \
+        && make                                                         \
+        && sudo make install                                            \
+        && sudo rm -fr ../wayland-1.16.0                                \
+        && sudo ldconfig
+
+ADD . /home/mesa/mesa
+
+WORKDIR /home/mesa/mesa
+
+RUN sudo chown -R mesa:mesa /home/mesa/mesa
+
+RUN meson _build -Dbuildtype=debug -Dvulkan-drivers=intel -Dllvm=false \
+        -Dgallium-drivers="" -Ddri-drivers=i965                        \
+        && ninja -C _build                                             \
+        && sudo ninja -C _build install                                \
+        && sudo ldconfig
+
+USER root
+
+{{ if .TAG }}
+TAG {{ $image }}:{{ .TAG }}
+{{ end }}
