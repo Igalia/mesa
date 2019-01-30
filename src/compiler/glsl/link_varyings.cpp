@@ -1176,6 +1176,29 @@ tfeedback_decl::store(struct gl_context *ctx, struct gl_shader_program *prog,
       unsigned location = this->location;
       unsigned location_frac = this->location_frac;
       unsigned num_components = this->num_components();
+
+      /* From the OpenGL 4.60.5 spec, section 4.4.2. Output Layout Qualifiers,
+       * Page 76, (Transform Feedback Layout Qualifiers):
+       *
+       * "No aliasing in output buffers is allowed: It is a compile-time or
+       *  link-time error to specify variables with overlapping transform
+       *  feedback offsets."
+       */
+      for (unsigned i = 0; i < info->NumOutputs; i++) {
+         const struct gl_transform_feedback_output &output = info->Outputs[i];
+
+         if (output.OutputBuffer != buffer)
+            continue;
+
+         if ((output.DstOffset < xfb_offset + num_components) &&
+             (output.DstOffset + output.NumComponents > xfb_offset)) {
+            linker_error(prog,
+                         "variable '%s', xfb_offset (%d) is causing aliasing.",
+                         this->orig_name, xfb_offset * 4);
+            return false;
+         }
+      }
+
       while (num_components > 0) {
          unsigned output_size = MIN2(num_components, 4 - location_frac);
          assert((info->NumOutputs == 0 && max_outputs == 0) ||
