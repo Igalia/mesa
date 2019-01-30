@@ -611,10 +611,6 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
 
       case SHADER_OPCODE_INT_QUOTIENT:
       case SHADER_OPCODE_INT_REMAINDER:
-         /* FINISHME: Promote non-float constants and remove this. */
-         if (devinfo->gen < 8)
-            break;
-         /* fallthrough */
       case SHADER_OPCODE_POW:
          /* Allow constant propagation into src1 (except on Gen 6 which
           * doesn't support scalar source math), and let constant combining
