@@ -603,6 +603,13 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
 
       switch (inst->opcode) {
       case BRW_OPCODE_MOV:
+         /* The hardware doesn't support :B immediates but we allow for this
+          * and expect the combine constants pass to promote them to GRF,
+          * however it seems that conversion MOVs don't work when sourcing
+          * from the promoted constants (that have a <0,1,0>:B region).
+          */
+         if (type_sz(val.type) == 1 && type_sz(inst->dst.type) > 1)
+            break;
       case SHADER_OPCODE_LOAD_PAYLOAD:
       case FS_OPCODE_PACK:
          inst->src[i] = val;
@@ -687,6 +694,14 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
          break;
 
       case BRW_OPCODE_SEL:
+         /* The hardware doesn't support :B immediates but we allow for this
+          * and expect the combine constants pass to promote them to GRF,
+          * however SEL instructions seem to have problems sourcing from the
+          * promoted constants (that have a <0,1,0>:B region).
+          */
+         if (type_sz(val.type) == 1)
+            break;
+
          if (i == 0 && inst->src[1].file != IMM) {
             inst->src[0] = inst->src[1];
             inst->src[1] = val;
