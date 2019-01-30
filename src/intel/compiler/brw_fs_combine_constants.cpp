@@ -69,6 +69,8 @@ static bool
 must_promote_imm(const struct gen_device_info *devinfo, const fs_inst *inst)
 {
    switch (inst->opcode) {
+   case SHADER_OPCODE_INT_QUOTIENT:
+   case SHADER_OPCODE_INT_REMAINDER:
    case SHADER_OPCODE_POW:
       return devinfo->gen < 8;
    case BRW_OPCODE_MAD:
