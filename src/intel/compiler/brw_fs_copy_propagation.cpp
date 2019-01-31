@@ -624,10 +624,8 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
       case BRW_OPCODE_SHL:
       case BRW_OPCODE_SHR:
       case BRW_OPCODE_SUBB:
-         if (i == 1) {
-            inst->src[i] = val;
-            progress = true;
-         }
+         inst->src[i] = val;
+         progress = true;
          break;
 
       case BRW_OPCODE_MACH:
@@ -638,10 +636,7 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
       case BRW_OPCODE_AND:
       case BRW_OPCODE_XOR:
       case BRW_OPCODE_ADDC:
-         if (i == 1) {
-            inst->src[i] = val;
-            progress = true;
-         } else if (i == 0 && inst->src[1].file != IMM) {
+         if (i == 0 && inst->src[1].file != IMM) {
             /* Fit this constant in by commuting the operands.
              * Exception: we can't do this for 32-bit integer MUL/MACH
              * because it's asymmetric.
@@ -653,24 +648,25 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
              * Integer MUL with a non-accumulator destination will be lowered
              * by lower_integer_multiplication(), so don't restrict it.
              */
-            if (((inst->opcode == BRW_OPCODE_MUL &&
-                  inst->dst.is_accumulator()) ||
-                 inst->opcode == BRW_OPCODE_MACH) &&
-                (inst->src[1].type == BRW_REGISTER_TYPE_D ||
-                 inst->src[1].type == BRW_REGISTER_TYPE_UD))
+            if (((inst->opcode != BRW_OPCODE_MUL ||
+                  inst->dst.is_accumulator()) &&
+                 inst->opcode != BRW_OPCODE_MACH) ||
+                (inst->src[1].type != BRW_REGISTER_TYPE_D &&
+                 inst->src[1].type != BRW_REGISTER_TYPE_UD)) {
+               inst->src[0] = inst->src[1];
+               inst->src[1] = val;
+               progress = true;
                break;
-            inst->src[0] = inst->src[1];
-            inst->src[1] = val;
-            progress = true;
+            }
          }
+
+         inst->src[i] = val;
+         progress = true;
          break;
 
       case BRW_OPCODE_CMP:
       case BRW_OPCODE_IF:
-         if (i == 1) {
-            inst->src[i] = val;
-            progress = true;
-         } else if (i == 0 && inst->src[1].file != IMM) {
+         if (i == 0 && inst->src[1].file != IMM) {
             enum brw_conditional_mod new_cmod;
 
             new_cmod = brw_swap_cmod(inst->conditional_mod);
@@ -682,25 +678,29 @@ fs_visitor::try_constant_propagate(fs_inst *inst, acp_entry *entry)
                inst->src[1] = val;
                inst->conditional_mod = new_cmod;
                progress = true;
+               break;
             }
          }
+
+         inst->src[i] = val;
+         progress = true;
          break;
 
       case BRW_OPCODE_SEL:
-         if (i == 1) {
-            inst->src[i] = val;
-            progress = true;
-         } else if (i == 0 && inst->src[1].file != IMM) {
+         if (i == 0 && inst->src[1].file != IMM) {
             inst->src[0] = inst->src[1];
             inst->src[1] = val;
 
             /* If this was predicated, flipping operands means
              * we also need to flip the predicate.
              */
-            if (inst->conditional_mod == BRW_CONDITIONAL_NONE) {
-               inst->predicate_inverse =
-                  !inst->predicate_inverse;
-            }
+            if (inst->conditional_mod == BRW_CONDITIONAL_NONE)
+               inst->predicate_inverse = !inst->predicate_inverse;
+
+            progress = true;
+            break;
+         } else {
+            inst->src[i] = val;
             progress = true;
          }
          break;

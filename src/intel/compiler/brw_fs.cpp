@@ -2529,7 +2529,6 @@ fs_visitor::opt_algebraic()
       case BRW_OPCODE_MUL:
          if (inst->src[1].file != IMM)
             continue;
-
          /* a * 1.0 = a */
          if (inst->src[1].is_one()) {
             inst->opcode = BRW_OPCODE_MOV;
