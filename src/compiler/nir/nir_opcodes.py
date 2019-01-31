@@ -453,8 +453,14 @@ def binop_convert(name, out_type, in_type, alg_props, const_expr):
    opcode(name, 0, out_type, [0, 0], [in_type, in_type],
           False, alg_props, const_expr, "")
 
+def binop_convert_rounding_mode(name, out_type, in_type, alg_props, const_expr, rounding_mode):
+   opcode(name, 0, out_type, [0, 0], [in_type, in_type], False, alg_props, const_expr, rounding_mode)
+
 def binop(name, ty, alg_props, const_expr):
    binop_convert(name, ty, ty, alg_props, const_expr)
+
+def binop_rounding_mode(name, ty, alg_props, const_expr, rounding_mode):
+   binop_convert_rounding_mode(name, ty, ty, alg_props, const_expr, rounding_mode)
 
 def binop_compare(name, ty, alg_props, const_expr):
    binop_convert(name, tbool1, ty, alg_props, const_expr)
@@ -490,13 +496,24 @@ def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
           final(reduce_(reduce_(src0, src1), reduce_(src2, src3))), "")
 
 binop("fadd", tfloat, commutative + associative, "src0 + src1")
+binop_rounding_mode("fadd_rtne", tfloat, commutative + associative,
+                    "_mesa_roundeven(src0 + src1)", "_rtne")
+binop_rounding_mode("fadd_rtz", tfloat, commutative + associative, "src0 + src1", "_rtz")
+
 binop("iadd", tint, commutative + associative, "src0 + src1")
 binop("uadd_sat", tuint, commutative,
       "(src0 + src1) < src0 ? UINT64_MAX : (src0 + src1)")
 binop("fsub", tfloat, "", "src0 - src1")
+binop_rounding_mode("fsub_rtne", tfloat, "",
+                    "_mesa_roundeven(src0 - src1)", "_rtne")
+binop_rounding_mode("fsub_rtz", tfloat, "", "src0 - src1", "_rtz")
 binop("isub", tint, "", "src0 - src1")
 
 binop("fmul", tfloat, commutative + associative, "src0 * src1")
+binop_rounding_mode("fmul_rtne", tfloat, commutative + associative,
+                    "_mesa_roundeven(src0 * src1)", "_rtne")
+binop_rounding_mode("fmul_rtz", tfloat, commutative + associative, "src0 * src1", "_rtz")
+
 # low 32-bits of signed/unsigned integer multiply
 binop("imul", tint, commutative + associative, "src0 * src1")
 
