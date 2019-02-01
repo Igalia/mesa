@@ -156,6 +156,10 @@ def unop_convert(name, out_type, in_type, const_expr, rounding_mode):
 def unop(name, ty, const_expr):
    opcode(name, 0, ty, [0], [ty], False, "", const_expr, "")
 
+def unop_rounding_mode(name, ty, const_expr, rounding_mode):
+   op_name = "{0}{1}".format(name, rounding_mode)
+   opcode(op_name, 0, ty, [0], [ty], False, "", const_expr, rounding_mode)
+
 def unop_horiz(name, output_size, output_type, input_size, input_type,
                const_expr):
    opcode(name, output_size, output_type, [input_size], [input_type],
@@ -250,11 +254,13 @@ for src_t in [tint, tuint, tfloat, tbool]:
 
 # Unary floating-point rounding operations.
 
-
 unop("ftrunc", tfloat, "bit_size == 64 ? trunc(src0) : truncf(src0)")
 unop("fceil", tfloat, "bit_size == 64 ? ceil(src0) : ceilf(src0)")
 unop("ffloor", tfloat, "bit_size == 64 ? floor(src0) : floorf(src0)")
 unop("ffract", tfloat, "src0 - (bit_size == 64 ? floor(src0) : floorf(src0))")
+unop_rounding_mode("ffract", tfloat, """bit_size == 64 ? _mesa_roundeven(src0 - floor(src0)) : _mesa_roundevenf(src0 - floorf(src0))""", "_rtne")
+unop_rounding_mode("ffract", tfloat, "src0 - (bit_size == 64 ? floor(src0) : floorf(src0))", "_rtz")
+
 unop("fround_even", tfloat, "bit_size == 64 ? _mesa_roundeven(src0) : _mesa_roundevenf(src0)")
 
 unop("fquantize2f16", tfloat, "(fabs(src0) < ldexpf(1.0, -14)) ? copysignf(0.0f, src0) : _mesa_half_to_float(_mesa_float_to_half(src0))")
