@@ -715,7 +715,8 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
                                  gl_linked_shader *consumer)
 {
    glsl_symbol_table parameters;
-   struct explicit_location_info explicit_locations[MAX_VARYING][4] = { 0 };
+   struct explicit_location_info output_explicit_locations[MAX_VARYING][4] = { 0 };
+   struct explicit_location_info input_explicit_locations[MAX_VARYING][4] = { 0 };
 
    /* Find all shader outputs in the "producer" stage.
     */
@@ -733,7 +734,7 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
           * differently because they do not need to have matching names.
           */
          if (!validate_explicit_variable_location(ctx,
-                                                  explicit_locations,
+                                                  output_explicit_locations,
                                                   var, prog, producer)) {
             return;
          }
@@ -791,6 +792,12 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
                compute_variable_location_slot(input, consumer->Stage);
             unsigned slot_limit = idx + num_elements;
 
+            if (!validate_explicit_variable_location(ctx,
+                                                     input_explicit_locations,
+                                                     input, prog, consumer)) {
+               return;
+            }
+
             while (idx < slot_limit) {
                if (idx >= MAX_VARYING) {
                   linker_error(prog,
@@ -799,7 +806,7 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
                   return;
                }
 
-               output = explicit_locations[idx][input->data.location_frac].var;
+               output = output_explicit_locations[idx][input->data.location_frac].var;
 
                if (output == NULL ||
                    input->data.location != output->data.location) {
