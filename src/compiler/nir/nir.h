@@ -877,6 +877,161 @@ nir_get_nir_type_for_glsl_type(const struct glsl_type *type)
 nir_op nir_type_conversion_op(nir_alu_type src, nir_alu_type dst,
                               nir_rounding_mode rnd);
 
+static inline bool
+nir_is_float_control_signed_zero_inf_nan_preserve(unsigned execution_mode, unsigned bit_size)
+{
+   switch(bit_size) {
+   case 16:
+      if (execution_mode & SHADER_SIGNED_ZERO_INF_NAN_PRESERVE_FP16)
+         return true;
+      break;
+   case 32:
+      if (execution_mode & SHADER_SIGNED_ZERO_INF_NAN_PRESERVE_FP32)
+         return true;
+      break;
+   case 64:
+      if (execution_mode & SHADER_SIGNED_ZERO_INF_NAN_PRESERVE_FP64)
+         return true;
+      break;
+   default:
+      break;
+   }
+   return false;
+}
+
+static inline bool
+nir_is_denorm_flush_to_zero(unsigned execution_mode, unsigned bit_size)
+{
+   switch(bit_size) {
+   case 16:
+      if (execution_mode & SHADER_DENORM_FLUSH_TO_ZERO_FP16)
+         return true;
+      break;
+   case 32:
+      if (execution_mode & SHADER_DENORM_FLUSH_TO_ZERO_FP32)
+         return true;
+      break;
+   case 64:
+      if (execution_mode & SHADER_DENORM_FLUSH_TO_ZERO_FP64)
+         return true;
+      break;
+   default:
+      break;
+   }
+   return false;
+}
+
+static inline bool
+nir_is_denorm_preserve(unsigned execution_mode, unsigned bit_size)
+{
+   switch(bit_size) {
+   case 16:
+      if (execution_mode & SHADER_DENORM_PRESERVE_FP16)
+         return true;
+      break;
+   case 32:
+      if (execution_mode & SHADER_DENORM_PRESERVE_FP32)
+         return true;
+      break;
+   case 64:
+      if (execution_mode & SHADER_DENORM_PRESERVE_FP64)
+         return true;
+      break;
+   default:
+      break;
+   }
+   return false;
+}
+
+static inline bool
+nir_is_rounding_mode_rtne(unsigned execution_mode, unsigned bit_size)
+{
+   switch(bit_size) {
+   case 16:
+      if (execution_mode & SHADER_ROUNDING_MODE_RTE_FP16)
+         return true;
+      break;
+   case 32:
+      if (execution_mode & SHADER_ROUNDING_MODE_RTE_FP32)
+         return true;
+      break;
+   case 64:
+      if (execution_mode & SHADER_ROUNDING_MODE_RTE_FP64)
+         return true;
+      break;
+   default:
+      break;
+   }
+   return false;
+}
+
+static inline bool
+nir_is_rounding_mode_rtz(unsigned execution_mode, unsigned bit_size)
+{
+   switch(bit_size) {
+   case 16:
+      if (execution_mode & SHADER_ROUNDING_MODE_RTZ_FP16)
+         return true;
+      break;
+   case 32:
+      if (execution_mode & SHADER_ROUNDING_MODE_RTZ_FP32)
+         return true;
+      break;
+   case 64:
+      if (execution_mode & SHADER_ROUNDING_MODE_RTZ_FP64)
+         return true;
+      break;
+   default:
+      break;
+   }
+   return false;
+}
+
+static inline bool
+nir_has_any_rounding_mode_rtz(unsigned execution_mode)
+{
+   bool result =
+      (execution_mode & SHADER_ROUNDING_MODE_RTZ_FP16) ||
+      (execution_mode & SHADER_ROUNDING_MODE_RTZ_FP32) ||
+      (execution_mode & SHADER_ROUNDING_MODE_RTZ_FP64);
+   return result;
+}
+
+static inline bool
+nir_has_any_rounding_mode_rtne(unsigned execution_mode)
+{
+   bool result =
+      (execution_mode & SHADER_ROUNDING_MODE_RTE_FP16) ||
+      (execution_mode & SHADER_ROUNDING_MODE_RTE_FP32) ||
+      (execution_mode & SHADER_ROUNDING_MODE_RTE_FP64);
+   return result;
+}
+
+static inline nir_rounding_mode
+nir_get_rounding_mode_from_float_controls(unsigned execution_mode,
+                                          nir_alu_type type)
+{
+   if (nir_alu_type_get_base_type(type) != nir_type_float)
+      return nir_rounding_mode_undef;
+
+   unsigned bit_size = nir_alu_type_get_type_size(type);
+
+   if (nir_is_rounding_mode_rtz(execution_mode, bit_size))
+      return nir_rounding_mode_rtz;
+   if (nir_is_rounding_mode_rtne(execution_mode, bit_size))
+      return nir_rounding_mode_rtne;
+   return nir_rounding_mode_undef;
+}
+
+static inline bool
+nir_has_any_rounding_mode_enabled(unsigned execution_mode)
+{
+   bool result =
+      nir_has_any_rounding_mode_rtne(execution_mode) ||
+      nir_has_any_rounding_mode_rtz(execution_mode);
+   return result;
+}
+
 typedef enum {
    NIR_OP_IS_COMMUTATIVE = (1 << 0),
    NIR_OP_IS_ASSOCIATIVE = (1 << 1),
