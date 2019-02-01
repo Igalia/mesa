@@ -424,15 +424,15 @@ compute_variable_location_slot(ir_variable *var, gl_shader_stage stage)
 
 struct explicit_location_info {
    ir_variable *var;
-   unsigned numerical_type;
+   int numerical_type;
    unsigned interpolation;
    bool centroid;
    bool sample;
    bool patch;
 };
 
-static inline unsigned
-get_numerical_type(const glsl_type *type)
+static inline int
+get_numerical_sized_type(const glsl_type *type)
 {
    /* From the OpenGL 4.6 spec, section 4.4.1 Input Layout Qualifiers, Page 68,
     * (Location aliasing):
@@ -440,10 +440,25 @@ get_numerical_type(const glsl_type *type)
     *    "Further, when location aliasing, the aliases sharing the location
     *     must have the same underlying numerical type  (floating-point or
     *     integer)
+    *
+    * Khronos has further clarified that this also requires the underlying
+    * types to have the same width, so we can't put a float and a double
+    * in the same location slot for example. Future versions of the spec will
+    * be corrected to make this clear.
+    *
+    * Notice that we allow location aliasing for bindless image/samplers too
+    * since these are defined as 64-bit integers.
     */
-   if (type->is_float() || type->is_double())
+   if (type->is_float())
       return GLSL_TYPE_FLOAT;
-   return GLSL_TYPE_INT;
+   else if (type->is_integer())
+      return GLSL_TYPE_INT;
+   else if (type->is_double())
+      return GLSL_TYPE_DOUBLE;
+   else if (type->is_integer_64() || type->is_sampler() || type->is_image())
+      return GLSL_TYPE_INT64;
+
+   return -1; /* Not a numerical type */
 }
 
 static bool
@@ -461,14 +476,17 @@ check_location_aliasing(struct explicit_location_info explicit_locations[][4],
                         gl_shader_stage stage)
 {
    unsigned last_comp;
-   if (type->without_array()->is_struct()) {
-      /* The component qualifier can't be used on structs so just treat
-       * all component slots as used.
+   const glsl_type *type_without_array = type->without_array();
+   int numerical_type = get_numerical_sized_type(type_without_array);
+   if (-1 == numerical_type) {
+      /* The component qualifier can't be used on non-numerical types so just
+       * treat all component slots as used. This will also make it so that
+       * any location aliasing attempt on non-numerical types is detected.
        */
       last_comp = 4;
    } else {
-      unsigned dmul = type->without_array()->is_64bit() ? 2 : 1;
-      last_comp = component + type->without_array()->vector_elements * dmul;
+      unsigned dmul = type_without_array->is_64bit() ? 2 : 1;
+      last_comp = component + type_without_array->vector_elements * dmul;
    }
 
    while (location < location_limit) {
@@ -478,8 +496,18 @@ check_location_aliasing(struct explicit_location_info explicit_locations[][4],
             &explicit_locations[location][comp];
 
          if (info->var) {
-            /* Component aliasing is not alloed */
-            if (comp >= component && comp < last_comp) {
+            if (-1 == numerical_type || -1 == info->numerical_type) {
+               /* Location aliasing is only allowed for numerical variables */
+               linker_error(prog,
+                            "%s shader has location aliasing for "
+                            "non-numerical variable '%s'. Location %u "
+                            "component %u\n",
+                            _mesa_shader_stage_to_string(stage),
+                            -1 == numerical_type ? var->name : info->var->name,
+                            location, comp);
+               return false;
+            } else if (comp >= component && comp < last_comp) {
+               /* Component aliasing is not allowed */
                linker_error(prog,
                             "%s shader has multiple %sputs explicitly "
                             "assigned to location %d and component %d\n",
@@ -491,12 +519,12 @@ check_location_aliasing(struct explicit_location_info explicit_locations[][4],
                /* For all other used components we need to have matching
                 * types, interpolation and auxiliary storage
                 */
-               if (info->numerical_type !=
-                   get_numerical_type(type->without_array())) {
+               if (info->numerical_type != numerical_type) {
                   linker_error(prog,
-                               "Varyings sharing the same location must "
-                               "have the same underlying numerical type. "
-                               "Location %u component %u\n",
+                               "%s shader has varyings sharing the same "
+                               "location that don't have the same underlying "
+                               "numerical type. Location %u component %u\n",
+                               _mesa_shader_stage_to_string(stage),
                                location, comp);
                   return false;
                }
@@ -526,7 +554,7 @@ check_location_aliasing(struct explicit_location_info explicit_locations[][4],
             }
          } else if (comp >= component && comp < last_comp) {
             info->var = var;
-            info->numerical_type = get_numerical_type(type->without_array());
+            info->numerical_type = numerical_type;
             info->interpolation = interpolation;
             info->centroid = centroid;
             info->sample = sample;
