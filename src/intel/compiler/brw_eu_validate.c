@@ -483,7 +483,45 @@ general_restrictions_based_on_operand_types(const struct gen_device_info *devinf
        exec_type_size == 8 && dst_type_size == 4)
       dst_type_size = 8;
 
-   if (exec_type_size > dst_type_size) {
+   /* From the BDW+ PRM:
+    *
+    *   "Conversion between Integer and HF (Half Float) must be
+    *    DWord-aligned and strided by a DWord on the destination."
+    *
+    * But this seems to be overriden on CHV and SKL+ by:
+    *
+    *   "There is a relaxed alignment rule for word destinations. When
+    *    the destination type is word (UW, W, HF), destination data types
+    *    can be aligned to either the lowest word or the second lowest
+    *    word of the execution channel. This means the destination data
+    *    words can be either all in the even word locations or all in the
+    *    odd word locations."
+    *
+    * A strict interpretation of this would, however, rule out the
+    * possibility of any packed Word operations, which doesn't seem to be
+    * the case, so we are only validating this for conversions, which seems
+    * more in line with the first restriction. Also, conversions that don't
+    * involve HF don't seem to have this requirement.
+    */
+   if ((devinfo->is_cherryview || devinfo->gen >= 9) &&
+       dst_type == BRW_REGISTER_TYPE_HF && exec_type != BRW_REGISTER_TYPE_HF) {
+      ERROR_IF(dst_stride != 2,
+               "Conversions to HF must have either all words in even word "
+               "locations or all words in odd word locations");
+   } else if (devinfo->gen == 8 &&
+              ((dst_type == BRW_REGISTER_TYPE_HF &&
+                brw_reg_type_is_integer(exec_type)) ||
+               (brw_reg_type_is_integer(dst_type) &&
+                exec_type == BRW_REGISTER_TYPE_HF))) {
+      ERROR_IF(dst_stride * dst_type_size != 4,
+               "Conversions between integer and half-float must be strided "
+               "by a DWord on the destination");
+
+      unsigned subreg = brw_inst_dst_da1_subreg_nr(devinfo, inst);
+      ERROR_IF(subreg * dst_type_size % exec_type_size != 0,
+               "Conversions between integer and half-float must be aligned "
+               "to a DWord on the destination");
+   } else if (exec_type_size > dst_type_size) {
       if (!(dst_type_is_byte && inst_is_raw_move(devinfo, inst))) {
          ERROR_IF(dst_stride * dst_type_size != exec_type_size,
                   "Destination stride must be equal to the ratio of the sizes "
