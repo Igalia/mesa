@@ -531,7 +531,69 @@ general_restrictions_based_on_operand_types(const struct gen_device_info *devinf
        exec_type_size == 8 && dst_type_size == 4)
       dst_type_size = 8;
 
-   if (exec_type_size > dst_type_size) {
+   /* From the BDW+ PRM:
+    *
+    *    "There is no direct conversion from HF to DF or DF to HF.
+    *     There is no direct conversion from HF to Q/UQ or Q/UQ to HF."
+    */
+   enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);
+   ERROR_IF(brw_inst_opcode(devinfo, inst) == BRW_OPCODE_MOV &&
+            ((dst_type == BRW_REGISTER_TYPE_HF && type_sz(src0_type) == 8) ||
+             (dst_type_size == 8 && src0_type == BRW_REGISTER_TYPE_HF)),
+            "There are no direct conversion between 64-bit types and HF");
+
+   /* From the BDW+ PRM:
+    *
+    *   "Conversion between Integer and HF (Half Float) must be
+    *    DWord-aligned and strided by a DWord on the destination."
+    *
+    * But this seems to be expanded on CHV and SKL+ by:
+    *
+    *   "There is a relaxed alignment rule for word destinations. When
+    *    the destination type is word (UW, W, HF), destination data types
+    *    can be aligned to either the lowest word or the second lowest
+    *    word of the execution channel. This means the destination data
+    *    words can be either all in the even word locations or all in the
+    *    odd word locations."
+    *
+    * We do not implement the second rule as is though, since empirical testing
+    * shows inconsistencies:
+    *   - It suggests that packed 16-bit is not allowed, which is not true.
+    *   - It suggests that conversions from Q/DF to W (which need to be 64-bit
+    *     aligned on the destination) are not possible, which is not true.
+    *   - It suggests that conversions from 16-bit executions types to W need
+    *     to be 32-bit aligned, which doesn't seem to be necessary.
+    *
+    * So from this rule we only validate the implication that conversion from
+    * F to HF needs to be DWord aligned too (in BDW this is limited to
+    * conversions from integer types).
+    */
+   bool is_half_float_conversion =
+       brw_inst_opcode(devinfo, inst) == BRW_OPCODE_MOV &&
+       dst_type != src0_type &&
+       (dst_type == BRW_REGISTER_TYPE_HF || src0_type == BRW_REGISTER_TYPE_HF);
+
+   if (is_half_float_conversion) {
+      assert(devinfo->gen >= 8);
+
+      if ((dst_type == BRW_REGISTER_TYPE_HF && brw_reg_type_is_integer(src0_type)) ||
+          (brw_reg_type_is_integer(dst_type) && src0_type == BRW_REGISTER_TYPE_HF)) {
+         ERROR_IF(dst_stride * dst_type_size != 4,
+                  "Conversions between integer and half-float must be strided "
+                  "by a DWord on the destination");
+
+         unsigned subreg = brw_inst_dst_da1_subreg_nr(devinfo, inst);
+         ERROR_IF(subreg % 4 != 0,
+                  "Conversions between integer and half-float must be aligned "
+                  "to a DWord on the destination");
+      } else if ((devinfo->is_cherryview || devinfo->gen >= 9) &&
+                 dst_type == BRW_REGISTER_TYPE_HF) {
+         ERROR_IF(dst_stride != 2,
+                  "Conversions to HF must have either all words in even word "
+                  "locations or all words in odd word locations");
+      }
+
+   } else if (exec_type_size > dst_type_size) {
       if (!(dst_type_is_byte && inst_is_raw_move(devinfo, inst))) {
          ERROR_IF(dst_stride * dst_type_size != exec_type_size,
                   "Destination stride must be equal to the ratio of the sizes "

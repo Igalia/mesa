@@ -848,6 +848,128 @@ TEST_P(validation_test, byte_destination_relaxed_alignment)
    }
 }
 
+TEST_P(validation_test, half_float_conversion)
+{
+   static const struct {
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src_type;
+      unsigned dst_stride;
+      unsigned dst_subnr;
+      bool expected_result;
+   } inst[] = {
+#define INST(dst_type, src_type, dst_stride, dst_subnr, expected_result)  \
+      {                                                                   \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src_type,                                    \
+         BRW_HORIZONTAL_STRIDE_##dst_stride,                              \
+         dst_subnr,                                                       \
+         expected_result,                                                 \
+      }
+
+      /* MOV to half-float destination (F source handled later) */
+      INST(HF,  B, 1, 0, false),
+      INST(HF,  W, 1, 0, false),
+      INST(HF, HF, 1, 0, true),
+      INST(HF, HF, 1, 2, true),
+      INST(HF,  D, 1, 0, false),
+      INST(HF,  Q, 1, 0, false),
+      INST(HF, DF, 1, 0, false),
+      INST(HF,  B, 2, 0, true),
+      INST(HF,  B, 2, 2, false),
+      INST(HF,  W, 2, 0, true),
+      INST(HF,  W, 2, 2, false),
+      INST(HF, HF, 2, 0, true),
+      INST(HF, HF, 2, 2, true),
+      INST(HF,  D, 2, 0, true),
+      INST(HF,  D, 2, 2, false),
+      INST(HF,  Q, 2, 0, false),
+      INST(HF, DF, 2, 0, false),
+      INST(HF,  B, 4, 0, false),
+      INST(HF,  W, 4, 0, false),
+      INST(HF, HF, 4, 0, true),
+      INST(HF, HF, 4, 2, true),
+      INST(HF,  D, 4, 0, false),
+      INST(HF,  Q, 4, 0, false),
+      INST(HF, DF, 4, 0, false),
+
+      /* MOV from half-float source */
+      INST( B, HF, 1, 0, false),
+      INST( W, HF, 1, 0, false),
+      INST( D, HF, 1, 0, true),
+      INST( D, HF, 1, 4, true),
+      INST( F, HF, 1, 0, true),
+      INST( F, HF, 1, 4, true),
+      INST( Q, HF, 1, 0, false),
+      INST(DF, HF, 1, 0, false),
+      INST( B, HF, 2, 0, false),
+      INST( W, HF, 2, 0, true),
+      INST( W, HF, 2, 2, false),
+      INST( D, HF, 2, 0, false),
+      INST( F, HF, 2, 0, true),
+      INST( F, HF, 2, 2, true),
+      INST( B, HF, 4, 0, true),
+      INST( B, HF, 4, 1, false),
+      INST( W, HF, 4, 0, false),
+
+#undef INST
+   };
+
+   if (devinfo.gen < 8)
+      return;
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      if (!devinfo.has_64bit_types &&
+          (type_sz(inst[i].src_type) == 8 || type_sz(inst[i].dst_type) == 8)) {
+         continue;
+      }
+
+      brw_MOV(p, retype(g0, inst[i].dst_type), retype(g0, inst[i].src_type));
+
+      brw_inst_set_exec_size(&devinfo, last_inst, BRW_EXECUTE_4);
+
+      brw_inst_set_dst_hstride(&devinfo, last_inst, inst[i].dst_stride);
+      brw_inst_set_dst_da1_subreg_nr(&devinfo, last_inst, inst[i].dst_subnr);
+
+      if (inst[i].src_type == BRW_REGISTER_TYPE_B) {
+         brw_inst_set_src0_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+         brw_inst_set_src0_width(&devinfo, last_inst, BRW_WIDTH_2);
+         brw_inst_set_src0_hstride(&devinfo, last_inst, BRW_HORIZONTAL_STRIDE_2);
+      } else {
+         brw_inst_set_src0_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+         brw_inst_set_src0_width(&devinfo, last_inst, BRW_WIDTH_4);
+         brw_inst_set_src0_hstride(&devinfo, last_inst, BRW_HORIZONTAL_STRIDE_1);
+      }
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+
+   /* Conversion from F to HF has Dword destination alignment restriction
+    * on CHV and SKL+ only
+    */
+   brw_MOV(p, retype(g0, BRW_REGISTER_TYPE_HF),
+              retype(g0, BRW_REGISTER_TYPE_F));
+
+   brw_inst_set_dst_hstride(&devinfo, last_inst, BRW_HORIZONTAL_STRIDE_1);
+
+   if (devinfo.gen >= 9 || devinfo.is_cherryview) {
+      EXPECT_FALSE(validate(p));
+   } else {
+      assert(devinfo.gen == 8);
+      EXPECT_TRUE(validate(p));
+   }
+   clear_instructions(p);
+
+   brw_MOV(p, retype(g0, BRW_REGISTER_TYPE_HF),
+              retype(g0, BRW_REGISTER_TYPE_F));
+
+   brw_inst_set_dst_hstride(&devinfo, last_inst, BRW_HORIZONTAL_STRIDE_2);
+
+   EXPECT_TRUE(validate(p));
+   clear_instructions(p);
+}
+
 TEST_P(validation_test, vector_immediate_destination_alignment)
 {
    static const struct {
