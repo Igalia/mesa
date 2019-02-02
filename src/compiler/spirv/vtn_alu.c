@@ -220,17 +220,37 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
     * used for implementing greater-than and less-than-or-equal.
     */
    *swap = false;
+   unsigned float_controls =
+      b->shader->info.shader_float_controls_execution_mode;
 
    switch (opcode) {
    case SpvOpSNegate:            return nir_op_ineg;
    case SpvOpFNegate:            return nir_op_fneg;
    case SpvOpNot:                return nir_op_inot;
    case SpvOpIAdd:               return nir_op_iadd;
-   case SpvOpFAdd:               return nir_op_fadd;
+   case SpvOpFAdd:
+      if (nir_is_rounding_mode_rtne(float_controls, src_bit_size))
+         return nir_op_fadd_rtne;
+      else if (nir_is_rounding_mode_rtz(float_controls, src_bit_size))
+         return nir_op_fadd_rtz;
+      else
+         return nir_op_fadd;
    case SpvOpISub:               return nir_op_isub;
-   case SpvOpFSub:               return nir_op_fsub;
+   case SpvOpFSub:
+      if (nir_is_rounding_mode_rtne(float_controls, src_bit_size))
+         return nir_op_fsub_rtne;
+      else if (nir_is_rounding_mode_rtz(float_controls, src_bit_size))
+         return nir_op_fsub_rtz;
+      else
+         return nir_op_fsub;
    case SpvOpIMul:               return nir_op_imul;
-   case SpvOpFMul:               return nir_op_fmul;
+   case SpvOpFMul:
+      if (nir_is_rounding_mode_rtne(float_controls, src_bit_size))
+         return nir_op_fmul_rtne;
+      else if (nir_is_rounding_mode_rtz(float_controls, src_bit_size))
+         return nir_op_fmul_rtz;
+      else
+         return nir_op_fmul;
    case SpvOpUDiv:               return nir_op_udiv;
    case SpvOpSDiv:               return nir_op_idiv;
    case SpvOpFDiv:               return nir_op_fdiv;
@@ -329,8 +349,6 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
       }
       src_type |= src_bit_size;
       dst_type |= dst_bit_size;
-      unsigned float_controls =
-         b->shader->info.shader_float_controls_execution_mode;
       nir_rounding_mode rounding_mode =
          nir_get_rounding_mode_from_float_controls(float_controls,
                                                    dst_type);
