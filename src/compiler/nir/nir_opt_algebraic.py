@@ -89,30 +89,51 @@ optimizations = [
    (('f2b', ('fneg', a)), ('f2b', a)),
    (('i2b', ('ineg', a)), ('i2b', a)),
    (('~fadd', a, 0.0), a),
+   (('~fadd_rtne', a, 0.0), a),
+   (('~fadd_rtz', a, 0.0), a),
    (('iadd', a, 0), a),
    (('usadd_4x8', a, 0), a),
    (('usadd_4x8', a, ~0), ~0),
    (('~fadd', ('fmul', a, b), ('fmul', a, c)), ('fmul', a, ('fadd', b, c))),
+   (('~fadd_rtne', ('fmul_rtne', a, b), ('fmul_rtne', a, c)), ('fmul_rtne', a, ('fadd_rtne', b, c))),
+   (('~fadd_rtz', ('fmul_rtz', a, b), ('fmul_rtz', a, c)), ('fmul_rtz', a, ('fadd_rtz', b, c))),
    (('iadd', ('imul', a, b), ('imul', a, c)), ('imul', a, ('iadd', b, c))),
    (('~fadd', ('fneg', a), a), 0.0),
+   (('~fadd_rtne', ('fneg', a), a), 0.0),
+   (('~fadd_rtz', ('fneg', a), a), 0.0),
    (('iadd', ('ineg', a), a), 0),
    (('iadd', ('ineg', a), ('iadd', a, b)), b),
    (('iadd', a, ('iadd', ('ineg', a), b)), b),
    (('~fadd', ('fneg', a), ('fadd', a, b)), b),
    (('~fadd', a, ('fadd', ('fneg', a), b)), b),
    (('~fmul', a, 0.0), 0.0),
+   (('~fadd_rtne', ('fneg', a), ('fadd_rtne', a, b)), b),
+   (('~fadd_rtne', a, ('fadd_rtne', ('fneg', a), b)), b),
+   (('~fmul_rtne', a, 0.0), 0.0),
+   (('~fadd_rtz', ('fneg', a), ('fadd_rtz', a, b)), b),
+   (('~fadd_rtz', a, ('fadd_rtz', ('fneg', a), b)), b),
+   (('~fmul_rtz', a, 0.0), 0.0),
+
    (('imul', a, 0), 0),
    (('umul_unorm_4x8', a, 0), 0),
    (('umul_unorm_4x8', a, ~0), a),
    (('fmul', a, 1.0), a),
+   (('fmul_rtne', a, 1.0), a),
+   (('fmul_rtz', a, 1.0), a),
    (('imul', a, 1), a),
    (('fmul', a, -1.0), ('fneg', a)),
+   (('fmul_rtne', a, -1.0), ('fneg', a)),
+   (('fmul_rtz', a, -1.0), ('fneg', a)),
    (('imul', a, -1), ('ineg', a)),
    # If a < 0: fsign(a)*a*a => -1*a*a => -a*a => abs(a)*a
    # If a > 0: fsign(a)*a*a => 1*a*a => a*a => abs(a)*a
    # If a == 0: fsign(a)*a*a => 0*0*0 => abs(0)*0
    (('fmul', ('fsign', a), ('fmul', a, a)), ('fmul', ('fabs', a), a)),
    (('fmul', ('fmul', ('fsign', a), a), a), ('fmul', ('fabs', a), a)),
+   (('fmul_rtne', ('fsign', a), ('fmul_rtne', a, a)), ('fmul_rtne', ('fabs', a), a)),
+   (('fmul_rtne', ('fmul_rtne', ('fsign', a), a), a), ('fmul_rtne', ('fabs', a), a)),
+   (('fmul_rtz', ('fsign', a), ('fmul_rtz', a, a)), ('fmul_rtz', ('fabs', a), a)),
+   (('fmul_rtz', ('fmul_rtz', ('fsign', a), a), a), ('fmul_rtz', ('fabs', a), a)),
    (('~ffma', 0.0, a, b), b),
    (('~ffma', a, 0.0, b), b),
    (('~ffma', a, b, 0.0), ('fmul', a, b)),
@@ -138,6 +159,23 @@ optimizations = [
    (('~fadd@64', a, ('fmul',         c , ('fadd', b, ('fneg', a)))), ('flrp', a, b, c), '!options->lower_flrp64'),
    (('ffma', a, b, c), ('fadd', ('fmul', a, b), c), 'options->lower_ffma'),
    (('~fadd', ('fmul', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma'),
+
+   (('~fadd_rtne', ('fmul_rtne', a, ('fadd_rtne', 1.0, ('fneg', ('b2f', 'c@1')))), ('fmul_rtne', b, ('b2f', c))), ('bcsel', c, b, a), 'options->lower_flrp32'),
+   (('~fadd_rtne@32', ('fmul_rtne', a, ('fadd_rtne', 1.0, ('fneg',         c ))), ('fmul_rtne', b,         c )), ('flrp', a, b, c), '!options->lower_flrp32'),
+   (('~fadd_rtne@64', ('fmul_rtne', a, ('fadd_rtne', 1.0, ('fneg',         c ))), ('fmul_rtne', b,         c )), ('flrp', a, b, c), '!options->lower_flrp64'),
+   (('~fadd_rtne', a, ('fmul_rtne', ('b2f', 'c@1'), ('fadd_rtne', b, ('fneg', a)))), ('bcsel', c, b, a), 'options->lower_flrp32'),
+   (('~fadd_rtne@32', a, ('fmul_rtne',         c , ('fadd_rtne', b, ('fneg', a)))), ('flrp', a, b, c), '!options->lower_flrp32'),
+   (('~fadd_rtne@64', a, ('fmul_rtne',         c , ('fadd_rtne', b, ('fneg', a)))), ('flrp', a, b, c), '!options->lower_flrp64'),
+   (('~fadd_rtne', ('fmul_rtne', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma'),
+
+   (('~fadd_rtz', ('fmul_rtz', a, ('fadd_rtz', 1.0, ('fneg', ('b2f', 'c@1')))), ('fmul_rtz', b, ('b2f', c))), ('bcsel', c, b, a), 'options->lower_flrp32'),
+   (('~fadd_rtz@32', ('fmul_rtz', a, ('fadd_rtz', 1.0, ('fneg',         c ))), ('fmul_rtz', b,         c )), ('flrp', a, b, c), '!options->lower_flrp32'),
+   (('~fadd_rtz@64', ('fmul_rtz', a, ('fadd_rtz', 1.0, ('fneg',         c ))), ('fmul_rtz', b,         c )), ('flrp', a, b, c), '!options->lower_flrp64'),
+   (('~fadd_rtz', a, ('fmul_rtz', ('b2f', 'c@1'), ('fadd_rtz', b, ('fneg', a)))), ('bcsel', c, b, a), 'options->lower_flrp32'),
+   (('~fadd_rtz@32', a, ('fmul_rtz',         c , ('fadd_rtz', b, ('fneg', a)))), ('flrp', a, b, c), '!options->lower_flrp32'),
+   (('~fadd_rtz@64', a, ('fmul_rtz',         c , ('fadd_rtz', b, ('fneg', a)))), ('flrp', a, b, c), '!options->lower_flrp64'),
+   (('~fadd_rtz', ('fmul_rtz', a, b), c), ('ffma', a, b, c), 'options->fuse_ffma'),
+
 
    (('fdot4', ('vec4', a, b,   c,   1.0), d), ('fdph',  ('vec3', a, b, c), d)),
    (('fdot4', ('vec4', a, 0.0, 0.0, 0.0), b), ('fmul', a, b)),
@@ -594,35 +632,56 @@ optimizations = [
 
    # Subtracts
    (('~fsub', a, ('fsub', 0.0, b)), ('fadd', a, b)),
+   (('~fsub_rtz', a, ('fsub_rtz', 0.0, b)), ('fadd_rtz', a, b)),
+   (('~fsub_rtne', a, ('fsub_rtne', 0.0, b)), ('fadd_rtne', a, b)),
    (('isub', a, ('isub', 0, b)), ('iadd', a, b)),
    (('ussub_4x8', a, 0), a),
    (('ussub_4x8', a, ~0), 0),
    (('fsub', a, b), ('fadd', a, ('fneg', b)), 'options->lower_sub'),
+   (('fsub_rtne', a, b), ('fadd_rtne', a, ('fneg', b)), 'options->lower_sub'),
+   (('fsub_rtz', a, b), ('fadd_rtz', a, ('fneg', b)), 'options->lower_sub'),
    (('isub', a, b), ('iadd', a, ('ineg', b)), 'options->lower_sub'),
    (('fneg', a), ('fsub', 0.0, a), 'options->lower_negate'),
    (('ineg', a), ('isub', 0, a), 'options->lower_negate'),
    (('~fadd', a, ('fsub', 0.0, b)), ('fsub', a, b)),
+   (('~fadd_rtne', a, ('fsub_rtne', 0.0, b)), ('fsub_rtne', a, b)),
+   (('~fadd_rtz', a, ('fsub_rtz', 0.0, b)), ('fsub_rtz', a, b)),
    (('iadd', a, ('isub', 0, b)), ('isub', a, b)),
    (('fabs', ('fsub', 0.0, a)), ('fabs', a)),
    (('iabs', ('isub', 0, a)), ('iabs', a)),
 
    # Propagate negation up multiplication chains
    (('fmul', ('fneg', a), b), ('fneg', ('fmul', a, b))),
+   (('fmul_rtne', ('fneg', a), b), ('fneg', ('fmul_rtne', a, b))),
+   (('fmul_rtz', ('fneg', a), b), ('fneg', ('fmul_rtz', a, b))),
    (('imul', ('ineg', a), b), ('ineg', ('imul', a, b))),
 
    # Propagate constants up multiplication chains
    (('~fmul(is_used_once)', ('fmul(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('fmul', ('fmul', a, c), b)),
+   (('~fmul_rtne(is_used_once)', ('fmul_rtne(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('fmul_rtne', ('fmul_rtne', a, c), b)),
+   (('~fmul_rtz(is_used_once)', ('fmul_rtz(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('fmul_rtz', ('fmul_rtz', a, c), b)),
    (('imul(is_used_once)', ('imul(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('imul', ('imul', a, c), b)),
    (('~fadd(is_used_once)', ('fadd(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('fadd', ('fadd', a, c), b)),
+   (('~fadd_rtne(is_used_once)', ('fadd_rtne(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('fadd_rtne', ('fadd_rtne', a, c), b)),
+   (('~fadd_rtz(is_used_once)', ('fadd_rtz(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('fadd_rtz', ('fadd_rtz', a, c), b)),
    (('iadd(is_used_once)', ('iadd(is_used_once)', 'a(is_not_const)', 'b(is_not_const)'), '#c'), ('iadd', ('iadd', a, c), b)),
 
    # Reassociate constants in add/mul chains so they can be folded together.
    # For now, we mostly only handle cases where the constants are separated by
    # a single non-constant.  We could do better eventually.
    (('~fmul', '#a', ('fmul', b, '#c')), ('fmul', ('fmul', a, c), b)),
+   (('~fmul_rtne', '#a', ('fmul_rtne', b, '#c')), ('fmul_rtne', ('fmul_rtne', a, c), b)),
+   (('~fmul_rtz', '#a', ('fmul_rtz', b, '#c')), ('fmul_rtz', ('fmul_rtz', a, c), b)),
+
    (('imul', '#a', ('imul', b, '#c')), ('imul', ('imul', a, c), b)),
    (('~fadd', '#a',          ('fadd', b, '#c')),  ('fadd', ('fadd', a,          c),           b)),
    (('~fadd', '#a', ('fneg', ('fadd', b, '#c'))), ('fadd', ('fadd', a, ('fneg', c)), ('fneg', b))),
+
+   (('~fadd_rtne', '#a',          ('fadd_rtne', b, '#c')),  ('fadd_rtne', ('fadd_rtne', a,          c),           b)),
+   (('~fadd_rtne', '#a', ('fneg', ('fadd_rtne', b, '#c'))), ('fadd_rtne', ('fadd_rtne', a, ('fneg', c)), ('fneg', b))),
+   (('~fadd_rtz', '#a',          ('fadd_rtz', b, '#c')),  ('fadd_rtz', ('fadd_rtz', a,          c),           b)),
+   (('~fadd_rtz', '#a', ('fneg', ('fadd_rtz', b, '#c'))), ('fadd_rtz', ('fadd_rtz', a, ('fneg', c)), ('fneg', b))),
+
    (('iadd', '#a', ('iadd', b, '#c')), ('iadd', ('iadd', a, c), b)),
 
    # By definition...
@@ -901,18 +960,32 @@ for op in ['fadd', 'fmul', 'iadd', 'imul']:
 before_ffma_optimizations = [
    # Propagate constants down multiplication chains
    (('~fmul(is_used_once)', ('fmul(is_used_once)', 'a(is_not_const)', '#b'), 'c(is_not_const)'), ('fmul', ('fmul', a, c), b)),
+   (('~fmul_rtne(is_used_once)', ('fmul_rtne(is_used_once)', 'a(is_not_const)', '#b'), 'c(is_not_const)'), ('fmul_rtne', ('fmul_rtne', a, c), b)),
+   (('~fmul_rtz(is_used_once)', ('fmul_rtz(is_used_once)', 'a(is_not_const)', '#b'), 'c(is_not_const)'), ('fmul_rtz', ('fmul_rtz', a, c), b)),
+
    (('imul(is_used_once)', ('imul(is_used_once)', 'a(is_not_const)', '#b'), 'c(is_not_const)'), ('imul', ('imul', a, c), b)),
    (('~fadd(is_used_once)', ('fadd(is_used_once)', 'a(is_not_const)', '#b'), 'c(is_not_const)'), ('fadd', ('fadd', a, c), b)),
+   (('~fadd_rtne(is_used_once)', ('fadd_rtne(is_used_once)', 'a(is_not_const)', '#b'), 'c(is_not_const)'), ('fadd_rtne', ('fadd_rtne', a, c), b)),
+   (('~fadd_rtz(is_used_once)', ('fadd_rtz(is_used_once)', 'a(is_not_const)', '#b'), 'c(is_not_const)'), ('fadd_rtz', ('fadd_rtz', a, c), b)),
+
    (('iadd(is_used_once)', ('iadd(is_used_once)', 'a(is_not_const)', '#b'), 'c(is_not_const)'), ('iadd', ('iadd', a, c), b)),
 
    (('~fadd', ('fmul', a, b), ('fmul', a, c)), ('fmul', a, ('fadd', b, c))),
+   (('~fadd_rtne', ('fmul_rtne', a, b), ('fmul_rtne', a, c)), ('fmul_rtne', a, ('fadd_rtne', b, c))),
+   (('~fadd_rtz', ('fmul_rtz', a, b), ('fmul_rtz', a, c)), ('fmul_rtz', a, ('fadd_rtz', b, c))),
    (('iadd', ('imul', a, b), ('imul', a, c)), ('imul', a, ('iadd', b, c))),
    (('~fadd', ('fneg', a), a), 0.0),
+   (('~fadd_rtne', ('fneg', a), a), 0.0),
+   (('~fadd_rtz', ('fneg', a), a), 0.0),
    (('iadd', ('ineg', a), a), 0),
    (('iadd', ('ineg', a), ('iadd', a, b)), b),
    (('iadd', a, ('iadd', ('ineg', a), b)), b),
    (('~fadd', ('fneg', a), ('fadd', a, b)), b),
    (('~fadd', a, ('fadd', ('fneg', a), b)), b),
+   (('~fadd_rtne', ('fneg', a), ('fadd_rtne', a, b)), b),
+   (('~fadd_rtne', a, ('fadd_rtne', ('fneg', a), b)), b),
+   (('~fadd_rtz', ('fneg', a), ('fadd_rtz', a, b)), b),
+   (('~fadd_rtz', a, ('fadd_rtz', ('fneg', a), b)), b),
 ]
 
 # This section contains "late" optimizations that should be run after the
