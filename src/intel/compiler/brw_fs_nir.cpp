@@ -1301,6 +1301,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       inst = bld.RNDD(result, op[0]);
       inst->saturate = instr->dest.saturate;
       break;
+   case nir_op_ffract_rtne:
+   case nir_op_ffract_rtz:
    case nir_op_ffract:
       inst = bld.FRC(result, op[0]);
       inst->saturate = instr->dest.saturate;
