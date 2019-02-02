@@ -527,7 +527,13 @@ vtn_nir_alu_op_for_spirv_glsl_opcode(struct vtn_builder *b,
    case GLSLstd450SSign:         return nir_op_isign;
    case GLSLstd450Floor:         return nir_op_ffloor;
    case GLSLstd450Ceil:          return nir_op_fceil;
-   case GLSLstd450Fract:         return nir_op_ffract;
+   case GLSLstd450Fract:
+      if (nir_is_rounding_mode_rtne(execution_mode, bit_size))
+         return nir_op_ffract_rtne;
+      else if (nir_is_rounding_mode_rtz(execution_mode, bit_size))
+         return nir_op_ffract_rtz;
+      else
+         return nir_op_ffract;
    case GLSLstd450Sin:           return nir_op_fsin;
    case GLSLstd450Cos:           return nir_op_fcos;
    case GLSLstd450Pow:           return nir_op_fpow;
