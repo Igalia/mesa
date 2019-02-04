@@ -221,12 +221,28 @@ for src_t in [tint, tuint, tfloat, tbool]:
 
    for dst_t in dst_types:
       for bit_size in type_sizes(dst_t):
-          if bit_size == 16 and dst_t == tfloat and src_t == tfloat:
+          if src_t == tfloat and dst_t == tfloat:
               rnd_modes = ['_rtne', '_rtz', '']
               for rnd_mode in rnd_modes:
+                  if rnd_mode == '_rtne':
+                     src = "bit_size == 64 ? _mesa_double_to_float_rtne(src0) : src0"
+                  if rnd_mode == '_rtz':
+                     src = "bit_size == 64 ? _mesa_double_to_float_rtz(src0) : src0"
+                  else:
+                     src = "src0"
                   unop_numeric_convert("{0}2{1}{2}{3}".format(src_t[0], dst_t[0],
                                                               bit_size, rnd_mode),
-                                       dst_t + str(bit_size), src_t, "src0", rnd_mode)
+                                       dst_t + str(bit_size), src_t, src, rnd_mode)
+          elif src_t == tfloat and dst_t == tint:
+               rnd_modes = ['_rtne', '_rtz', '']
+               for rnd_mode in rnd_modes:
+                  if rnd_mode == '_rtne':
+                     src = "bit_size == 32 ? _mesa_roundevenf(src0) : _mesa_roundeven(src0)"
+                  else:
+                     src = "src0"
+                  unop_numeric_convert("{0}2{1}{2}{3}".format(src_t[0], dst_t[0],
+                                                              bit_size, rnd_mode),
+                                       dst_t + str(bit_size), src_t, src, rnd_mode)
           else:
               conv_expr = "src0 != 0" if dst_t == tbool else "src0"
               unop_numeric_convert("{0}2{1}{2}".format(src_t[0], dst_t[0], bit_size),
