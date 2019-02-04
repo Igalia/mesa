@@ -772,6 +772,20 @@ if (!isnormal(dst))
    dst = copysignf(0.0f, src0);
 """, "")
 
+opcode("ldexp_rtne", 0, tfloat, [0, 0], [tfloat, tint32], False, "", """
+dst = (bit_size == 64) ? _mesa_roundeven(ldexp(src0, src1)) : _mesa_roundevenf(ldexpf(src0, src1));
+/* flush denormals to zero. */
+if (!isnormal(dst))
+   dst = copysignf(0.0f, src0);
+""", "_rtne")
+
+opcode("ldexp_rtz", 0, tfloat, [0, 0], [tfloat, tint32], False, "", """
+dst = (bit_size == 64) ? ldexp(src0, src1) : ldexpf(src0, src1);
+/* flush denormals to zero. */
+if (!isnormal(dst))
+   dst = copysignf(0.0f, src0);
+""", "_rtz")
+
 # Combines the first component of each input to make a 2-component vector.
 
 binop_horiz("vec2", 2, tuint, 1, tuint, 1, tuint, """
