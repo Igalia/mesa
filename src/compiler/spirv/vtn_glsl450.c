@@ -588,6 +588,8 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
    struct vtn_value *val = vtn_push_value(b, w[2], vtn_value_type_ssa);
    val->ssa = vtn_create_ssa_value(b, dest_type);
 
+   unsigned execution_mode = b->shader->info.shader_float_controls_execution_mode;
+
    /* Collect the various SSA sources */
    unsigned num_inputs = count - 5;
    nir_ssa_def *src[3] = { NULL, };
@@ -673,10 +675,21 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
    }
 
    case GLSLstd450FaceForward:
-      val->ssa->def =
-         nir_bcsel(nb, nir_flt(nb, nir_fdot(nb, src[2], src[1]),
-                                   NIR_IMM_FP(nb, 0.0)),
-                       src[0], nir_fneg(nb, src[0]));
+      if (nir_is_rounding_mode_rtne(execution_mode, glsl_get_bit_size(dest_type)))
+         val->ssa->def =
+            nir_bcsel(nb, nir_flt(nb, nir_fdot_rtne(nb, src[2], src[1]),
+                                  NIR_IMM_FP(nb, 0.0)),
+                      src[0], nir_fneg(nb, src[0]));
+      else if (nir_is_rounding_mode_rtz(execution_mode, glsl_get_bit_size(dest_type)))
+         val->ssa->def =
+            nir_bcsel(nb, nir_flt(nb, nir_fdot_rtz(nb, src[2], src[1]),
+                                  NIR_IMM_FP(nb, 0.0)),
+                      src[0], nir_fneg(nb, src[0]));
+      else
+         val->ssa->def =
+            nir_bcsel(nb, nir_flt(nb, nir_fdot(nb, src[2], src[1]),
+                                  NIR_IMM_FP(nb, 0.0)),
+                      src[0], nir_fneg(nb, src[0]));
       return;
 
    case GLSLstd450Reflect: {
