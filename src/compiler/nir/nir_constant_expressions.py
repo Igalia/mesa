@@ -372,7 +372,17 @@ struct ${type}${width}_vec {
             ## Sanitize the C value to a proper NIR 0/-1 bool
             _dst_val.${get_const_field(output_type)}[_i] = -(int)dst;
          % elif output_type == "float16":
-            _dst_val.u16[_i] = _mesa_float_to_half(dst);
+            % if "rtz" in op.name:
+               _dst_val.u16[_i] = _mesa_float_to_float16_rtz(dst);
+            % elif "rtne" in op.name:
+               _dst_val.u16[_i] = _mesa_float_to_float16_rtne(dst);
+            % else:
+               if (nir_is_rounding_mode_rtz(execution_mode, 16)) {
+                  _dst_val.u16[_i] = _mesa_float_to_float16_rtz(dst);
+               } else {
+                  _dst_val.u16[_i] = _mesa_float_to_float16_rtne(dst);
+               }
+            %endif
          % else:
             _dst_val.${get_const_field(output_type)}[_i] = dst;
          % endif
@@ -416,7 +426,17 @@ struct ${type}${width}_vec {
             ## Sanitize the C value to a proper NIR 0/-1 bool
             _dst_val.${get_const_field(output_type)}[${k}] = -(int)dst.${"xyzw"[k]};
          % elif output_type == "float16":
-            _dst_val.u16[${k}] = _mesa_float_to_half(dst.${"xyzw"[k]});
+            % if "rtz" in op.name:
+               _dst_val.u16[${k}] = _mesa_float_to_float16_rtz(dst.${"xyzw"[k]});
+            % elif "rtne" in op.name:
+               _dst_val.u16[${k}] = _mesa_float_to_float16_rtne(dst.${"xyzw"[k]});
+            % else:
+               if (nir_is_rounding_mode_rtz(execution_mode, 16)) {
+                  _dst_val.u16[${k}] = _mesa_float_to_float16_rtz(dst.${"xyzw"[k]});
+               } else {
+                  _dst_val.u16[${k}] = _mesa_float_to_float16_rtne(dst.${"xyzw"[k]});
+               }
+            %endif
          % else:
             _dst_val.${get_const_field(output_type)}[${k}] = dst.${"xyzw"[k]};
          % endif
