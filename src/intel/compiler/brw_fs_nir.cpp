@@ -1200,6 +1200,12 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
    case nir_op_fdot2:
    case nir_op_fdot3:
    case nir_op_fdot4:
+   case nir_op_fdot2_rtne:
+   case nir_op_fdot3_rtne:
+   case nir_op_fdot4_rtne:
+   case nir_op_fdot2_rtz:
+   case nir_op_fdot3_rtz:
+   case nir_op_fdot4_rtz:
    case nir_op_b32all_fequal2:
    case nir_op_b32all_iequal2:
    case nir_op_b32all_fequal3:
