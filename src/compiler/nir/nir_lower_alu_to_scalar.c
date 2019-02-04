@@ -91,6 +91,12 @@ lower_alu_instr_scalar(nir_alu_instr *instr, nir_builder *b)
    case name##4: \
       lower_reduction(instr, chan, merge, b); \
       return true;
+#define LOWER_REDUCTION_ROUNDING(name, chan, merge, rounding)    \
+   case name##2_##rounding: \
+   case name##3_##rounding: \
+   case name##4_##rounding: \
+      lower_reduction(instr, chan, merge, b); \
+      return true;
 
    switch (instr->op) {
    case nir_op_vec4:
@@ -198,6 +204,9 @@ lower_alu_instr_scalar(nir_alu_instr *instr, nir_builder *b)
       return false;
 
       LOWER_REDUCTION(nir_op_fdot, nir_op_fmul, nir_op_fadd);
+      LOWER_REDUCTION_ROUNDING(nir_op_fdot, nir_op_fmul_rtne, nir_op_fadd_rtne, rtne);
+      LOWER_REDUCTION_ROUNDING(nir_op_fdot, nir_op_fmul_rtz, nir_op_fadd_rtz, rtz);
+
       LOWER_REDUCTION(nir_op_ball_fequal, nir_op_feq, nir_op_iand);
       LOWER_REDUCTION(nir_op_ball_iequal, nir_op_ieq, nir_op_iand);
       LOWER_REDUCTION(nir_op_bany_fnequal, nir_op_fne, nir_op_ior);

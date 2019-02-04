@@ -522,6 +522,38 @@ nir_fdot(nir_builder *build, nir_ssa_def *src0, nir_ssa_def *src1)
 }
 
 static inline nir_ssa_def *
+nir_fdot_rtne(nir_builder *build, nir_ssa_def *src0, nir_ssa_def *src1)
+{
+   assert(src0->num_components == src1->num_components);
+   switch (src0->num_components) {
+   case 1: return nir_fmul_rtne(build, src0, src1);
+   case 2: return nir_fdot2_rtne(build, src0, src1);
+   case 3: return nir_fdot3_rtne(build, src0, src1);
+   case 4: return nir_fdot4_rtne(build, src0, src1);
+   default:
+      unreachable("bad component size");
+   }
+
+   return NULL;
+}
+
+static inline nir_ssa_def *
+nir_fdot_rtz(nir_builder *build, nir_ssa_def *src0, nir_ssa_def *src1)
+{
+   assert(src0->num_components == src1->num_components);
+   switch (src0->num_components) {
+   case 1: return nir_fmul_rtz(build, src0, src1);
+   case 2: return nir_fdot2_rtz(build, src0, src1);
+   case 3: return nir_fdot3_rtz(build, src0, src1);
+   case 4: return nir_fdot4_rtz(build, src0, src1);
+   default:
+      unreachable("bad component size");
+   }
+
+   return NULL;
+}
+
+static inline nir_ssa_def *
 nir_bany_inequal(nir_builder *b, nir_ssa_def *src0, nir_ssa_def *src1)
 {
    switch (src0->num_components) {

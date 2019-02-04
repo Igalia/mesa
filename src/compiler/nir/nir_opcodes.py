@@ -462,7 +462,7 @@ def binop_horiz(name, out_size, out_type, src1_size, src1_type, src2_size,
           False, "", const_expr, "")
 
 def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
-                 reduce_expr, final_expr):
+                 reduce_expr, final_expr, rounding_mode):
    def final(src):
       return final_expr.format(src= "(" + src + ")")
    def reduce_(src0, src1):
@@ -473,15 +473,15 @@ def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
    src1 = prereduce("src0.y", "src1.y")
    src2 = prereduce("src0.z", "src1.z")
    src3 = prereduce("src0.w", "src1.w")
-   opcode(name + "2", output_size, output_type,
+   opcode(name + "2" + rounding_mode, output_size, output_type,
           [2, 2], [src_type, src_type], False, commutative,
-          final(reduce_(src0, src1)), "")
-   opcode(name + "3", output_size, output_type,
+          final(reduce_(src0, src1)), rounding_mode)
+   opcode(name + "3"+ rounding_mode, output_size, output_type,
           [3, 3], [src_type, src_type], False, commutative,
-          final(reduce_(reduce_(src0, src1), src2)), "")
-   opcode(name + "4", output_size, output_type,
+          final(reduce_(reduce_(src0, src1), src2)), rounding_mode)
+   opcode(name + "4" + rounding_mode, output_size, output_type,
           [4, 4], [src_type, src_type], False, commutative,
-          final(reduce_(reduce_(src0, src1), reduce_(src2, src3))), "")
+          final(reduce_(reduce_(src0, src1), reduce_(src2, src3))), rounding_mode)
 
 binop("fadd", tfloat, commutative + associative, "src0 + src1")
 binop_rounding_mode("fadd_rtne", tfloat, commutative + associative,
@@ -611,29 +611,29 @@ binop_compare32("uge32", tuint, "", "src0 >= src1")
 # integer-aware GLSL-style comparisons that compare floats and ints
 
 binop_reduce("ball_fequal",  1, tbool1, tfloat, "{src0} == {src1}",
-             "{src0} && {src1}", "{src}")
+             "{src0} && {src1}", "{src}", "")
 binop_reduce("bany_fnequal", 1, tbool1, tfloat, "{src0} != {src1}",
-             "{src0} || {src1}", "{src}")
+             "{src0} || {src1}", "{src}", "")
 binop_reduce("ball_iequal",  1, tbool1, tint, "{src0} == {src1}",
-             "{src0} && {src1}", "{src}")
+             "{src0} && {src1}", "{src}", "")
 binop_reduce("bany_inequal", 1, tbool1, tint, "{src0} != {src1}",
-             "{src0} || {src1}", "{src}")
+             "{src0} || {src1}", "{src}", "")
 
 binop_reduce("b32all_fequal",  1, tbool32, tfloat, "{src0} == {src1}",
-             "{src0} && {src1}", "{src}")
+             "{src0} && {src1}", "{src}", "")
 binop_reduce("b32any_fnequal", 1, tbool32, tfloat, "{src0} != {src1}",
-             "{src0} || {src1}", "{src}")
+             "{src0} || {src1}", "{src}", "")
 binop_reduce("b32all_iequal",  1, tbool32, tint, "{src0} == {src1}",
-             "{src0} && {src1}", "{src}")
+             "{src0} && {src1}", "{src}", "")
 binop_reduce("b32any_inequal", 1, tbool32, tint, "{src0} != {src1}",
-             "{src0} || {src1}", "{src}")
+             "{src0} || {src1}", "{src}", "")
 
 # non-integer-aware GLSL-style comparisons that return 0.0 or 1.0
 
 binop_reduce("fall_equal",  1, tfloat32, tfloat32, "{src0} == {src1}",
-             "{src0} && {src1}", "{src} ? 1.0f : 0.0f")
+             "{src0} && {src1}", "{src} ? 1.0f : 0.0f", "")
 binop_reduce("fany_nequal", 1, tfloat32, tfloat32, "{src0} != {src1}",
-             "{src0} || {src1}", "{src} ? 1.0f : 0.0f")
+             "{src0} || {src1}", "{src} ? 1.0f : 0.0f", "")
 
 # These comparisons for integer-less hardware return 1.0 and 0.0 for true
 # and false respectively
@@ -672,10 +672,17 @@ binop("fxor", tfloat32, commutative,
       "(src0 != 0.0f && src1 == 0.0f) || (src0 == 0.0f && src1 != 0.0f) ? 1.0f : 0.0f")
 
 binop_reduce("fdot", 1, tfloat, tfloat, "{src0} * {src1}", "{src0} + {src1}",
-             "{src}")
+             "{src}", "")
+
+# Add fdot_rtne and fdot_rtz
+binop_reduce("fdot", 1, tfloat, tfloat, "bit_size == 32 ? _mesa_roundevenf({src0} * {src1}) : _mesa_roundeven({src0} * {src1})",
+             "bit_size == 32 ? _mesa_roundevenf({src0} + {src1}) : _mesa_roundeven({src0} + {src1})",
+             "{src}", "_rtne")
+binop_reduce("fdot", 1, tfloat, tfloat, "{src0} * {src1}", "{src0} + {src1}",
+             "{src}", "_rtz")
 
 binop_reduce("fdot_replicated", 4, tfloat, tfloat,
-             "{src0} * {src1}", "{src0} + {src1}", "{src}")
+             "{src0} * {src1}", "{src0} + {src1}", "{src}", "")
 
 opcode("fdph", 1, tfloat, [3, 4], [tfloat, tfloat], False, "",
        "src0.x * src1.x + src0.y * src1.y + src0.z * src1.z + src1.w", "")
