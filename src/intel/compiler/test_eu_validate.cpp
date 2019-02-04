@@ -1025,6 +1025,624 @@ TEST_P(validation_test, half_float_conversion)
    clear_instructions(p);
 }
 
+TEST_P(validation_test, mixed_float_source_indirect_addressing)
+{
+   static const struct {
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      bool dst_indirect;
+      bool src0_indirect;
+      bool expected_result;
+   } inst[] = {
+#define INST(dst_type, src0_type, src1_type,                              \
+             dst_indirect, src0_indirect, expected_result)                \
+      {                                                                   \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         dst_indirect,                                                    \
+         src0_indirect,                                                   \
+         expected_result,                                                 \
+      }
+
+      /* Source and dest are mixed float: indirect src addressing not allowed */
+      INST(HF,  F,  F, false, false, true),
+      INST(HF,  F,  F, true,  false, true),
+      INST(HF,  F,  F, false, true,  false),
+      INST(HF,  F,  F, true,  true,  false),
+      INST( F, HF,  F, false, false, true),
+      INST( F, HF,  F, true,  false, true),
+      INST( F, HF,  F, false, true,  false),
+      INST( F, HF,  F, true,  true,  false),
+
+      /* Source and dest are not mixed float: indirect src addressing allowed */
+      INST(HF, HF,  F, false, false, true),
+      INST(HF, HF,  F, true,  false, true),
+      INST(HF, HF,  F, false, true,  true),
+      INST(HF, HF,  F, true,  true,  true),
+      INST( F,  F, HF, false, false, true),
+      INST( F,  F, HF, true,  false, true),
+      INST( F,  F, HF, false, true,  true),
+      INST( F,  F, HF, true,  true,  true),
+
+#undef INST
+   };
+
+   if (devinfo.gen < 8)
+      return;
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      brw_ADD(p, retype(g0, inst[i].dst_type),
+                 retype(g0, inst[i].src0_type),
+                 retype(g0, inst[i].src1_type));
+
+      brw_inst_set_dst_address_mode(&devinfo, last_inst, inst[i].dst_indirect);
+      brw_inst_set_src0_address_mode(&devinfo, last_inst, inst[i].src0_indirect);
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
+TEST_P(validation_test, mixed_float_align1_simd16)
+{
+   static const struct {
+      unsigned exec_size;
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      unsigned dst_stride;
+      bool expected_result;
+   } inst[] = {
+#define INST(exec_size, dst_type, src0_type, src1_type,                   \
+             dst_stride, expected_result)                                 \
+      {                                                                   \
+         BRW_EXECUTE_##exec_size,                                         \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         BRW_HORIZONTAL_STRIDE_##dst_stride,                              \
+         expected_result,                                                 \
+      }
+
+      /* No SIMD16 in mixed mode when destination is packed f16 */
+      INST( 8, HF,  F,  F, 1, true),
+      INST( 8, HF,  F, HF, 2, true),
+      INST(16, HF,  F, HF, 1, false),
+      INST(16, HF,  F, HF, 2, true),
+
+      /* No SIMD16 in mixed mode when destination is f32 */
+      INST( 8,  F, HF,  F, 1, true),
+      INST( 8,  F,  F, HF, 1, true),
+      INST(16,  F, HF,  F, 1, false),
+      INST(16,  F,  F, HF, 1, false),
+
+#undef INST
+   };
+
+   if (devinfo.gen < 8)
+      return;
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      brw_ADD(p, retype(g0, inst[i].dst_type),
+                 retype(g0, inst[i].src0_type),
+                 retype(g0, inst[i].src1_type));
+
+      brw_inst_set_exec_size(&devinfo, last_inst, inst[i].exec_size);
+
+      brw_inst_set_dst_hstride(&devinfo, last_inst, inst[i].dst_stride);
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
+TEST_P(validation_test, mixed_float_align1_packed_fp16_dst_acc_read_offset_0)
+{
+   static const struct {
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      unsigned dst_stride;
+      bool read_acc;
+      unsigned subnr;
+      bool expected_result;
+   } inst[] = {
+#define INST(dst_type, src0_type, src1_type, dst_stride,                  \
+             read_acc, subnr, expected_result)                            \
+      {                                                                   \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         BRW_HORIZONTAL_STRIDE_##dst_stride,                              \
+         read_acc,                                                        \
+         subnr,                                                           \
+         expected_result,                                                 \
+      }
+
+      /* Destination is not packed */
+      INST(HF, HF,  F, 2, true,  0, true),
+      INST(HF, HF,  F, 2, true,  2, true),
+      INST(HF, HF,  F, 2, true,  4, true),
+      INST(HF, HF,  F, 2, true,  8, true),
+      INST(HF, HF,  F, 2, true, 16, true),
+
+      /* Destination is packed, we don't read acc */
+      INST(HF, HF,  F, 1, false,  0, true),
+      INST(HF, HF,  F, 1, false,  2, true),
+      INST(HF, HF,  F, 1, false,  4, true),
+      INST(HF, HF,  F, 1, false,  8, true),
+      INST(HF, HF,  F, 1, false, 16, true),
+
+      /* Destination is packed, we read acc */
+      INST(HF, HF,  F, 1, true,  0, true),
+      INST(HF, HF,  F, 1, true,  2, false),
+      INST(HF, HF,  F, 1, true,  4, false),
+      INST(HF, HF,  F, 1, true,  8, false),
+      INST(HF, HF,  F, 1, true, 16, false),
+
+#undef INST
+   };
+
+   if (devinfo.gen < 8)
+      return;
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      brw_ADD(p, retype(g0, inst[i].dst_type),
+                 retype(inst[i].read_acc ? acc0 : g0, inst[i].src0_type),
+                 retype(g0, inst[i].src1_type));
+
+      brw_inst_set_dst_hstride(&devinfo, last_inst, inst[i].dst_stride);
+
+      brw_inst_set_src0_da1_subreg_nr(&devinfo, last_inst, inst[i].subnr);
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
+TEST_P(validation_test, mixed_float_fp16_dest_with_implicit_acc)
+{
+   static const struct {
+      unsigned exec_size;
+      unsigned opcode;
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      unsigned dst_stride;
+      bool expected_result;
+   } inst[] = {
+#define INST(exec_size, opcode, dst_type, src0_type, src1_type,           \
+             dst_stride, expected_result)                                 \
+      {                                                                   \
+         BRW_EXECUTE_##exec_size,                                         \
+         BRW_OPCODE_##opcode,                                             \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         BRW_HORIZONTAL_STRIDE_##dst_stride,                              \
+         expected_result,                                                 \
+      }
+
+      /* Packed fp16 dest with implicit acc needs hstride=2 */
+      INST(8, MAC, HF, HF,  F, 1, false),
+      INST(8, MAC, HF, HF,  F, 2, true),
+      INST(8, MAC, HF, HF,  F, 4, false),
+      INST(8, MAC, HF,  F, HF, 1, false),
+      INST(8, MAC, HF,  F, HF, 2, true),
+      INST(8, MAC, HF,  F, HF, 4, false),
+
+      /* If destination is not fp16, restriction doesn't apply */
+      INST(8, MAC,  F, HF,  F, 1, true),
+      INST(8, MAC,  F, HF,  F, 2, true),
+
+      /* If there is no implicit acc, restriction doesn't apply */
+      INST(8, ADD, HF, HF,  F, 1, true),
+      INST(8, ADD, HF, HF,  F, 2, true),
+      INST(8, ADD, HF, HF,  F, 4, true),
+      INST(8, ADD, HF,  F, HF, 1, true),
+      INST(8, ADD, HF,  F, HF, 2, true),
+      INST(8, ADD, HF,  F, HF, 4, true),
+      INST(8, ADD,  F, HF,  F, 1, true),
+      INST(8, ADD,  F, HF,  F, 2, true),
+
+#undef INST
+   };
+
+   if (devinfo.gen < 8)
+      return;
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      if (inst[i].opcode == BRW_OPCODE_MAC) {
+         brw_MAC(p, retype(g0, inst[i].dst_type),
+                    retype(g0, inst[i].src0_type),
+                    retype(g0, inst[i].src1_type));
+      } else {
+         assert(inst[i].opcode == BRW_OPCODE_ADD);
+         brw_ADD(p, retype(g0, inst[i].dst_type),
+                    retype(g0, inst[i].src0_type),
+                    retype(g0, inst[i].src1_type));
+      }
+
+      brw_inst_set_exec_size(&devinfo, last_inst, inst[i].exec_size);
+
+      brw_inst_set_dst_hstride(&devinfo, last_inst, inst[i].dst_stride);
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
+TEST_P(validation_test, mixed_float_align1_math_strided_fp16_inputs)
+{
+   static const struct {
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      unsigned dst_stride;
+      unsigned src0_stride;
+      unsigned src1_stride;
+      bool expected_result;
+   } inst[] = {
+#define INST(dst_type, src0_type, src1_type,                              \
+             dst_stride, src0_stride, src1_stride, expected_result)       \
+      {                                                                   \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         BRW_HORIZONTAL_STRIDE_##dst_stride,                              \
+         BRW_HORIZONTAL_STRIDE_##src0_stride,                             \
+         BRW_HORIZONTAL_STRIDE_##src1_stride,                             \
+         expected_result,                                                 \
+      }
+
+      INST(HF, HF,  F, 2, 2, 1, true),
+      INST(HF,  F, HF, 2, 1, 2, true),
+      INST(HF,  F, HF, 1, 1, 2, true),
+      INST(HF,  F, HF, 2, 1, 1, false),
+      INST(HF, HF,  F, 2, 1, 1, false),
+      INST(HF, HF,  F, 1, 1, 1, false),
+      INST(HF, HF,  F, 2, 1, 1, false),
+      INST( F, HF,  F, 1, 1, 1, false),
+      INST( F,  F, HF, 1, 1, 2, true),
+      INST( F, HF, HF, 1, 2, 1, false),
+      INST( F, HF, HF, 1, 2, 2, true),
+
+#undef INST
+   };
+
+   /* No half-float math in gen8 */
+   if (devinfo.gen < 9)
+      return;
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      gen6_math(p, retype(g0, inst[i].dst_type),
+                   BRW_MATH_FUNCTION_POW,
+                   retype(g0, inst[i].src0_type),
+                   retype(g0, inst[i].src1_type));
+
+      brw_inst_set_dst_hstride(&devinfo, last_inst, inst[i].dst_stride);
+
+      brw_inst_set_src0_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+      brw_inst_set_src0_width(&devinfo, last_inst, BRW_WIDTH_4);
+      brw_inst_set_src0_hstride(&devinfo, last_inst, inst[i].src0_stride);
+
+      brw_inst_set_src1_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+      brw_inst_set_src1_width(&devinfo, last_inst, BRW_WIDTH_4);
+      brw_inst_set_src1_hstride(&devinfo, last_inst, inst[i].src1_stride);
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
+TEST_P(validation_test, mixed_float_align1_packed_fp16_dst)
+{
+   static const struct {
+      unsigned exec_size;
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      unsigned dst_stride;
+      unsigned dst_subnr;
+      bool expected_result;
+   } inst[] = {
+#define INST(exec_size, dst_type, src0_type, src1_type,                   \
+             dst_stride, dst_subnr, expected_result)                      \
+      {                                                                   \
+         BRW_EXECUTE_##exec_size,                                         \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         BRW_HORIZONTAL_STRIDE_##dst_stride,                              \
+         dst_subnr,                                                       \
+         expected_result,                                                 \
+      }
+
+      /* SIMD8 packed fp16 dst won't cross oword boundaries if region is
+       * oword-aligned
+       */
+      INST( 8, HF, HF,  F, 1,  0, true),
+      INST( 8, HF, HF,  F, 1,  2, false),
+      INST( 8, HF, HF,  F, 1,  4, false),
+      INST( 8, HF, HF,  F, 1,  8, false),
+      INST( 8, HF, HF,  F, 1, 16, true),
+
+      /* SIMD16 packed fp16 always crosses oword boundaries */
+      INST(16, HF, HF,  F, 1,  0, false),
+      INST(16, HF, HF,  F, 1,  2, false),
+      INST(16, HF, HF,  F, 1,  4, false),
+      INST(16, HF, HF,  F, 1,  8, false),
+      INST(16, HF, HF,  F, 1, 16, false),
+
+      /* If destination is not packed (or not fp16) we can cross oword
+       * boundaries
+       */
+      INST( 8, HF, HF,  F, 2,  0, true),
+      INST( 8,  F, HF,  F, 1,  0, true),
+
+#undef INST
+   };
+
+   if (devinfo.gen < 8)
+      return;
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      brw_ADD(p, retype(g0, inst[i].dst_type),
+                 retype(g0, inst[i].src0_type),
+                 retype(g0, inst[i].src1_type));
+
+      brw_inst_set_dst_hstride(&devinfo, last_inst, inst[i].dst_stride);
+      brw_inst_set_dst_da1_subreg_nr(&devinfo, last_inst, inst[i].dst_subnr);
+
+      brw_inst_set_src0_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+      brw_inst_set_src0_width(&devinfo, last_inst, BRW_WIDTH_4);
+      brw_inst_set_src0_hstride(&devinfo, last_inst, BRW_HORIZONTAL_STRIDE_1);
+
+      brw_inst_set_src1_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+      brw_inst_set_src1_width(&devinfo, last_inst, BRW_WIDTH_4);
+      brw_inst_set_src1_hstride(&devinfo, last_inst, BRW_HORIZONTAL_STRIDE_1);
+
+      brw_inst_set_exec_size(&devinfo, last_inst, inst[i].exec_size);
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
+TEST_P(validation_test, mixed_float_align16_packed_data)
+{
+   static const struct {
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      unsigned src0_vstride;
+      unsigned src1_vstride;
+      bool expected_result;
+   } inst[] = {
+#define INST(dst_type, src0_type, src1_type,                              \
+             src0_vstride, src1_vstride, expected_result)                 \
+      {                                                                   \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         BRW_VERTICAL_STRIDE_##src0_vstride,                              \
+         BRW_VERTICAL_STRIDE_##src1_vstride,                              \
+         expected_result,                                                 \
+      }
+
+      INST(HF,  F, HF, 4, 4, true),
+      INST(HF,  F, HF, 2, 4, false),
+      INST(HF,  F, HF, 4, 2, false),
+      INST(HF,  F, HF, 0, 4, true),
+      INST(HF,  F, HF, 4, 0, false),
+      INST(HF, HF,  F, 4, 4, true),
+      INST(HF, HF,  F, 4, 2, false),
+      INST(HF, HF,  F, 2, 4, false),
+      INST(HF, HF,  F, 0, 4, false),
+      INST(HF, HF,  F, 4, 0, true),
+      INST( F, HF,  F, 4, 0, true),
+      INST( F, HF, HF, 4, 4, true),
+      INST( F,  F, HF, 4, 0, false),
+      INST( F,  F, HF, 2, 4, false),
+      INST( F,  F, HF, 4, 2, false),
+      INST( F, HF, HF, 0, 4, false),
+
+#undef INST
+   };
+
+   if (devinfo.gen < 8 || devinfo.gen >= 11)
+      return;
+
+   brw_set_default_access_mode(p, BRW_ALIGN_16);
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      brw_ADD(p, retype(g0, inst[i].dst_type),
+                 retype(g0, inst[i].src0_type),
+                 retype(g0, inst[i].src1_type));
+
+      brw_inst_set_src0_vstride(&devinfo, last_inst, inst[i].src0_vstride);
+      brw_inst_set_src1_vstride(&devinfo, last_inst, inst[i].src1_vstride);
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
+TEST_P(validation_test, mixed_float_align16_no_simd16)
+{
+   static const struct {
+      unsigned exec_size;
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      bool expected_result;
+   } inst[] = {
+#define INST(exec_size, dst_type, src0_type, src1_type, expected_result)  \
+      {                                                                   \
+         BRW_EXECUTE_##exec_size,                                         \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         expected_result,                                                 \
+      }
+
+      INST( 8, HF,  F, HF, true),
+      INST( 8, HF, HF,  F, true),
+      INST( 8, HF,  F,  F, true),
+      INST( 8,  F,  F, HF, true),
+      INST( 8,  F, HF,  F, true),
+      INST( 8,  F,  F, HF, true),
+      INST(16, HF,  F, HF, false),
+      INST(16, HF, HF,  F, false),
+      INST(16, HF,  F,  F, false),
+      INST(16,  F,  F, HF, false),
+      INST(16,  F, HF,  F, false),
+      INST(16,  F,  F, HF, false),
+
+#undef INST
+   };
+
+   if (devinfo.gen < 8 || devinfo.gen >= 11)
+      return;
+
+   brw_set_default_access_mode(p, BRW_ALIGN_16);
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      brw_ADD(p, retype(g0, inst[i].dst_type),
+                 retype(g0, inst[i].src0_type),
+                 retype(g0, inst[i].src1_type));
+
+      brw_inst_set_exec_size(&devinfo, last_inst, inst[i].exec_size);
+
+      brw_inst_set_src0_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+      brw_inst_set_src1_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
+TEST_P(validation_test, mixed_float_align16_no_acc_read)
+{
+   static const struct {
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      bool read_acc;
+      bool expected_result;
+   } inst[] = {
+#define INST(dst_type, src0_type, src1_type, read_acc, expected_result)   \
+      {                                                                   \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         read_acc,                                                        \
+         expected_result,                                                 \
+      }
+
+      INST(HF,  F, HF, false, true),
+      INST(HF,  F, HF, true,  false),
+      INST(HF, HF,  F, false, true),
+      INST(HF, HF,  F, true,  false),
+      INST( F,  F, HF, false, true),
+      INST( F,  F, HF, true,  false),
+      INST( F, HF,  F, false, true),
+      INST( F, HF,  F, true,  false),
+
+#undef INST
+   };
+
+   if (devinfo.gen < 8 || devinfo.gen >= 11)
+      return;
+
+   brw_set_default_access_mode(p, BRW_ALIGN_16);
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      brw_ADD(p, retype(g0, inst[i].dst_type),
+                 retype(inst[i].read_acc ? acc0 : g0, inst[i].src0_type),
+                 retype(g0, inst[i].src1_type));
+
+      brw_inst_set_src0_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+      brw_inst_set_src1_vstride(&devinfo, last_inst, BRW_VERTICAL_STRIDE_4);
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
+TEST_P(validation_test, mixed_float_align16_math_packed_format)
+{
+   static const struct {
+      enum brw_reg_type dst_type;
+      enum brw_reg_type src0_type;
+      enum brw_reg_type src1_type;
+      unsigned src0_vstride;
+      unsigned src1_vstride;
+      bool expected_result;
+   } inst[] = {
+#define INST(dst_type, src0_type, src1_type,                              \
+             src0_vstride, src1_vstride, expected_result)                 \
+      {                                                                   \
+         BRW_REGISTER_TYPE_##dst_type,                                    \
+         BRW_REGISTER_TYPE_##src0_type,                                   \
+         BRW_REGISTER_TYPE_##src1_type,                                   \
+         BRW_VERTICAL_STRIDE_##src0_vstride,                              \
+         BRW_VERTICAL_STRIDE_##src1_vstride,                              \
+         expected_result,                                                 \
+      }
+
+      INST(HF,  F, HF, 4, 4, true),
+      INST(HF,  F, HF, 2, 4, false),
+      INST(HF,  F, HF, 4, 2, false),
+      INST(HF,  F, HF, 0, 4, false),
+      INST(HF,  F, HF, 4, 0, false),
+      INST(HF, HF,  F, 4, 4, true),
+      INST(HF, HF,  F, 4, 2, false),
+      INST(HF, HF,  F, 2, 4, false),
+      INST(HF, HF,  F, 0, 4, false),
+      INST(HF, HF,  F, 4, 0, false),
+      INST( F, HF,  F, 4, 0, false),
+      INST( F, HF, HF, 4, 4, true),
+      INST( F,  F, HF, 4, 0, false),
+      INST( F,  F, HF, 2, 4, false),
+      INST( F,  F, HF, 4, 2, false),
+      INST( F, HF, HF, 0, 4, false),
+
+#undef INST
+   };
+
+   /* Align16 Math for mixed float mode is not supported in gen8 */
+   if (devinfo.gen < 9 || devinfo.gen >= 11)
+      return;
+
+   brw_set_default_access_mode(p, BRW_ALIGN_16);
+
+   for (unsigned i = 0; i < sizeof(inst) / sizeof(inst[0]); i++) {
+      gen6_math(p, retype(g0, inst[i].dst_type),
+                   BRW_MATH_FUNCTION_POW,
+                   retype(g0, inst[i].src0_type),
+                   retype(g0, inst[i].src1_type));
+
+      brw_inst_set_src0_vstride(&devinfo, last_inst, inst[i].src0_vstride);
+      brw_inst_set_src1_vstride(&devinfo, last_inst, inst[i].src1_vstride);
+
+      EXPECT_EQ(inst[i].expected_result, validate(p));
+
+      clear_instructions(p);
+   }
+}
+
 TEST_P(validation_test, vector_immediate_destination_alignment)
 {
    static const struct {
