@@ -616,9 +616,20 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
    case GLSLstd450Modf: {
       nir_ssa_def *sign = nir_fsign(nb, src[0]);
       nir_ssa_def *abs = nir_fabs(nb, src[0]);
-      val->ssa->def = nir_fmul(nb, sign, nir_ffract(nb, abs));
-      nir_store_deref(nb, vtn_nir_deref(b, w[6]),
-                      nir_fmul(nb, sign, nir_ffloor(nb, abs)), 0xf);
+
+      if (nir_is_rounding_mode_rtne(execution_mode, glsl_get_bit_size(dest_type))) {
+         val->ssa->def = nir_fmul_rtne(nb, sign, nir_ffract(nb, abs));
+         nir_store_deref(nb, vtn_nir_deref(b, w[6]),
+                         nir_fmul_rtne(nb, sign, nir_ffloor(nb, abs)), 0xf);
+      } else if (nir_is_rounding_mode_rtz(execution_mode, glsl_get_bit_size(dest_type))) {
+         val->ssa->def = nir_fmul_rtz(nb, sign, nir_ffract(nb, abs));
+         nir_store_deref(nb, vtn_nir_deref(b, w[6]),
+                         nir_fmul_rtz(nb, sign, nir_ffloor(nb, abs)), 0xf);
+      } else {
+         val->ssa->def = nir_fmul(nb, sign, nir_ffract(nb, abs));
+         nir_store_deref(nb, vtn_nir_deref(b, w[6]),
+                         nir_fmul(nb, sign, nir_ffloor(nb, abs)), 0xf);
+      }
       return;
    }
 
