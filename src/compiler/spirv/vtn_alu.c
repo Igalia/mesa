@@ -145,8 +145,16 @@ mat_times_scalar(struct vtn_builder *b,
    for (unsigned i = 0; i < glsl_get_matrix_columns(mat->type); i++) {
       if (glsl_base_type_is_integer(glsl_get_base_type(mat->type)))
          dest->elems[i]->def = nir_imul(&b->nb, mat->elems[i]->def, scalar);
-      else
-         dest->elems[i]->def = nir_fmul(&b->nb, mat->elems[i]->def, scalar);
+      else {
+         unsigned bit_size = scalar->bit_size;
+         unsigned rounding_mode = b->shader->info.shader_float_controls_execution_mode;
+         if (nir_is_rounding_mode_rtne(rounding_mode, bit_size))
+            dest->elems[i]->def = nir_fmul_rtne(&b->nb, mat->elems[i]->def, scalar);
+         else if (nir_is_rounding_mode_rtz(rounding_mode, bit_size))
+            dest->elems[i]->def = nir_fmul_rtz(&b->nb, mat->elems[i]->def, scalar);
+         else
+            dest->elems[i]->def = nir_fmul(&b->nb, mat->elems[i]->def, scalar);
+      }
    }
 
    return dest;
@@ -516,10 +524,18 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
                                nir_fabs(&b->nb, nir_fddy_coarse(&b->nb, src[0])));
       break;
 
-   case SpvOpVectorTimesScalar:
+   case SpvOpVectorTimesScalar: {
+      unsigned bit_size = glsl_get_bit_size(type);
+      unsigned rounding_mode = b->shader->info.shader_float_controls_execution_mode;
       /* The builder will take care of splatting for us. */
-      val->ssa->def = nir_fmul(&b->nb, src[0], src[1]);
+      if (nir_is_rounding_mode_rtne(rounding_mode, bit_size))
+         val->ssa->def = nir_fmul_rtne(&b->nb, src[0], src[1]);
+      else if (nir_is_rounding_mode_rtz(rounding_mode, bit_size))
+         val->ssa->def = nir_fmul_rtz(&b->nb, src[0], src[1]);
+      else
+         val->ssa->def = nir_fmul(&b->nb, src[0], src[1]);
       break;
+   }
 
    case SpvOpIsNan:
       val->ssa->def = nir_fne(&b->nb, src[0], src[0]);
