@@ -513,7 +513,9 @@ build_frexp64(nir_builder *b, nir_ssa_def *x, nir_ssa_def **exponent)
 
 static nir_op
 vtn_nir_alu_op_for_spirv_glsl_opcode(struct vtn_builder *b,
-                                     enum GLSLstd450 opcode)
+                                     enum GLSLstd450 opcode,
+                                     unsigned execution_mode,
+                                     unsigned bit_size)
 {
    switch (opcode) {
    case GLSLstd450Round:         return nir_op_fround_even;
@@ -543,7 +545,13 @@ vtn_nir_alu_op_for_spirv_glsl_opcode(struct vtn_builder *b,
    case GLSLstd450SMax:          return nir_op_imax;
    case GLSLstd450FMix:          return nir_op_flrp;
    case GLSLstd450Fma:           return nir_op_ffma;
-   case GLSLstd450Ldexp:         return nir_op_ldexp;
+   case GLSLstd450Ldexp:
+      if (nir_is_rounding_mode_rtne(execution_mode, bit_size))
+         return nir_op_ldexp_rtne;
+      else if (nir_is_rounding_mode_rtz(execution_mode, bit_size))
+         return nir_op_ldexp_rtz;
+      else
+         return nir_op_ldexp;
    case GLSLstd450FindILsb:      return nir_op_find_lsb;
    case GLSLstd450FindSMsb:      return nir_op_ifind_msb;
    case GLSLstd450FindUMsb:      return nir_op_ufind_msb;
@@ -821,12 +829,16 @@ handle_glsl450_alu(struct vtn_builder *b, enum GLSLstd450 entrypoint,
       return;
    }
 
-   default:
+   default: {
+      unsigned execution_mode =
+         b->shader->info.shader_float_controls_execution_mode;
+
       val->ssa->def =
          nir_build_alu(&b->nb,
-                       vtn_nir_alu_op_for_spirv_glsl_opcode(b, entrypoint),
+                       vtn_nir_alu_op_for_spirv_glsl_opcode(b, entrypoint, execution_mode, glsl_get_bit_size(dest_type)),
                        src[0], src[1], src[2], NULL);
       return;
+   }
    }
 }
 
