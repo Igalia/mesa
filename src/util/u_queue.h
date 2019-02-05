@@ -209,7 +209,9 @@ struct util_queue {
    unsigned flags;
    int num_queued;
    unsigned max_threads;
-   unsigned num_threads; /* decreasing this number will terminate threads */
+   /* The actual number of worker threads running now, 0 <= num_threads <= max_threads.
+      Decreasing this number will cause threads to terminate. */
+   unsigned num_threads;
    int max_jobs;
    int write_idx, read_idx; /* ring buffer pointers */
    struct util_queue_job *jobs;

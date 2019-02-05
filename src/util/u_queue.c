@@ -233,6 +233,11 @@ struct thread_input {
    int thread_index;
 };
 
+/**
+ * Main function of the worker queue threads. Sits in a loop, waiting for the
+ * queue to get a job submitted and runs that job. Also checks if the number of
+ * threads is being adjusted and exits if it is not needed anymore.
+ */
 static int
 util_queue_thread_func(void *input)
 {
@@ -310,6 +315,9 @@ util_queue_thread_func(void *input)
    return 0;
 }
 
+/**
+ * Create a new worker thread.
+ */
 static bool
 util_queue_create_thread(struct util_queue *queue, unsigned index)
 {
@@ -341,6 +349,12 @@ util_queue_create_thread(struct util_queue *queue, unsigned index)
    return true;
 }
 
+/**
+ * Adjust the number of threads upward or downward in the range [1, queue->max_threads]
+ * By adjusting queue->num_threads. If num_threads is decreased, the threads will terminate
+ * once they finish their current job, if any. If num_threads is increased, the extra threads
+ * will be started up.
+ */
 void
 util_queue_adjust_num_threads(struct util_queue *queue, unsigned num_threads)
 {
@@ -463,6 +477,14 @@ fail:
    return false;
 }
 
+/**
+ * Request that any extra threads beyond keep_num_threads terminate by setting
+ * queue->num_threads and broadcasting on has_queued_cond to wake up all sleeping
+ * threads. This waits until all the extra threads are joined before returning.
+ *
+ * This function optionally also locks finish_lock, which is needed when this
+ * function is called from anywhere other than a destructor.
+ */
 static void
 util_queue_kill_threads(struct util_queue *queue, unsigned keep_num_threads,
                         bool finish_locked)
