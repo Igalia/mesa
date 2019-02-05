@@ -810,8 +810,20 @@ cross_validate_outputs_to_inputs(struct gl_context *ctx,
                while (idx < slot_limit) {
                   output =output_explicit_locations[idx][input->data.location_frac].var;
 
-                  if (output == NULL ||
-                      input->data.location != output->data.location) {
+                  /* A linker failure should only happen when there is no
+                   * matching output and there is Static Use of the declared
+                   * input.
+                   */
+                  if (output == NULL) {
+                     if (input->data.used) {
+                        linker_error(prog,
+                                     "%s shader input `%s' with explicit "
+                                     "location has no matching output\n",
+                                     _mesa_shader_stage_to_string(consumer->Stage),
+                                     input->name);
+                        return;
+                     }
+                  } else if (input->data.location != output->data.location) {
                      linker_error(prog,
                                   "%s shader input `%s' with explicit location "
                                   "has no matching output\n",
