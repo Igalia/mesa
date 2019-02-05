@@ -431,18 +431,14 @@ execution_type(const struct gen_device_info *devinfo, const brw_inst *inst)
        src1_exec_type == BRW_REGISTER_TYPE_DF)
       return BRW_REGISTER_TYPE_DF;
 
-   if (devinfo->gen >= 9 || devinfo->is_cherryview) {
-      if (dst_exec_type == BRW_REGISTER_TYPE_F ||
-          src0_exec_type == BRW_REGISTER_TYPE_F ||
-          src1_exec_type == BRW_REGISTER_TYPE_F) {
-         return BRW_REGISTER_TYPE_F;
-      } else {
-         return BRW_REGISTER_TYPE_HF;
-      }
+   if (dst_exec_type == BRW_REGISTER_TYPE_F ||
+       src0_exec_type == BRW_REGISTER_TYPE_F ||
+       src1_exec_type == BRW_REGISTER_TYPE_F) {
+      return BRW_REGISTER_TYPE_F;
+   } else {
+      assert(devinfo->gen >= 8 && src0_exec_type == BRW_REGISTER_TYPE_HF);
+      return BRW_REGISTER_TYPE_HF;
    }
-
-   assert(src0_exec_type == BRW_REGISTER_TYPE_F);
-   return BRW_REGISTER_TYPE_F;
 }
 
 /**
