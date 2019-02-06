@@ -462,6 +462,53 @@ is_packed(unsigned vstride, unsigned width, unsigned hstride)
 }
 
 /**
+ * Returns whether a combination of two types would qualify as mixed float
+ * operation mode
+ */
+static inline bool
+types_are_mixed_float(enum brw_reg_type t0, enum brw_reg_type t1)
+{
+   return (t0 == BRW_REGISTER_TYPE_F && t1 == BRW_REGISTER_TYPE_HF) ||
+          (t1 == BRW_REGISTER_TYPE_F && t0 == BRW_REGISTER_TYPE_HF);
+}
+
+/**
+ * Returns whether an instruction is using mixed float operation mode
+ */
+static bool
+is_mixed_float(const struct gen_device_info *devinfo, const brw_inst *inst)
+{
+   if (devinfo->gen < 8)
+      return false;
+
+   if (inst_is_send(devinfo, inst))
+      return false;
+
+   unsigned opcode = brw_inst_opcode(devinfo, inst);
+   const struct opcode_desc *desc = brw_opcode_desc(devinfo, opcode);
+   if (desc->ndst == 0)
+      return false;
+
+   /* FIXME: support 3-src instructions */
+   unsigned num_sources = num_sources_from_inst(devinfo, inst);
+   assert(num_sources < 3);
+
+   enum brw_reg_type dst_type = brw_inst_dst_type(devinfo, inst);
+   enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);
+
+   if (num_sources == 1) {
+      return opcode == BRW_OPCODE_MATH &&
+             types_are_mixed_float(src0_type, dst_type);
+   }
+
+   enum brw_reg_type src1_type = brw_inst_src1_type(devinfo, inst);
+
+   return types_are_mixed_float(src0_type, src1_type) ||
+          types_are_mixed_float(src0_type, dst_type) ||
+          types_are_mixed_float(src1_type, dst_type);
+}
+
+/**
  * Checks restrictions listed in "General Restrictions Based on Operand Types"
  * in the "Register Region Restrictions" section.
  */
@@ -485,6 +532,9 @@ general_restrictions_based_on_operand_types(const struct gen_device_info *devinf
       return (struct string){};
 
    if (desc->ndst == 0)
+      return (struct string){};
+
+   if (is_mixed_float(devinfo, inst))
       return (struct string){};
 
    /* The PRMs say:
