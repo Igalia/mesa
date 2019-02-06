@@ -752,6 +752,43 @@ public:
    }
 
    /**
+    * Return bit size for this type.
+    */
+   unsigned bit_size() const
+   {
+      switch (this->base_type) {
+      case GLSL_TYPE_BOOL:
+      case GLSL_TYPE_INT:
+      case GLSL_TYPE_UINT:
+      case GLSL_TYPE_FLOAT: /* TODO handle mediump */
+      case GLSL_TYPE_SUBROUTINE:
+         return 32;
+
+      case GLSL_TYPE_FLOAT16:
+      case GLSL_TYPE_UINT16:
+      case GLSL_TYPE_INT16:
+         return 16;
+
+      case GLSL_TYPE_UINT8:
+      case GLSL_TYPE_INT8:
+         return 8;
+
+      case GLSL_TYPE_DOUBLE:
+      case GLSL_TYPE_INT64:
+      case GLSL_TYPE_UINT64:
+      case GLSL_TYPE_IMAGE:
+      case GLSL_TYPE_SAMPLER:
+         return 64;
+
+      default:
+         unreachable("unknown base type");
+      }
+
+      return 0;
+   }
+
+
+   /**
     * Query whether or not a type is an atomic_uint.
     */
    bool is_atomic_uint() const
