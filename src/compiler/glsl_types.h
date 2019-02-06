@@ -88,20 +88,51 @@ enum glsl_base_type {
    GLSL_TYPE_ERROR
 };
 
+static unsigned glsl_base_type_bit_size(enum glsl_base_type type)
+{
+   switch (type) {
+   case GLSL_TYPE_BOOL:
+   case GLSL_TYPE_INT:
+   case GLSL_TYPE_UINT:
+   case GLSL_TYPE_FLOAT: /* TODO handle mediump */
+   case GLSL_TYPE_SUBROUTINE:
+      return 32;
+
+   case GLSL_TYPE_FLOAT16:
+   case GLSL_TYPE_UINT16:
+   case GLSL_TYPE_INT16:
+      return 16;
+
+   case GLSL_TYPE_UINT8:
+   case GLSL_TYPE_INT8:
+      return 8;
+
+   case GLSL_TYPE_DOUBLE:
+   case GLSL_TYPE_INT64:
+   case GLSL_TYPE_UINT64:
+   case GLSL_TYPE_IMAGE:
+   case GLSL_TYPE_SAMPLER:
+      return 64;
+
+   default:
+      /* For GLSL_TYPE_STRUCT etc, it should be ok to return 0. This usually
+       * happens when calling this method through is_64bit and is_16bit
+       * methods
+       */
+      return 0;
+   }
+
+   return 0;
+}
+
 static inline bool glsl_base_type_is_16bit(enum glsl_base_type type)
 {
-   return type == GLSL_TYPE_FLOAT16 ||
-          type == GLSL_TYPE_UINT16 ||
-          type == GLSL_TYPE_INT16;
+   return glsl_base_type_bit_size(type) == 16;
 }
 
 static inline bool glsl_base_type_is_64bit(enum glsl_base_type type)
 {
-   return type == GLSL_TYPE_DOUBLE ||
-          type == GLSL_TYPE_UINT64 ||
-          type == GLSL_TYPE_INT64  ||
-          type == GLSL_TYPE_IMAGE  ||
-          type == GLSL_TYPE_SAMPLER;
+   return glsl_base_type_bit_size(type) == 64;
 }
 
 static inline bool glsl_base_type_is_integer(enum glsl_base_type type)
@@ -812,6 +843,15 @@ public:
       }
       return size;
    }
+
+   /**
+    * Return bit size for this type.
+    */
+   unsigned bit_size() const
+   {
+      return glsl_base_type_bit_size(this->base_type);
+   }
+
 
    /**
     * Query whether or not a type is an atomic_uint.
