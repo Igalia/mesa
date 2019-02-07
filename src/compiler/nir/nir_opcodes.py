@@ -781,12 +781,18 @@ binop("extract_i16", tint, "", "(int16_t)(src0 >> (src1 * 16))")
 
 def triop(name, ty, const_expr):
    opcode(name, 0, ty, [0, 0, 0], [ty, ty, ty], False, "", const_expr, "")
+def triop_rounding_mode(name, ty, const_expr, rounding_mode):
+   opcode(name, 0, ty, [0, 0, 0], [ty, ty, ty], False, "", const_expr, rounding_mode)
 def triop_horiz(name, output_size, src1_size, src2_size, src3_size, const_expr):
    opcode(name, output_size, tuint,
    [src1_size, src2_size, src3_size],
    [tuint, tuint, tuint], False, "", const_expr, "")
 
 triop("ffma", tfloat, "src0 * src1 + src2")
+triop_rounding_mode("ffma_rtne", tfloat,
+                    "src0 * src1 + src2", "_rtne")
+triop_rounding_mode("ffma_rtz", tfloat,
+                    "(bit_size == 64) ? _mesa_fma_roundtozero(src0, src1, src2) : _mesa_fma_roundtozerof(src0, src1, src2)", "_rtz")
 
 triop("flrp", tfloat, "src0 * (1 - src2) + src1 * src2")
 
