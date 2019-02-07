@@ -28,6 +28,7 @@
 
 #include <limits.h>
 #include <stdint.h>
+#include <fenv.h>
 
 #if defined(__SSE__) || defined(_MSC_VER)
 /* MSVC always has SSE nowadays */
@@ -183,6 +184,110 @@ _mesa_lroundtozero(double x)
    fesetround(curr_method);
    return result;
 #endif
+}
+
+/**
+ * \brief Rounds \c x+y to zero.
+ */
+static inline double
+_mesa_add_roundtozero(double x, double y)
+{
+   int curr_method = fegetround();
+   fesetround(FE_TOWARDZERO);
+   double result = x + y;
+   fesetround(curr_method);
+   return result;
+}
+
+/**
+ * \brief Rounds \c x+y to zero.
+ */
+static inline float
+_mesa_add_roundtozerof(float x, float y)
+{
+   int curr_method = fegetround();
+   fesetround(FE_TOWARDZERO);
+   float result = x + y;
+   fesetround(curr_method);
+   return result;
+}
+
+/**
+ * \brief Rounds \c x-y to zero.
+ */
+static inline double
+_mesa_sub_roundtozero(double x, double y)
+{
+   int curr_method = fegetround();
+   fesetround(FE_TOWARDZERO);
+   double result = x - y;
+   fesetround(curr_method);
+   return result;
+}
+
+/**
+ * \brief Rounds \c x-y to zero.
+ */
+static inline float
+_mesa_sub_roundtozerof(float x, float y)
+{
+   int curr_method = fegetround();
+   fesetround(FE_TOWARDZERO);
+   float result = x - y;
+   fesetround(curr_method);
+   return result;
+}
+
+/**
+ * \brief Rounds \c x*y to zero.
+ */
+static inline double
+_mesa_mul_roundtozero(double x, double y)
+{
+   int curr_method = fegetround();
+   fesetround(FE_TOWARDZERO);
+   double result = x * y;
+   fesetround(curr_method);
+   return result;
+}
+
+/**
+ * \brief Rounds \c x*y to zero.
+ */
+static inline float
+_mesa_mul_roundtozerof(float x, float y)
+{
+   int curr_method = fegetround();
+   fesetround(FE_TOWARDZERO);
+   float result = x * y;
+   fesetround(curr_method);
+   return result;
+}
+
+/**
+ * \brief Rounds \c fma(x,y,z) to zero.
+ */
+static inline double
+_mesa_fma_roundtozero(double x, double y, double z)
+{
+   int curr_method = fegetround();
+   fesetround(FE_TOWARDZERO);
+   double result = x * y + z;
+   fesetround(curr_method);
+   return result;
+}
+
+/**
+ * \brief Rounds \c fma(x,y,z) to zero.
+ */
+static inline float
+_mesa_fma_roundtozerof(float x, float y, float z)
+{
+   int curr_method = fegetround();
+   fesetround(FE_TOWARDZERO);
+   float result = x * y + z;
+   fesetround(curr_method);
+   return result;
 }
 
 #endif
