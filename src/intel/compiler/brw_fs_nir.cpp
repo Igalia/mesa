@@ -1536,6 +1536,11 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       bld.emit(FS_OPCODE_PACK_HALF_2x16_SPLIT, result, op[0], op[1]);
       break;
 
+   case nir_op_ffma_rtne:
+   case nir_op_ffma_rtz:
+      bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
+               brw_imm_d(brw_rnd_mode_from_nir_op(instr->op)));
+      /* fallthrough */
    case nir_op_ffma:
       inst = bld.MAD(result, op[2], op[1], op[0]);
       inst->saturate = instr->dest.saturate;
