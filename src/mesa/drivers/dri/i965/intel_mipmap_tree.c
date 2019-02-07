@@ -3476,61 +3476,6 @@ intel_miptree_map_s8(struct brw_context *brw,
    map->unmap = intel_miptree_unmap_s8;
 }
 
-static void
-intel_miptree_unmap_etc(struct brw_context *brw,
-                        struct intel_mipmap_tree *mt,
-                        struct intel_miptree_map *map,
-                        unsigned int level,
-                        unsigned int slice)
-{
-   uint32_t image_x;
-   uint32_t image_y;
-   intel_miptree_get_image_offset(mt, level, slice, &image_x, &image_y);
-
-   image_x += map->x;
-   image_y += map->y;
-
-   uint8_t *dst = intel_miptree_map_raw(brw, mt, GL_MAP_WRITE_BIT)
-                + image_y * mt->surf.row_pitch_B
-                + image_x * mt->cpp;
-
-   if (mt->etc_format == MESA_FORMAT_ETC1_RGB8)
-      _mesa_etc1_unpack_rgba8888(dst, mt->surf.row_pitch_B,
-                                 map->ptr, map->stride,
-                                 map->w, map->h);
-   else
-      _mesa_unpack_etc2_format(dst, mt->surf.row_pitch_B,
-                               map->ptr, map->stride,
-			       map->w, map->h, mt->etc_format, true);
-
-   intel_miptree_unmap_raw(mt);
-   free(map->buffer);
-}
-
-static void
-intel_miptree_map_etc(struct brw_context *brw,
-                      struct intel_mipmap_tree *mt,
-                      struct intel_miptree_map *map,
-                      unsigned int level,
-                      unsigned int slice)
-{
-   assert(mt->etc_format != MESA_FORMAT_NONE);
-   if (mt->etc_format == MESA_FORMAT_ETC1_RGB8) {
-      assert(mt->format == MESA_FORMAT_R8G8B8X8_UNORM);
-   }
-
-   assert(map->mode & GL_MAP_WRITE_BIT);
-   assert(map->mode & GL_MAP_INVALIDATE_RANGE_BIT);
-
-   intel_miptree_access_raw(brw, mt, level, slice, true);
-
-   map->stride = _mesa_format_row_stride(mt->etc_format, map->w);
-   map->buffer = malloc(_mesa_format_image_size(mt->etc_format,
-                                                map->w, map->h, 1));
-   map->ptr = map->buffer;
-   map->unmap = intel_miptree_unmap_etc;
-}
-
 /**
  * Mapping functions for packed depth/stencil miptrees backed by real separate
  * miptrees for depth and stencil.
@@ -3803,10 +3748,6 @@ intel_miptree_map(struct brw_context *brw,
 
    if (mt->format == MESA_FORMAT_S_UINT8) {
       intel_miptree_map_s8(brw, mt, map, level, slice);
-   } else if (mt->etc_format != MESA_FORMAT_NONE &&
-              !(mode & BRW_MAP_DIRECT_BIT) &&
-              !(intel_miptree_needs_fake_etc(brw, mt))) {
-      intel_miptree_map_etc(brw, mt, map, level, slice);
    } else if (mt->stencil_mt && !(mode & BRW_MAP_DIRECT_BIT)) {
       intel_miptree_map_depthstencil(brw, mt, map, level, slice);
    } else if (use_intel_mipree_map_blit(brw, mt, map)) {
