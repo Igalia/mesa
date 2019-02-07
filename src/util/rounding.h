@@ -129,4 +129,60 @@ _mesa_lroundeven(double x)
 #endif
 }
 
+/**
+ * \brief Rounds \c x to zero, and returns the value as a long int.
+ */
+static inline long
+_mesa_lroundtozerof(float x)
+{
+#if defined(__SSE__) || defined(_MSC_VER)
+   long result = 0;
+   unsigned curr_mode = _MM_GET_ROUNDING_MODE();
+   _MM_SET_ROUNDING_MODE(_MM_ROUND_TOWARD_ZERO);
+#if LONG_MAX == INT64_MAX
+   result = _mm_cvtss_si64(_mm_load_ss(&x));
+#elif LONG_MAX == INT32_MAX
+   result _mm_cvtss_si32(_mm_load_ss(&x));
+#else
+#error "Unsupported long size"
+#endif
+   _MM_SET_ROUNDING_MODE(curr_mode);
+   return result;
+#else
+   int curr_method = fegetround();
+   fesetround(FE_TOWARDZERO);
+   long result = lrintf(x);
+   fesetround(curr_method);
+   return result;
+#endif
+}
+
+/**
+ * \brief Rounds \c x to zero, and returns the value as a long int.
+ */
+static inline long
+_mesa_lroundtozero(double x)
+{
+#if defined(__SSE__) || defined(_MSC_VER)
+   long result = 0;
+   unsigned curr_mode = _MM_GET_ROUNDING_MODE();
+   _MM_SET_ROUNDING_MODE(_MM_ROUND_TOWARD_ZERO);
+#if LONG_MAX == INT64_MAX
+   result = _mm_cvtsd_si64(_mm_load_sd(&x));
+#elif LONG_MAX == INT32_MAX
+   result = _mm_cvtsd_si32(_mm_load_sd(&x));
+#else
+#error "Unsupported long size"
+#endif
+   _MM_SET_ROUNDING_MODE(curr_mode);
+   return result;
+#else
+   int curr_method = fegetround();
+   fesetround(FE_TOWARDZERO);
+   long result = lrint(x);
+   fesetround(curr_method);
+   return result;
+#endif
+}
+
 #endif
