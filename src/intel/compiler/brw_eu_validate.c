@@ -533,10 +533,18 @@ general_restrictions_based_on_operand_types(const struct gen_device_info *devinf
 
    /* From the BDW+ PRM:
     *
-    *    "There is no direct conversion from HF to DF or DF to HF.
+    *    "There is no direct conversion from B/UB to DF or DF to B/UB.
+    *     There is no direct conversion from B/UB to Q/UQ or Q/UQ to B/UB.
+    *     There is no direct conversion from HF to DF or DF to HF.
     *     There is no direct conversion from HF to Q/UQ or Q/UQ to HF."
     */
    enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);
+
+   ERROR_IF(brw_inst_opcode(devinfo, inst) == BRW_OPCODE_MOV &&
+            ((dst_type_size == 1 && type_sz(src0_type) == 8) ||
+             (dst_type_size == 8 && type_sz(src0_type) == 1)),
+            "There are no direct conversion between 64-bit types and B/UB");
+
    ERROR_IF(brw_inst_opcode(devinfo, inst) == BRW_OPCODE_MOV &&
             ((dst_type == BRW_REGISTER_TYPE_HF && type_sz(src0_type) == 8) ||
              (dst_type_size == 8 && src0_type == BRW_REGISTER_TYPE_HF)),
