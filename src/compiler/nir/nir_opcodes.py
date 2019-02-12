@@ -490,7 +490,16 @@ def binop_reduce(name, output_size, output_type, src_type, prereduce_expr,
           [4, 4], [src_type, src_type], False, commutative,
           final(reduce_(reduce_(src0, src1), reduce_(src2, src3))))
 
-binop("fadd", tfloat, commutative + associative, "src0 + src1")
+binop("fadd", tfloat, commutative + associative,"""
+if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
+   if (bit_size == 64)
+      dst = _mesa_double_add_rtz(src0, src1);
+   else
+      dst = _mesa_double_to_float_rtz(_mesa_double_add_rtz(src0, src1));
+} else {
+   dst = src0 + src1;
+}
+""")
 binop("iadd", tint, commutative + associative, "src0 + src1")
 binop("iadd_sat", tint, commutative + associative, """
       src1 > 0 ?
@@ -506,10 +515,28 @@ binop("isub_sat", tint, "", """
 """)
 binop("usub_sat", tuint, "", "src0 < src1 ? 0 : src0 - src1")
 
-binop("fsub", tfloat, "", "src0 - src1")
+binop("fsub", tfloat, "", """
+if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
+   if (bit_size == 64)
+      dst = _mesa_double_sub_rtz(src0, src1);
+   else
+      dst = _mesa_double_to_float_rtz(_mesa_double_sub_rtz(src0, src1));
+} else {
+   dst = src0 - src1;
+}
+""")
 binop("isub", tint, "", "src0 - src1")
 
-binop("fmul", tfloat, commutative + associative, "src0 * src1")
+binop("fmul", tfloat, commutative + associative, """
+if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
+   if (bit_size == 64)
+      dst = _mesa_double_mul_rtz(src0, src1);
+   else
+      dst = _mesa_double_to_float_rtz(_mesa_double_mul_rtz(src0, src1));
+} else {
+   dst = src0 * src1;
+}
+""")
 # low 32-bits of signed/unsigned integer multiply
 binop("imul", tint, commutative + associative, "src0 * src1")
 
@@ -828,7 +855,16 @@ def triop_horiz(name, output_size, src1_size, src2_size, src3_size, const_expr):
    [src1_size, src2_size, src3_size],
    [tuint, tuint, tuint], False, "", const_expr)
 
-triop("ffma", tfloat, "src0 * src1 + src2")
+triop("ffma", tfloat,"""
+if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
+   if (bit_size == 64)
+      dst = _mesa_double_fma_rtz(src0, src1, src2);
+   else
+      dst = _mesa_double_to_float_rtz(_mesa_double_fma_rtz(src0, src1, src2));
+} else {
+   dst = src0 * src1 + src2;
+}
+""")
 
 triop("flrp", tfloat, "src0 * (1 - src2) + src1 * src2")
 
