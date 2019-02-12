@@ -2547,15 +2547,6 @@ fs_visitor::opt_algebraic()
             break;
          }
 
-         /* a * 0.0 = 0.0 */
-         if (inst->src[1].is_zero()) {
-            inst->opcode = BRW_OPCODE_MOV;
-            inst->src[0] = inst->src[1];
-            inst->src[1] = reg_undef;
-            progress = true;
-            break;
-         }
-
          if (inst->src[0].file == IMM) {
             assert(inst->src[0].type == BRW_REGISTER_TYPE_F);
             inst->opcode = BRW_OPCODE_MOV;
@@ -2568,14 +2559,6 @@ fs_visitor::opt_algebraic()
       case BRW_OPCODE_ADD:
          if (inst->src[1].file != IMM)
             continue;
-
-         /* a + 0.0 = a */
-         if (inst->src[1].is_zero()) {
-            inst->opcode = BRW_OPCODE_MOV;
-            inst->src[1] = reg_undef;
-            progress = true;
-            break;
-         }
 
          if (inst->src[0].file == IMM) {
             assert(inst->src[0].type == BRW_REGISTER_TYPE_F);
@@ -2591,16 +2574,6 @@ fs_visitor::opt_algebraic()
              inst->src[1].is_zero()) {
             inst->opcode = BRW_OPCODE_MOV;
             inst->src[1] = reg_undef;
-            progress = true;
-            break;
-         }
-         break;
-      case BRW_OPCODE_LRP:
-         if (inst->src[1].equals(inst->src[2])) {
-            inst->opcode = BRW_OPCODE_MOV;
-            inst->src[0] = inst->src[1];
-            inst->src[1] = reg_undef;
-            inst->src[2] = reg_undef;
             progress = true;
             break;
          }
@@ -2682,17 +2655,7 @@ fs_visitor::opt_algebraic()
          }
          break;
       case BRW_OPCODE_MAD:
-         if (inst->src[1].is_zero() || inst->src[2].is_zero()) {
-            inst->opcode = BRW_OPCODE_MOV;
-            inst->src[1] = reg_undef;
-            inst->src[2] = reg_undef;
-            progress = true;
-         } else if (inst->src[0].is_zero()) {
-            inst->opcode = BRW_OPCODE_MUL;
-            inst->src[0] = inst->src[2];
-            inst->src[2] = reg_undef;
-            progress = true;
-         } else if (inst->src[1].is_one()) {
+         if (inst->src[1].is_one()) {
             inst->opcode = BRW_OPCODE_ADD;
             inst->src[1] = inst->src[2];
             inst->src[2] = reg_undef;
