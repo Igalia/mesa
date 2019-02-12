@@ -1173,6 +1173,73 @@ tfeedback_decl::store(struct gl_context *ctx, struct gl_shader_program *prog,
       unsigned location = this->location;
       unsigned location_frac = this->location_frac;
       unsigned num_components = this->num_components();
+
+      /* From GL_EXT_transform_feedback:
+       *   A program will fail to link if:
+       *
+       *     * the total number of components to capture is greater than the
+       *       constant MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS_EXT and
+       *       the buffer mode is INTERLEAVED_ATTRIBS_EXT.
+       *
+       * From GL_ARB_enhanced_layouts:
+       *
+       *   "The resulting stride (implicit or explicit) must be less than or
+       *    equal to the implementation-dependent constant
+       *    gl_MaxTransformFeedbackInterleavedComponents."
+       */
+      if ((prog->TransformFeedback.BufferMode == GL_INTERLEAVED_ATTRIBS ||
+           has_xfb_qualifiers) &&
+          xfb_offset + num_components >
+          ctx->Const.MaxTransformFeedbackInterleavedComponents) {
+         linker_error(prog,
+                      "The MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS "
+                      "limit has been exceeded.");
+         return false;
+      }
+
+      {
+         /* From the OpenGL 4.60.5 spec, section 4.4.2. Output Layout
+          * Qualifiers, Page 76, (Transform Feedback Layout Qualifiers):
+          *
+          * "No aliasing in output buffers is allowed: It is a compile-time or
+          *  link-time error to specify variables with overlapping transform
+          *  feedback offsets."
+          */
+         const unsigned max_components =
+            ctx->Const.MaxTransformFeedbackInterleavedComponents;
+         const unsigned first_component = xfb_offset;
+         const unsigned last_component = xfb_offset + num_components - 1;
+         const unsigned start_word = BITSET_BITWORD(first_component);
+         const unsigned end_word = BITSET_BITWORD(last_component);
+         assert(last_component < max_components);
+
+         if (!info->Buffers[buffer].UsedComponents) {
+            info->Buffers[buffer].UsedComponents =
+               rzalloc_array(info, BITSET_WORD, BITSET_WORDS(max_components));
+         }
+         BITSET_WORD *used = info->Buffers[buffer].UsedComponents;
+
+         for (unsigned word = start_word; word <= end_word; word++) {
+            unsigned start_range = 0;
+            unsigned end_range = BITSET_WORDBITS - 1;
+
+            if (word == start_word)
+               start_range = first_component % BITSET_WORDBITS;
+
+            if (word == end_word)
+               end_range = last_component % BITSET_WORDBITS;
+
+            if (used[word] & BITSET_RANGE(start_range, end_range)) {
+               linker_error(prog,
+                            "variable '%s', xfb_offset (%d) "
+                            "is causing aliasing.",
+                            this->orig_name, xfb_offset * 4);
+               return false;
+            }
+            used[word] |= BITSET_RANGE(start_range, end_range);
+         }
+      }
+
       while (num_components > 0) {
          unsigned output_size = MIN2(num_components, 4 - location_frac);
          assert((info->NumOutputs == 0 && max_outputs == 0) ||
@@ -1221,28 +1288,6 @@ tfeedback_decl::store(struct gl_context *ctx, struct gl_shader_program *prog,
       }
    } else {
       info->Buffers[buffer].Stride = xfb_offset;
-   }
-
-   /* From GL_EXT_transform_feedback:
-    *   A program will fail to link if:
-    *
-    *     * the total number of components to capture is greater than
-    *       the constant MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS_EXT
-    *       and the buffer mode is INTERLEAVED_ATTRIBS_EXT.
-    *
-    * From GL_ARB_enhanced_layouts:
-    *
-    *   "The resulting stride (implicit or explicit) must be less than or
-    *   equal to the implementation-dependent constant
-    *   gl_MaxTransformFeedbackInterleavedComponents."
-    */
-   if ((prog->TransformFeedback.BufferMode == GL_INTERLEAVED_ATTRIBS ||
-        has_xfb_qualifiers) &&
-       info->Buffers[buffer].Stride >
-       ctx->Const.MaxTransformFeedbackInterleavedComponents) {
-      linker_error(prog, "The MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS "
-                   "limit has been exceeded.");
-      return false;
    }
 
  store_varying:
