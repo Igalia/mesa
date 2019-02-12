@@ -49,6 +49,7 @@
 #include "compiler/glsl/list.h"
 #include "util/simple_mtx.h"
 #include "util/u_dynarray.h"
+#include "util/bitset.h"
 
 
 #ifdef __cplusplus
@@ -1766,6 +1767,8 @@ struct gl_transform_feedback_buffer
    uint32_t Binding;
 
    uint32_t NumVaryings;
+
+   BITSET_WORD *UsedComponents;
 
    /**
     * Total number of components stored in each buffer.  This may be used by
