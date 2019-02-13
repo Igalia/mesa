@@ -245,6 +245,8 @@ struct brw_reg {
       float f;
       int   d;
       unsigned ud;
+      int8_t b;
+      uint8_t ub;
    };
 };
 
@@ -718,8 +720,25 @@ brw_imm_w(int16_t w)
 }
 
 /* brw_imm_b and brw_imm_ub aren't supported by hardware - the type
- * numbers alias with _V and _VF below:
+ * numbers alias with _V and _VF below, however, we ignore that at
+ * the IR level and let the combine pass promote :(U)B immediates
+ * to GRF before we emit assembly.
  */
+static inline struct brw_reg
+brw_imm_b(int8_t v)
+{
+   struct brw_reg imm = brw_imm_reg(BRW_REGISTER_TYPE_B);
+   imm.b = v;
+   return imm;
+}
+
+static inline struct brw_reg
+brw_imm_ub(uint8_t v)
+{
+   struct brw_reg imm = brw_imm_reg(BRW_REGISTER_TYPE_B);
+   imm.ub = v;
+   return imm;
+}
 
 /** Construct vector of eight signed half-byte values */
 static inline struct brw_reg

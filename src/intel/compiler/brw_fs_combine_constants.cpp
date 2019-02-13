@@ -69,6 +69,14 @@ static bool
 must_promote_imm(const struct gen_device_info *devinfo,
                  const fs_inst *inst, const int src_idx)
 {
+   /* :B and :UB immediates are not supported */
+   for (int i = 0; i < inst->sources; i++) {
+      if (src_idx == -1 || src_idx == i) {
+         if (inst->src[i].file == IMM && type_sz(inst->src[i].type) == 1)
+            return true;
+      }
+   }
+
    switch (inst->opcode) {
    case SHADER_OPCODE_INT_QUOTIENT:
    case SHADER_OPCODE_INT_REMAINDER:
@@ -141,6 +149,7 @@ struct imm {
       float f;
       int32_t d;
       int16_t w;
+      int8_t b;
    };
    uint8_t size;
 
@@ -262,6 +271,18 @@ get_constant_value(const struct gen_device_info *devinfo,
    case BRW_REGISTER_TYPE_UW:
       memcpy(out, &src->ud, 2);
       break;
+   case BRW_REGISTER_TYPE_B: {
+      int8_t val = src->b;
+      if (can_do_source_mods)
+         val = abs(val);
+      memcpy(out, &val, 1);
+      break;
+   }
+   case BRW_REGISTER_TYPE_UB: {
+      uint8_t val = abs(src->ub);
+      memcpy(out, &val, 1);
+      break;
+   }
    default:
       return false;
    };
@@ -277,6 +298,8 @@ build_imm_reg_for_copy(struct imm *imm)
       return brw_imm_d(imm->d);
    case 2:
       return brw_imm_w(imm->w);
+   case 1:
+      return brw_imm_w(imm->b); /* :B immediate is not supported in hardware */
    default:
       unreachable("not implemented");
    }
@@ -287,6 +310,8 @@ get_alignment_for_imm(const struct imm *imm)
 {
    if (imm->is_half_float)
       return 4; /* At least MAD seems to require this */
+   else if (imm->size == 1)
+      return 2; /* We use :W instructions to promote :B immediates */
    else
       return imm->size;
 }
@@ -303,8 +328,11 @@ needs_negate(const struct fs_reg *reg, const struct imm *imm)
       return (reg->d & 0x8000u) != (imm->w & 0x8000u);
    case BRW_REGISTER_TYPE_W:
       return ((reg->d & 0xffffu) < 0) != (imm->w < 0);
+   case BRW_REGISTER_TYPE_B:
+      return (reg->b < 0) != (imm->b < 0);
    case BRW_REGISTER_TYPE_UD:
    case BRW_REGISTER_TYPE_UW:
+   case BRW_REGISTER_TYPE_UB:
       return false;
    default:
       unreachable("not implemented");

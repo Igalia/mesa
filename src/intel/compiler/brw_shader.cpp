@@ -719,8 +719,6 @@ backend_reg::is_zero() const
    if (file != IMM)
       return false;
 
-   assert(type_sz(type) > 1);
-
    switch (type) {
    case BRW_REGISTER_TYPE_HF:
       assert((d & 0xffff) == ((d >> 16) & 0xffff));
@@ -729,6 +727,9 @@ backend_reg::is_zero() const
       return f == 0;
    case BRW_REGISTER_TYPE_DF:
       return df == 0;
+   case BRW_REGISTER_TYPE_B:
+   case BRW_REGISTER_TYPE_UB:
+      return b == 0;
    case BRW_REGISTER_TYPE_W:
    case BRW_REGISTER_TYPE_UW:
       assert((d & 0xffff) == ((d >> 16) & 0xffff));
@@ -750,8 +751,6 @@ backend_reg::is_one() const
    if (file != IMM)
       return false;
 
-   assert(type_sz(type) > 1);
-
    switch (type) {
    case BRW_REGISTER_TYPE_HF:
       assert((d & 0xffff) == ((d >> 16) & 0xffff));
@@ -760,6 +759,9 @@ backend_reg::is_one() const
       return f == 1.0f;
    case BRW_REGISTER_TYPE_DF:
       return df == 1.0;
+   case BRW_REGISTER_TYPE_B:
+   case BRW_REGISTER_TYPE_UB:
+      return b == 1;
    case BRW_REGISTER_TYPE_W:
    case BRW_REGISTER_TYPE_UW:
       assert((d & 0xffff) == ((d >> 16) & 0xffff));
@@ -781,8 +783,6 @@ backend_reg::is_negative_one() const
    if (file != IMM)
       return false;
 
-   assert(type_sz(type) > 1);
-
    switch (type) {
    case BRW_REGISTER_TYPE_HF:
       assert((d & 0xffff) == ((d >> 16) & 0xffff));
@@ -791,6 +791,8 @@ backend_reg::is_negative_one() const
       return f == -1.0;
    case BRW_REGISTER_TYPE_DF:
       return df == -1.0;
+   case BRW_REGISTER_TYPE_B:
+      return b == -1;
    case BRW_REGISTER_TYPE_W:
       assert((d & 0xffff) == ((d >> 16) & 0xffff));
       return (d & 0xffff) == 0xffff;

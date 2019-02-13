@@ -91,6 +91,8 @@ struct backend_reg : private brw_reg
    using brw_reg::ud;
    using brw_reg::d64;
    using brw_reg::u64;
+   using brw_reg::b;
+   using brw_reg::ub;
 };
 #endif
 

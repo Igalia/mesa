@@ -920,9 +920,9 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
          shift = brw_imm_w(15);
          break;
       case 8: {
-         zero = setup_imm_b(bld, 0);
-         one = setup_imm_b(bld, 1);
-         shift = setup_imm_b(bld, 7);
+         zero = brw_imm_b(0);
+         one = brw_imm_b(1);
+         shift = brw_imm_b(7);
          break;
       }
       default:
@@ -1579,7 +1579,7 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
    switch (instr->def.bit_size) {
    case 8:
       for (unsigned i = 0; i < instr->def.num_components; i++)
-         bld.MOV(offset(reg, bld, i), setup_imm_b(bld, instr->value.i8[i]));
+         bld.MOV(offset(reg, bld, i), brw_imm_b(instr->value.i8[i]));
       break;
 
    case 16:
@@ -5310,20 +5310,4 @@ setup_imm_df(const fs_builder &bld, double v)
    ubld.MOV(horiz_offset(tmp, 1), brw_imm_ud(di.i2));
 
    return component(retype(tmp, BRW_REGISTER_TYPE_DF), 0);
-}
-
-fs_reg
-setup_imm_b(const fs_builder &bld, int8_t v)
-{
-   const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_B);
-   bld.MOV(tmp, brw_imm_w(v));
-   return tmp;
-}
-
-fs_reg
-setup_imm_ub(const fs_builder &bld, uint8_t v)
-{
-   const fs_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UB);
-   bld.MOV(tmp, brw_imm_uw(v));
-   return tmp;
 }
