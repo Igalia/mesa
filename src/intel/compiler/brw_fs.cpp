@@ -2556,6 +2556,12 @@ fs_visitor::opt_algebraic()
             case BRW_REGISTER_TYPE_F:
                inst->src[0].f *= inst->src[1].f;
                break;
+            case BRW_REGISTER_TYPE_B:
+               inst->src[0].b = inst->src[0].b * inst->src[1].b;
+               break;
+            case BRW_REGISTER_TYPE_UB:
+               inst->src[0].ub = inst->src[0].ub * inst->src[1].ub;
+               break;
             case BRW_REGISTER_TYPE_D:
                inst->src[0].d *= inst->src[1].d;
                break;
@@ -2636,6 +2642,12 @@ fs_visitor::opt_algebraic()
             assert(inst->src[0].type == inst->src[1].type);
             bool local_progress = true;
             switch (inst->src[0].type) {
+            case BRW_REGISTER_TYPE_B:
+               inst->src[0].b = inst->src[0].b + inst->src[1].b;
+               break;
+            case BRW_REGISTER_TYPE_UB:
+               inst->src[0].ub = inst->src[0].ub + inst->src[1].ub;
+               break;
             case BRW_REGISTER_TYPE_HF: {
                float v1 = _mesa_half_to_float(inst->src[0].ud & 0xffffu);
                float v2 = _mesa_half_to_float(inst->src[1].ud & 0xffffu);
@@ -2698,6 +2710,10 @@ fs_visitor::opt_algebraic()
          if (inst->src[0].file == IMM && inst->src[1].file == IMM) {
             bool local_progress = true;
             switch (inst->src[0].type) {
+            case BRW_REGISTER_TYPE_B:
+            case BRW_REGISTER_TYPE_UB:
+               inst->src[0].b <<= inst->src[1].ub;
+               break;
             case BRW_REGISTER_TYPE_D:
             case BRW_REGISTER_TYPE_UD:
                inst->src[0].ud <<= inst->src[1].ud;
@@ -2725,8 +2741,14 @@ fs_visitor::opt_algebraic()
          if (inst->src[0].file == IMM && inst->src[1].file == IMM) {
             bool local_progress = true;
             switch (inst->src[0].type) {
+            case BRW_REGISTER_TYPE_B:
+               inst->src[0].b >>= inst->src[1].ub;
+               break;
             case BRW_REGISTER_TYPE_D:
                inst->src[0].d >>= inst->src[1].ud;
+               break;
+            case BRW_REGISTER_TYPE_UB:
+               inst->src[0].ub >>= inst->src[1].ub;
                break;
             case BRW_REGISTER_TYPE_UD:
                inst->src[0].ud >>= inst->src[1].ud;
