@@ -834,10 +834,8 @@ write_program_resource_data(struct blob *metadata,
           res->Type != GL_UNIFORM) {
          blob_write_uint32(metadata, uniform_not_remapped);
          for (unsigned i = 0; i < prog->data->NumUniformStorage; i++) {
-            if ((((gl_uniform_storage *)res->Data)->block_index
-                 == prog->data->UniformStorage[i].block_index) &&
-                (((gl_uniform_storage *)res->Data)->offset
-                 == prog->data->UniformStorage[i].offset)) {
+            if (strcmp(((gl_uniform_storage *)res->Data)->name,
+                       prog->data->UniformStorage[i].name) == 0) {
                blob_write_uint32(metadata, i);
                break;
             }
