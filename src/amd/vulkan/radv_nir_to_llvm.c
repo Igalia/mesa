@@ -4145,6 +4145,9 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			     options->family, float_mode, options->wave_size, 64);
 	ctx.context = ctx.ac.context;
 
+	for(int i = 0; i < shader_count; ++i)
+		nir_lower_bool_to_int32(shaders[i]);
+
 	for (i = 0; i < MAX_SETS; i++)
 		shader_info->user_sgprs_locs.descriptor_sets[i].sgpr_idx = -1;
 	for (i = 0; i < AC_UD_MAX_UD; i++)
