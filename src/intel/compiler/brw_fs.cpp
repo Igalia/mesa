@@ -2603,8 +2603,8 @@ fs_visitor::opt_algebraic()
             break;
          }
 
-         if (inst->src[0].file == IMM) {
-            assert(inst->src[0].type == BRW_REGISTER_TYPE_F);
+         if (inst->src[0].file == IMM &&
+             inst->src[0].type == BRW_REGISTER_TYPE_F) {
             inst->opcode = BRW_OPCODE_MOV;
             inst->src[0].f *= inst->src[1].f;
             inst->src[1] = reg_undef;
@@ -2616,8 +2616,8 @@ fs_visitor::opt_algebraic()
          if (inst->src[1].file != IMM)
             continue;
 
-         if (inst->src[0].file == IMM) {
-            assert(inst->src[0].type == BRW_REGISTER_TYPE_F);
+         if (inst->src[0].file == IMM &&
+             inst->src[0].type == BRW_REGISTER_TYPE_F) {
             inst->opcode = BRW_OPCODE_MOV;
             inst->src[0].f += inst->src[1].f;
             inst->src[1] = reg_undef;
