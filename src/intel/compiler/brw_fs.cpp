@@ -2583,12 +2583,66 @@ fs_visitor::opt_algebraic()
          break;
 
       case BRW_OPCODE_MUL:
-         if (inst->src[1].file != IMM)
+         if (inst->src[0].file != IMM && inst->src[1].file != IMM)
             continue;
+
+         /* Constant folding */
+         if (inst->src[0].file == IMM && inst->src[1].file == IMM) {
+            assert(inst->src[0].type == inst->src[1].type);
+            bool local_progress = true;
+            switch (inst->src[0].type) {
+            case BRW_REGISTER_TYPE_HF: {
+               float v1 = _mesa_half_to_float(inst->src[0].ud & 0xffffu);
+               float v2 = _mesa_half_to_float(inst->src[1].ud & 0xffffu);
+               inst->src[0] = brw_imm_w(_mesa_float_to_half(v1 * v2));
+               break;
+            }
+            case BRW_REGISTER_TYPE_W: {
+               int16_t v1 = inst->src[0].ud & 0xffffu;
+               int16_t v2 = inst->src[1].ud & 0xffffu;
+               inst->src[0] = brw_imm_w(v1 * v2);
+               break;
+            }
+            case BRW_REGISTER_TYPE_UW: {
+               uint16_t v1 = inst->src[0].ud & 0xffffu;
+               uint16_t v2 = inst->src[1].ud & 0xffffu;
+               inst->src[0] = brw_imm_uw(v1 * v2);
+               break;
+            }
+            case BRW_REGISTER_TYPE_F:
+               inst->src[0].f *= inst->src[1].f;
+               break;
+            case BRW_REGISTER_TYPE_D:
+               inst->src[0].d *= inst->src[1].d;
+               break;
+            case BRW_REGISTER_TYPE_UD:
+               inst->src[0].ud *= inst->src[1].ud;
+               break;
+            default:
+               local_progress = false;
+               break;
+            };
+
+            if (local_progress) {
+               inst->opcode = BRW_OPCODE_MOV;
+               inst->src[1] = reg_undef;
+               progress = true;
+               break;
+            }
+         }
+
 
          /* a * 1.0 = a */
          if (inst->src[1].is_one()) {
             inst->opcode = BRW_OPCODE_MOV;
+            inst->src[1] = reg_undef;
+            progress = true;
+            break;
+         }
+
+         if (inst->src[0].is_one()) {
+            inst->opcode = BRW_OPCODE_MOV;
+            inst->src[0] = inst->src[1];
             inst->src[1] = reg_undef;
             progress = true;
             break;
@@ -2603,26 +2657,159 @@ fs_visitor::opt_algebraic()
             break;
          }
 
-         if (inst->src[0].file == IMM &&
-             inst->src[0].type == BRW_REGISTER_TYPE_F) {
+         if (inst->src[0].is_negative_one()) {
             inst->opcode = BRW_OPCODE_MOV;
-            inst->src[0].f *= inst->src[1].f;
+            inst->src[0] = inst->src[1];
+            inst->src[0].negate = !inst->src[1].negate;
+            inst->src[1] = reg_undef;
+            progress = true;
+            break;
+         }
+
+         /* a * 0 = 0 (this is not exact for floating point) */
+         if (inst->src[1].is_zero() &&
+             brw_reg_type_is_integer(inst->src[1].type)) {
+            inst->opcode = BRW_OPCODE_MOV;
+            inst->src[0] = inst->src[1];
+            inst->src[1] = reg_undef;
+            progress = true;
+            break;
+         }
+
+         if (inst->src[0].is_zero() &&
+             brw_reg_type_is_integer(inst->src[0].type)) {
+            inst->opcode = BRW_OPCODE_MOV;
             inst->src[1] = reg_undef;
             progress = true;
             break;
          }
          break;
       case BRW_OPCODE_ADD:
-         if (inst->src[1].file != IMM)
+         if (inst->src[0].file != IMM && inst->src[1].file != IMM)
             continue;
 
-         if (inst->src[0].file == IMM &&
-             inst->src[0].type == BRW_REGISTER_TYPE_F) {
+         /* Constant folding */
+         if (inst->src[0].file == IMM && inst->src[1].file == IMM) {
+            assert(inst->src[0].type == inst->src[1].type);
+            bool local_progress = true;
+            switch (inst->src[0].type) {
+            case BRW_REGISTER_TYPE_HF: {
+               float v1 = _mesa_half_to_float(inst->src[0].ud & 0xffffu);
+               float v2 = _mesa_half_to_float(inst->src[1].ud & 0xffffu);
+               inst->src[0] = brw_imm_w(_mesa_float_to_half(v1 + v2));
+               break;
+            }
+            case BRW_REGISTER_TYPE_W: {
+               int16_t v1 = inst->src[0].ud & 0xffffu;
+               int16_t v2 = inst->src[1].ud & 0xffffu;
+               inst->src[0] = brw_imm_w(v1 + v2);
+               break;
+            }
+            case BRW_REGISTER_TYPE_UW: {
+               uint16_t v1 = inst->src[0].ud & 0xffffu;
+               uint16_t v2 = inst->src[1].ud & 0xffffu;
+               inst->src[0] = brw_imm_uw(v1 + v2);
+               break;
+            }
+            case BRW_REGISTER_TYPE_F:
+               inst->src[0].f += inst->src[1].f;
+               break;
+            case BRW_REGISTER_TYPE_D:
+               inst->src[0].d += inst->src[1].d;
+               break;
+            case BRW_REGISTER_TYPE_UD:
+               inst->src[0].ud += inst->src[1].ud;
+               break;
+            default:
+               local_progress = false;
+               break;
+            };
+
+            if (local_progress) {
+               inst->opcode = BRW_OPCODE_MOV;
+               inst->src[1] = reg_undef;
+               progress = true;
+               break;
+            }
+         }
+
+         /* a + 0 = a (this is not exact for floating point) */
+         if (inst->src[1].is_zero() &&
+             brw_reg_type_is_integer(inst->src[1].type)) {
             inst->opcode = BRW_OPCODE_MOV;
-            inst->src[0].f += inst->src[1].f;
             inst->src[1] = reg_undef;
             progress = true;
             break;
+         }
+
+         if (inst->src[0].is_zero() &&
+             brw_reg_type_is_integer(inst->src[0].type)) {
+            inst->opcode = BRW_OPCODE_MOV;
+            inst->src[0] = inst->src[1];
+            inst->src[1] = reg_undef;
+            progress = true;
+            break;
+         }
+         break;
+      case BRW_OPCODE_SHL:
+         if (inst->src[0].file == IMM && inst->src[1].file == IMM) {
+            bool local_progress = true;
+            switch (inst->src[0].type) {
+            case BRW_REGISTER_TYPE_D:
+            case BRW_REGISTER_TYPE_UD:
+               inst->src[0].ud <<= inst->src[1].ud & 0x1f;
+               break;
+            case BRW_REGISTER_TYPE_W:
+            case BRW_REGISTER_TYPE_UW: {
+               uint16_t v1 = inst->src[0].ud & 0xffffu;
+               uint16_t v2 = inst->src[1].ud & 0x1f;
+               inst->src[0] = retype(brw_imm_uw(v1 << v2), inst->src[0].type);
+               break;
+            }
+            default:
+               local_progress = false;
+               break;
+            }
+            if (local_progress) {
+               inst->opcode = BRW_OPCODE_MOV;
+               inst->src[1] = reg_undef;
+               progress = true;
+               break;
+            }
+         }
+         break;
+      case BRW_OPCODE_SHR:
+         if (inst->src[0].file == IMM && inst->src[1].file == IMM) {
+            bool local_progress = true;
+            switch (inst->src[0].type) {
+            case BRW_REGISTER_TYPE_D:
+               inst->src[0].d >>= inst->src[1].ud & 0x1f;
+               break;
+            case BRW_REGISTER_TYPE_UD:
+               inst->src[0].ud >>= inst->src[1].ud & 0x1f;
+               break;
+            case BRW_REGISTER_TYPE_W: {
+               int16_t v1 = inst->src[0].ud & 0xffffu;
+               uint16_t v2 = inst->src[1].ud & 0x1f;
+               inst->src[0] = brw_imm_w(v1 >> v2);
+               break;
+            }
+            case BRW_REGISTER_TYPE_UW: {
+               uint16_t v1 = inst->src[0].ud & 0xffffu;
+               uint16_t v2 = inst->src[1].ud & 0x1f;
+               inst->src[0] = brw_imm_uw(v1 >> v2);
+               break;
+            }
+            default:
+               local_progress = false;
+               break;
+            }
+            if (local_progress) {
+               inst->opcode = BRW_OPCODE_MOV;
+               inst->src[1] = reg_undef;
+               progress = true;
+               break;
+            }
          }
          break;
       case BRW_OPCODE_OR:
