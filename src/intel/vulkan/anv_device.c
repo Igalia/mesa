@@ -1401,6 +1401,26 @@ void anv_GetPhysicalDeviceProperties2(
          break;
       }
 
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
+         VkPhysicalDeviceSampleLocationsPropertiesEXT *props =
+            (VkPhysicalDeviceSampleLocationsPropertiesEXT *)ext;
+
+         props->sampleLocationSampleCounts =
+            isl_device_get_sample_counts(&pdevice->isl_dev);
+
+         /* See also anv_GetPhysicalDeviceMultisamplePropertiesEXT */
+         props->maxSampleLocationGridSize.width = 1;
+         props->maxSampleLocationGridSize.height = 1;
+
+         props->sampleLocationCoordinateRange[0] = 0;
+         props->sampleLocationCoordinateRange[1] = 0.9375;
+         props->sampleLocationSubPixelBits = 4;
+
+         props->variableSampleLocations = false;
+
+         break;
+      }
+
       default:
          anv_debug_ignored_stype(ext->sType);
          break;
