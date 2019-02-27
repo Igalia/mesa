@@ -578,6 +578,13 @@ iris_compile_vs(struct iris_context *ice,
                          prog_data, so_decls, system_values, num_system_values,
                          num_cbufs);
 
+   ice->state.vs_needs_edge_flag = false;
+   nir_foreach_variable(var, &nir->inputs) {
+      if (var->data.location == VERT_ATTRIB_EDGEFLAG) {
+         ice->state.vs_needs_edge_flag = true;
+      }
+   }
+
    if (ish->compiled_once) {
       perf_debug(&ice->dbg, "Recompiling vertex shader\n");
    } else {
@@ -626,15 +633,23 @@ iris_update_compiled_vs(struct iris_context *ice)
       const bool needs_sgvs_element = uses_draw_params ||
                                       vs_prog_data->uses_instanceid ||
                                       vs_prog_data->uses_vertexid;
+      bool needs_edge_flag = false;
+      nir_foreach_variable(var, &ish->nir->inputs) {
+         if (var->data.location == VERT_ATTRIB_EDGEFLAG) {
+            needs_edge_flag = true;
+         }
+      }
 
       if (ice->state.vs_uses_draw_params != uses_draw_params ||
-          ice->state.vs_uses_derived_draw_params != uses_derived_draw_params) {
+          ice->state.vs_uses_derived_draw_params != uses_derived_draw_params ||
+          ice->state.vs_needs_edge_flag != needs_edge_flag) {
          ice->state.dirty |= IRIS_DIRTY_VERTEX_BUFFERS |
                              IRIS_DIRTY_VERTEX_ELEMENTS;
       }
       ice->state.vs_uses_draw_params = uses_draw_params;
       ice->state.vs_uses_derived_draw_params = uses_derived_draw_params;
       ice->state.vs_needs_sgvs_element = needs_sgvs_element;
+      ice->state.vs_needs_edge_flag = needs_edge_flag;
    }
 }
 

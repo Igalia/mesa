@@ -2607,10 +2607,8 @@ iris_create_vertex_elements(struct pipe_context *ctx,
 
    cso->count = count;
 
-   /* TODO:
-    *  - create edge flag one
-    *  - create SGV ones
-    *  - if those are necessary, use count + 1/2/3... OR in the length
+   /*
+    * EdgeFlag and SGVs Vertex Elements are updated/created at draw time.
     */
    iris_pack_command(GENX(3DSTATE_VERTEX_ELEMENTS), cso->vertex_elements, ve) {
       ve.DWordLength =
@@ -2650,6 +2648,7 @@ iris_create_vertex_elements(struct pipe_context *ctx,
          break;
       }
       iris_pack_state(GENX(VERTEX_ELEMENT_STATE), ve_pack_dest, ve) {
+         /*ve.EdgeFlagEnable is filled in at draw time. */
          ve.VertexBufferIndex = state[i].vertex_buffer_index;
          ve.Valid = true;
          ve.SourceElementOffset = state[i].src_offset;
@@ -2661,7 +2660,7 @@ iris_create_vertex_elements(struct pipe_context *ctx,
       }
 
       iris_pack_command(GENX(3DSTATE_VF_INSTANCING), vfi_pack_dest, vi) {
-         vi.VertexElementIndex = i;
+         /* vi.VertexElementindex is filled in at draw time. */
          vi.InstancingEnable = state[i].instance_divisor > 0;
          vi.InstanceDataStepRate = state[i].instance_divisor;
       }
@@ -4772,9 +4771,10 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
    if (dirty & IRIS_DIRTY_VERTEX_ELEMENTS) {
       struct iris_vertex_element_state *cso = ice->state.cso_vertex_elements;
-      const unsigned entries = MAX2(cso->count, 1);
       if (!(ice->state.vs_needs_sgvs_element ||
-            ice->state.vs_uses_derived_draw_params)) {
+            ice->state.vs_uses_derived_draw_params ||
+            ice->state.vs_needs_edge_flag)) {
+         const unsigned entries = MAX2(cso->count, 1);
          iris_batch_emit(batch, cso->vertex_elements, sizeof(uint32_t) *
                          (1 + entries * GENX(VERTEX_ELEMENT_STATE_length)));
       } else {
@@ -4788,10 +4788,12 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             ve.DWordLength =
                1 + GENX(VERTEX_ELEMENT_STATE_length) * dyn_count - 2;
          }
-         memcpy(&dynamic_ves[1], &cso->vertex_elements[1], cso->count *
+         memcpy(&dynamic_ves[1], &cso->vertex_elements[1],
+                (cso->count - ice->state.vs_needs_edge_flag) *
                 GENX(VERTEX_ELEMENT_STATE_length) * sizeof(uint32_t));
          uint32_t *ve_pack_dest =
-            &dynamic_ves[1 + cso->count * GENX(VERTEX_ELEMENT_STATE_length)];
+            &dynamic_ves[1 + (cso->count - ice->state.vs_needs_edge_flag) *
+                         GENX(VERTEX_ELEMENT_STATE_length)];
 
          if (ice->state.vs_needs_sgvs_element) {
             uint32_t base_ctrl = ice->state.vs_uses_draw_params ?
@@ -4822,12 +4824,41 @@ iris_upload_dirty_render_state(struct iris_context *ice,
             }
             ve_pack_dest += GENX(VERTEX_ELEMENT_STATE_length);
          }
+         if (ice->state.vs_needs_edge_flag) {
+            iris_pack_state(GENX(VERTEX_ELEMENT_STATE), ve_pack_dest, ve) {
+               ve.EdgeFlagEnable = true;
+            }
+            for (int i = 0; i < GENX(VERTEX_ELEMENT_STATE_length);  i++) {
+               ve_pack_dest[i] |=
+                  cso->vertex_elements[1 + i + (cso->count - 1) *
+                                       GENX(VERTEX_ELEMENT_STATE_length)];
+            }
+         }
+
          iris_batch_emit(batch, &dynamic_ves, sizeof(uint32_t) *
                          (1 + dyn_count * GENX(VERTEX_ELEMENT_STATE_length)));
       }
 
-      iris_batch_emit(batch, cso->vf_instancing, sizeof(uint32_t) *
-                      entries * GENX(3DSTATE_VF_INSTANCING_length));
+      const unsigned entries_vfi = MAX2(cso->count, 1);
+      uint32_t dynamic_vfi[33 * GENX(3DSTATE_VF_INSTANCING_length)];
+      uint32_t *vfi_pack_dest = &dynamic_vfi[0];
+
+      for (int i = 0; i < (cso->count - ice->state.vs_needs_edge_flag); i++) {
+         iris_pack_command(GENX(3DSTATE_VF_INSTANCING), vfi_pack_dest, vi) {
+            vi.VertexElementIndex = i;
+         }
+         vfi_pack_dest += GENX(3DSTATE_VF_INSTANCING_length);
+      }
+      if (ice->state.vs_needs_edge_flag) {
+         iris_pack_command(GENX(3DSTATE_VF_INSTANCING), vfi_pack_dest, vi) {
+            vi.VertexElementIndex = cso->count - 1 +
+                                    ice->state.vs_needs_sgvs_element +
+                                    ice->state.vs_uses_derived_draw_params;
+         }
+      }
+      iris_emit_merge(batch, cso->vf_instancing,
+                      &dynamic_vfi[0],
+                      entries_vfi * GENX(3DSTATE_VF_INSTANCING_length));
    }
 
    if (dirty & IRIS_DIRTY_VF_SGVS) {
@@ -4839,13 +4870,15 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          if (vs_prog_data->uses_vertexid) {
             sgv.VertexIDEnable = true;
             sgv.VertexIDComponentNumber = 2;
-            sgv.VertexIDElementOffset = cso->count;
+            sgv.VertexIDElementOffset =
+               cso->count - ice->state.vs_needs_edge_flag;
          }
 
          if (vs_prog_data->uses_instanceid) {
             sgv.InstanceIDEnable = true;
             sgv.InstanceIDComponentNumber = 3;
-            sgv.InstanceIDElementOffset = cso->count;
+            sgv.InstanceIDElementOffset =
+               cso->count - ice->state.vs_needs_edge_flag;
          }
       }
    }
