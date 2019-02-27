@@ -298,6 +298,10 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
 
    struct gl_program *prog =
       brw->ctx._Shader->CurrentProgram[MESA_SHADER_VERTEX];
+
+   if (prog && prog->sh.data->spirv)
+      return;
+
    if (prog && !prog->program_written_to_cache) {
       struct brw_vs_prog_key vs_key;
       brw_vs_populate_key(brw, &vs_key);
@@ -309,6 +313,9 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
    }
 
    prog = brw->ctx._Shader->CurrentProgram[MESA_SHADER_TESS_CTRL];
+   if (prog && prog->sh.data->spirv)
+      return;
+
    if (prog && !prog->program_written_to_cache) {
       struct brw_tcs_prog_key tcs_key;
       brw_tcs_populate_key(brw, &tcs_key);
@@ -320,6 +327,9 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
    }
 
    prog = brw->ctx._Shader->CurrentProgram[MESA_SHADER_TESS_EVAL];
+   if (prog && prog->sh.data->spirv)
+      return;
+
    if (prog && !prog->program_written_to_cache) {
       struct brw_tes_prog_key tes_key;
       brw_tes_populate_key(brw, &tes_key);
@@ -331,6 +341,9 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
    }
 
    prog = brw->ctx._Shader->CurrentProgram[MESA_SHADER_GEOMETRY];
+   if (prog && prog->sh.data->spirv)
+      return;
+
    if (prog && !prog->program_written_to_cache) {
       struct brw_gs_prog_key gs_key;
       brw_gs_populate_key(brw, &gs_key);
@@ -342,6 +355,9 @@ brw_disk_cache_write_render_programs(struct brw_context *brw)
    }
 
    prog = brw->ctx._Shader->CurrentProgram[MESA_SHADER_FRAGMENT];
+   if (prog && prog->sh.data->spirv)
+      return;
+
    if (prog && !prog->program_written_to_cache) {
       struct brw_wm_prog_key wm_key;
       brw_wm_populate_key(brw, &wm_key);
@@ -362,6 +378,10 @@ brw_disk_cache_write_compute_program(struct brw_context *brw)
 
    struct gl_program *prog =
       brw->ctx._Shader->CurrentProgram[MESA_SHADER_COMPUTE];
+
+   if (prog && prog->sh.data->spirv)
+      return;
+
    if (prog && !prog->program_written_to_cache) {
       struct brw_cs_prog_key cs_key;
       brw_cs_populate_key(brw, &cs_key);
