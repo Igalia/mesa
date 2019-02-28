@@ -165,6 +165,7 @@ struct gen_l3_config;
 #define MAX_PUSH_DESCRIPTORS 32 /* Minimum requirement */
 #define MAX_INLINE_UNIFORM_BLOCK_SIZE 4096
 #define MAX_INLINE_UNIFORM_BLOCK_DESCRIPTORS 32
+#define MAX_SAMPLE_LOCATIONS 16
 
 /* The kernel relocation API has a limitation of a 32-bit delta value
  * applied to the address before it is written which, in spite of it being

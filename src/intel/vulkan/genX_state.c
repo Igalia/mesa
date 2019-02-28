@@ -435,3 +435,75 @@ VkResult genX(CreateSampler)(
 
    return VK_SUCCESS;
 }
+
+void
+genX(emit_sample_locations)(struct anv_batch *batch,
+                            const VkSampleLocationEXT *sl,
+                            uint32_t num_samples,
+                            bool custom_locations)
+{
+   /* The Skylake PRM Vol. 2a "3DSTATE_SAMPLE_PATTERN" says:
+    * "When programming the sample offsets (for NUMSAMPLES_4 or _8 and
+    * MSRASTMODE_xxx_PATTERN), the order of the samples 0 to 3 (or 7 for 8X,
+    * or 15 for 16X) must have monotonically increasing distance from the
+    * pixel center. This is required to get the correct centroid computation
+    * in the device."
+    *
+    * However, the Vulkan spec seems to require that the the samples occur in
+    * the order provided through the API. The standard sample patterns have
+    * the above property that they have monotonically increasing distances
+    * from the center but client-provided ones do not. As long as this only
+    * affects centroid calculations as the docs say, we should be ok because
+    * OpenGL and Vulkan only require that the centroid be some lit sample and
+    * that it's the same for all samples in a pixel; they have no requirement
+    * that it be the one closest to center.
+    */
+
+#if GEN_GEN >= 8
+
+#if GEN_GEN == 10
+   gen10_emit_wa_cs_stall_flush(batch);
+#endif
+
+   if (custom_locations) {
+      anv_batch_emit(batch,  GENX(3DSTATE_SAMPLE_PATTERN), sp) {
+         switch (num_samples) {
+         case 1:
+            GEN_SAMPLE_POS_1X_ARRAY(sp._1xSample, sl);
+            break;
+         case 2:
+            GEN_SAMPLE_POS_2X_ARRAY(sp._2xSample, sl);
+            break;
+         case 4:
+            GEN_SAMPLE_POS_4X_ARRAY(sp._4xSample, sl);
+            break;
+         case 8:
+            GEN_SAMPLE_POS_8X_ARRAY(sp._8xSample, sl);
+            break;
+#if GEN_GEN >= 9
+         case 16:
+            GEN_SAMPLE_POS_16X_ARRAY(sp._16xSample, sl);
+            break;
+#endif
+         default:
+            break;
+         }
+      }
+   } else {
+      anv_batch_emit(batch, GENX(3DSTATE_SAMPLE_PATTERN), sp) {
+         GEN_SAMPLE_POS_1X(sp._1xSample);
+         GEN_SAMPLE_POS_2X(sp._2xSample);
+         GEN_SAMPLE_POS_4X(sp._4xSample);
+         GEN_SAMPLE_POS_8X(sp._8xSample);
+#if GEN_GEN >= 9
+         GEN_SAMPLE_POS_16X(sp._16xSample);
+#endif
+      }
+   }
+
+#if GEN_GEN == 10
+   gen10_emit_wa_lri_to_cache_mode_zero(batch);
+#endif
+
+#endif
+}

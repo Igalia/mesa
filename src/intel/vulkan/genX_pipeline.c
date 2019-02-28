@@ -548,12 +548,9 @@ emit_rs_state(struct anv_pipeline *pipeline,
 }
 
 static void
-emit_ms_state(struct anv_pipeline *pipeline,
-              const VkPipelineMultisampleStateCreateInfo *info)
+emit_sample_mask(struct anv_pipeline *pipeline,
+                 const VkPipelineMultisampleStateCreateInfo *info)
 {
-   uint32_t samples = 1;
-   uint32_t log2_samples = 0;
-
    /* From the Vulkan 1.0 spec:
     *    If pSampleMask is NULL, it is treated as if the mask has all bits
     *    enabled, i.e. no coverage is removed from fragments.
@@ -566,14 +563,19 @@ emit_ms_state(struct anv_pipeline *pipeline,
    uint32_t sample_mask = 0xff;
 #endif
 
-   if (info) {
-      samples = info->rasterizationSamples;
-      log2_samples = __builtin_ffs(samples) - 1;
-   }
-
    if (info && info->pSampleMask)
       sample_mask &= info->pSampleMask[0];
 
+   anv_batch_emit(&pipeline->batch, GENX(3DSTATE_SAMPLE_MASK), sm) {
+      sm.SampleMask = sample_mask;
+   }
+}
+
+static void
+emit_multisample(struct anv_pipeline *pipeline,
+                 uint32_t samples,
+                 uint32_t log2_samples)
+{
    anv_batch_emit(&pipeline->batch, GENX(3DSTATE_MULTISAMPLE), ms) {
       ms.NumberofMultisamples       = log2_samples;
 
@@ -605,10 +607,61 @@ emit_ms_state(struct anv_pipeline *pipeline,
       }
 #endif
    }
+}
 
-   anv_batch_emit(&pipeline->batch, GENX(3DSTATE_SAMPLE_MASK), sm) {
-      sm.SampleMask = sample_mask;
+static void
+emit_ms_state(struct anv_pipeline *pipeline,
+              const VkPipelineMultisampleStateCreateInfo *info,
+              const VkPipelineDynamicStateCreateInfo *dinfo)
+{
+#if GEN_GEN >= 8
+   VkSampleLocationsInfoEXT *sl;
+   bool custom_locations = false;
+#endif
+
+   uint32_t samples = 1;
+   uint32_t log2_samples = 0;
+
+   emit_sample_mask(pipeline, info);
+
+   if (info) {
+      samples = info->rasterizationSamples;
+
+#if GEN_GEN >= 8
+      if (info->pNext) {
+         VkPipelineSampleLocationsStateCreateInfoEXT *slinfo =
+            (VkPipelineSampleLocationsStateCreateInfoEXT *)info->pNext;
+
+         if (slinfo &&
+               (slinfo->sType ==
+                VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT)) {
+            if (slinfo->sampleLocationsEnable == VK_TRUE) {
+               uint32_t i;
+
+               for (i = 0; i < dinfo->dynamicStateCount; i++) {
+                  if (dinfo->pDynamicStates[i] ==
+                      VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT)
+                     return;
+               }
+
+               if ((sl = &slinfo->sampleLocationsInfo))
+                  samples = sl->sampleLocationsPerPixel;
+
+               custom_locations = true;
+            }
+         }
+      }
+#endif
+
+      log2_samples = __builtin_ffs(samples) - 1;
    }
+
+   emit_multisample(pipeline, samples, log2_samples);
+
+#if GEN_GEN >= 8
+   genX(emit_sample_locations)(&pipeline->batch, sl->pSampleLocations,
+                               samples, custom_locations);
+#endif
 }
 
 static const uint32_t vk_to_gen_logic_op[] = {
@@ -1938,7 +1991,7 @@ genX(graphics_pipeline_create)(
    assert(pCreateInfo->pRasterizationState);
    emit_rs_state(pipeline, pCreateInfo->pRasterizationState,
                  pCreateInfo->pMultisampleState, pass, subpass);
-   emit_ms_state(pipeline, pCreateInfo->pMultisampleState);
+   emit_ms_state(pipeline, pCreateInfo->pMultisampleState, pCreateInfo->pDynamicState);
    emit_ds_state(pipeline, pCreateInfo->pDepthStencilState, pass, subpass);
    emit_cb_state(pipeline, pCreateInfo->pColorBlendState,
                            pCreateInfo->pMultisampleState);
