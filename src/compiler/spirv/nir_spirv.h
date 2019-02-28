@@ -70,6 +70,11 @@ struct spirv_to_nir_options {
    /* Whether or not to lower all UBO/SSBO access to offsets up-front. */
    bool lower_ubo_ssbo_access_to_offsets;
 
+   /* Related to ARB_gl_spirv. OpenGL gl_BaseVertex has different
+    * semantics than BaseVertex SPIR-V.
+    */
+   bool use_opengl_semantic_for_basevertex;
+
    struct spirv_supported_capabilities caps;
 
    /* Storage types for various kinds of pointers. */
