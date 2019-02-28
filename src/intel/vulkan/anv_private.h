@@ -2124,6 +2124,12 @@ struct anv_dynamic_state {
       uint32_t                                  front;
       uint32_t                                  back;
    } stencil_reference;
+
+   struct {
+      VkSampleLocationEXT                       positions[MAX_SAMPLE_LOCATIONS];
+      uint32_t                                  num_samples;
+      bool                                      valid;
+   } sample_locations;
 };
 
 extern const struct anv_dynamic_state default_dynamic_state;

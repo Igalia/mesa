@@ -572,44 +572,6 @@ emit_sample_mask(struct anv_pipeline *pipeline,
 }
 
 static void
-emit_multisample(struct anv_pipeline *pipeline,
-                 uint32_t samples,
-                 uint32_t log2_samples)
-{
-   anv_batch_emit(&pipeline->batch, GENX(3DSTATE_MULTISAMPLE), ms) {
-      ms.NumberofMultisamples       = log2_samples;
-
-      ms.PixelLocation              = CENTER;
-#if GEN_GEN >= 8
-      /* The PRM says that this bit is valid only for DX9:
-       *
-       *    SW can choose to set this bit only for DX9 API. DX10/OGL API's
-       *    should not have any effect by setting or not setting this bit.
-       */
-      ms.PixelPositionOffsetEnable  = false;
-#else
-
-      switch (samples) {
-      case 1:
-         GEN_SAMPLE_POS_1X(ms.Sample);
-         break;
-      case 2:
-         GEN_SAMPLE_POS_2X(ms.Sample);
-         break;
-      case 4:
-         GEN_SAMPLE_POS_4X(ms.Sample);
-         break;
-      case 8:
-         GEN_SAMPLE_POS_8X(ms.Sample);
-         break;
-      default:
-         break;
-      }
-#endif
-   }
-}
-
-static void
 emit_ms_state(struct anv_pipeline *pipeline,
               const VkPipelineMultisampleStateCreateInfo *info,
               const VkPipelineDynamicStateCreateInfo *dinfo)
@@ -656,7 +618,7 @@ emit_ms_state(struct anv_pipeline *pipeline,
       log2_samples = __builtin_ffs(samples) - 1;
    }
 
-   emit_multisample(pipeline, samples, log2_samples);
+   genX(emit_multisample(&pipeline->batch, samples, log2_samples));
 
 #if GEN_GEN >= 8
    genX(emit_sample_locations)(&pipeline->batch, sl->pSampleLocations,

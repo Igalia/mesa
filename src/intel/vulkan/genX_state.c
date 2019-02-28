@@ -437,6 +437,42 @@ VkResult genX(CreateSampler)(
 }
 
 void
+genX(emit_multisample)(struct anv_batch *batch,
+                       uint32_t samples,
+                       uint32_t log2_samples)
+{
+   anv_batch_emit(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
+      ms.NumberofMultisamples = log2_samples;
+      ms.PixelLocation = CENTER;
+#if GEN_GEN >= 8
+      /* The PRM says that this bit is valid only for DX9:
+       *
+       *    SW can choose to set this bit only for DX9 API. DX10/OGL API's
+       *    should not have any effect by setting or not setting this bit.
+       */
+      ms.PixelPositionOffsetEnable  = false;
+#else
+      switch (samples) {
+      case 1:
+         GEN_SAMPLE_POS_1X(ms.Sample);
+         break;
+      case 2:
+         GEN_SAMPLE_POS_2X(ms.Sample);
+         break;
+      case 4:
+         GEN_SAMPLE_POS_4X(ms.Sample);
+         break;
+      case 8:
+         GEN_SAMPLE_POS_8X(ms.Sample);
+         break;
+      default:
+         break;
+      }
+#endif
+   }
+}
+
+void
 genX(emit_sample_locations)(struct anv_batch *batch,
                             const VkSampleLocationEXT *sl,
                             uint32_t num_samples,

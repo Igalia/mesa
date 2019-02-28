@@ -30,6 +30,7 @@
 #include "util/fast_idiv_by_const.h"
 
 #include "common/gen_l3_config.h"
+#include "common/gen_sample_positions.h"
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
@@ -2638,6 +2639,24 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.push_constants_dirty &= ~flushed;
 }
 
+static void
+cmd_buffer_emit_sample_locations(struct anv_cmd_buffer *cmd_buffer)
+{
+#if GEN_GEN >= 8
+   struct anv_dynamic_state *dyn_state = &cmd_buffer->state.gfx.dynamic;
+   uint32_t samples = dyn_state->sample_locations.num_samples;
+   uint32_t log2_samples;
+
+   assert(samples > 0);
+   log2_samples = __builtin_ffs(samples) - 1;
+
+   genX(emit_multisample)(&cmd_buffer->batch, samples, log2_samples);
+   genX(emit_sample_locations)(&cmd_buffer->batch,
+                               dyn_state->sample_locations.positions,
+                               samples, true);
+#endif
+}
+
 void
 genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -2795,6 +2814,11 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_SCISSOR |
                                       ANV_CMD_DIRTY_RENDER_TARGETS))
       gen7_cmd_buffer_emit_scissor(cmd_buffer);
+
+   if (cmd_buffer->state.gfx.dynamic.sample_locations.valid) {
+      cmd_buffer_emit_sample_locations(cmd_buffer);
+      cmd_buffer->state.gfx.dynamic.sample_locations.valid = false;
+   }
 
    genX(cmd_buffer_flush_dynamic_state)(cmd_buffer);
 

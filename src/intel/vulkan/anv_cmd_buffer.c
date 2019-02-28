@@ -558,6 +558,25 @@ void anv_CmdSetStencilReference(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE;
 }
 
+void
+anv_CmdSetSampleLocationsEXT(VkCommandBuffer commandBuffer,
+                             const VkSampleLocationsInfoEXT *pSampleLocationsInfo)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   struct anv_dynamic_state *dyn_state = &cmd_buffer->state.gfx.dynamic;
+   uint32_t num_samples = pSampleLocationsInfo->sampleLocationsPerPixel;
+
+   assert(pSampleLocationsInfo);
+   dyn_state->sample_locations.num_samples = num_samples;
+
+   memcpy(dyn_state->sample_locations.positions,
+          pSampleLocationsInfo->pSampleLocations,
+          num_samples * sizeof *pSampleLocationsInfo->pSampleLocations);
+
+   dyn_state->sample_locations.valid = true;
+}
+
 static void
 anv_cmd_buffer_bind_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
                                    VkPipelineBindPoint bind_point,
