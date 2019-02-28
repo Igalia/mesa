@@ -248,6 +248,7 @@ _mesa_spirv_to_nir(struct gl_context *ctx,
 
    const struct spirv_to_nir_options spirv_options = {
       .lower_workgroup_access_to_offsets = true,
+      .use_opengl_semantic_for_basevertex = true,
       .caps = ctx->Const.SpirVCapabilities,
       .ubo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
       .ssbo_ptr_type = glsl_vector_type(GLSL_TYPE_UINT, 2),
