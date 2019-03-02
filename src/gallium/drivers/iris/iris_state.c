@@ -4842,7 +4842,6 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       const unsigned entries_vfi = MAX2(cso->count, 1);
       uint32_t dynamic_vfi[33 * GENX(3DSTATE_VF_INSTANCING_length)];
       uint32_t *vfi_pack_dest = &dynamic_vfi[0];
-
       for (int i = 0; i < (cso->count - ice->state.vs_needs_edge_flag); i++) {
          iris_pack_command(GENX(3DSTATE_VF_INSTANCING), vfi_pack_dest, vi) {
             vi.VertexElementIndex = i;
@@ -4856,9 +4855,14 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                                     ice->state.vs_uses_derived_draw_params;
          }
       }
-      iris_emit_merge(batch, cso->vf_instancing,
-                      &dynamic_vfi[0],
-                      entries_vfi * GENX(3DSTATE_VF_INSTANCING_length));
+      if (cso->count == 0) {
+         iris_batch_emit(batch, cso->vf_instancing, sizeof(uint32_t) *
+                         entries_vfi * GENX(3DSTATE_VF_INSTANCING_length));
+      } else {
+         iris_emit_merge(batch, cso->vf_instancing,
+                         &dynamic_vfi[0],
+                         entries_vfi * GENX(3DSTATE_VF_INSTANCING_length));
+      }
    }
 
    if (dirty & IRIS_DIRTY_VF_SGVS) {
