@@ -595,10 +595,18 @@ vtn_cfg_walk_blocks(struct vtn_builder *b, struct list_head *cf_list,
                                                   switch_case, switch_break,
                                                   loop_break, loop_cont);
 
-         if (then_block == else_block) {
+         if (then_block == else_block || else_block == end) {
             block->branch_type = if_stmt->then_type;
             if (block->branch_type == vtn_branch_type_none) {
                block = then_block;
+               continue;
+            } else {
+               return;
+            }
+         } else if (then_block == end) {
+            block->branch_type = if_stmt->else_type;
+            if (block->branch_type == vtn_branch_type_none) {
+               block = else_block;
                continue;
             } else {
                return;
