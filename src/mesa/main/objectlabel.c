@@ -147,7 +147,7 @@ get_label_pointer(struct gl_context *ctx, GLenum identifier, GLuint name,
       break;
    case GL_SHADER:
       {
-         struct gl_shader *shader = _mesa_lookup_shader(ctx, name);
+         struct gl_shader *shader = _mesa_lookup_shader_no_wait(ctx, name);
          if (shader)
             labelPtr = &shader->Label;
       }

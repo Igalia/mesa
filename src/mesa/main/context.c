@@ -125,6 +125,7 @@
 #include "shaderobj.h"
 #include "shaderimage.h"
 #include "state.h"
+#include "util/u_cpu_detect.h"
 #include "util/debug.h"
 #include "util/disk_cache.h"
 #include "util/strtod.h"
@@ -1219,6 +1220,12 @@ _mesa_initialize_context(struct gl_context *ctx,
    if (!init_attrib_groups( ctx ))
       goto fail;
 
+   util_cpu_detect();
+   util_queue_init(&ctx->compile_queue,
+                   "shadercompile",
+                   64, util_cpu_caps.nr_cpus,
+                   UTIL_QUEUE_INIT_RESIZE_IF_FULL |
+                   UTIL_QUEUE_INIT_SET_FULL_THREAD_AFFINITY);
    /* KHR_no_error is likely to crash, overflow memory, etc if an application
     * has errors so don't enable it for setuid processes.
     */
@@ -1363,6 +1370,8 @@ _mesa_free_context_data( struct gl_context *ctx )
    _mesa_reference_buffer_object(ctx, &ctx->Unpack.BufferObj, NULL);
    _mesa_reference_buffer_object(ctx, &ctx->DefaultPacking.BufferObj, NULL);
    _mesa_reference_buffer_object(ctx, &ctx->Array.ArrayBufferObj, NULL);
+
+   util_queue_destroy(&ctx->compile_queue);
 
    /* free dispatch tables */
    free(ctx->BeginEnd);

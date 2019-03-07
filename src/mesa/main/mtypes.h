@@ -49,7 +49,7 @@
 #include "compiler/glsl/list.h"
 #include "util/simple_mtx.h"
 #include "util/u_dynarray.h"
-
+#include "util/u_queue.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -2657,6 +2657,9 @@ struct gl_shader
 
    /* ARB_gl_spirv related data */
    struct gl_shader_spirv_data *spirv_data;
+
+   /* parallel compile completion fence */
+   struct util_queue_fence compile_completion;
 };
 
 
@@ -5137,6 +5140,11 @@ struct gl_context
    struct hash_table_u64 *ResidentTextureHandles;
    struct hash_table_u64 *ResidentImageHandles;
    /*@}*/
+
+   /**
+    * \name GL_parallel_shader_compile
+    */
+   struct util_queue compile_queue;
 };
 
 /**

@@ -241,7 +241,7 @@ is_program(struct gl_context *ctx, GLuint name)
 static GLboolean
 is_shader(struct gl_context *ctx, GLuint name)
 {
-   struct gl_shader *shader = _mesa_lookup_shader(ctx, name);
+   struct gl_shader *shader = _mesa_lookup_shader_no_wait(ctx, name);
    return shader ? GL_TRUE : GL_FALSE;
 }
 
@@ -323,7 +323,7 @@ attach_shader_no_error(struct gl_context *ctx, GLuint program, GLuint shader)
    struct gl_shader *sh;
 
    shProg = _mesa_lookup_shader_program(ctx, program);
-   sh = _mesa_lookup_shader(ctx, shader);
+   sh = _mesa_lookup_shader_no_wait(ctx, shader);
 
    attach_shader(ctx, shProg, sh);
 }
@@ -416,7 +416,8 @@ delete_shader(struct gl_context *ctx, GLuint shader)
 {
    struct gl_shader *sh;
 
-   sh = _mesa_lookup_shader_err(ctx, shader, "glDeleteShader");
+   /* no waiting until _mesa_delete_shader() */
+   sh = _mesa_lookup_shader_err_no_wait(ctx, shader, "glDeleteShader");
    if (!sh)
       return;
 
@@ -946,11 +947,11 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
 static void
 get_shaderiv(struct gl_context *ctx, GLuint name, GLenum pname, GLint *params)
 {
-   struct gl_shader *shader =
-      _mesa_lookup_shader_err(ctx, name, "glGetShaderiv");
-
-   if (!shader) {
-      return;
+   struct gl_shader *shader;
+   if (pname == GL_COMPLETION_STATUS_ARB || pname == GL_SPIR_V_BINARY_ARB) {
+      shader = _mesa_lookup_shader_err_no_wait(ctx, name, "glGetShaderiv");
+   } else {
+      shader = _mesa_lookup_shader_err(ctx, name, "glGetShaderiv");
    }
 
    switch (pname) {
@@ -1047,7 +1048,7 @@ get_shader_source(struct gl_context *ctx, GLuint shader, GLsizei maxLength,
       return;
    }
 
-   sh = _mesa_lookup_shader_err(ctx, shader, "glGetShaderSource");
+   sh = _mesa_lookup_shader_err_no_wait(ctx, shader, "glGetShaderSource");
    if (!sh) {
       return;
    }
@@ -1091,6 +1092,53 @@ set_shader_source(struct gl_shader *sh, const GLchar *source)
 #endif
 }
 
+/* Helper functions to deal with parallel shader compilation */
+static bool
+can_defer_compile(struct gl_context *ctx)
+{
+   if (getenv("MESA_PARALLEL_SHADER_COMPILE") == NULL)
+      return false;
+
+   return true;
+}
+
+struct compile_task_data {
+   struct gl_context *ctx;
+   struct gl_shader *sh;
+};
+
+static void
+deferred_compile_shader(void *data, int thread_index)
+{
+   struct compile_task_data *task = (struct compile_task_data *) data;
+
+   _mesa_glsl_compile_shader(task->ctx, task->sh, false, false, false);
+}
+
+static void
+deferred_compile_cleanup(void *data, int thread_index)
+{
+   free(data);
+}
+
+static bool
+queue_compile_shader(struct gl_context *ctx, struct gl_shader *sh)
+{
+   if (!can_defer_compile(ctx)) return false;
+
+   struct compile_task_data *task = malloc(sizeof(struct compile_task_data));
+   if (!task) return false;
+   task->ctx = ctx;
+   task->sh = sh;
+
+   util_queue_add_job(&ctx->compile_queue,
+                      task,
+                      &sh->compile_completion,
+                      deferred_compile_shader,
+                      deferred_compile_cleanup);
+   return true;
+}
+
 
 /**
  * Compile a shader.
@@ -1128,7 +1176,9 @@ _mesa_compile_shader(struct gl_context *ctx, struct gl_shader *sh)
       /* this call will set the shader->CompileStatus field to indicate if
        * compilation was successful.
        */
-      _mesa_glsl_compile_shader(ctx, sh, false, false, false);
+      if (!queue_compile_shader(ctx, sh)) {
+         _mesa_glsl_compile_shader(ctx, sh, false, false, false);
+      }
 
       if (ctx->_Shader->Flags & GLSL_LOG) {
          _mesa_write_shader_to_file(sh);
