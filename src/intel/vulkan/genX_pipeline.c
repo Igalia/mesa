@@ -576,11 +576,8 @@ emit_ms_state(struct anv_pipeline *pipeline,
               const VkPipelineMultisampleStateCreateInfo *info,
               const VkPipelineDynamicStateCreateInfo *dinfo)
 {
-#if GEN_GEN >= 8
    VkSampleLocationsInfoEXT *sl;
    bool custom_locations = false;
-#endif
-
    uint32_t samples = 1;
    uint32_t log2_samples = 0;
 
@@ -589,7 +586,6 @@ emit_ms_state(struct anv_pipeline *pipeline,
    if (info) {
       samples = info->rasterizationSamples;
 
-#if GEN_GEN >= 8
       if (info->pNext) {
          VkPipelineSampleLocationsStateCreateInfoEXT *slinfo =
             (VkPipelineSampleLocationsStateCreateInfoEXT *)info->pNext;
@@ -613,17 +609,12 @@ emit_ms_state(struct anv_pipeline *pipeline,
             }
          }
       }
-#endif
 
       log2_samples = __builtin_ffs(samples) - 1;
    }
 
-   genX(emit_multisample(&pipeline->batch, samples, log2_samples));
-
-#if GEN_GEN >= 8
-   genX(emit_sample_locations)(&pipeline->batch, sl->pSampleLocations,
-                               samples, custom_locations);
-#endif
+   genX(emit_ms_state)(&pipeline->batch, sl->pSampleLocations, samples, log2_samples,
+                       custom_locations);
 }
 
 static const uint32_t vk_to_gen_logic_op[] = {

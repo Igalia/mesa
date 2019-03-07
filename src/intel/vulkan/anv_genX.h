@@ -89,11 +89,8 @@ void genX(cmd_buffer_mi_memset)(struct anv_cmd_buffer *cmd_buffer,
 void genX(blorp_exec)(struct blorp_batch *batch,
                       const struct blorp_params *params);
 
-void genX(emit_multisample)(struct anv_batch *batch,
-                            uint32_t samples,
-                            uint32_t log2_samples);
-
-void genX(emit_sample_locations)(struct anv_batch *batch,
-                                 const VkSampleLocationEXT *sl,
-                                 uint32_t num_samples,
-                                 bool custom_locations);
+void genX(emit_ms_state)(struct anv_batch *batch,
+                         const VkSampleLocationEXT *sl,
+                         uint32_t num_samples,
+                         uint32_t log2_samples,
+                         bool custom_sample_locations);

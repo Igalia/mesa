@@ -2642,7 +2642,6 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
 static void
 cmd_buffer_emit_sample_locations(struct anv_cmd_buffer *cmd_buffer)
 {
-#if GEN_GEN >= 8
    struct anv_dynamic_state *dyn_state = &cmd_buffer->state.gfx.dynamic;
    uint32_t samples = dyn_state->sample_locations.num_samples;
    uint32_t log2_samples;
@@ -2650,11 +2649,9 @@ cmd_buffer_emit_sample_locations(struct anv_cmd_buffer *cmd_buffer)
    assert(samples > 0);
    log2_samples = __builtin_ffs(samples) - 1;
 
-   genX(emit_multisample)(&cmd_buffer->batch, samples, log2_samples);
-   genX(emit_sample_locations)(&cmd_buffer->batch,
-                               dyn_state->sample_locations.positions,
-                               samples, true);
-#endif
+   genX(emit_ms_state)(&cmd_buffer->batch,
+                       dyn_state->sample_locations.positions,
+                       samples, log2_samples, true);
 }
 
 void

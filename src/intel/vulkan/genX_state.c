@@ -436,10 +436,12 @@ VkResult genX(CreateSampler)(
    return VK_SUCCESS;
 }
 
-void
-genX(emit_multisample)(struct anv_batch *batch,
-                       uint32_t samples,
-                       uint32_t log2_samples)
+static void
+emit_multisample(struct anv_batch *batch,
+                 const VkSampleLocationEXT *sl,
+                 uint32_t samples,
+                 uint32_t log2_samples,
+                 bool custom_locations)
 {
    anv_batch_emit(batch, GENX(3DSTATE_MULTISAMPLE), ms) {
       ms.NumberofMultisamples = log2_samples;
@@ -452,31 +454,51 @@ genX(emit_multisample)(struct anv_batch *batch,
        */
       ms.PixelPositionOffsetEnable  = false;
 #else
-      switch (samples) {
-      case 1:
-         GEN_SAMPLE_POS_1X(ms.Sample);
-         break;
-      case 2:
-         GEN_SAMPLE_POS_2X(ms.Sample);
-         break;
-      case 4:
-         GEN_SAMPLE_POS_4X(ms.Sample);
-         break;
-      case 8:
-         GEN_SAMPLE_POS_8X(ms.Sample);
-         break;
-      default:
-         break;
+      if (custom_locations) {
+         switch (samples) {
+         case 1:
+            GEN_SAMPLE_POS_1X_ARRAY(ms.Sample, sl);
+            break;
+         case 2:
+            GEN_SAMPLE_POS_2X_ARRAY(ms.Sample, sl);
+            break;
+         case 4:
+            GEN_SAMPLE_POS_4X_ARRAY(ms.Sample, sl);
+            break;
+         case 8:
+            GEN_SAMPLE_POS_8X_ARRAY(ms.Sample, sl);
+            break;
+         default:
+            break;
+         }
+      } else {
+         switch (samples) {
+         case 1:
+            GEN_SAMPLE_POS_1X(ms.Sample);
+            break;
+         case 2:
+            GEN_SAMPLE_POS_2X(ms.Sample);
+            break;
+         case 4:
+            GEN_SAMPLE_POS_4X(ms.Sample);
+            break;
+         case 8:
+            GEN_SAMPLE_POS_8X(ms.Sample);
+            break;
+         default:
+            break;
+         }
       }
 #endif
    }
 }
 
-void
-genX(emit_sample_locations)(struct anv_batch *batch,
-                            const VkSampleLocationEXT *sl,
-                            uint32_t num_samples,
-                            bool custom_locations)
+#if GEN_GEN >= 8
+static void
+emit_sample_locations(struct anv_batch *batch,
+                      const VkSampleLocationEXT *sl,
+                      uint32_t num_samples,
+                      bool custom_locations)
 {
    /* The Skylake PRM Vol. 2a "3DSTATE_SAMPLE_PATTERN" says:
     * "When programming the sample offsets (for NUMSAMPLES_4 or _8 and
@@ -494,8 +516,6 @@ genX(emit_sample_locations)(struct anv_batch *batch,
     * that it's the same for all samples in a pixel; they have no requirement
     * that it be the one closest to center.
     */
-
-#if GEN_GEN >= 8
 
 #if GEN_GEN == 10
    gen10_emit_wa_cs_stall_flush(batch);
@@ -540,6 +560,20 @@ genX(emit_sample_locations)(struct anv_batch *batch,
 #if GEN_GEN == 10
    gen10_emit_wa_lri_to_cache_mode_zero(batch);
 #endif
+}
+#endif
 
+void
+genX(emit_ms_state)(struct anv_batch *batch,
+                    const VkSampleLocationEXT *sl,
+                    uint32_t num_samples,
+                    uint32_t log2_samples,
+                    bool custom_sample_locations)
+{
+   emit_multisample(batch, sl, num_samples, log2_samples,
+                    custom_sample_locations);
+#if GEN_GEN >= 8
+   emit_sample_locations(batch, sl, num_samples,
+                         custom_sample_locations);
 #endif
 }
