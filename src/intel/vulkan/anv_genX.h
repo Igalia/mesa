@@ -93,4 +93,5 @@ void genX(emit_ms_state)(struct anv_batch *batch,
                          const VkSampleLocationEXT *sl,
                          uint32_t num_samples,
                          uint32_t log2_samples,
-                         bool custom_sample_locations);
+                         bool custom_sample_locations,
+                         bool sample_locations_ext_enabled);

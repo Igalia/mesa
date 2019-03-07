@@ -2651,7 +2651,7 @@ cmd_buffer_emit_sample_locations(struct anv_cmd_buffer *cmd_buffer)
 
    genX(emit_ms_state)(&cmd_buffer->batch,
                        dyn_state->sample_locations.positions,
-                       samples, log2_samples, true);
+                       samples, log2_samples, true, true);
 }
 
 void

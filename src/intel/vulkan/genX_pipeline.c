@@ -572,10 +572,12 @@ emit_sample_mask(struct anv_pipeline *pipeline,
 }
 
 static void
-emit_ms_state(struct anv_pipeline *pipeline,
+emit_ms_state(struct anv_device *device,
+              struct anv_pipeline *pipeline,
               const VkPipelineMultisampleStateCreateInfo *info,
               const VkPipelineDynamicStateCreateInfo *dinfo)
 {
+   bool sample_loc_enabled = device->enabled_extensions.EXT_sample_locations;
    VkSampleLocationsInfoEXT *sl;
    bool custom_locations = false;
    uint32_t samples = 1;
@@ -586,7 +588,7 @@ emit_ms_state(struct anv_pipeline *pipeline,
    if (info) {
       samples = info->rasterizationSamples;
 
-      if (info->pNext) {
+      if (sample_loc_enabled && info->pNext) {
          VkPipelineSampleLocationsStateCreateInfoEXT *slinfo =
             (VkPipelineSampleLocationsStateCreateInfoEXT *)info->pNext;
 
@@ -613,8 +615,8 @@ emit_ms_state(struct anv_pipeline *pipeline,
       log2_samples = __builtin_ffs(samples) - 1;
    }
 
-   genX(emit_ms_state)(&pipeline->batch, sl->pSampleLocations, samples, log2_samples,
-                       custom_locations);
+   genX(emit_ms_state)(&pipeline->batch, sl->pSampleLocations, samples,
+                       log2_samples, custom_locations, sample_loc_enabled);
 }
 
 static const uint32_t vk_to_gen_logic_op[] = {
@@ -1944,7 +1946,8 @@ genX(graphics_pipeline_create)(
    assert(pCreateInfo->pRasterizationState);
    emit_rs_state(pipeline, pCreateInfo->pRasterizationState,
                  pCreateInfo->pMultisampleState, pass, subpass);
-   emit_ms_state(pipeline, pCreateInfo->pMultisampleState, pCreateInfo->pDynamicState);
+   emit_ms_state(device, pipeline, pCreateInfo->pMultisampleState,
+                 pCreateInfo->pDynamicState);
    emit_ds_state(pipeline, pCreateInfo->pDepthStencilState, pass, subpass);
    emit_cb_state(pipeline, pCreateInfo->pColorBlendState,
                            pCreateInfo->pMultisampleState);
