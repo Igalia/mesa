@@ -130,6 +130,16 @@ invalid_target:
    return;
 }
 
+/* GL_ARB_parallel_shader_compile */
+void GLAPIENTRY
+_mesa_MaxShaderCompilerThreadsKHR(GLuint count)
+{
+   GET_CURRENT_CONTEXT(ctx);
+
+   ctx->Hint.MaxShaderCompilerThreads = count;
+
+   util_queue_adjust_num_threads(&ctx->compile_queue, count);
+}
 
 /**********************************************************************/
 /*****                      Initialization                        *****/
@@ -146,4 +156,5 @@ void _mesa_init_hint( struct gl_context * ctx )
    ctx->Hint.TextureCompression = GL_DONT_CARE;
    ctx->Hint.GenerateMipmap = GL_DONT_CARE;
    ctx->Hint.FragmentShaderDerivative = GL_DONT_CARE;
+   ctx->Hint.MaxShaderCompilerThreads = 0xffffffff;
 }

@@ -603,6 +603,7 @@ struct gl_hint_attrib
    GLenum16 TextureCompression;   /**< GL_ARB_texture_compression */
    GLenum16 GenerateMipmap;       /**< GL_SGIS_generate_mipmap */
    GLenum16 FragmentShaderDerivative; /**< GL_ARB_fragment_shader */
+   GLuint MaxShaderCompilerThreads; /**< GL_ARB_parallel_shader_compile */
 };
 
 
@@ -3071,6 +3072,11 @@ struct gl_shader_program
     * #extension ARB_fragment_coord_conventions: enable
     */
    GLboolean ARB_fragment_coord_conventions_enable;
+
+   /**
+    * A fence to wait on for parallel glLinkProgram to complete.
+    */
+   struct util_queue_fence link_completion;
 };
 
 

@@ -690,6 +690,9 @@ get_programiv(struct gl_context *ctx, GLuint program, GLenum pname,
    case GL_DELETE_STATUS:
       *params = shProg->DeletePending;
       return;
+   case GL_COMPLETION_STATUS_ARB:
+      *params = util_queue_fence_is_signalled(&shProg->link_completion);
+      return;
    case GL_LINK_STATUS:
       *params = shProg->data->LinkStatus ? GL_TRUE : GL_FALSE;
       return;
@@ -961,6 +964,9 @@ get_shaderiv(struct gl_context *ctx, GLuint name, GLenum pname, GLint *params)
    case GL_DELETE_STATUS:
       *params = shader->DeletePending;
       break;
+   case GL_COMPLETION_STATUS_ARB:
+      *params = util_queue_fence_is_signalled(&shader->compile_completion);
+      return;
    case GL_COMPILE_STATUS:
       *params = shader->CompileStatus ? GL_TRUE : GL_FALSE;
       break;
@@ -1097,6 +1103,8 @@ static bool
 can_defer_compile(struct gl_context *ctx)
 {
    if (getenv("MESA_PARALLEL_SHADER_COMPILE") == NULL)
+      return false;
+   if (ctx->Hint.MaxShaderCompilerThreads == 0)
       return false;
 
    return true;
