@@ -14,6 +14,7 @@ C_SOURCES := \
 	si_compute_blit.c \
 	si_cp_dma.c \
 	si_debug.c \
+	si_debug_options.h \
 	si_descriptors.c \
 	si_dma.c \
 	si_dma_cs.c \
