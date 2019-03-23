@@ -875,7 +875,6 @@ dri2_x11_add_configs_for_visuals(struct dri2_egl_display *dri2_dpy,
       if (dri2_add_config(disp, config, config_count + 1, surface_type,
                           config_attrs, rgba_masks)) {
          config_count++;
-         break;
       }
    }
 
