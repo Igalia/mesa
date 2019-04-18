@@ -42,6 +42,7 @@
 #include "compiler/glsl/ir.h"
 #include "compiler/glsl/program.h"
 #include "compiler/glsl/glsl_to_nir.h"
+#include "compiler/glsl/gl_nir.h"
 #include "glsl/float64_glsl.h"
 
 #include "brw_program.h"
@@ -164,6 +165,9 @@ brw_create_nir(struct brw_context *brw,
    }
 
    nir = brw_preprocess_nir(brw->screen->compiler, nir);
+
+   if (shader_prog)
+      NIR_PASS_V(nir, gl_nir_lower_samplers, shader_prog);
 
    NIR_PASS_V(nir, brw_nir_lower_image_load_store, devinfo);
 
