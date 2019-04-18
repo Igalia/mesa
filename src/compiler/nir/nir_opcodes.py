@@ -871,10 +871,7 @@ if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
    else
       dst = _mesa_double_to_float_rtz(_mesa_double_fma_rtz(src0, src1, src2));
 } else {
-   if (bit_size == 32)
-      dst = fmaf(src0, src1, src2);
-   else
-      dst = fma(src0, src1, src2);
+   dst = src0 * src1 + src2;
 }
 """)
 
