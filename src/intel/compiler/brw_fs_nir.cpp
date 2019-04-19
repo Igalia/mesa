@@ -1201,18 +1201,18 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr)
       break;
 
    case nir_op_fmul:
-      for (unsigned i = 0; i < 2; i++) {
-         if (can_fuse_fmul_fsign(instr, i)) {
-            emit_fsign(bld, instr, result, op, i);
-            return;
-         }
-      }
-
       if (nir_has_any_rounding_mode_enabled(execution_mode)) {
          brw_rnd_mode rnd =
             brw_rnd_mode_from_execution_mode(execution_mode);
          bld.emit(SHADER_OPCODE_RND_MODE, bld.null_reg_ud(),
                   brw_imm_d(rnd));
+      }
+
+      for (unsigned i = 0; i < 2; i++) {
+         if (can_fuse_fmul_fsign(instr, i)) {
+            emit_fsign(bld, instr, result, op, i);
+            return;
+         }
       }
 
       inst = bld.MUL(result, op[0], op[1]);
