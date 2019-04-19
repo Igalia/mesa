@@ -221,7 +221,15 @@ for src_t in [tint, tuint, tfloat, tbool]:
           if bit_size == 16 and dst_t == tfloat and src_t == tfloat:
               rnd_modes = ['_rtne', '_rtz', '']
               for rnd_mode in rnd_modes:
-                  if rnd_mode == '_rtz':
+                  if rnd_mode == '_rtne':
+                      conv_expr = """
+                      if (bit_size > 16) {
+                         dst = _mesa_half_to_float(_mesa_float_to_float16_rtne(src0));
+                      } else {
+                         dst = src0;
+                      }
+                      """
+                  elif rnd_mode == '_rtz':
                       conv_expr = """
                       if (bit_size > 16) {
                          dst = _mesa_half_to_float(_mesa_float_to_float16_rtz(src0));
