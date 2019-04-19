@@ -221,9 +221,7 @@ for src_t in [tint, tuint, tfloat, tbool]:
           if bit_size == 16 and dst_t == tfloat and src_t == tfloat:
               rnd_modes = ['_rtne', '_rtz', '']
               for rnd_mode in rnd_modes:
-                  if rnd_mode == '_rtne':
-                      conv_expr = "src0"
-                  elif rnd_mode == '_rtz':
+                  if rnd_mode == '_rtz':
                       conv_expr = """
                       if (bit_size > 16) {
                          dst = _mesa_half_to_float(_mesa_float_to_float16_rtz(src0));
@@ -232,13 +230,7 @@ for src_t in [tint, tuint, tfloat, tbool]:
                       }
                       """
                   else:
-                      conv_expr = """
-                      if (bit_size > 16 && nir_is_rounding_mode_rtz(execution_mode, 16)) {
-                         dst = _mesa_half_to_float(_mesa_float_to_float16_rtz(src0));
-                      } else {
-                         dst = src0;
-                      }
-                      """
+                      conv_expr = "src0"
 
                   unop_numeric_convert("{0}2{1}{2}{3}".format(src_t[0], dst_t[0],
                                                               bit_size, rnd_mode),
