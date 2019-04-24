@@ -193,7 +193,7 @@ libanv_common = static_library(
   ],
   include_directories : [
     inc_common, inc_intel, inc_compiler, inc_include,
-    inc_vulkan_wsi,
+    inc_vulkan_wsi, inc_util,
   ],
   c_args : anv_flags,
   dependencies : anv_deps,
