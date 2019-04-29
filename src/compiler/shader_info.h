@@ -36,6 +36,8 @@ struct spirv_supported_capabilities {
    bool address;
    bool atomic_storage;
    bool descriptor_array_dynamic_indexing;
+   bool descriptor_array_non_uniform_indexing;
+   bool descriptor_indexing;
    bool device_group;
    bool draw_parameters;
    bool float64;
