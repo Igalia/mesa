@@ -864,6 +864,8 @@ triop("ffma", tfloat, _2src_commutative, """
 if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
    if (bit_size == 64)
       dst = _mesa_double_fma_rtz(src0, src1, src2);
+   else if (bit_size == 32)
+      dst = _mesa_double_to_float_rtz(_mesa_float_fma_rtz(src0, src1, src2));
    else
       dst = _mesa_double_to_float_rtz(_mesa_double_fma_rtz(src0, src1, src2));
 } else {
