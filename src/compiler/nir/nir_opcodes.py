@@ -520,7 +520,7 @@ if (nir_is_rounding_mode_rtz(execution_mode, bit_size)) {
    if (bit_size == 64)
       dst = _mesa_double_sub_rtz(src0, src1);
    else
-      dst = _mesa_double_to_float_rtz(_mesa_double_sub_rtz(src0, src1));
+      dst = _mesa_double_to_float_rtz((double)src0 - (double)src1);
 } else {
    dst = src0 - src1;
 }
