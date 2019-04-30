@@ -449,6 +449,12 @@ _mesa_double_fma_rtz(double a, double b, double c)
    return _mesa_double_add_rtz(_mesa_double_mul_rtz(a, b), c);
 }
 
+double
+_mesa_float_fma_rtz(float a, float b, float c)
+{
+   return _mesa_double_add_rtz(_mesa_double_mul_rtz(a, b), c);
+}
+
 /**
  * \brief Rounds \c x to zero, and returns the value as a long int.
  */

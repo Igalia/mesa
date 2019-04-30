@@ -51,6 +51,7 @@ double _mesa_double_add_rtz(double a, double b);
 double _mesa_double_sub_rtz(double a, double b);
 double _mesa_double_mul_rtz(double a, double b);
 double _mesa_double_fma_rtz(double a, double b, double c);
+double _mesa_float_fma_rtz(float a, float b, float c);
 long _mesa_lroundtozero(double x);
 long _mesa_lroundtozerof(float x);
 
