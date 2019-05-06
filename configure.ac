@@ -2357,7 +2357,7 @@ if test "x$enable_xvmc" = xyes -o \
         "x$enable_omx_tizonia" = xyes -o \
         "x$enable_va" = xyes; then
     if echo $platforms | grep -q "x11"; then
-        PKG_CHECK_MODULES([VL], [x11-xcb xcb xcb-dri2 >= $XCBDRI2_REQUIRED])
+        PKG_CHECK_MODULES([VL], [x11-xcb xcb xcb-dri2 >= $XCBDRI2_REQUIRED libdrm >= $LIBDRM_REQUIRED])
     fi
     need_gallium_vl_winsys=yes
 fi
