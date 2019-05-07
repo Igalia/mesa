@@ -1213,6 +1213,7 @@ if _llvm != 'false'
       with_gallium_opencl or _llvm == 'true'
     ),
     static : not _shared_llvm,
+    method : 'config-tool',
   )
   with_llvm = dep_llvm.found()
 endif
