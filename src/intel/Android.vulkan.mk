@@ -60,6 +60,7 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_GENERATED_SOURCES += $(intermediates)/vulkan/anv_entrypoints.h
 LOCAL_GENERATED_SOURCES += $(intermediates)/vulkan/dummy.c
+LOCAL_GENERATED_SOURCES += $(intermediates)/vulkan/anv_extensions.h
 
 $(intermediates)/vulkan/dummy.c:
 	@mkdir -p $(dir $@)
@@ -73,6 +74,14 @@ $(intermediates)/vulkan/anv_entrypoints.h: $(intermediates)/vulkan/dummy.c \
 	$(MESA_PYTHON2) $(ANV_ENTRYPOINTS_GEN_SCRIPT) \
 		--outdir $(dir $@) \
 		--xml $(VULKAN_API_XML)
+
+$(intermediates)/vulkan/anv_extensions.h: $(ANV_ENTRYPOINTS_GEN_SCRIPT) \
+					  $(ANV_EXTENSIONS_SCRIPT) \
+					  $(VULKAN_API_XML)
+	@mkdir -p $(dir $@)
+	$(MESA_PYTHON2) $(ANV_EXTENSIONS_GEN_SCRIPT) \
+		--xml $(VULKAN_API_XML) \
+		--out-h $@
 
 LOCAL_EXPORT_C_INCLUDE_DIRS := \
         $(intermediates)
@@ -244,7 +253,6 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 
 LOCAL_GENERATED_SOURCES += $(intermediates)/vulkan/anv_entrypoints.c
 LOCAL_GENERATED_SOURCES += $(intermediates)/vulkan/anv_extensions.c
-LOCAL_GENERATED_SOURCES += $(intermediates)/vulkan/anv_extensions.h
 
 $(intermediates)/vulkan/anv_entrypoints.c: $(ANV_ENTRYPOINTS_GEN_SCRIPT) \
 					   $(ANV_EXTENSIONS_SCRIPT) \
@@ -261,14 +269,6 @@ $(intermediates)/vulkan/anv_extensions.c: $(ANV_EXTENSIONS_GEN_SCRIPT) \
 	$(MESA_PYTHON2) $(ANV_EXTENSIONS_GEN_SCRIPT) \
 		--xml $(VULKAN_API_XML) \
 		--out-c $@
-
-$(intermediates)/vulkan/anv_extensions.h: $(ANV_EXTENSIONS_GEN_SCRIPT) \
-					   $(ANV_EXTENSIONS_SCRIPT) \
-					   $(VULKAN_API_XML)
-	@mkdir -p $(dir $@)
-	$(MESA_PYTHON2) $(ANV_EXTENSIONS_GEN_SCRIPT) \
-		--xml $(VULKAN_API_XML) \
-		--out-h $@
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES)
 
