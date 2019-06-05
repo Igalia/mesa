@@ -1990,8 +1990,7 @@ compute_topology_builtins(struct brw_context *brw)
    for (int i = 0; i < sizeof(devinfo->eu_masks); i++)
       brw->perfquery.sys_vars.n_eus += util_bitcount(devinfo->eu_masks[i]);
 
-   brw->perfquery.sys_vars.eu_threads_count =
-      brw->perfquery.sys_vars.n_eus * devinfo->num_thread_per_eu;
+   brw->perfquery.sys_vars.eu_threads_count = devinfo->num_thread_per_eu;
 
    /* At the moment the subslice mask builtin has groups of 3bits for each
     * slice.
