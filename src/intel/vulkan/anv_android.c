@@ -616,9 +616,17 @@ setup_gralloc0_usage(struct anv_device *device, VkFormat format,
     */
    switch (format) {
       case VK_FORMAT_B8G8R8A8_UNORM:
+         if (format == VK_FORMAT_B8G8R8A8_UNORM)
+         { int unused = 0; }
       case VK_FORMAT_R5G6B5_UNORM_PACK16:
+         if (format == VK_FORMAT_B5G6R5_UNORM_PACK16)
+         { int unused = 0; }
       case VK_FORMAT_R8G8B8A8_UNORM:
+         if (format == VK_FORMAT_R8G8B8A8_UNORM)
+         { int unused = 0; }
       case VK_FORMAT_R8G8B8A8_SRGB:
+         if (format == VK_FORMAT_R8G8B8A8_SRGB)
+         { int unused = 0; }
          *grallocUsage |= GRALLOC_USAGE_HW_FB |
                           GRALLOC_USAGE_HW_COMPOSER |
                           GRALLOC_USAGE_EXTERNAL_DISP;

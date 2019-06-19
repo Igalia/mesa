@@ -125,9 +125,17 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpGroupNonUniformBallotBitExtract:
+      if (opcode == SpvOpGroupNonUniformBallotBitExtract)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBallotBitCount:
+      if (opcode == SpvOpGroupNonUniformBallotBitCount)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBallotFindLSB:
+      if (opcode == SpvOpGroupNonUniformBallotFindLSB)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBallotFindMSB: {
+      if (opcode == SpvOpGroupNonUniformBallotFindMSB)
+      { int unused = 0; }
       nir_ssa_def *src0, *src1 = NULL;
       nir_intrinsic_op op;
       switch (opcode) {
@@ -190,8 +198,14 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpGroupNonUniformBroadcast:
+      if (opcode == SpvOpGroupNonUniformBroadcast)
+      { int unused = 0; }
    case SpvOpGroupBroadcast:
+      if (opcode == SpvOpGroupBroadcast)
+      { int unused = 0; }
    case SpvOpSubgroupReadInvocationKHR: {
+      if (opcode == SpvOpSubgroupReadInvocationKHR)
+      { int unused = 0; }
       bool has_scope = (opcode != SpvOpSubgroupReadInvocationKHR);
       vtn_push_ssa_value(b, w[2],
          vtn_build_subgroup_instr(b, nir_intrinsic_read_invocation,
@@ -201,25 +215,53 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpGroupNonUniformAll:
+      if (opcode == SpvOpGroupNonUniformAll)
+      { int unused = 0; }
    case SpvOpGroupNonUniformAny:
+      if (opcode == SpvOpGroupNonUniformAny)
+      { int unused = 0; }
    case SpvOpGroupNonUniformAllEqual:
+      if (opcode == SpvOpGroupNonUniformAllEqual)
+      { int unused = 0; }
    case SpvOpGroupAll:
+      if (opcode == SpvOpGroupAll)
+      { int unused = 0; }
    case SpvOpGroupAny:
+      if (opcode == SpvOpGroupAny)
+      { int unused = 0; }
    case SpvOpSubgroupAllKHR:
+      if (opcode == SpvOpSubgroupAllKHR)
+      { int unused = 0; }
    case SpvOpSubgroupAnyKHR:
+      if (opcode == SpvOpSubgroupAnyKHR)
+      { int unused = 0; }
    case SpvOpSubgroupAllEqualKHR: {
+      if (opcode == SpvOpSubgroupAllEqualKHR)
+      { int unused = 0; }
       vtn_fail_if(dest_type->type != glsl_bool_type(),
                   "OpGroupNonUniform(All|Any|AllEqual) must return a bool");
       nir_intrinsic_op op;
       switch (opcode) {
       case SpvOpGroupNonUniformAll:
+         if (opcode == SpvOpGroupNonUniformAll)
+         { int unused = 0; }
       case SpvOpGroupAll:
+         if (opcode == SpvOpGroupAll)
+         { int unused = 0; }
       case SpvOpSubgroupAllKHR:
+         if (opcode == SpvOpSubgroupAllKHR)
+         { int unused = 0; }
          op = nir_intrinsic_vote_all;
          break;
       case SpvOpGroupNonUniformAny:
+         if (opcode == SpvOpGroupNonUniformAny)
+         { int unused = 0; }
       case SpvOpGroupAny:
+         if (opcode == SpvOpGroupAny)
+         { int unused = 0; }
       case SpvOpSubgroupAnyKHR:
+         if (opcode == SpvOpSubgroupAnyKHR)
+         { int unused = 0; }
          op = nir_intrinsic_vote_any;
          break;
       case SpvOpSubgroupAllEqualKHR:
@@ -273,9 +315,17 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpGroupNonUniformShuffle:
+      if (opcode == SpvOpGroupNonUniformShuffle)
+      { int unused = 0; }
    case SpvOpGroupNonUniformShuffleXor:
+      if (opcode == SpvOpGroupNonUniformShuffleXor)
+      { int unused = 0; }
    case SpvOpGroupNonUniformShuffleUp:
+      if (opcode == SpvOpGroupNonUniformShuffleUp)
+      { int unused = 0; }
    case SpvOpGroupNonUniformShuffleDown: {
+      if (opcode == SpvOpGroupNonUniformShuffleDown)
+      { int unused = 0; }
       nir_intrinsic_op op;
       switch (opcode) {
       case SpvOpGroupNonUniformShuffle:
@@ -371,47 +421,123 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpGroupNonUniformIAdd:
+      if (opcode == SpvOpGroupNonUniformIAdd)
+      { int unused = 0; }
    case SpvOpGroupNonUniformFAdd:
+      if (opcode == SpvOpGroupNonUniformFAdd)
+      { int unused = 0; }
    case SpvOpGroupNonUniformIMul:
+      if (opcode == SpvOpGroupNonUniformIMul)
+      { int unused = 0; }
    case SpvOpGroupNonUniformFMul:
+      if (opcode == SpvOpGroupNonUniformFMul)
+      { int unused = 0; }
    case SpvOpGroupNonUniformSMin:
+      if (opcode == SpvOpGroupNonUniformSMin)
+      { int unused = 0; }
    case SpvOpGroupNonUniformUMin:
+      if (opcode == SpvOpGroupNonUniformUMin)
+      { int unused = 0; }
    case SpvOpGroupNonUniformFMin:
+      if (opcode == SpvOpGroupNonUniformFMin)
+      { int unused = 0; }
    case SpvOpGroupNonUniformSMax:
+      if (opcode == SpvOpGroupNonUniformSMax)
+      { int unused = 0; }
    case SpvOpGroupNonUniformUMax:
+      if (opcode == SpvOpGroupNonUniformUMax)
+      { int unused = 0; }
    case SpvOpGroupNonUniformFMax:
+      if (opcode == SpvOpGroupNonUniformFMax)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBitwiseAnd:
+      if (opcode == SpvOpGroupNonUniformBitwiseAnd)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBitwiseOr:
+      if (opcode == SpvOpGroupNonUniformBitwiseOr)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBitwiseXor:
+      if (opcode == SpvOpGroupNonUniformBitwiseXor)
+      { int unused = 0; }
    case SpvOpGroupNonUniformLogicalAnd:
+      if (opcode == SpvOpGroupNonUniformLogicalAnd)
+      { int unused = 0; }
    case SpvOpGroupNonUniformLogicalOr:
+      if (opcode == SpvOpGroupNonUniformLogicalOr)
+      { int unused = 0; }
    case SpvOpGroupNonUniformLogicalXor:
+      if (opcode == SpvOpGroupNonUniformLogicalXor)
+      { int unused = 0; }
    case SpvOpGroupIAdd:
+      if (opcode == SpvOpGroupIAdd)
+      { int unused = 0; }
    case SpvOpGroupFAdd:
+      if (opcode == SpvOpGroupFAdd)
+      { int unused = 0; }
    case SpvOpGroupFMin:
+      if (opcode == SpvOpGroupFMin)
+      { int unused = 0; }
    case SpvOpGroupUMin:
+      if (opcode == SpvOpGroupUMin)
+      { int unused = 0; }
    case SpvOpGroupSMin:
+      if (opcode == SpvOpGroupSMin)
+      { int unused = 0; }
    case SpvOpGroupFMax:
+      if (opcode == SpvOpGroupFMax)
+      { int unused = 0; }
    case SpvOpGroupUMax:
+      if (opcode == SpvOpGroupUMax)
+      { int unused = 0; }
    case SpvOpGroupSMax:
+      if (opcode == SpvOpGroupSMax)
+      { int unused = 0; }
    case SpvOpGroupIAddNonUniformAMD:
+      if (opcode == SpvOpGroupIAddNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupFAddNonUniformAMD:
+      if (opcode == SpvOpGroupFAddNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupFMinNonUniformAMD:
+      if (opcode == SpvOpGroupFMinNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupUMinNonUniformAMD:
+      if (opcode == SpvOpGroupUMinNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupSMinNonUniformAMD:
+      if (opcode == SpvOpGroupSMinNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupFMaxNonUniformAMD:
+      if (opcode == SpvOpGroupFMaxNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupUMaxNonUniformAMD:
+      if (opcode == SpvOpGroupUMaxNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupSMaxNonUniformAMD: {
+      if (opcode == SpvOpGroupSMaxNonUniformAMD)
+      { int unused = 0; }
       nir_op reduction_op;
       switch (opcode) {
       case SpvOpGroupNonUniformIAdd:
+         if (opcode == SpvOpGroupNonUniformIAdd)
+         { int unused = 0; }
       case SpvOpGroupIAdd:
+         if (opcode == SpvOpGroupIAdd)
+         { int unused = 0; }
       case SpvOpGroupIAddNonUniformAMD:
+         if (opcode == SpvOpGroupIAddNonUniformAMD)
+         { int unused = 0; }
          reduction_op = nir_op_iadd;
          break;
       case SpvOpGroupNonUniformFAdd:
+         if (opcode == SpvOpGroupNonUniformFAdd)
+         { int unused = 0; }
       case SpvOpGroupFAdd:
+         if (opcode == SpvOpGroupFAdd)
+         { int unused = 0; }
       case SpvOpGroupFAddNonUniformAMD:
+         if (opcode == SpvOpGroupFAddNonUniformAMD)
+         { int unused = 0; }
          reduction_op = nir_op_fadd;
          break;
       case SpvOpGroupNonUniformIMul:
@@ -421,45 +547,93 @@ vtn_handle_subgroup(struct vtn_builder *b, SpvOp opcode,
          reduction_op = nir_op_fmul;
          break;
       case SpvOpGroupNonUniformSMin:
+         if (opcode == SpvOpGroupNonUniformSMin)
+         { int unused = 0; }
       case SpvOpGroupSMin:
+         if (opcode == SpvOpGroupSMin)
+         { int unused = 0; }
       case SpvOpGroupSMinNonUniformAMD:
+         if (opcode == SpvOpGroupSMinNonUniformAMD)
+         { int unused = 0; }
          reduction_op = nir_op_imin;
          break;
       case SpvOpGroupNonUniformUMin:
+         if (opcode == SpvOpGroupNonUniformUMin)
+         { int unused = 0; }
       case SpvOpGroupUMin:
+         if (opcode == SpvOpGroupUMin)
+         { int unused = 0; }
       case SpvOpGroupUMinNonUniformAMD:
+         if (opcode == SpvOpGroupUMinNonUniformAMD)
+         { int unused = 0; }
          reduction_op = nir_op_umin;
          break;
       case SpvOpGroupNonUniformFMin:
+         if (opcode == SpvOpGroupNonUniformFMin)
+         { int unused = 0; }
       case SpvOpGroupFMin:
+         if (opcode == SpvOpGroupFMin)
+         { int unused = 0; }
       case SpvOpGroupFMinNonUniformAMD:
+         if (opcode == SpvOpGroupFMinNonUniformAMD)
+         { int unused = 0; }
          reduction_op = nir_op_fmin;
          break;
       case SpvOpGroupNonUniformSMax:
+         if (opcode == SpvOpGroupNonUniformSMax)
+         { int unused = 0; }
       case SpvOpGroupSMax:
+         if (opcode == SpvOpGroupSMax)
+         { int unused = 0; }
       case SpvOpGroupSMaxNonUniformAMD:
+         if (opcode == SpvOpGroupSMaxNonUniformAMD)
+         { int unused = 0; }
          reduction_op = nir_op_imax;
          break;
       case SpvOpGroupNonUniformUMax:
+         if (opcode == SpvOpGroupNonUniformUMax)
+         { int unused = 0; }
       case SpvOpGroupUMax:
+         if (opcode == SpvOpGroupUMax)
+         { int unused = 0; }
       case SpvOpGroupUMaxNonUniformAMD:
+         if (opcode == SpvOpGroupUMaxNonUniformAMD)
+         { int unused = 0; }
          reduction_op = nir_op_umax;
          break;
       case SpvOpGroupNonUniformFMax:
+         if (opcode == SpvOpGroupNonUniformFMax)
+         { int unused = 0; }
       case SpvOpGroupFMax:
+         if (opcode == SpvOpGroupFMax)
+         { int unused = 0; }
       case SpvOpGroupFMaxNonUniformAMD:
+         if (opcode == SpvOpGroupFMaxNonUniformAMD)
+         { int unused = 0; }
          reduction_op = nir_op_fmax;
          break;
       case SpvOpGroupNonUniformBitwiseAnd:
+         if (opcode == SpvOpGroupNonUniformBitwiseAnd)
+         { int unused = 0; }
       case SpvOpGroupNonUniformLogicalAnd:
+         if (opcode == SpvOpGroupNonUniformLogicalAnd)
+         { int unused = 0; }
          reduction_op = nir_op_iand;
          break;
       case SpvOpGroupNonUniformBitwiseOr:
+         if (opcode == SpvOpGroupNonUniformBitwiseOr)
+         { int unused = 0; }
       case SpvOpGroupNonUniformLogicalOr:
+         if (opcode == SpvOpGroupNonUniformLogicalOr)
+         { int unused = 0; }
          reduction_op = nir_op_ior;
          break;
       case SpvOpGroupNonUniformBitwiseXor:
+         if (opcode == SpvOpGroupNonUniformBitwiseXor)
+         { int unused = 0; }
       case SpvOpGroupNonUniformLogicalXor:
+         if (opcode == SpvOpGroupNonUniformLogicalXor)
+         { int unused = 0; }
          reduction_op = nir_op_ixor;
          break;
       default:

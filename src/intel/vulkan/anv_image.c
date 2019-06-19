@@ -75,9 +75,17 @@ choose_isl_surf_usage(VkImageCreateFlags vk_create_flags,
       isl_usage |= ISL_SURF_USAGE_STENCIL_BIT;
       break;
    case VK_IMAGE_ASPECT_COLOR_BIT:
+      if (aspect == VK_IMAGE_ASPECT_COLOR_BIT)
+      { int unused = 0; }
    case VK_IMAGE_ASPECT_PLANE_0_BIT:
+      if (aspect == VK_IMAGE_ASPECT_PLANE_0_BIT)
+      { int unused = 0; }
    case VK_IMAGE_ASPECT_PLANE_1_BIT:
+      if (aspect == VK_IMAGE_ASPECT_PLANE_1_BIT)
+      { int unused = 0; }
    case VK_IMAGE_ASPECT_PLANE_2_BIT:
+      if (aspect == VK_IMAGE_ASPECT_PLANE_2_BIT)
+      { int unused = 0; }
       break;
    default:
       unreachable("bad VkImageAspect");
@@ -1026,7 +1034,14 @@ resolve_ahw_image(struct anv_device *device,
       isl_tiling_flags = ISL_TILING_Y0_BIT;
       break;
    case -1:
+      if (i915_tiling == -1)
+      { int unused = 0; }
    default:
+      if (i915_tiling != I915_TILING_NONE &&
+          i915_tiling != I915_TILING_X &&
+          i915_tiling != I915_TILING_Y &&
+          i915_tiling != -1)
+      { int unused = 0; }
       unreachable("Invalid tiling flags.");
    }
 
@@ -1044,7 +1059,11 @@ resolve_ahw_image(struct anv_device *device,
    /* Handle RGB(X)->RGBA fallback. */
    switch (desc.format) {
    case AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM:
+      if (desc.format == AHARDWAREBUFFER_FORMAT_R8G8B8_UNORM)
+      { int unused = 0; }
    case AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM:
+      if (desc.format == AHARDWAREBUFFER_FORMAT_R8G8B8X8_UNORM)
+      { int unused = 0; }
       if (isl_format_is_rgb(isl_fmt))
          isl_fmt = isl_format_rgb_to_rgba(isl_fmt);
       break;
@@ -1417,6 +1436,8 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
    switch (layout) {
    /* Invalid layouts */
    case VK_IMAGE_LAYOUT_MAX_ENUM:
+      if (layout == VK_IMAGE_LAYOUT_MAX_ENUM)
+      { int counter = 0; }
       unreachable("Invalid image layout.");
 
    /* Undefined layouts
@@ -1426,7 +1447,11 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
     * on tiled images.
     */
    case VK_IMAGE_LAYOUT_UNDEFINED:
+      if (layout == VK_IMAGE_LAYOUT_UNDEFINED)
+      { int counter = 0; }
    case VK_IMAGE_LAYOUT_PREINITIALIZED:
+      if (layout == VK_IMAGE_LAYOUT_PREINITIALIZED)
+      { int counter = 0; }
       return ISL_AUX_STATE_AUX_INVALID;
 
    case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: {
@@ -2062,7 +2087,11 @@ anv_CreateImageView(VkDevice _device,
    default:
       unreachable("bad VkImageType");
    case VK_IMAGE_TYPE_1D:
+      if (image->type == VK_IMAGE_TYPE_1D)
+      { int unused = 0; }
    case VK_IMAGE_TYPE_2D:
+      if (image->type == VK_IMAGE_TYPE_2D)
+      { int unused = 0; }
       assert(range->baseArrayLayer + anv_get_layerCount(image, range) - 1 <= image->array_size);
       break;
    case VK_IMAGE_TYPE_3D:

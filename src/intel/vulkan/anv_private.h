@@ -2595,7 +2595,11 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
          pipe_bits |= ANV_PIPE_CONSTANT_CACHE_INVALIDATE_BIT;
          break;
       case VK_ACCESS_INDEX_READ_BIT:
+         if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_INDEX_READ_BIT)
+         { int unused = 0; }
       case VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT:
+         if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT)
+         { int unused = 0; }
          /* We transitioning a buffer to be used for as input for vkCmdDraw*
           * commands, so we invalidate the VF cache to make sure there is no
           * stale data when we start rendering.
@@ -2615,8 +2619,14 @@ anv_pipe_invalidate_bits_for_access_flags(struct anv_device *device,
             pipe_bits |= ANV_PIPE_DATA_CACHE_FLUSH_BIT;
          break;
       case VK_ACCESS_SHADER_READ_BIT:
+         if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_SHADER_READ_BIT)
+         { int unused = 0; }
       case VK_ACCESS_INPUT_ATTACHMENT_READ_BIT:
+         if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_INPUT_ATTACHMENT_READ_BIT)
+         { int unused = 0; }
       case VK_ACCESS_TRANSFER_READ_BIT:
+         if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_TRANSFER_READ_BIT)
+         { int unused = 0; }
          /* Transitioning a buffer to be read through the sampler, so
           * invalidate the texture cache, we don't want any stale data.
           */
@@ -3628,14 +3638,22 @@ anv_image_aspect_to_plane(VkImageAspectFlags image_aspects,
 {
    switch (aspect_mask) {
    case VK_IMAGE_ASPECT_COLOR_BIT:
+      if (aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT)
+      { int unused = 0; }
    case VK_IMAGE_ASPECT_DEPTH_BIT:
+      if (aspect_mask == VK_IMAGE_ASPECT_DEPTH_BIT)
+      { int unused = 0; }
    case VK_IMAGE_ASPECT_PLANE_0_BIT:
+      if (aspect_mask == VK_IMAGE_ASPECT_PLANE_0_BIT)
+      { int unused = 0; }
       return 0;
    case VK_IMAGE_ASPECT_STENCIL_BIT:
       if ((image_aspects & VK_IMAGE_ASPECT_DEPTH_BIT) == 0)
          return 0;
       /* Fall-through */
    case VK_IMAGE_ASPECT_PLANE_1_BIT:
+      if (aspect_mask == VK_IMAGE_ASPECT_PLANE_1_BIT)
+      { int unused = 0; }
       return 1;
    case VK_IMAGE_ASPECT_PLANE_2_BIT:
       return 2;

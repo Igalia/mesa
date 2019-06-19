@@ -1823,7 +1823,11 @@ void anv_GetPhysicalDeviceExternalFenceProperties(
 
    switch (pExternalFenceInfo->handleType) {
    case VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT:
+      if (pExternalFenceInfo->handleType == VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT)
+      { int unused = 0; }
    case VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT:
+      if (pExternalFenceInfo->handleType == VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT)
+      { int unused = 0; }
       if (device->has_syncobj_wait) {
          pExternalFenceProperties->exportFromImportedHandleTypes =
             VK_EXTERNAL_FENCE_HANDLE_TYPE_OPAQUE_FD_BIT |
@@ -2159,7 +2163,11 @@ anv_semaphore_impl_cleanup(struct anv_device *device,
 {
    switch (impl->type) {
    case ANV_SEMAPHORE_TYPE_NONE:
+      if (impl->type == ANV_SEMAPHORE_TYPE_NONE)
+      { int unused = 0; }
    case ANV_SEMAPHORE_TYPE_DUMMY:
+      if (impl->type == ANV_SEMAPHORE_TYPE_DUMMY)
+      { int unused = 0; }
       /* Dummy.  Nothing to do */
       break;
 

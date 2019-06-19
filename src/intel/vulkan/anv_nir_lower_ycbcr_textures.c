@@ -135,6 +135,8 @@ create_plane_tex_instr_implicit(struct ycbcr_state *state,
          }
          /* fall through */
       default:
+         if (old_tex->src[i].src_type != nir_tex_src_coord)
+         { int unused = 0; }
          nir_src_copy(&tex->src[i].src, &old_tex->src[i].src, tex);
          break;
       }

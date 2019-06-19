@@ -242,7 +242,11 @@ radv_meta_get_iview_layer(const struct radv_image *dest_image,
 {
 	switch (dest_image->type) {
 	case VK_IMAGE_TYPE_1D:
+		if (dest_image->type == VK_IMAGE_TYPE_1D)
+		{ int unused = 0; }
 	case VK_IMAGE_TYPE_2D:
+		if (dest_image->type == VK_IMAGE_TYPE_2D)
+		{ int unused = 0; }
 		return dest_subresource->baseArrayLayer;
 	case VK_IMAGE_TYPE_3D:
 		/* HACK: Vulkan does not allow attaching a 3D image to a framebuffer,

@@ -2058,7 +2058,11 @@ anv_image_mcs_op(struct anv_cmd_buffer *cmd_buffer,
                                 base_layer, layer_count);
       break;
    case ISL_AUX_OP_FULL_RESOLVE:
+      if (mcs_op == ISL_AUX_OP_FULL_RESOLVE)
+      { int unused = 0; }
    case ISL_AUX_OP_AMBIGUATE:
+      if (mcs_op == ISL_AUX_OP_AMBIGUATE)
+      { int unused = 0; }
    default:
       unreachable("Unsupported MCS operation");
    }
@@ -2135,7 +2139,11 @@ anv_image_ccs_op(struct anv_cmd_buffer *cmd_buffer,
                        0, 0, level_width, level_height);
       break;
    case ISL_AUX_OP_FULL_RESOLVE:
+      if (ccs_op == ISL_AUX_OP_FULL_RESOLVE)
+      { int unused = 0; }
    case ISL_AUX_OP_PARTIAL_RESOLVE:
+      if (ccs_op == ISL_AUX_OP_PARTIAL_RESOLVE)
+      { int unused = 0; }
       blorp_ccs_resolve(&batch, &surf, level, base_layer, layer_count,
                         format, ccs_op);
       break;

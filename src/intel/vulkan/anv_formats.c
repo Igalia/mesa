@@ -1396,6 +1396,8 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
             external_props->externalMemoryProperties = userptr_props;
          break;
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
+         if (external_info->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)
+         { int unused = 0; }
          /* This memory handle is magic. The Vulkan spec says it has no
           * requirements regarding deviceUUID nor driverUUID, but Android still
           * requires support for VK_IMAGE_TILING_OPTIMAL. Android systems
@@ -1407,6 +1409,11 @@ VkResult anv_GetPhysicalDeviceImageFormatProperties2(
          }
       /* fallthrough - if ahw not supported */
       default:
+         if (external_info->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT
+             && external_info->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT
+             && external_info->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT
+             && external_info->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)
+         { int unused = 0; }
          /* From the Vulkan 1.0.42 spec:
           *
           *    If handleType is not compatible with the [parameters] specified
@@ -1487,19 +1494,30 @@ void anv_GetPhysicalDeviceExternalBufferProperties(
 
    switch (pExternalBufferInfo->handleType) {
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+      if (pExternalBufferInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT)
+      { int unused = 0; }
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+      if (pExternalBufferInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT)
+      { int unused = 0; }
       pExternalBufferProperties->externalMemoryProperties = opaque_fd_dma_buf_props;
       return;
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT:
       pExternalBufferProperties->externalMemoryProperties = userptr_props;
       return;
    case VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID:
+      if (pExternalBufferInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)
+      { int unused = 0; }
       if (physical_device->supported_extensions.ANDROID_external_memory_android_hardware_buffer) {
          pExternalBufferProperties->externalMemoryProperties = android_buffer_props;
          return;
       }
       /* fallthrough if ahw not supported */
    default:
+      if (pExternalBufferInfo->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT
+          && pExternalBufferInfo->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT
+          && pExternalBufferInfo->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT
+          && pExternalBufferInfo->handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID)
+      { int unused = 0; }
       goto unsupported;
    }
 

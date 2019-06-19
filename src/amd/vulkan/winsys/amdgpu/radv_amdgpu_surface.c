@@ -50,7 +50,11 @@ static int radv_amdgpu_surface_sanity(const struct ac_surf_info *surf_info,
 			return -EINVAL;
 		/* fall through */
 	case RADEON_SURF_TYPE_2D:
+		if (type == RADEON_SURF_TYPE_2D)
+		{ int unused = 0; }
 	case RADEON_SURF_TYPE_CUBEMAP:
+		if (type == RADEON_SURF_TYPE_CUBEMAP)
+		{ int unused = 0; }
 		if (surf_info->depth > 1 || surf_info->array_size > 1)
 			return -EINVAL;
 		break;
@@ -63,6 +67,8 @@ static int radv_amdgpu_surface_sanity(const struct ac_surf_info *surf_info,
 			return -EINVAL;
 		/* fall through */
 	case RADEON_SURF_TYPE_2D_ARRAY:
+		if (type == RADEON_SURF_TYPE_2D_ARRAY)
+		{ int unused = 0; }
 		if (surf_info->depth > 1)
 			return -EINVAL;
 		break;

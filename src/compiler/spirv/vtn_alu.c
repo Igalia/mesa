@@ -197,8 +197,14 @@ vtn_handle_matrix_alu(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpVectorTimesMatrix:
+      if (opcode == SpvOpVectorTimesMatrix)
+      { int unused = 0; }
    case SpvOpMatrixTimesVector:
+      if (opcode == SpvOpMatrixTimesVector)
+      { int unused = 0; }
    case SpvOpMatrixTimesMatrix:
+      if (opcode == SpvOpMatrixTimesMatrix)
+      { int unused = 0; }
       if (opcode == SpvOpVectorTimesMatrix) {
          return matrix_multiply(b, vtn_ssa_transpose(b, src1), src0);
       } else {
@@ -345,12 +351,26 @@ vtn_nir_alu_op_for_spirv_opcode(struct vtn_builder *b,
    /* Conversions: */
    case SpvOpQuantizeToF16:         return nir_op_fquantize2f16;
    case SpvOpUConvert:
+      if (opcode == SpvOpUConvert)
+      { int unused = 0; }
    case SpvOpConvertFToU:
+      if (opcode == SpvOpConvertFToU)
+      { int unused = 0; }
    case SpvOpConvertFToS:
+      if (opcode == SpvOpConvertFToS)
+      { int unused = 0; }
    case SpvOpConvertSToF:
+      if (opcode == SpvOpConvertSToF)
+      { int unused = 0; }
    case SpvOpConvertUToF:
+      if (opcode == SpvOpConvertUToF)
+      { int unused = 0; }
    case SpvOpSConvert:
+      if (opcode == SpvOpSConvert)
+      { int unused = 0; }
    case SpvOpFConvert: {
+      if (opcode == SpvOpFConvert)
+      { int unused = 0; }
       nir_alu_type src_type = convert_op_src_type(opcode) | src_bit_size;
       nir_alu_type dst_type = convert_op_dst_type(opcode) | dst_bit_size;
       return nir_type_conversion_op(src_type, dst_type, nir_rounding_mode_undef);
@@ -575,11 +595,23 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpFUnordEqual:
+      if (opcode == SpvOpFUnordEqual)
+      { int unused = 0; }
    case SpvOpFUnordNotEqual:
+      if (opcode == SpvOpFUnordNotEqual)
+      { int unused = 0; }
    case SpvOpFUnordLessThan:
+      if (opcode == SpvOpFUnordLessThan)
+      { int unused = 0; }
    case SpvOpFUnordGreaterThan:
+      if (opcode == SpvOpFUnordGreaterThan)
+      { int unused = 0; }
    case SpvOpFUnordLessThanEqual:
+      if (opcode == SpvOpFUnordLessThanEqual)
+      { int unused = 0; }
    case SpvOpFUnordGreaterThanEqual: {
+      if (opcode == SpvOpFUnordGreaterThanEqual)
+      { int unused = 0; }
       bool swap;
       unsigned src_bit_size = glsl_get_bit_size(vtn_src[0]->type);
       unsigned dst_bit_size = glsl_get_bit_size(dest_type);
@@ -670,11 +702,23 @@ vtn_handle_alu(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpBitFieldInsert:
+      if (opcode == SpvOpBitFieldInsert)
+      { int unused = 0; }
    case SpvOpBitFieldSExtract:
+      if (opcode == SpvOpBitFieldSExtract)
+      { int unused = 0; }
    case SpvOpBitFieldUExtract:
+      if (opcode == SpvOpBitFieldUExtract)
+      { int unused = 0; }
    case SpvOpShiftLeftLogical:
+      if (opcode == SpvOpShiftLeftLogical)
+      { int unused = 0; }
    case SpvOpShiftRightArithmetic:
+      if (opcode == SpvOpShiftRightArithmetic)
+      { int unused = 0; }
    case SpvOpShiftRightLogical: {
+      if (opcode == SpvOpShiftRightLogical)
+      { int unused = 0; }
       bool swap;
       unsigned src0_bit_size = glsl_get_bit_size(vtn_src[0]->type);
       unsigned dst_bit_size = glsl_get_bit_size(dest_type);

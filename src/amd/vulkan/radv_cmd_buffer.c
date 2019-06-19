@@ -892,7 +892,11 @@ radv_emit_sample_locations(struct radv_cmd_buffer *cmd_buffer)
 	/* Emit the specified user sample locations. */
 	switch (num_samples) {
 	case 2:
+		if (num_samples == 2)
+		{ int unused = 0; }
 	case 4:
+		if (num_samples == 4)
+		{ int unused = 0; }
 		radeon_set_context_reg(cs, R_028BF8_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y0_0, sample_locs_pixel[0][0]);
 		radeon_set_context_reg(cs, R_028C08_PA_SC_AA_SAMPLE_LOCS_PIXEL_X1Y0_0, sample_locs_pixel[1][0]);
 		radeon_set_context_reg(cs, R_028C18_PA_SC_AA_SAMPLE_LOCS_PIXEL_X0Y1_0, sample_locs_pixel[2][0]);
@@ -1128,8 +1132,14 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 		/* Enable down-conversion for 32bpp and smaller formats. */
 		switch (format) {
 		case V_028C70_COLOR_8:
+			if (format == V_028C70_COLOR_8)
+			{ int unused = 0; }
 		case V_028C70_COLOR_8_8:
+			if (format == V_028C70_COLOR_8_8)
+			{ int unused = 0; }
 		case V_028C70_COLOR_8_8_8_8:
+			if (format == V_028C70_COLOR_8_8_8_8)
+			{ int unused = 0; }
 			/* For 1 and 2-channel formats, use the superset thereof. */
 			if (spi_format == V_028714_SPI_SHADER_FP16_ABGR ||
 			    spi_format == V_028714_SPI_SHADER_UINT16_ABGR ||
@@ -1170,7 +1180,11 @@ radv_emit_rbplus_state(struct radv_cmd_buffer *cmd_buffer)
 			break;
 
 		case V_028C70_COLOR_16:
+			if (format == V_028C70_COLOR_16)
+			{ int unused = 0; }
 		case V_028C70_COLOR_16_16:
+			if (format == V_028C70_COLOR_16_16)
+			{ int unused = 0; }
 			/* For 1-channel formats, use the superset thereof. */
 			if (spi_format == V_028714_SPI_SHADER_UNORM16_ABGR ||
 			    spi_format == V_028714_SPI_SHADER_SNORM16_ABGR ||
@@ -3129,8 +3143,14 @@ radv_src_access_flush(struct radv_cmd_buffer *cmd_buffer,
 	for_each_bit(b, src_flags) {
 		switch ((VkAccessFlagBits)(1 << b)) {
 		case VK_ACCESS_SHADER_WRITE_BIT:
+			if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_SHADER_WRITE_BIT)
+			{ int unused = 0; }
 		case VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT:
+			if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT)
+			{ int unused = 0; }
 		case VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT:
+			if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT)
+			{ int unused = 0; }
 			flush_bits |= RADV_CMD_FLAG_WB_L2;
 			break;
 		case VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT:
@@ -3212,15 +3232,27 @@ radv_dst_access_flush(struct radv_cmd_buffer *cmd_buffer,
 	for_each_bit(b, dst_flags) {
 		switch ((VkAccessFlagBits)(1 << b)) {
 		case VK_ACCESS_INDIRECT_COMMAND_READ_BIT:
+			if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_INDIRECT_COMMAND_READ_BIT)
+			{ int unused = 0; }
 		case VK_ACCESS_INDEX_READ_BIT:
+			if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_INDEX_READ_BIT)
+			{ int unused = 0; }
 		case VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT:
+			if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT)
+			{ int unused = 0; }
 			break;
 		case VK_ACCESS_UNIFORM_READ_BIT:
 			flush_bits |= RADV_CMD_FLAG_INV_VCACHE | RADV_CMD_FLAG_INV_SCACHE;
 			break;
 		case VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT:
+			if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT)
+			{ int unused = 0; }
 		case VK_ACCESS_TRANSFER_READ_BIT:
+			if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_TRANSFER_READ_BIT)
+			{ int unused = 0; }
 		case VK_ACCESS_INPUT_ATTACHMENT_READ_BIT:
+			if (((VkAccessFlagBits)(1 << b)) == VK_ACCESS_INPUT_ATTACHMENT_READ_BIT)
+			{ int unused = 0; }
 			flush_bits |= RADV_CMD_FLAG_INV_VCACHE |
 			              RADV_CMD_FLAG_INV_L2;
 			break;

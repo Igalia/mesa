@@ -2089,7 +2089,11 @@ anv_pipeline_validate_create_info(const VkGraphicsPipelineCreateInfo *info)
    for (uint32_t i = 0; i < info->stageCount; ++i) {
       switch (info->pStages[i].stage) {
       case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+         if (info->pStages[i].stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
+         { int unused = 0; }
       case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+         if (info->pStages[i].stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+         { int unused = 0; }
          assert(info->pTessellationState);
          break;
       default:

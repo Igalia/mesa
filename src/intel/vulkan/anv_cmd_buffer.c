@@ -970,12 +970,20 @@ anv_isl_format_for_descriptor_type(const struct anv_device *device,
 {
    switch (type) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+      { int unused = 0; }
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+      { int unused = 0; }
       return device->physical->compiler->indirect_ubos_use_sampler ?
              ISL_FORMAT_R32G32B32A32_FLOAT : ISL_FORMAT_RAW;
 
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      if (type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+      { int unused = 0; }
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      if (type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+      { int unused = 0; }
       return ISL_FORMAT_RAW;
 
    default:
@@ -1302,10 +1310,20 @@ void anv_CmdPushDescriptorSetKHR(
 
       switch (write->descriptorType) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+         { int unused = 0; }
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
             anv_descriptor_set_write_image_view(cmd_buffer->device, set,
                                                 write->pImageInfo + j,
@@ -1316,7 +1334,11 @@ void anv_CmdPushDescriptorSetKHR(
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+         { int unused = 0; }
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
             ANV_FROM_HANDLE(anv_buffer_view, bview,
                             write->pTexelBufferView[j]);
@@ -1330,9 +1352,17 @@ void anv_CmdPushDescriptorSetKHR(
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+         { int unused = 0; }
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
             ANV_FROM_HANDLE(anv_buffer, buffer, write->pBufferInfo[j].buffer);
 

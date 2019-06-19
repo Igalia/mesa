@@ -124,6 +124,8 @@ create_plane_tex_instr_implicit(struct ycbcr_state *state,
 			}
 		/* fall through */
 		default:
+			if (old_tex->src[i].src_type != nir_tex_src_coord)
+			{ int unused = 0; }
 			nir_src_copy(&tex->src[i].src, &old_tex->src[i].src, tex);
 			break;
 		}
@@ -201,9 +203,17 @@ build_swizzled_components(nir_builder *builder,
 	for (unsigned i = 0; i < 4; ++i) {
 		switch(swizzles[i]) {
 		case VK_SWIZZLE_X:
+			if (swizzles[i] == VK_SWIZZLE_X)
+			{ int unused = 0; }
 		case VK_SWIZZLE_Y:
+			if (swizzles[i] == VK_SWIZZLE_Y)
+			{ int unused = 0; }
 		case VK_SWIZZLE_Z:
+			if (swizzles[i] == VK_SWIZZLE_Z)
+			{ int unused = 0; }
 		case VK_SWIZZLE_W: {
+			if (swizzles[i] == VK_SWIZZLE_W)
+			{ int unused = 0; }
 			unsigned channel = swizzles[i] - VK_SWIZZLE_X;
 			values[i] = nir_channel(builder,
 			                        plane_values[plane_swizzle.plane[channel]],

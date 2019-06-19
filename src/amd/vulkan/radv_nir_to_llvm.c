@@ -284,7 +284,11 @@ get_llvm_calling_convention(LLVMValueRef func, gl_shader_stage stage)
 {
 	switch (stage) {
 	case MESA_SHADER_VERTEX:
+		if (stage == MESA_SHADER_VERTEX)
+		{ int unused = 0; }
 	case MESA_SHADER_TESS_EVAL:
+		if (stage == MESA_SHADER_TESS_EVAL)
+		{ int unused = 0; }
 		return AC_LLVM_AMDGPU_VS;
 		break;
 	case MESA_SHADER_GEOMETRY:
@@ -972,8 +976,14 @@ static LLVMValueRef radv_get_sampler_desc(struct ac_shader_abi *abi,
 		type_size = 16;
 		break;
 	case AC_DESC_PLANE_0:
+		if (desc_type == AC_DESC_PLANE_0)
+		{ int unused = 0; }
 	case AC_DESC_PLANE_1:
+		if (desc_type == AC_DESC_PLANE_1)
+		{ int unused = 0; }
 	case AC_DESC_PLANE_2:
+		if (desc_type == AC_DESC_PLANE_2)
+		{ int unused = 0; }
 		type = ctx->ac.v8i32;
 		type_size = 32;
 		offset += 32 * (desc_type - AC_DESC_PLANE_0);
@@ -1596,10 +1606,16 @@ radv_emit_stream_output(struct radv_shader_context *ctx,
 		vdata = out[0];
 		break;
 	case 2: /* as v2i32 */
+		if (num_comps == 2)
+		{ int unused = 0; }
 	case 3: /* as v4i32 (aligned to 4) */
+		if (num_comps == 3)
+		{ int unused = 0; }
 		out[3] = LLVMGetUndef(ctx->ac.i32);
 		/* fall through */
 	case 4: /* as v4i32 */
+		if (num_comps == 4)
+		{ int unused = 0; }
 		vdata = ac_build_gather_values(&ctx->ac, out,
 					       !ac_has_vec3_support(ctx->ac.chip_class, false) ?
 					       util_next_power_of_two(num_comps) :
@@ -1769,7 +1785,11 @@ radv_llvm_export_vs(struct radv_shader_context *ctx,
 			viewport_value = outputs[i].values[0];
 			break;
 		case VARYING_SLOT_CLIP_DIST0:
+			if (outputs[i].slot_name == VARYING_SLOT_CLIP_DIST0)
+			{ int unused = 0; }
 		case VARYING_SLOT_CLIP_DIST1:
+			if (outputs[i].slot_name == VARYING_SLOT_CLIP_DIST1)
+			{ int unused = 0; }
 			index = 2 + outputs[i].slot_index;
 			si_llvm_init_export_args(ctx, outputs[i].values, 0xf,
 						 V_008DFC_SQ_EXP_POS + index,
@@ -3620,9 +3640,17 @@ ac_nir_eliminate_const_vs_outputs(struct radv_shader_context *ctx)
 
 	switch (ctx->stage) {
 	case MESA_SHADER_FRAGMENT:
+		if (ctx->stage == MESA_SHADER_FRAGMENT)
+		{ int unused = 0; }
 	case MESA_SHADER_COMPUTE:
+		if (ctx->stage == MESA_SHADER_COMPUTE)
+		{ int unused = 0; }
 	case MESA_SHADER_TESS_CTRL:
+		if (ctx->stage == MESA_SHADER_TESS_CTRL)
+		{ int unused = 0; }
 	case MESA_SHADER_GEOMETRY:
+		if (ctx->stage == MESA_SHADER_GEOMETRY)
+		{ int unused = 0; }
 		return;
 	case MESA_SHADER_VERTEX:
 		if (ctx->args->options->key.vs_common_out.as_ls ||

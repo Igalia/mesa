@@ -3315,8 +3315,14 @@ radv_get_hs_offchip_param(struct radv_device *device, uint32_t *max_offchip_buff
 		max_offchip_buffers = MIN2(max_offchip_buffers, 126);
 		break;
 	case GFX7:
+		if (device->physical_device->rad_info.chip_class == GFX7)
+		{ int unused = 0; }
 	case GFX8:
+		if (device->physical_device->rad_info.chip_class == GFX8)
+		{ int unused = 0; }
 	case GFX9:
+		if (device->physical_device->rad_info.chip_class == GFX9)
+		{ int unused = 0; }
 		max_offchip_buffers = MIN2(max_offchip_buffers, 508);
 		break;
 	case GFX10:
@@ -6977,17 +6983,29 @@ radv_initialise_ds_surface(struct radv_device *device,
 	memset(ds, 0, sizeof(*ds));
 	switch (iview->image->vk_format) {
 	case VK_FORMAT_D24_UNORM_S8_UINT:
+		if (iview->image->vk_format == VK_FORMAT_D24_UNORM_S8_UINT)
+		{ int unused = 0; }
 	case VK_FORMAT_X8_D24_UNORM_PACK32:
+		if (iview->image->vk_format == VK_FORMAT_X8_D24_UNORM_PACK32)
+		{ int unused = 0; }
 		ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-24);
 		ds->offset_scale = 2.0f;
 		break;
 	case VK_FORMAT_D16_UNORM:
+		if (iview->image->vk_format == VK_FORMAT_D16_UNORM)
+		{ int unused = 0; }
 	case VK_FORMAT_D16_UNORM_S8_UINT:
+		if (iview->image->vk_format == VK_FORMAT_D16_UNORM_S8_UINT)
+		{ int unused = 0; }
 		ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-16);
 		ds->offset_scale = 4.0f;
 		break;
 	case VK_FORMAT_D32_SFLOAT:
+		if (iview->image->vk_format == VK_FORMAT_D32_SFLOAT)
+		{ int unused = 0; }
 	case VK_FORMAT_D32_SFLOAT_S8_UINT:
+		if (iview->image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+		{ int unused = 0; }
 		ds->pa_su_poly_offset_db_fmt_cntl = S_028B78_POLY_OFFSET_NEG_NUM_DB_BITS(-23) |
 			S_028B78_POLY_OFFSET_DB_IS_FLOAT_FMT(1);
 		ds->offset_scale = 1.0f;
@@ -7268,7 +7286,11 @@ radv_tex_filter(VkFilter filter, unsigned max_ansio)
 		return (max_ansio > 1 ? V_008F38_SQ_TEX_XY_FILTER_ANISO_BILINEAR :
 			V_008F38_SQ_TEX_XY_FILTER_BILINEAR);
 	case VK_FILTER_CUBIC_IMG:
+		if (filter == VK_FILTER_CUBIC_IMG)
+		{ int unused = 0; }
 	default:
+		if (filter != VK_FILTER_CUBIC_IMG)
+		{ int unused = 0; }
 		fprintf(stderr, "illegal texture filter");
 		return 0;
 	}
@@ -7292,13 +7314,25 @@ radv_tex_bordercolor(VkBorderColor bcolor)
 {
 	switch (bcolor) {
 	case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
+		if (bcolor == VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK)
+		{ int unused = 0; }
 	case VK_BORDER_COLOR_INT_TRANSPARENT_BLACK:
+		if (bcolor == VK_BORDER_COLOR_INT_TRANSPARENT_BLACK)
+		{ int unused = 0; }
 		return V_008F3C_SQ_TEX_BORDER_COLOR_TRANS_BLACK;
 	case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
+		if (bcolor == VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK)
+		{ int unused = 0; }
 	case VK_BORDER_COLOR_INT_OPAQUE_BLACK:
+		if (bcolor == VK_BORDER_COLOR_INT_OPAQUE_BLACK)
+		{ int unused = 0; }
 		return V_008F3C_SQ_TEX_BORDER_COLOR_OPAQUE_BLACK;
 	case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
+		if (bcolor == VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE)
+		{ int unused = 0; }
 	case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
+		if (bcolor == VK_BORDER_COLOR_INT_OPAQUE_WHITE)
+		{ int unused = 0; }
 		return V_008F3C_SQ_TEX_BORDER_COLOR_OPAQUE_WHITE;
 	case VK_BORDER_COLOR_FLOAT_CUSTOM_EXT:
 	case VK_BORDER_COLOR_INT_CUSTOM_EXT:

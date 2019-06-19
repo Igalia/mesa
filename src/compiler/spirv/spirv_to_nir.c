@@ -610,29 +610,57 @@ vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpDecorate:
+      if (opcode == SpvOpDecorate)
+      { int unused = 0; }
    case SpvOpDecorateId:
+      if (opcode == SpvOpDecorateId)
+      { int unused = 0; }
    case SpvOpMemberDecorate:
+      if (opcode == SpvOpMemberDecorate)
+      { int unused = 0; }
    case SpvOpDecorateString:
+      if (opcode == SpvOpDecorateString)
+      { int unused = 0; }
    case SpvOpMemberDecorateString:
+      if (opcode == SpvOpMemberDecorateString)
+      { int unused = 0; }
    case SpvOpExecutionMode:
+      if (opcode == SpvOpExecutionMode)
+      { int unused = 0; }
    case SpvOpExecutionModeId: {
+      if (opcode == SpvOpExecutionModeId)
+      { int unused = 0; }
       struct vtn_value *val = vtn_untyped_value(b, target);
 
       struct vtn_decoration *dec = rzalloc(b, struct vtn_decoration);
       switch (opcode) {
       case SpvOpDecorate:
+         if (opcode == SpvOpDecorate)
+         { int unused = 0; }
       case SpvOpDecorateId:
+         if (opcode == SpvOpDecorateId)
+         { int unused = 0; }
       case SpvOpDecorateString:
+         if (opcode == SpvOpDecorateString)
+         { int unused = 0; }
          dec->scope = VTN_DEC_DECORATION;
          break;
       case SpvOpMemberDecorate:
+         if (opcode == SpvOpMemberDecorate)
+         { int unused = 0; }
       case SpvOpMemberDecorateString:
+         if (opcode == SpvOpMemberDecorateString)
+         { int unused = 0; }
          dec->scope = VTN_DEC_STRUCT_MEMBER0 + *(w++);
          vtn_fail_if(dec->scope < VTN_DEC_STRUCT_MEMBER0, /* overflow */
                      "Member argument of OpMemberDecorate too large");
          break;
       case SpvOpExecutionMode:
+         if (opcode == SpvOpExecutionMode)
+         { int unused = 0; }
       case SpvOpExecutionModeId:
+         if (opcode == SpvOpExecutionModeId)
+         { int unused = 0; }
          dec->scope = VTN_DEC_EXECUTION_MODE;
          break;
       default:
@@ -648,7 +676,11 @@ vtn_handle_decoration(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpGroupMemberDecorate:
+      if (opcode == SpvOpGroupMemberDecorate)
+      { int unused = 0; }
    case SpvOpGroupDecorate: {
+      if (opcode == SpvOpGroupDecorate)
+      { int unused = 0; }
       struct vtn_value *group =
          vtn_value(b, target, vtn_value_type_decoration_group);
 
@@ -989,8 +1021,14 @@ struct_member_decoration_cb(struct vtn_builder *b,
 
    switch (dec->decoration) {
    case SpvDecorationRelaxedPrecision:
+      if (dec->decoration == SpvDecorationRelaxedPrecision)
+      { int unused = 0; }
    case SpvDecorationUniform:
+      if (dec->decoration == SpvDecorationUniform)
+      { int unused = 0; }
    case SpvDecorationUniformId:
+      if (dec->decoration == SpvDecorationUniformId)
+      { int unused = 0; }
       break; /* FIXME: Do nothing with this for now. */
    case SpvDecorationNonWritable:
       vtn_handle_access_qualifier(b, ctx->type, member, ACCESS_NON_WRITEABLE);
@@ -1050,36 +1088,84 @@ struct_member_decoration_cb(struct vtn_builder *b,
       break;
 
    case SpvDecorationSpecId:
+      if (dec->decoration == SpvDecorationSpecId)
+      { int unused = 0; }
    case SpvDecorationBlock:
+      if (dec->decoration == SpvDecorationBlock)
+      { int unused = 0; }
    case SpvDecorationBufferBlock:
+      if (dec->decoration == SpvDecorationBufferBlock)
+      { int unused = 0; }
    case SpvDecorationArrayStride:
+      if (dec->decoration == SpvDecorationArrayStride)
+      { int unused = 0; }
    case SpvDecorationGLSLShared:
+      if (dec->decoration == SpvDecorationGLSLShared)
+      { int unused = 0; }
    case SpvDecorationGLSLPacked:
+      if (dec->decoration == SpvDecorationGLSLPacked)
+      { int unused = 0; }
    case SpvDecorationInvariant:
+      if (dec->decoration == SpvDecorationInvariant)
+      { int unused = 0; }
    case SpvDecorationRestrict:
+      if (dec->decoration == SpvDecorationRestrict)
+      { int unused = 0; }
    case SpvDecorationAliased:
+      if (dec->decoration == SpvDecorationAliased)
+      { int unused = 0; }
    case SpvDecorationConstant:
+      if (dec->decoration == SpvDecorationConstant)
+      { int unused = 0; }
    case SpvDecorationIndex:
+      if (dec->decoration == SpvDecorationIndex)
+      { int unused = 0; }
    case SpvDecorationBinding:
+      if (dec->decoration == SpvDecorationBinding)
+      { int unused = 0; }
    case SpvDecorationDescriptorSet:
+      if (dec->decoration == SpvDecorationDescriptorSet)
+      { int unused = 0; }
    case SpvDecorationLinkageAttributes:
+      if (dec->decoration == SpvDecorationLinkageAttributes)
+      { int unused = 0; }
    case SpvDecorationNoContraction:
+      if (dec->decoration == SpvDecorationNoContraction)
+      { int unused = 0; }
    case SpvDecorationInputAttachmentIndex:
+      if (dec->decoration == SpvDecorationInputAttachmentIndex)
+      { int unused = 0; }
    case SpvDecorationCPacked:
+      if (dec->decoration == SpvDecorationCPacked)
+      { int unused = 0; }
       vtn_warn("Decoration not allowed on struct members: %s",
                spirv_decoration_to_string(dec->decoration));
       break;
 
    case SpvDecorationXfbBuffer:
+      if (dec->decoration == SpvDecorationXfbBuffer)
+      { int unused = 0; }
    case SpvDecorationXfbStride:
+      if (dec->decoration == SpvDecorationXfbStride)
+      { int unused = 0; }
       /* This is handled later by var_decoration_cb in vtn_variables.c */
       break;
 
    case SpvDecorationSaturatedConversion:
+      if (dec->decoration == SpvDecorationSaturatedConversion)
+      { int unused = 0; }
    case SpvDecorationFuncParamAttr:
+      if (dec->decoration == SpvDecorationFuncParamAttr)
+      { int unused = 0; }
    case SpvDecorationFPRoundingMode:
+      if (dec->decoration == SpvDecorationFPRoundingMode)
+      { int unused = 0; }
    case SpvDecorationFPFastMathMode:
+      if (dec->decoration == SpvDecorationFPFastMathMode)
+      { int unused = 0; }
    case SpvDecorationAlignment:
+      if (dec->decoration == SpvDecorationAlignment)
+      { int unused = 0; }
       if (b->shader->info.stage != MESA_SHADER_KERNEL) {
          vtn_warn("Decoration only allowed for CL-style kernels: %s",
                   spirv_decoration_to_string(dec->decoration));
@@ -1213,32 +1299,80 @@ type_decoration_cb(struct vtn_builder *b,
       vtn_assert(type->buffer_block);
       break;
    case SpvDecorationGLSLShared:
+      if (dec->decoration == SpvDecorationGLSLShared)
+      { int unused = 0; }
    case SpvDecorationGLSLPacked:
+      if (dec->decoration == SpvDecorationGLSLPacked)
+      { int unused = 0; }
       /* Ignore these, since we get explicit offsets anyways */
       break;
 
    case SpvDecorationRowMajor:
+      if (dec->decoration == SpvDecorationRowMajor)
+      { int unused = 0; }
    case SpvDecorationColMajor:
+      if (dec->decoration == SpvDecorationColMajor)
+      { int unused = 0; }
    case SpvDecorationMatrixStride:
+      if (dec->decoration == SpvDecorationMatrixStride)
+      { int unused = 0; }
    case SpvDecorationBuiltIn:
+      if (dec->decoration == SpvDecorationBuiltIn)
+      { int unused = 0; }
    case SpvDecorationNoPerspective:
+      if (dec->decoration == SpvDecorationNoPerspective)
+      { int unused = 0; }
    case SpvDecorationFlat:
+      if (dec->decoration == SpvDecorationFlat)
+      { int unused = 0; }
    case SpvDecorationPatch:
+      if (dec->decoration == SpvDecorationPatch)
+      { int unused = 0; }
    case SpvDecorationCentroid:
+      if (dec->decoration == SpvDecorationCentroid)
+      { int unused = 0; }
    case SpvDecorationSample:
+      if (dec->decoration == SpvDecorationSample)
+      { int unused = 0; }
    case SpvDecorationExplicitInterpAMD:
+      if (dec->decoration == SpvDecorationExplicitInterpAMD)
+      { int unused = 0; }
    case SpvDecorationVolatile:
+      if (dec->decoration == SpvDecorationVolatile)
+      { int unused = 0; }
    case SpvDecorationCoherent:
+      if (dec->decoration == SpvDecorationCoherent)
+      { int unused = 0; }
    case SpvDecorationNonWritable:
+      if (dec->decoration == SpvDecorationNonWritable)
+      { int unused = 0; }
    case SpvDecorationNonReadable:
+      if (dec->decoration == SpvDecorationNonReadable)
+      { int unused = 0; }
    case SpvDecorationUniform:
+      if (dec->decoration == SpvDecorationUniform)
+      { int unused = 0; }
    case SpvDecorationUniformId:
+      if (dec->decoration == SpvDecorationUniformId)
+      { int unused = 0; }
    case SpvDecorationLocation:
+      if (dec->decoration == SpvDecorationLocation)
+      { int unused = 0; }
    case SpvDecorationComponent:
+      if (dec->decoration == SpvDecorationComponent)
+      { int unused = 0; }
    case SpvDecorationOffset:
+      if (dec->decoration == SpvDecorationOffset)
+      { int unused = 0; }
    case SpvDecorationXfbBuffer:
+      if (dec->decoration == SpvDecorationXfbBuffer)
+      { int unused = 0; }
    case SpvDecorationXfbStride:
+      if (dec->decoration == SpvDecorationXfbStride)
+      { int unused = 0; }
    case SpvDecorationUserSemantic:
+      if (dec->decoration == SpvDecorationUserSemantic)
+      { int unused = 0; }
       vtn_warn("Decoration only allowed for struct members: %s",
                spirv_decoration_to_string(dec->decoration));
       break;
@@ -1252,17 +1386,41 @@ type_decoration_cb(struct vtn_builder *b,
       break;
 
    case SpvDecorationRelaxedPrecision:
+      if (dec->decoration == SpvDecorationRelaxedPrecision)
+      { int unused = 0; }
    case SpvDecorationSpecId:
+      if (dec->decoration == SpvDecorationSpecId)
+      { int unused = 0; }
    case SpvDecorationInvariant:
+      if (dec->decoration == SpvDecorationInvariant)
+      { int unused = 0; }
    case SpvDecorationRestrict:
+      if (dec->decoration == SpvDecorationRestrict)
+      { int unused = 0; }
    case SpvDecorationAliased:
+      if (dec->decoration == SpvDecorationAliased)
+      { int unused = 0; }
    case SpvDecorationConstant:
+      if (dec->decoration == SpvDecorationConstant)
+      { int unused = 0; }
    case SpvDecorationIndex:
+      if (dec->decoration == SpvDecorationIndex)
+      { int unused = 0; }
    case SpvDecorationBinding:
+      if (dec->decoration == SpvDecorationBinding)
+      { int unused = 0; }
    case SpvDecorationDescriptorSet:
+      if (dec->decoration == SpvDecorationDescriptorSet)
+      { int unused = 0; }
    case SpvDecorationLinkageAttributes:
+      if (dec->decoration == SpvDecorationLinkageAttributes)
+      { int unused = 0; }
    case SpvDecorationNoContraction:
+      if (dec->decoration == SpvDecorationNoContraction)
+      { int unused = 0; }
    case SpvDecorationInputAttachmentIndex:
+      if (dec->decoration == SpvDecorationInputAttachmentIndex)
+      { int unused = 0; }
       vtn_warn("Decoration not allowed on types: %s",
                spirv_decoration_to_string(dec->decoration));
       break;
@@ -1272,10 +1430,20 @@ type_decoration_cb(struct vtn_builder *b,
       break;
 
    case SpvDecorationSaturatedConversion:
+      if (dec->decoration == SpvDecorationSaturatedConversion)
+      { int unused = 0; }
    case SpvDecorationFuncParamAttr:
+      if (dec->decoration == SpvDecorationFuncParamAttr)
+      { int unused = 0; }
    case SpvDecorationFPRoundingMode:
+      if (dec->decoration == SpvDecorationFPRoundingMode)
+      { int unused = 0; }
    case SpvDecorationFPFastMathMode:
+      if (dec->decoration == SpvDecorationFPFastMathMode)
+      { int unused = 0; }
    case SpvDecorationAlignment:
+      if (dec->decoration == SpvDecorationAlignment)
+      { int unused = 0; }
       vtn_warn("Decoration only allowed for CL-style kernels: %s",
                spirv_decoration_to_string(dec->decoration));
       break;
@@ -1433,7 +1601,11 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpTypeRuntimeArray:
+      if (opcode == SpvOpTypeRuntimeArray)
+      { int unused = 0; }
    case SpvOpTypeArray: {
+      if (opcode == SpvOpTypeArray)
+      { int unused = 0; }
       struct vtn_type *array_element = vtn_get_type(b, w[2]);
 
       if (opcode == SpvOpTypeRuntimeArray) {
@@ -1517,6 +1689,8 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpTypePointer:
+      if (opcode == SpvOpTypePointer)
+      { int unused = 0; }
    case SpvOpTypeForwardPointer: {
       /* We can't blindly push the value because it might be a forward
        * declaration.
@@ -1580,9 +1754,17 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
           */
          switch (storage_class) {
          case SpvStorageClassUniform:
+            if (storage_class == SpvStorageClassUniform)
+            { int unused = 0; }
          case SpvStorageClassPushConstant:
+            if (storage_class == SpvStorageClassPushConstant)
+            { int unused = 0; }
          case SpvStorageClassStorageBuffer:
+            if (storage_class == SpvStorageClassStorageBuffer)
+            { int unused = 0; }
          case SpvStorageClassPhysicalStorageBuffer:
+            if (storage_class == SpvStorageClassPhysicalStorageBuffer)
+            { int unused = 0; }
             vtn_foreach_decoration(b, val, array_stride_decoration_cb, NULL);
             break;
          default:
@@ -1732,10 +1914,25 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpTypeDeviceEvent:
+      if (opcode == SpvOpTypeDeviceEvent)
+      { int unused = 0; }
    case SpvOpTypeReserveId:
+      if (opcode == SpvOpTypeReserveId)
+      { int unused = 0; }
    case SpvOpTypeQueue:
+      if (opcode == SpvOpTypeQueue)
+      { int unused = 0; }
    case SpvOpTypePipe:
+      if (opcode == SpvOpTypePipe)
+      { int unused = 0; }
    default:
+      if (opcode != SpvOpTypeOpaque &&
+          opcode != SpvOpTypeEvent &&
+          opcode != SpvOpTypeDeviceEvent &&
+          opcode != SpvOpTypeReserveId &&
+          opcode != SpvOpTypeQueue &&
+          opcode != SpvOpTypePipe)
+      { int unused = 0; }
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
 
@@ -1851,9 +2048,17 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
    val->constant = rzalloc(b, nir_constant);
    switch (opcode) {
    case SpvOpConstantTrue:
+      if (opcode == SpvOpConstantTrue)
+      { int unused = 0; }
    case SpvOpConstantFalse:
+      if (opcode == SpvOpConstantFalse)
+      { int unused = 0; }
    case SpvOpSpecConstantTrue:
+      if (opcode == SpvOpSpecConstantTrue)
+      { int unused = 0; }
    case SpvOpSpecConstantFalse: {
+      if (opcode == SpvOpSpecConstantFalse)
+      { int unused = 0; }
       vtn_fail_if(val->type->type != glsl_bool_type(),
                   "Result type of %s must be OpTypeBool",
                   spirv_op_to_string(opcode));
@@ -1901,7 +2106,11 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpSpecConstantComposite:
+      if (opcode == SpvOpSpecConstantComposite)
+      { int unused = 0; }
    case SpvOpConstantComposite: {
+      if (opcode == SpvOpConstantComposite)
+      { int unused = 0; }
       unsigned elem_count = count - 3;
       vtn_fail_if(elem_count != val->type->length,
                   "%s has %u constituents, expected %u",
@@ -1932,7 +2141,11 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
 
       case vtn_base_type_matrix:
       case vtn_base_type_struct:
+         if (val->type->base_type == vtn_base_type_struct)
+         { int unused = 0; }
       case vtn_base_type_array:
+         if (val->type->base_type == vtn_base_type_array)
+         { int unused = 0; }
          ralloc_steal(val->constant, elems);
          val->constant->num_elements = elem_count;
          val->constant->elements = elems;
@@ -2001,7 +2214,11 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
       }
 
       case SpvOpCompositeExtract:
+         if (opcode == SpvOpCompositeExtract)
+         { int unused = 0; }
       case SpvOpCompositeInsert: {
+         if (opcode == SpvOpCompositeInsert)
+         { int unused = 0; }
          struct vtn_value *comp;
          unsigned deref_start;
          struct nir_constant **c;
@@ -2082,8 +2299,14 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
 
          switch (opcode) {
          case SpvOpSConvert:
+            if (opcode == SpvOpSConvert)
+            { int unused = 0; }
          case SpvOpFConvert:
+            if (opcode == SpvOpFConvert)
+            { int unused = 0; }
          case SpvOpUConvert:
+            if (opcode == SpvOpUConvert)
+            { int unused = 0; }
             /* We have a source in a conversion */
             src_alu_type =
                nir_get_nir_type_for_glsl_type(vtn_get_value_type(b, w[4])->type);
@@ -2566,16 +2789,32 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    nir_texop texop;
    switch (opcode) {
    case SpvOpImageSampleImplicitLod:
+      if (opcode == SpvOpImageSampleImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleDrefImplicitLod:
+      if (opcode == SpvOpImageSampleDrefImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjImplicitLod:
+      if (opcode == SpvOpImageSampleProjImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjDrefImplicitLod:
+      if (opcode == SpvOpImageSampleProjDrefImplicitLod)
+      { int unused = 0; }
       texop = nir_texop_tex;
       break;
 
    case SpvOpImageSampleExplicitLod:
+      if (opcode == SpvOpImageSampleExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleDrefExplicitLod:
+      if (opcode == SpvOpImageSampleDrefExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjExplicitLod:
+      if (opcode == SpvOpImageSampleProjExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjDrefExplicitLod:
+      if (opcode == SpvOpImageSampleProjDrefExplicitLod)
+      { int unused = 0; }
       texop = nir_texop_txl;
       break;
 
@@ -2588,12 +2827,20 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpImageGather:
+      if (opcode == SpvOpImageGather)
+      { int unused = 0; }
    case SpvOpImageDrefGather:
+      if (opcode == SpvOpImageDrefGather)
+      { int unused = 0; }
       texop = nir_texop_tg4;
       break;
 
    case SpvOpImageQuerySizeLod:
+      if (opcode == SpvOpImageQuerySizeLod)
+      { int unused = 0; }
    case SpvOpImageQuerySize:
+      if (opcode == SpvOpImageQuerySize)
+      { int unused = 0; }
       texop = nir_texop_txs;
       dest_type = nir_type_int;
       break;
@@ -2672,19 +2919,47 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    unsigned coord_components;
    switch (opcode) {
    case SpvOpImageSampleImplicitLod:
+      if (opcode == SpvOpImageSampleImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleExplicitLod:
+      if (opcode == SpvOpImageSampleExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleDrefImplicitLod:
+      if (opcode == SpvOpImageSampleDrefImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleDrefExplicitLod:
+      if (opcode == SpvOpImageSampleDrefExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjImplicitLod:
+      if (opcode == SpvOpImageSampleProjImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjExplicitLod:
+      if (opcode == SpvOpImageSampleProjExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjDrefImplicitLod:
+      if (opcode == SpvOpImageSampleProjDrefImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjDrefExplicitLod:
+      if (opcode == SpvOpImageSampleProjDrefExplicitLod)
+      { int unused = 0; }
    case SpvOpImageFetch:
+      if (opcode == SpvOpImageFetch)
+      { int unused = 0; }
    case SpvOpImageGather:
+      if (opcode == SpvOpImageGather)
+      { int unused = 0; }
    case SpvOpImageDrefGather:
+      if (opcode == SpvOpImageDrefGather)
+      { int unused = 0; }
    case SpvOpImageQueryLod:
+      if (opcode == SpvOpImageQueryLod)
+      { int unused = 0; }
    case SpvOpFragmentFetchAMD:
+      if (opcode == SpvOpFragmentFetchAMD)
+      { int unused = 0; }
    case SpvOpFragmentMaskFetchAMD: {
+      if (opcode == SpvOpFragmentMaskFetchAMD)
+      { int unused = 0; }
       /* All these types have the coordinate as their first real argument */
       coord_components = glsl_get_sampler_dim_coordinate_components(sampler_dim);
 
@@ -2721,9 +2996,17 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
 
    switch (opcode) {
    case SpvOpImageSampleProjImplicitLod:
+      if (opcode == SpvOpImageSampleProjImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjExplicitLod:
+      if (opcode == SpvOpImageSampleProjExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjDrefImplicitLod:
+      if (opcode == SpvOpImageSampleProjDrefImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjDrefExplicitLod:
+      if (opcode == SpvOpImageSampleProjDrefExplicitLod)
+      { int unused = 0; }
       /* These have the projector as the last coordinate component */
       p->src = nir_src_for_ssa(nir_channel(&b->nb, coord, coord_components));
       p->src_type = nir_tex_src_projector;
@@ -2738,10 +3021,20 @@ vtn_handle_texture(struct vtn_builder *b, SpvOp opcode,
    unsigned gather_component = 0;
    switch (opcode) {
    case SpvOpImageSampleDrefImplicitLod:
+      if (opcode == SpvOpImageSampleDrefImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleDrefExplicitLod:
+      if (opcode == SpvOpImageSampleDrefExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjDrefImplicitLod:
+      if (opcode == SpvOpImageSampleProjDrefImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjDrefExplicitLod:
+      if (opcode == SpvOpImageSampleProjDrefExplicitLod)
+      { int unused = 0; }
    case SpvOpImageDrefGather:
+      if (opcode == SpvOpImageDrefGather)
+      { int unused = 0; }
       /* These all have an explicit depth value as their next source */
       is_shadow = true;
       (*p++) = vtn_tex_src(b, w[idx++], nir_tex_src_comparator);
@@ -2963,21 +3256,45 @@ fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpAtomicCompareExchange:
+      if (opcode == SpvOpAtomicCompareExchange)
+      { int unused = 0; }
    case SpvOpAtomicCompareExchangeWeak:
+      if (opcode == SpvOpAtomicCompareExchangeWeak)
+      { int unused = 0; }
       src[0] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[8]));
       src[1] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[7]));
       break;
 
    case SpvOpAtomicExchange:
+      if (opcode == SpvOpAtomicExchange)
+      { int unused = 0; }
    case SpvOpAtomicIAdd:
+      if (opcode == SpvOpAtomicIAdd)
+      { int unused = 0; }
    case SpvOpAtomicSMin:
+      if (opcode == SpvOpAtomicSMin)
+      { int unused = 0; }
    case SpvOpAtomicUMin:
+      if (opcode == SpvOpAtomicUMin)
+      { int unused = 0; }
    case SpvOpAtomicSMax:
+      if (opcode == SpvOpAtomicSMax)
+      { int unused = 0; }
    case SpvOpAtomicUMax:
+      if (opcode == SpvOpAtomicUMax)
+      { int unused = 0; }
    case SpvOpAtomicAnd:
+      if (opcode == SpvOpAtomicAnd)
+      { int unused = 0; }
    case SpvOpAtomicOr:
+      if (opcode == SpvOpAtomicOr)
+      { int unused = 0; }
    case SpvOpAtomicXor:
+      if (opcode == SpvOpAtomicXor)
+      { int unused = 0; }
    case SpvOpAtomicFAddEXT:
+      if (opcode == SpvOpAtomicFAddEXT)
+      { int unused = 0; }
       src[0] = nir_src_for_ssa(vtn_get_nir_ssa(b, w[6]));
       break;
 
@@ -3037,21 +3354,53 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    struct vtn_value *res_val;
    switch (opcode) {
    case SpvOpAtomicExchange:
+      if (opcode == SpvOpAtomicExchange)
+      { int unused = 0; }
    case SpvOpAtomicCompareExchange:
+      if (opcode == SpvOpAtomicCompareExchange)
+      { int unused = 0; }
    case SpvOpAtomicCompareExchangeWeak:
+      if (opcode == SpvOpAtomicCompareExchangeWeak)
+      { int unused = 0; }
    case SpvOpAtomicIIncrement:
+      if (opcode == SpvOpAtomicIIncrement)
+      { int unused = 0; }
    case SpvOpAtomicIDecrement:
+      if (opcode == SpvOpAtomicIDecrement)
+      { int unused = 0; }
    case SpvOpAtomicIAdd:
+      if (opcode == SpvOpAtomicIAdd)
+      { int unused = 0; }
    case SpvOpAtomicISub:
+      if (opcode == SpvOpAtomicISub)
+      { int unused = 0; }
    case SpvOpAtomicLoad:
+      if (opcode == SpvOpAtomicLoad)
+      { int unused = 0; }
    case SpvOpAtomicSMin:
+      if (opcode == SpvOpAtomicSMin)
+      { int unused = 0; }
    case SpvOpAtomicUMin:
+      if (opcode == SpvOpAtomicUMin)
+      { int unused = 0; }
    case SpvOpAtomicSMax:
+      if (opcode == SpvOpAtomicSMax)
+      { int unused = 0; }
    case SpvOpAtomicUMax:
+      if (opcode == SpvOpAtomicUMax)
+      { int unused = 0; }
    case SpvOpAtomicAnd:
+      if (opcode == SpvOpAtomicAnd)
+      { int unused = 0; }
    case SpvOpAtomicOr:
+      if (opcode == SpvOpAtomicOr)
+      { int unused = 0; }
    case SpvOpAtomicXor:
+      if (opcode == SpvOpAtomicXor)
+      { int unused = 0; }
    case SpvOpAtomicFAddEXT:
+      if (opcode == SpvOpAtomicFAddEXT)
+      { int unused = 0; }
       res_val = vtn_value(b, w[3], vtn_value_type_image_pointer);
       image = *res_val->image;
       scope = vtn_constant_uint(b, w[4]);
@@ -3247,7 +3596,11 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
 
    switch (opcode) {
    case SpvOpImageQueryFormat:
+      if (opcode == SpvOpImageQueryFormat)
+      { int unused = 0; }
    case SpvOpImageQueryOrder:
+      if (opcode == SpvOpImageQueryOrder)
+      { int unused = 0; }
       /* No additional sources */
       break;
    case SpvOpImageQuerySize:
@@ -3257,7 +3610,11 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       intrin->src[1] = nir_src_for_ssa(image.lod);
       break;
    case SpvOpAtomicLoad:
+      if (opcode == SpvOpAtomicLoad)
+      { int unused = 0; }
    case SpvOpImageRead:
+      if (opcode == SpvOpImageRead)
+      { int unused = 0; }
       /* Only OpImageRead can support a lod parameter if
       * SPV_AMD_shader_image_load_store_lod is used but the current NIR
       * intrinsics definition for atomics requires us to set it for
@@ -3266,7 +3623,11 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
       intrin->src[3] = nir_src_for_ssa(image.lod);
       break;
    case SpvOpAtomicStore:
+      if (opcode == SpvOpAtomicStore)
+      { int unused = 0; }
    case SpvOpImageWrite: {
+      if (opcode == SpvOpImageWrite)
+      { int unused = 0; }
       const uint32_t value_id = opcode == SpvOpAtomicStore ? w[4] : w[3];
       struct vtn_ssa_value *value = vtn_ssa_value(b, value_id);
       /* nir_intrinsic_image_deref_store always takes a vec4 value */
@@ -3286,20 +3647,50 @@ vtn_handle_image(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpAtomicCompareExchange:
+      if (opcode == SpvOpAtomicCompareExchange)
+      { int unused = 0; }
    case SpvOpAtomicCompareExchangeWeak:
+      if (opcode == SpvOpAtomicCompareExchangeWeak)
+      { int unused = 0; }
    case SpvOpAtomicIIncrement:
+      if (opcode == SpvOpAtomicIIncrement)
+      { int unused = 0; }
    case SpvOpAtomicIDecrement:
+      if (opcode == SpvOpAtomicIDecrement)
+      { int unused = 0; }
    case SpvOpAtomicExchange:
+      if (opcode == SpvOpAtomicExchange)
+      { int unused = 0; }
    case SpvOpAtomicIAdd:
+      if (opcode == SpvOpAtomicIAdd)
+      { int unused = 0; }
    case SpvOpAtomicISub:
+      if (opcode == SpvOpAtomicISub)
+      { int unused = 0; }
    case SpvOpAtomicSMin:
+      if (opcode == SpvOpAtomicSMin)
+      { int unused = 0; }
    case SpvOpAtomicUMin:
+      if (opcode == SpvOpAtomicUMin)
+      { int unused = 0; }
    case SpvOpAtomicSMax:
+      if (opcode == SpvOpAtomicSMax)
+      { int unused = 0; }
    case SpvOpAtomicUMax:
+      if (opcode == SpvOpAtomicUMax)
+      { int unused = 0; }
    case SpvOpAtomicAnd:
+      if (opcode == SpvOpAtomicAnd)
+      { int unused = 0; }
    case SpvOpAtomicOr:
+      if (opcode == SpvOpAtomicOr)
+      { int unused = 0; }
    case SpvOpAtomicXor:
+      if (opcode == SpvOpAtomicXor)
+      { int unused = 0; }
    case SpvOpAtomicFAddEXT:
+      if (opcode == SpvOpAtomicFAddEXT)
+      { int unused = 0; }
       fill_common_atomic_sources(b, opcode, w, &intrin->src[3]);
       break;
 
@@ -3420,21 +3811,53 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
 
    switch (opcode) {
    case SpvOpAtomicLoad:
+      if (opcode == SpvOpAtomicLoad)
+      { int unused = 0; }
    case SpvOpAtomicExchange:
+      if (opcode == SpvOpAtomicExchange)
+      { int unused = 0; }
    case SpvOpAtomicCompareExchange:
+      if (opcode == SpvOpAtomicCompareExchange)
+      { int unused = 0; }
    case SpvOpAtomicCompareExchangeWeak:
+      if (opcode == SpvOpAtomicCompareExchangeWeak)
+      { int unused = 0; }
    case SpvOpAtomicIIncrement:
+      if (opcode == SpvOpAtomicIIncrement)
+      { int unused = 0; }
    case SpvOpAtomicIDecrement:
+      if (opcode == SpvOpAtomicIDecrement)
+      { int unused = 0; }
    case SpvOpAtomicIAdd:
+      if (opcode == SpvOpAtomicIAdd)
+      { int unused = 0; }
    case SpvOpAtomicISub:
+      if (opcode == SpvOpAtomicISub)
+      { int unused = 0; }
    case SpvOpAtomicSMin:
+      if (opcode == SpvOpAtomicSMin)
+      { int unused = 0; }
    case SpvOpAtomicUMin:
+      if (opcode == SpvOpAtomicUMin)
+      { int unused = 0; }
    case SpvOpAtomicSMax:
+      if (opcode == SpvOpAtomicSMax)
+      { int unused = 0; }
    case SpvOpAtomicUMax:
+      if (opcode == SpvOpAtomicUMax)
+      { int unused = 0; }
    case SpvOpAtomicAnd:
+      if (opcode == SpvOpAtomicAnd)
+      { int unused = 0; }
    case SpvOpAtomicOr:
+      if (opcode == SpvOpAtomicOr)
+      { int unused = 0; }
    case SpvOpAtomicXor:
+      if (opcode == SpvOpAtomicXor)
+      { int unused = 0; }
    case SpvOpAtomicFAddEXT:
+      if (opcode == SpvOpAtomicFAddEXT)
+      { int unused = 0; }
       ptr = vtn_value(b, w[3], vtn_value_type_pointer)->pointer;
       scope = vtn_constant_uint(b, w[4]);
       semantics = vtn_constant_uint(b, w[5]);
@@ -3468,19 +3891,47 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
       switch (opcode) {
       case SpvOpAtomicLoad:
       case SpvOpAtomicExchange:
+         if (opcode == SpvOpAtomicExchange)
+         { int unused = 0; }
       case SpvOpAtomicCompareExchange:
+         if (opcode == SpvOpAtomicCompareExchange)
+         { int unused = 0; }
       case SpvOpAtomicCompareExchangeWeak:
+         if (opcode == SpvOpAtomicCompareExchangeWeak)
+         { int unused = 0; }
       case SpvOpAtomicIIncrement:
+         if (opcode == SpvOpAtomicIIncrement)
+         { int unused = 0; }
       case SpvOpAtomicIDecrement:
+         if (opcode == SpvOpAtomicIDecrement)
+         { int unused = 0; }
       case SpvOpAtomicIAdd:
+         if (opcode == SpvOpAtomicIAdd)
+         { int unused = 0; }
       case SpvOpAtomicISub:
+         if (opcode == SpvOpAtomicISub)
+         { int unused = 0; }
       case SpvOpAtomicSMin:
+         if (opcode == SpvOpAtomicSMin)
+         { int unused = 0; }
       case SpvOpAtomicUMin:
+         if (opcode == SpvOpAtomicUMin)
+         { int unused = 0; }
       case SpvOpAtomicSMax:
+         if (opcode == SpvOpAtomicSMax)
+         { int unused = 0; }
       case SpvOpAtomicUMax:
+         if (opcode == SpvOpAtomicUMax)
+         { int unused = 0; }
       case SpvOpAtomicAnd:
+         if (opcode == SpvOpAtomicAnd)
+         { int unused = 0; }
       case SpvOpAtomicOr:
+         if (opcode == SpvOpAtomicOr)
+         { int unused = 0; }
       case SpvOpAtomicXor:
+         if (opcode == SpvOpAtomicXor)
+         { int unused = 0; }
          /* Nothing: we don't need to call fill_common_atomic_sources here, as
           * atomic counter uniforms doesn't have sources
           */
@@ -3514,20 +3965,50 @@ vtn_handle_atomics(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvOpAtomicExchange:
+         if (opcode == SpvOpAtomicExchange)
+         { int unused = 0; }
       case SpvOpAtomicCompareExchange:
+         if (opcode == SpvOpAtomicCompareExchange)
+         { int unused = 0; }
       case SpvOpAtomicCompareExchangeWeak:
+         if (opcode == SpvOpAtomicCompareExchangeWeak)
+         { int unused = 0; }
       case SpvOpAtomicIIncrement:
+         if (opcode == SpvOpAtomicIIncrement)
+         { int unused = 0; }
       case SpvOpAtomicIDecrement:
+         if (opcode == SpvOpAtomicIDecrement)
+         { int unused = 0; }
       case SpvOpAtomicIAdd:
+         if (opcode == SpvOpAtomicIAdd)
+         { int unused = 0; }
       case SpvOpAtomicISub:
+         if (opcode == SpvOpAtomicISub)
+         { int unused = 0; }
       case SpvOpAtomicSMin:
+         if (opcode == SpvOpAtomicSMin)
+         { int unused = 0; }
       case SpvOpAtomicUMin:
+         if (opcode == SpvOpAtomicUMin)
+         { int unused = 0; }
       case SpvOpAtomicSMax:
+         if (opcode == SpvOpAtomicSMax)
+         { int unused = 0; }
       case SpvOpAtomicUMax:
+         if (opcode == SpvOpAtomicUMax)
+         { int unused = 0; }
       case SpvOpAtomicAnd:
+         if (opcode == SpvOpAtomicAnd)
+         { int unused = 0; }
       case SpvOpAtomicOr:
+         if (opcode == SpvOpAtomicOr)
+         { int unused = 0; }
       case SpvOpAtomicXor:
+         if (opcode == SpvOpAtomicXor)
+         { int unused = 0; }
       case SpvOpAtomicFAddEXT:
+         if (opcode == SpvOpAtomicFAddEXT)
+         { int unused = 0; }
          fill_common_atomic_sources(b, opcode, w, &atomic->src[1]);
          break;
 
@@ -3915,17 +4396,33 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
 {
    switch (opcode) {
    case SpvOpEmitVertex:
+      if (opcode == SpvOpEmitVertex)
+      { int unused = 0; }
    case SpvOpEmitStreamVertex:
+      if (opcode == SpvOpEmitStreamVertex)
+      { int unused = 0; }
    case SpvOpEndPrimitive:
+      if (opcode == SpvOpEndPrimitive)
+      { int unused = 0; }
    case SpvOpEndStreamPrimitive: {
+      if (opcode == SpvOpEndStreamPrimitive)
+      { int unused = 0; }
       nir_intrinsic_op intrinsic_op;
       switch (opcode) {
       case SpvOpEmitVertex:
+         if (opcode == SpvOpEmitVertex)
+         { int unused = 0; }
       case SpvOpEmitStreamVertex:
+         if (opcode == SpvOpEmitStreamVertex)
+         { int unused = 0; }
          intrinsic_op = nir_intrinsic_emit_vertex;
          break;
       case SpvOpEndPrimitive:
+         if (opcode == SpvOpEndPrimitive)
+         { int unused = 0; }
       case SpvOpEndStreamPrimitive:
+         if (opcode == SpvOpEndStreamPrimitive)
+         { int unused = 0; }
          intrinsic_op = nir_intrinsic_end_primitive;
          break;
       default:
@@ -3937,7 +4434,11 @@ vtn_handle_barrier(struct vtn_builder *b, SpvOp opcode,
 
       switch (opcode) {
       case SpvOpEmitStreamVertex:
+         if (opcode == SpvOpEmitStreamVertex)
+         { int unused = 0; }
       case SpvOpEndStreamPrimitive: {
+         if (opcode == SpvOpEndStreamPrimitive)
+         { int unused = 0; }
          unsigned stream = vtn_constant_uint(b, w[1]);
          nir_intrinsic_set_stream_id(intrin, stream);
          break;
@@ -4019,7 +4520,11 @@ gl_primitive_from_spv_execution_mode(struct vtn_builder *b,
 {
    switch (mode) {
    case SpvExecutionModeInputPoints:
+      if (mode == SpvExecutionModeInputPoints)
+      { int unused = 0; }
    case SpvExecutionModeOutputPoints:
+      if (mode == SpvExecutionModeOutputPoints)
+      { int unused = 0; }
       return 0; /* GL_POINTS */
    case SpvExecutionModeInputLines:
       return 1; /* GL_LINES */
@@ -4153,9 +4658,17 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpSourceExtension:
+      if (opcode == SpvOpSourceExtension)
+      { int unused = 0; }
    case SpvOpSourceContinued:
+      if (opcode == SpvOpSourceContinued)
+      { int unused = 0; }
    case SpvOpExtension:
+      if (opcode == SpvOpExtension)
+      { int unused = 0; }
    case SpvOpModuleProcessed:
+      if (opcode == SpvOpModuleProcessed)
+      { int unused = 0; }
       /* Unhandled, but these are for debug so that's ok. */
       break;
 
@@ -4163,36 +4676,94 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       SpvCapability cap = w[1];
       switch (cap) {
       case SpvCapabilityMatrix:
+         if (cap == SpvCapabilityMatrix)
+         { int unused = 0; }
       case SpvCapabilityShader:
+         if (cap == SpvCapabilityShader)
+         { int unused = 0; }
       case SpvCapabilityGeometry:
+         if (cap == SpvCapabilityGeometry)
+         { int unused = 0; }
       case SpvCapabilityGeometryPointSize:
+         if (cap == SpvCapabilityGeometryPointSize)
+         { int unused = 0; }
       case SpvCapabilityUniformBufferArrayDynamicIndexing:
+         if (cap == SpvCapabilityUniformBufferArrayDynamicIndexing)
+         { int unused = 0; }
       case SpvCapabilitySampledImageArrayDynamicIndexing:
+         if (cap == SpvCapabilitySampledImageArrayDynamicIndexing)
+         { int unused = 0; }
       case SpvCapabilityStorageBufferArrayDynamicIndexing:
+         if (cap == SpvCapabilityStorageBufferArrayDynamicIndexing)
+         { int unused = 0; }
       case SpvCapabilityStorageImageArrayDynamicIndexing:
+         if (cap == SpvCapabilityStorageImageArrayDynamicIndexing)
+         { int unused = 0; }
       case SpvCapabilityImageRect:
+         if (cap == SpvCapabilityImageRect)
+         { int unused = 0; }
       case SpvCapabilitySampledRect:
+         if (cap == SpvCapabilitySampledRect)
+         { int unused = 0; }
       case SpvCapabilitySampled1D:
+         if (cap == SpvCapabilitySampled1D)
+         { int unused = 0; }
       case SpvCapabilityImage1D:
+         if (cap == SpvCapabilityImage1D)
+         { int unused = 0; }
       case SpvCapabilitySampledCubeArray:
+         if (cap == SpvCapabilitySampledCubeArray)
+         { int unused = 0; }
       case SpvCapabilityImageCubeArray:
+         if (cap == SpvCapabilityImageCubeArray)
+         { int unused = 0; }
       case SpvCapabilitySampledBuffer:
+         if (cap == SpvCapabilitySampledBuffer)
+         { int unused = 0; }
       case SpvCapabilityImageBuffer:
+         if (cap == SpvCapabilityImageBuffer)
+         { int unused = 0; }
       case SpvCapabilityImageQuery:
+         if (cap == SpvCapabilityImageQuery)
+         { int unused = 0; }
       case SpvCapabilityDerivativeControl:
+         if (cap == SpvCapabilityDerivativeControl)
+         { int unused = 0; }
       case SpvCapabilityInterpolationFunction:
+         if (cap == SpvCapabilityInterpolationFunction)
+         { int unused = 0; }
       case SpvCapabilityMultiViewport:
+         if (cap == SpvCapabilityMultiViewport)
+         { int unused = 0; }
       case SpvCapabilitySampleRateShading:
+         if (cap == SpvCapabilitySampleRateShading)
+         { int unused = 0; }
       case SpvCapabilityClipDistance:
+         if (cap == SpvCapabilityClipDistance)
+         { int unused = 0; }
       case SpvCapabilityCullDistance:
+         if (cap == SpvCapabilityCullDistance)
+         { int unused = 0; }
       case SpvCapabilityInputAttachment:
+         if (cap == SpvCapabilityInputAttachment)
+         { int unused = 0; }
       case SpvCapabilityImageGatherExtended:
+         if (cap == SpvCapabilityImageGatherExtended)
+         { int unused = 0; }
       case SpvCapabilityStorageImageExtendedFormats:
+         if (cap == SpvCapabilityStorageImageExtendedFormats)
+         { int unused = 0; }
       case SpvCapabilityVector16:
+         if (cap == SpvCapabilityVector16)
+         { int unused = 0; }
          break;
 
       case SpvCapabilityLinkage:
+         if (cap == SpvCapabilityLinkage)
+         { int unused = 0; }
       case SpvCapabilitySparseResidency:
+         if (cap == SpvCapabilitySparseResidency)
+         { int unused = 0; }
          vtn_warn("Unsupported SPIR-V capability: %s",
                   spirv_capability_to_string(cap));
          break;
@@ -4256,9 +4827,17 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilityImageReadWrite:
+         if (cap == SpvCapabilityImageReadWrite)
+         { int unused = 0; }
       case SpvCapabilityImageMipmap:
+         if (cap == SpvCapabilityImageMipmap)
+         { int unused = 0; }
       case SpvCapabilityPipes:
+         if (cap == SpvCapabilityPipes)
+         { int unused = 0; }
       case SpvCapabilityDeviceEnqueue:
+         if (cap == SpvCapabilityDeviceEnqueue)
+         { int unused = 0; }
          vtn_warn("Unsupported OpenCL-style SPIR-V capability: %s",
                   spirv_capability_to_string(cap));
          break;
@@ -4268,7 +4847,11 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilityTessellation:
+         if (cap == SpvCapabilityTessellation)
+         { int unused = 0; }
       case SpvCapabilityTessellationPointSize:
+         if (cap == SpvCapabilityTessellationPointSize)
+         { int unused = 0; }
          spv_check_supported(tessellation, cap);
          break;
 
@@ -4297,17 +4880,29 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilitySubgroupVoteKHR:
+         if (cap == SpvCapabilitySubgroupVoteKHR)
+         { int unused = 0; }
       case SpvCapabilityGroupNonUniformVote:
+         if (cap == SpvCapabilityGroupNonUniformVote)
+         { int unused = 0; }
          spv_check_supported(subgroup_vote, cap);
          break;
 
       case SpvCapabilitySubgroupBallotKHR:
+         if (cap == SpvCapabilitySubgroupBallotKHR)
+         { int unused = 0; }
       case SpvCapabilityGroupNonUniformBallot:
+         if (cap == SpvCapabilityGroupNonUniformBallot)
+         { int unused = 0; }
          spv_check_supported(subgroup_ballot, cap);
          break;
 
       case SpvCapabilityGroupNonUniformShuffle:
+         if (cap == SpvCapabilityGroupNonUniformShuffle)
+         { int unused = 0; }
       case SpvCapabilityGroupNonUniformShuffleRelative:
+         if (cap == SpvCapabilityGroupNonUniformShuffleRelative)
+         { int unused = 0; }
          spv_check_supported(subgroup_shuffle, cap);
          break;
 
@@ -4316,7 +4911,11 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilityGroupNonUniformArithmetic:
+         if (cap == SpvCapabilityGroupNonUniformArithmetic)
+         { int unused = 0; }
       case SpvCapabilityGroupNonUniformClustered:
+         if (cap == SpvCapabilityGroupNonUniformClustered)
+         { int unused = 0; }
          spv_check_supported(subgroup_arithmetic, cap);
          break;
 
@@ -4325,15 +4924,27 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilityVariablePointersStorageBuffer:
+         if (cap == SpvCapabilityVariablePointersStorageBuffer)
+         { int unused = 0; }
       case SpvCapabilityVariablePointers:
+         if (cap == SpvCapabilityVariablePointers)
+         { int unused = 0; }
          spv_check_supported(variable_pointers, cap);
          b->variable_pointers = true;
          break;
 
       case SpvCapabilityStorageUniformBufferBlock16:
+         if (cap == SpvCapabilityStorageUniformBufferBlock16)
+         { int unused = 0; }
       case SpvCapabilityStorageUniform16:
+         if (cap == SpvCapabilityStorageUniform16)
+         { int unused = 0; }
       case SpvCapabilityStoragePushConstant16:
+         if (cap == SpvCapabilityStoragePushConstant16)
+         { int unused = 0; }
       case SpvCapabilityStorageInputOutput16:
+         if (cap == SpvCapabilityStorageInputOutput16)
+         { int unused = 0; }
          spv_check_supported(storage_16bit, cap);
          break;
 
@@ -4344,8 +4955,14 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilityStorageBuffer8BitAccess:
+         if (cap == SpvCapabilityStorageBuffer8BitAccess)
+         { int unused = 0; }
       case SpvCapabilityUniformAndStorageBuffer8BitAccess:
+         if (cap == SpvCapabilityUniformAndStorageBuffer8BitAccess)
+         { int unused = 0; }
       case SpvCapabilityStoragePushConstant8:
+         if (cap == SpvCapabilityStoragePushConstant8)
+         { int unused = 0; }
          spv_check_supported(storage_8bit, cap);
          break;
 
@@ -4354,18 +4971,38 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilityInputAttachmentArrayDynamicIndexingEXT:
+         if (cap == SpvCapabilityInputAttachmentArrayDynamicIndexingEXT)
+         { int unused = 0; }
       case SpvCapabilityUniformTexelBufferArrayDynamicIndexingEXT:
+         if (cap == SpvCapabilityUniformTexelBufferArrayDynamicIndexingEXT)
+         { int unused = 0; }
       case SpvCapabilityStorageTexelBufferArrayDynamicIndexingEXT:
+         if (cap == SpvCapabilityStorageTexelBufferArrayDynamicIndexingEXT)
+         { int unused = 0; }
          spv_check_supported(descriptor_array_dynamic_indexing, cap);
          break;
 
       case SpvCapabilityUniformBufferArrayNonUniformIndexingEXT:
+         if (cap == SpvCapabilityUniformBufferArrayNonUniformIndexingEXT)
+         { int unused = 0; }
       case SpvCapabilitySampledImageArrayNonUniformIndexingEXT:
+         if (cap == SpvCapabilitySampledImageArrayNonUniformIndexingEXT)
+         { int unused = 0; }
       case SpvCapabilityStorageBufferArrayNonUniformIndexingEXT:
+         if (cap == SpvCapabilityStorageBufferArrayNonUniformIndexingEXT)
+         { int unused = 0; }
       case SpvCapabilityStorageImageArrayNonUniformIndexingEXT:
+         if (cap == SpvCapabilityStorageImageArrayNonUniformIndexingEXT)
+         { int unused = 0; }
       case SpvCapabilityInputAttachmentArrayNonUniformIndexingEXT:
+         if (cap == SpvCapabilityInputAttachmentArrayNonUniformIndexingEXT)
+         { int unused = 0; }
       case SpvCapabilityUniformTexelBufferArrayNonUniformIndexingEXT:
+         if (cap == SpvCapabilityUniformTexelBufferArrayNonUniformIndexingEXT)
+         { int unused = 0; }
       case SpvCapabilityStorageTexelBufferArrayNonUniformIndexingEXT:
+         if (cap == SpvCapabilityStorageTexelBufferArrayNonUniformIndexingEXT)
+         { int unused = 0; }
          spv_check_supported(descriptor_array_non_uniform_indexing, cap);
          break;
 
@@ -4394,7 +5031,11 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilityComputeDerivativeGroupQuadsNV:
+         if (cap == SpvCapabilityComputeDerivativeGroupQuadsNV)
+         { int unused = 0; }
       case SpvCapabilityComputeDerivativeGroupLinearNV:
+         if (cap == SpvCapabilityComputeDerivativeGroupLinearNV)
+         { int unused = 0; }
          spv_check_supported(derivative_group, cap);
          break;
 
@@ -4563,15 +5204,35 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpExecutionMode:
+      if (opcode == SpvOpExecutionMode)
+      { int unused = 0; }
    case SpvOpExecutionModeId:
+      if (opcode == SpvOpExecutionModeId)
+      { int unused = 0; }
    case SpvOpDecorationGroup:
+      if (opcode == SpvOpDecorationGroup)
+      { int unused = 0; }
    case SpvOpDecorate:
+      if (opcode == SpvOpDecorate)
+      { int unused = 0; }
    case SpvOpDecorateId:
+      if (opcode == SpvOpDecorateId)
+      { int unused = 0; }
    case SpvOpMemberDecorate:
+      if (opcode == SpvOpMemberDecorate)
+      { int unused = 0; }
    case SpvOpGroupDecorate:
+      if (opcode == SpvOpGroupDecorate)
+      { int unused = 0; }
    case SpvOpGroupMemberDecorate:
+      if (opcode == SpvOpGroupMemberDecorate)
+      { int unused = 0; }
    case SpvOpDecorateString:
+      if (opcode == SpvOpDecorateString)
+      { int unused = 0; }
    case SpvOpMemberDecorateString:
+      if (opcode == SpvOpMemberDecorateString)
+      { int unused = 0; }
       vtn_handle_decoration(b, opcode, w, count);
       break;
 
@@ -4664,12 +5325,26 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       break;
 
    case SpvExecutionModeInputPoints:
+      if (mode->exec_mode == SpvExecutionModeInputPoints)
+      { int unused = 0; }
    case SpvExecutionModeInputLines:
+      if (mode->exec_mode == SpvExecutionModeInputLines)
+      { int unused = 0; }
    case SpvExecutionModeInputLinesAdjacency:
+      if (mode->exec_mode == SpvExecutionModeInputLinesAdjacency)
+      { int unused = 0; }
    case SpvExecutionModeTriangles:
+      if (mode->exec_mode == SpvExecutionModeTriangles)
+      { int unused = 0; }
    case SpvExecutionModeInputTrianglesAdjacency:
+      if (mode->exec_mode == SpvExecutionModeInputTrianglesAdjacency)
+      { int unused = 0; }
    case SpvExecutionModeQuads:
+      if (mode->exec_mode == SpvExecutionModeQuads)
+      { int unused = 0; }
    case SpvExecutionModeIsolines:
+      if (mode->exec_mode == SpvExecutionModeIsolines)
+      { int unused = 0; }
       if (b->shader->info.stage == MESA_SHADER_TESS_CTRL ||
           b->shader->info.stage == MESA_SHADER_TESS_EVAL) {
          b->shader->info.tess.primitive_mode =
@@ -4684,8 +5359,14 @@ vtn_handle_execution_mode(struct vtn_builder *b, struct vtn_value *entry_point,
       break;
 
    case SpvExecutionModeOutputPoints:
+      if (mode->exec_mode == SpvExecutionModeOutputPoints)
+      { int unused = 0; }
    case SpvExecutionModeOutputLineStrip:
+      if (mode->exec_mode == SpvExecutionModeOutputLineStrip)
+      { int unused = 0; }
    case SpvExecutionModeOutputTriangleStrip:
+      if (mode->exec_mode == SpvExecutionModeOutputTriangleStrip)
+      { int unused = 0; }
       vtn_assert(b->shader->info.stage == MESA_SHADER_GEOMETRY);
       b->shader->info.gs.output_primitive =
          gl_primitive_from_spv_execution_mode(b, mode->exec_mode);
@@ -4888,69 +5569,179 @@ vtn_handle_variable_or_type_instruction(struct vtn_builder *b, SpvOp opcode,
 
    switch (opcode) {
    case SpvOpSource:
+      if (opcode == SpvOpSource)
+      { int unused = 0; }
    case SpvOpSourceContinued:
+      if (opcode == SpvOpSourceContinued)
+      { int unused = 0; }
    case SpvOpSourceExtension:
+      if (opcode == SpvOpSourceExtension)
+      { int unused = 0; }
    case SpvOpExtension:
+      if (opcode == SpvOpExtension)
+      { int unused = 0; }
    case SpvOpCapability:
+      if (opcode == SpvOpCapability)
+      { int unused = 0; }
    case SpvOpExtInstImport:
+      if (opcode == SpvOpExtInstImport)
+      { int unused = 0; }
    case SpvOpMemoryModel:
+      if (opcode == SpvOpMemoryModel)
+      { int unused = 0; }
    case SpvOpEntryPoint:
+      if (opcode == SpvOpEntryPoint)
+      { int unused = 0; }
    case SpvOpExecutionMode:
+      if (opcode == SpvOpExecutionMode)
+      { int unused = 0; }
    case SpvOpString:
+      if (opcode == SpvOpString)
+      { int unused = 0; }
    case SpvOpName:
+      if (opcode == SpvOpName)
+      { int unused = 0; }
    case SpvOpMemberName:
+      if (opcode == SpvOpMemberName)
+      { int unused = 0; }
    case SpvOpDecorationGroup:
+      if (opcode == SpvOpDecorationGroup)
+      { int unused = 0; }
    case SpvOpDecorate:
+      if (opcode == SpvOpDecorate)
+      { int unused = 0; }
    case SpvOpDecorateId:
+      if (opcode == SpvOpDecorateId)
+      { int unused = 0; }
    case SpvOpMemberDecorate:
+      if (opcode == SpvOpMemberDecorate)
+      { int unused = 0; }
    case SpvOpGroupDecorate:
+      if (opcode == SpvOpGroupDecorate)
+      { int unused = 0; }
    case SpvOpGroupMemberDecorate:
+      if (opcode == SpvOpGroupMemberDecorate)
+      { int unused = 0; }
    case SpvOpDecorateString:
+      if (opcode == SpvOpDecorateString)
+      { int unused = 0; }
    case SpvOpMemberDecorateString:
+      if (opcode == SpvOpMemberDecorateString)
+      { int unused = 0; }
       vtn_fail("Invalid opcode types and variables section");
       break;
 
    case SpvOpTypeVoid:
+      if (opcode == SpvOpTypeVoid)
+      { int unused = 0; }
    case SpvOpTypeBool:
+      if (opcode == SpvOpTypeBool)
+      { int unused = 0; }
    case SpvOpTypeInt:
+      if (opcode == SpvOpTypeInt)
+      { int unused = 0; }
    case SpvOpTypeFloat:
+      if (opcode == SpvOpTypeFloat)
+      { int unused = 0; }
    case SpvOpTypeVector:
+      if (opcode == SpvOpTypeVector)
+      { int unused = 0; }
    case SpvOpTypeMatrix:
+      if (opcode == SpvOpTypeMatrix)
+      { int unused = 0; }
    case SpvOpTypeImage:
+      if (opcode == SpvOpTypeImage)
+      { int unused = 0; }
    case SpvOpTypeSampler:
+      if (opcode == SpvOpTypeSampler)
+      { int unused = 0; }
    case SpvOpTypeSampledImage:
+      if (opcode == SpvOpTypeSampledImage)
+      { int unused = 0; }
    case SpvOpTypeArray:
+      if (opcode == SpvOpTypeArray)
+      { int unused = 0; }
    case SpvOpTypeRuntimeArray:
+      if (opcode == SpvOpTypeRuntimeArray)
+      { int unused = 0; }
    case SpvOpTypeStruct:
+      if (opcode == SpvOpTypeStruct)
+      { int unused = 0; }
    case SpvOpTypeOpaque:
+      if (opcode == SpvOpTypeOpaque)
+      { int unused = 0; }
    case SpvOpTypePointer:
+      if (opcode == SpvOpTypePointer)
+      { int unused = 0; }
    case SpvOpTypeForwardPointer:
+      if (opcode == SpvOpTypeForwardPointer)
+      { int unused = 0; }
    case SpvOpTypeFunction:
+      if (opcode == SpvOpTypeFunction)
+      { int unused = 0; }
    case SpvOpTypeEvent:
+      if (opcode == SpvOpTypeEvent)
+      { int unused = 0; }
    case SpvOpTypeDeviceEvent:
+      if (opcode == SpvOpTypeDeviceEvent)
+      { int unused = 0; }
    case SpvOpTypeReserveId:
+      if (opcode == SpvOpTypeReserveId)
+      { int unused = 0; }
    case SpvOpTypeQueue:
+      if (opcode == SpvOpTypeQueue)
+      { int unused = 0; }
    case SpvOpTypePipe:
+      if (opcode == SpvOpTypePipe)
+      { int unused = 0; }
    case SpvOpTypeAccelerationStructureKHR:
+      if (opcode == SpvOpTypeAccelerationStructureKHR)
+      { int unused = 0; }
       vtn_handle_type(b, opcode, w, count);
       break;
 
    case SpvOpConstantTrue:
+      if (opcode == SpvOpConstantTrue)
+      { int unused = 0; }
    case SpvOpConstantFalse:
+      if (opcode == SpvOpConstantFalse)
+      { int unused = 0; }
    case SpvOpConstant:
+      if (opcode == SpvOpConstant)
+      { int unused = 0; }
    case SpvOpConstantComposite:
+      if (opcode == SpvOpConstantComposite)
+      { int unused = 0; }
    case SpvOpConstantNull:
+      if (opcode == SpvOpConstantNull)
+      { int unused = 0; }
    case SpvOpSpecConstantTrue:
+      if (opcode == SpvOpSpecConstantTrue)
+      { int unused = 0; }
    case SpvOpSpecConstantFalse:
+      if (opcode == SpvOpSpecConstantFalse)
+      { int unused = 0; }
    case SpvOpSpecConstant:
+      if (opcode == SpvOpSpecConstant)
+      { int unused = 0; }
    case SpvOpSpecConstantComposite:
+      if (opcode == SpvOpSpecConstantComposite)
+      { int unused = 0; }
    case SpvOpSpecConstantOp:
+      if (opcode == SpvOpSpecConstantOp)
+      { int unused = 0; }
       vtn_handle_constant(b, opcode, w, count);
       break;
 
    case SpvOpUndef:
+      if (opcode == SpvOpUndef)
+      { int unused = 0; }
    case SpvOpVariable:
+      if (opcode == SpvOpVariable)
+      { int unused = 0; }
    case SpvOpConstantSampler:
+      if (opcode == SpvOpConstantSampler)
+      { int unused = 0; }
       vtn_handle_variables(b, opcode, w, count);
       break;
 
@@ -5081,7 +5872,11 @@ vtn_handle_ptr(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpPtrEqual:
+      if (opcode == SpvOpPtrEqual)
+      { int unused = 0; }
    case SpvOpPtrNotEqual: {
+      if (opcode == SpvOpPtrNotEqual)
+      { int unused = 0; }
       def = nir_build_addr_ieq(&b->nb,
                                vtn_get_nir_ssa(b, w[3]),
                                vtn_get_nir_ssa(b, w[4]),
@@ -5166,7 +5961,11 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpLoopMerge:
+      if (opcode == SpvOpLoopMerge)
+      { int unused = 0; }
    case SpvOpSelectionMerge:
+      if (opcode == SpvOpSelectionMerge)
+      { int unused = 0; }
       /* This is handled by cfg pre-pass and walk_blocks */
       break;
 
@@ -5181,21 +5980,53 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpVariable:
+      if (opcode == SpvOpVariable)
+      { int unused = 0; }
    case SpvOpLoad:
+      if (opcode == SpvOpLoad)
+      { int unused = 0; }
    case SpvOpStore:
+      if (opcode == SpvOpStore)
+      { int unused = 0; }
    case SpvOpCopyMemory:
+      if (opcode == SpvOpCopyMemory)
+      { int unused = 0; }
    case SpvOpCopyMemorySized:
+      if (opcode == SpvOpCopyMemorySized)
+      { int unused = 0; }
    case SpvOpAccessChain:
+      if (opcode == SpvOpAccessChain)
+      { int unused = 0; }
    case SpvOpPtrAccessChain:
+      if (opcode == SpvOpPtrAccessChain)
+      { int unused = 0; }
    case SpvOpInBoundsAccessChain:
+      if (opcode == SpvOpInBoundsAccessChain)
+      { int unused = 0; }
    case SpvOpInBoundsPtrAccessChain:
+      if (opcode == SpvOpInBoundsPtrAccessChain)
+      { int unused = 0; }
    case SpvOpArrayLength:
+      if (opcode == SpvOpArrayLength)
+      { int unused = 0; }
    case SpvOpConvertPtrToU:
+      if (opcode == SpvOpConvertPtrToU)
+      { int unused = 0; }
    case SpvOpConvertUToPtr:
+      if (opcode == SpvOpConvertUToPtr)
+      { int unused = 0; }
    case SpvOpGenericCastToPtrExplicit:
+      if (opcode == SpvOpGenericCastToPtrExplicit)
+      { int unused = 0; }
    case SpvOpGenericPtrMemSemantics:
+      if (opcode == SpvOpGenericPtrMemSemantics)
+      { int unused = 0; }
    case SpvOpSubgroupBlockReadINTEL:
+      if (opcode == SpvOpSubgroupBlockReadINTEL)
+      { int unused = 0; }
    case SpvOpSubgroupBlockWriteINTEL:
+      if (opcode == SpvOpSubgroupBlockWriteINTEL)
+      { int unused = 0; }
       vtn_handle_variables(b, opcode, w, count);
       break;
 
@@ -5204,29 +6035,71 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpSampledImage:
+      if (opcode == SpvOpSampledImage)
+      { int unused = 0; }
    case SpvOpImage:
+      if (opcode == SpvOpImage)
+      { int unused = 0; }
    case SpvOpImageSampleImplicitLod:
+      if (opcode == SpvOpImageSampleImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleExplicitLod:
+      if (opcode == SpvOpImageSampleExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleDrefImplicitLod:
+      if (opcode == SpvOpImageSampleDrefImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleDrefExplicitLod:
+      if (opcode == SpvOpImageSampleDrefExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjImplicitLod:
+      if (opcode == SpvOpImageSampleProjImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjExplicitLod:
+      if (opcode == SpvOpImageSampleProjExplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjDrefImplicitLod:
+      if (opcode == SpvOpImageSampleProjDrefImplicitLod)
+      { int unused = 0; }
    case SpvOpImageSampleProjDrefExplicitLod:
+      if (opcode == SpvOpImageSampleProjDrefExplicitLod)
+      { int unused = 0; }
    case SpvOpImageFetch:
+      if (opcode == SpvOpImageFetch)
+      { int unused = 0; }
    case SpvOpImageGather:
+      if (opcode == SpvOpImageGather)
+      { int unused = 0; }
    case SpvOpImageDrefGather:
+      if (opcode == SpvOpImageDrefGather)
+      { int unused = 0; }
    case SpvOpImageQueryLod:
+      if (opcode == SpvOpImageQueryLod)
+      { int unused = 0; }
    case SpvOpImageQueryLevels:
+      if (opcode == SpvOpImageQueryLevels)
+      { int unused = 0; }
    case SpvOpImageQuerySamples:
+      if (opcode == SpvOpImageQuerySamples)
+      { int unused = 0; }
       vtn_handle_texture(b, opcode, w, count);
       break;
 
    case SpvOpImageRead:
+      if (opcode == SpvOpImageRead)
+      { int unused = 0; }
    case SpvOpImageWrite:
+      if (opcode == SpvOpImageWrite)
+      { int unused = 0; }
    case SpvOpImageTexelPointer:
+      if (opcode == SpvOpImageTexelPointer)
+      { int unused = 0; }
    case SpvOpImageQueryFormat:
+      if (opcode == SpvOpImageQueryFormat)
+      { int unused = 0; }
    case SpvOpImageQueryOrder:
+      if (opcode == SpvOpImageQueryOrder)
+      { int unused = 0; }
       vtn_handle_image(b, opcode, w, count);
       break;
 
@@ -5249,21 +6122,53 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpAtomicLoad:
+      if (opcode == SpvOpAtomicLoad)
+      { int unused = 0; }
    case SpvOpAtomicExchange:
+      if (opcode == SpvOpAtomicExchange)
+      { int unused = 0; }
    case SpvOpAtomicCompareExchange:
+      if (opcode == SpvOpAtomicCompareExchange)
+      { int unused = 0; }
    case SpvOpAtomicCompareExchangeWeak:
+      if (opcode == SpvOpAtomicCompareExchangeWeak)
+      { int unused = 0; }
    case SpvOpAtomicIIncrement:
+      if (opcode == SpvOpAtomicIIncrement)
+      { int unused = 0; }
    case SpvOpAtomicIDecrement:
+      if (opcode == SpvOpAtomicIDecrement)
+      { int unused = 0; }
    case SpvOpAtomicIAdd:
+      if (opcode == SpvOpAtomicIAdd)
+      { int unused = 0; }
    case SpvOpAtomicISub:
+      if (opcode == SpvOpAtomicISub)
+      { int unused = 0; }
    case SpvOpAtomicSMin:
+      if (opcode == SpvOpAtomicSMin)
+      { int unused = 0; }
    case SpvOpAtomicUMin:
+      if (opcode == SpvOpAtomicUMin)
+      { int unused = 0; }
    case SpvOpAtomicSMax:
+      if (opcode == SpvOpAtomicSMax)
+      { int unused = 0; }
    case SpvOpAtomicUMax:
+      if (opcode == SpvOpAtomicUMax)
+      { int unused = 0; }
    case SpvOpAtomicAnd:
+      if (opcode == SpvOpAtomicAnd)
+      { int unused = 0; }
    case SpvOpAtomicOr:
+      if (opcode == SpvOpAtomicOr)
+      { int unused = 0; }
    case SpvOpAtomicXor:
+      if (opcode == SpvOpAtomicXor)
+      { int unused = 0; }
    case SpvOpAtomicFAddEXT: {
+      if (opcode == SpvOpAtomicFAddEXT)
+      { int unused = 0; }
       struct vtn_value *pointer = vtn_untyped_value(b, w[3]);
       if (pointer->value_type == vtn_value_type_image_pointer) {
          vtn_handle_image(b, opcode, w, count);
@@ -5290,117 +6195,341 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpSNegate:
+      if (opcode == SpvOpSNegate)
+      { int unused = 0; }
    case SpvOpFNegate:
+      if (opcode == SpvOpFNegate)
+      { int unused = 0; }
    case SpvOpNot:
+      if (opcode == SpvOpNot)
+      { int unused = 0; }
    case SpvOpAny:
+      if (opcode == SpvOpAny)
+      { int unused = 0; }
    case SpvOpAll:
+      if (opcode == SpvOpAll)
+      { int unused = 0; }
    case SpvOpConvertFToU:
+      if (opcode == SpvOpConvertFToU)
+      { int unused = 0; }
    case SpvOpConvertFToS:
+      if (opcode == SpvOpConvertFToS)
+      { int unused = 0; }
    case SpvOpConvertSToF:
+      if (opcode == SpvOpConvertSToF)
+      { int unused = 0; }
    case SpvOpConvertUToF:
+      if (opcode == SpvOpConvertUToF)
+      { int unused = 0; }
    case SpvOpUConvert:
+      if (opcode == SpvOpUConvert)
+      { int unused = 0; }
    case SpvOpSConvert:
+      if (opcode == SpvOpSConvert)
+      { int unused = 0; }
    case SpvOpFConvert:
+      if (opcode == SpvOpFConvert)
+      { int unused = 0; }
    case SpvOpQuantizeToF16:
+      if (opcode == SpvOpQuantizeToF16)
+      { int unused = 0; }
    case SpvOpSatConvertSToU:
+      if (opcode == SpvOpSatConvertSToU)
+      { int unused = 0; }
    case SpvOpSatConvertUToS:
+      if (opcode == SpvOpSatConvertUToS)
+      { int unused = 0; }
    case SpvOpPtrCastToGeneric:
+      if (opcode == SpvOpPtrCastToGeneric)
+      { int unused = 0; }
    case SpvOpGenericCastToPtr:
+      if (opcode == SpvOpGenericCastToPtr)
+      { int unused = 0; }
    case SpvOpIsNan:
+      if (opcode == SpvOpIsNan)
+      { int unused = 0; }
    case SpvOpIsInf:
+      if (opcode == SpvOpIsInf)
+      { int unused = 0; }
    case SpvOpIsFinite:
+      if (opcode == SpvOpIsFinite)
+      { int unused = 0; }
    case SpvOpIsNormal:
+      if (opcode == SpvOpIsNormal)
+      { int unused = 0; }
    case SpvOpSignBitSet:
+      if (opcode == SpvOpSignBitSet)
+      { int unused = 0; }
    case SpvOpLessOrGreater:
+      if (opcode == SpvOpLessOrGreater)
+      { int unused = 0; }
    case SpvOpOrdered:
+      if (opcode == SpvOpOrdered)
+      { int unused = 0; }
    case SpvOpUnordered:
+      if (opcode == SpvOpUnordered)
+      { int unused = 0; }
    case SpvOpIAdd:
+      if (opcode == SpvOpIAdd)
+      { int unused = 0; }
    case SpvOpFAdd:
+      if (opcode == SpvOpFAdd)
+      { int unused = 0; }
    case SpvOpISub:
+      if (opcode == SpvOpISub)
+      { int unused = 0; }
    case SpvOpFSub:
+      if (opcode == SpvOpFSub)
+      { int unused = 0; }
    case SpvOpIMul:
+      if (opcode == SpvOpIMul)
+      { int unused = 0; }
    case SpvOpFMul:
+      if (opcode == SpvOpFMul)
+      { int unused = 0; }
    case SpvOpUDiv:
+      if (opcode == SpvOpUDiv)
+      { int unused = 0; }
    case SpvOpSDiv:
+      if (opcode == SpvOpSDiv)
+      { int unused = 0; }
    case SpvOpFDiv:
+      if (opcode == SpvOpFDiv)
+      { int unused = 0; }
    case SpvOpUMod:
+      if (opcode == SpvOpUMod)
+      { int unused = 0; }
    case SpvOpSRem:
+      if (opcode == SpvOpSRem)
+      { int unused = 0; }
    case SpvOpSMod:
+      if (opcode == SpvOpSMod)
+      { int unused = 0; }
    case SpvOpFRem:
+      if (opcode == SpvOpFRem)
+      { int unused = 0; }
    case SpvOpFMod:
+      if (opcode == SpvOpFMod)
+      { int unused = 0; }
    case SpvOpVectorTimesScalar:
+      if (opcode == SpvOpVectorTimesScalar)
+      { int unused = 0; }
    case SpvOpDot:
+      if (opcode == SpvOpDot)
+      { int unused = 0; }
    case SpvOpIAddCarry:
+      if (opcode == SpvOpIAddCarry)
+      { int unused = 0; }
    case SpvOpISubBorrow:
+      if (opcode == SpvOpISubBorrow)
+      { int unused = 0; }
    case SpvOpUMulExtended:
+      if (opcode == SpvOpUMulExtended)
+      { int unused = 0; }
    case SpvOpSMulExtended:
+      if (opcode == SpvOpSMulExtended)
+      { int unused = 0; }
    case SpvOpShiftRightLogical:
+      if (opcode == SpvOpShiftRightLogical)
+      { int unused = 0; }
    case SpvOpShiftRightArithmetic:
+      if (opcode == SpvOpShiftRightArithmetic)
+      { int unused = 0; }
    case SpvOpShiftLeftLogical:
+      if (opcode == SpvOpShiftLeftLogical)
+      { int unused = 0; }
    case SpvOpLogicalEqual:
+      if (opcode == SpvOpLogicalEqual)
+      { int unused = 0; }
    case SpvOpLogicalNotEqual:
+      if (opcode == SpvOpLogicalNotEqual)
+      { int unused = 0; }
    case SpvOpLogicalOr:
+      if (opcode == SpvOpLogicalOr)
+      { int unused = 0; }
    case SpvOpLogicalAnd:
+      if (opcode == SpvOpLogicalAnd)
+      { int unused = 0; }
    case SpvOpLogicalNot:
+      if (opcode == SpvOpLogicalNot)
+      { int unused = 0; }
    case SpvOpBitwiseOr:
+      if (opcode == SpvOpBitwiseOr)
+      { int unused = 0; }
    case SpvOpBitwiseXor:
+      if (opcode == SpvOpBitwiseXor)
+      { int unused = 0; }
    case SpvOpBitwiseAnd:
+      if (opcode == SpvOpBitwiseAnd)
+      { int unused = 0; }
    case SpvOpIEqual:
+      if (opcode == SpvOpIEqual)
+      { int unused = 0; }
    case SpvOpFOrdEqual:
+      if (opcode == SpvOpFOrdEqual)
+      { int unused = 0; }
    case SpvOpFUnordEqual:
+      if (opcode == SpvOpFUnordEqual)
+      { int unused = 0; }
    case SpvOpINotEqual:
+      if (opcode == SpvOpINotEqual)
+      { int unused = 0; }
    case SpvOpFOrdNotEqual:
+      if (opcode == SpvOpFOrdNotEqual)
+      { int unused = 0; }
    case SpvOpFUnordNotEqual:
+      if (opcode == SpvOpFUnordNotEqual)
+      { int unused = 0; }
    case SpvOpULessThan:
+      if (opcode == SpvOpULessThan)
+      { int unused = 0; }
    case SpvOpSLessThan:
+      if (opcode == SpvOpSLessThan)
+      { int unused = 0; }
    case SpvOpFOrdLessThan:
+      if (opcode == SpvOpFOrdLessThan)
+      { int unused = 0; }
    case SpvOpFUnordLessThan:
+      if (opcode == SpvOpFUnordLessThan)
+      { int unused = 0; }
    case SpvOpUGreaterThan:
+      if (opcode == SpvOpUGreaterThan)
+      { int unused = 0; }
    case SpvOpSGreaterThan:
+      if (opcode == SpvOpSGreaterThan)
+      { int unused = 0; }
    case SpvOpFOrdGreaterThan:
+      if (opcode == SpvOpFOrdGreaterThan)
+      { int unused = 0; }
    case SpvOpFUnordGreaterThan:
+      if (opcode == SpvOpFUnordGreaterThan)
+      { int unused = 0; }
    case SpvOpULessThanEqual:
+      if (opcode == SpvOpULessThanEqual)
+      { int unused = 0; }
    case SpvOpSLessThanEqual:
+      if (opcode == SpvOpSLessThanEqual)
+      { int unused = 0; }
    case SpvOpFOrdLessThanEqual:
+      if (opcode == SpvOpFOrdLessThanEqual)
+      { int unused = 0; }
    case SpvOpFUnordLessThanEqual:
+      if (opcode == SpvOpFUnordLessThanEqual)
+      { int unused = 0; }
    case SpvOpUGreaterThanEqual:
+      if (opcode == SpvOpUGreaterThanEqual)
+      { int unused = 0; }
    case SpvOpSGreaterThanEqual:
+      if (opcode == SpvOpSGreaterThanEqual)
+      { int unused = 0; }
    case SpvOpFOrdGreaterThanEqual:
+      if (opcode == SpvOpFOrdGreaterThanEqual)
+      { int unused = 0; }
    case SpvOpFUnordGreaterThanEqual:
+      if (opcode == SpvOpFUnordGreaterThanEqual)
+      { int unused = 0; }
    case SpvOpDPdx:
+      if (opcode == SpvOpDPdx)
+      { int unused = 0; }
    case SpvOpDPdy:
+      if (opcode == SpvOpDPdy)
+      { int unused = 0; }
    case SpvOpFwidth:
+      if (opcode == SpvOpFwidth)
+      { int unused = 0; }
    case SpvOpDPdxFine:
+      if (opcode == SpvOpDPdxFine)
+      { int unused = 0; }
    case SpvOpDPdyFine:
+      if (opcode == SpvOpDPdyFine)
+      { int unused = 0; }
    case SpvOpFwidthFine:
+      if (opcode == SpvOpFwidthFine)
+      { int unused = 0; }
    case SpvOpDPdxCoarse:
+      if (opcode == SpvOpDPdxCoarse)
+      { int unused = 0; }
    case SpvOpDPdyCoarse:
+      if (opcode == SpvOpDPdyCoarse)
+      { int unused = 0; }
    case SpvOpFwidthCoarse:
+      if (opcode == SpvOpFwidthCoarse)
+      { int unused = 0; }
    case SpvOpBitFieldInsert:
+      if (opcode == SpvOpBitFieldInsert)
+      { int unused = 0; }
    case SpvOpBitFieldSExtract:
+      if (opcode == SpvOpBitFieldSExtract)
+      { int unused = 0; }
    case SpvOpBitFieldUExtract:
+      if (opcode == SpvOpBitFieldUExtract)
+      { int unused = 0; }
    case SpvOpBitReverse:
+      if (opcode == SpvOpBitReverse)
+      { int unused = 0; }
    case SpvOpBitCount:
+      if (opcode == SpvOpBitCount)
+      { int unused = 0; }
    case SpvOpTranspose:
+      if (opcode == SpvOpTranspose)
+      { int unused = 0; }
    case SpvOpOuterProduct:
+      if (opcode == SpvOpOuterProduct)
+      { int unused = 0; }
    case SpvOpMatrixTimesScalar:
+      if (opcode == SpvOpMatrixTimesScalar)
+      { int unused = 0; }
    case SpvOpVectorTimesMatrix:
+      if (opcode == SpvOpVectorTimesMatrix)
+      { int unused = 0; }
    case SpvOpMatrixTimesVector:
+      if (opcode == SpvOpMatrixTimesVector)
+      { int unused = 0; }
    case SpvOpMatrixTimesMatrix:
+      if (opcode == SpvOpMatrixTimesMatrix)
+      { int unused = 0; }
    case SpvOpUCountLeadingZerosINTEL:
+      if (opcode == SpvOpUCountLeadingZerosINTEL)
+      { int unused = 0; }
    case SpvOpUCountTrailingZerosINTEL:
+      if (opcode == SpvOpUCountTrailingZerosINTEL)
+      { int unused = 0; }
    case SpvOpAbsISubINTEL:
+      if (opcode == SpvOpAbsISubINTEL)
+      { int unused = 0; }
    case SpvOpAbsUSubINTEL:
+      if (opcode == SpvOpAbsUSubINTEL)
+      { int unused = 0; }
    case SpvOpIAddSatINTEL:
+      if (opcode == SpvOpIAddSatINTEL)
+      { int unused = 0; }
    case SpvOpUAddSatINTEL:
+      if (opcode == SpvOpUAddSatINTEL)
+      { int unused = 0; }
    case SpvOpIAverageINTEL:
+      if (opcode == SpvOpIAverageINTEL)
+      { int unused = 0; }
    case SpvOpUAverageINTEL:
+      if (opcode == SpvOpUAverageINTEL)
+      { int unused = 0; }
    case SpvOpIAverageRoundedINTEL:
+      if (opcode == SpvOpIAverageRoundedINTEL)
+      { int unused = 0; }
    case SpvOpUAverageRoundedINTEL:
+      if (opcode == SpvOpUAverageRoundedINTEL)
+      { int unused = 0; }
    case SpvOpISubSatINTEL:
+      if (opcode == SpvOpISubSatINTEL)
+      { int unused = 0; }
    case SpvOpUSubSatINTEL:
+      if (opcode == SpvOpUSubSatINTEL)
+      { int unused = 0; }
    case SpvOpIMul32x16INTEL:
+      if (opcode == SpvOpIMul32x16INTEL)
+      { int unused = 0; }
    case SpvOpUMul32x16INTEL:
+      if (opcode == SpvOpUMul32x16INTEL)
+      { int unused = 0; }
       vtn_handle_alu(b, opcode, w, count);
       break;
 
@@ -5409,94 +6538,254 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
       break;
 
    case SpvOpVectorExtractDynamic:
+      if (opcode == SpvOpVectorExtractDynamic)
+      { int unused = 0; }
    case SpvOpVectorInsertDynamic:
+      if (opcode == SpvOpVectorInsertDynamic)
+      { int unused = 0; }
    case SpvOpVectorShuffle:
+      if (opcode == SpvOpVectorShuffle)
+      { int unused = 0; }
    case SpvOpCompositeConstruct:
+      if (opcode == SpvOpCompositeConstruct)
+      { int unused = 0; }
    case SpvOpCompositeExtract:
+      if (opcode == SpvOpCompositeExtract)
+      { int unused = 0; }
    case SpvOpCompositeInsert:
+      if (opcode == SpvOpCompositeInsert)
+      { int unused = 0; }
    case SpvOpCopyLogical:
+      if (opcode == SpvOpCopyLogical)
+      { int unused = 0; }
    case SpvOpCopyObject:
+      if (opcode == SpvOpCopyObject)
+      { int unused = 0; }
       vtn_handle_composite(b, opcode, w, count);
       break;
 
    case SpvOpEmitVertex:
+      if (opcode == SpvOpEmitVertex)
+      { int unused = 0; }
    case SpvOpEndPrimitive:
+      if (opcode == SpvOpEndPrimitive)
+      { int unused = 0; }
    case SpvOpEmitStreamVertex:
+      if (opcode == SpvOpEmitStreamVertex)
+      { int unused = 0; }
    case SpvOpEndStreamPrimitive:
+      if (opcode == SpvOpEndStreamPrimitive)
+      { int unused = 0; }
    case SpvOpControlBarrier:
+      if (opcode == SpvOpControlBarrier)
+      { int unused = 0; }
    case SpvOpMemoryBarrier:
+      if (opcode == SpvOpMemoryBarrier)
+      { int unused = 0; }
       vtn_handle_barrier(b, opcode, w, count);
       break;
 
    case SpvOpGroupNonUniformElect:
+      if (opcode == SpvOpGroupNonUniformElect)
+      { int unused = 0; }
    case SpvOpGroupNonUniformAll:
+      if (opcode == SpvOpGroupNonUniformAll)
+      { int unused = 0; }
    case SpvOpGroupNonUniformAny:
+      if (opcode == SpvOpGroupNonUniformAny)
+      { int unused = 0; }
    case SpvOpGroupNonUniformAllEqual:
+      if (opcode == SpvOpGroupNonUniformAllEqual)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBroadcast:
+      if (opcode == SpvOpGroupNonUniformBroadcast)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBroadcastFirst:
+      if (opcode == SpvOpGroupNonUniformBroadcastFirst)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBallot:
+      if (opcode == SpvOpGroupNonUniformBallot)
+      { int unused = 0; }
    case SpvOpGroupNonUniformInverseBallot:
+      if (opcode == SpvOpGroupNonUniformInverseBallot)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBallotBitExtract:
+      if (opcode == SpvOpGroupNonUniformBallotBitExtract)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBallotBitCount:
+      if (opcode == SpvOpGroupNonUniformBallotBitCount)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBallotFindLSB:
+      if (opcode == SpvOpGroupNonUniformBallotFindLSB)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBallotFindMSB:
+      if (opcode == SpvOpGroupNonUniformBallotFindMSB)
+      { int unused = 0; }
    case SpvOpGroupNonUniformShuffle:
+      if (opcode == SpvOpGroupNonUniformShuffle)
+      { int unused = 0; }
    case SpvOpGroupNonUniformShuffleXor:
+      if (opcode == SpvOpGroupNonUniformShuffleXor)
+      { int unused = 0; }
    case SpvOpGroupNonUniformShuffleUp:
+      if (opcode == SpvOpGroupNonUniformShuffleUp)
+      { int unused = 0; }
    case SpvOpGroupNonUniformShuffleDown:
+      if (opcode == SpvOpGroupNonUniformShuffleDown)
+      { int unused = 0; }
    case SpvOpGroupNonUniformIAdd:
+      if (opcode == SpvOpGroupNonUniformIAdd)
+      { int unused = 0; }
    case SpvOpGroupNonUniformFAdd:
+      if (opcode == SpvOpGroupNonUniformFAdd)
+      { int unused = 0; }
    case SpvOpGroupNonUniformIMul:
+      if (opcode == SpvOpGroupNonUniformIMul)
+      { int unused = 0; }
    case SpvOpGroupNonUniformFMul:
+      if (opcode == SpvOpGroupNonUniformFMul)
+      { int unused = 0; }
    case SpvOpGroupNonUniformSMin:
+      if (opcode == SpvOpGroupNonUniformSMin)
+      { int unused = 0; }
    case SpvOpGroupNonUniformUMin:
+      if (opcode == SpvOpGroupNonUniformUMin)
+      { int unused = 0; }
    case SpvOpGroupNonUniformFMin:
+      if (opcode == SpvOpGroupNonUniformFMin)
+      { int unused = 0; }
    case SpvOpGroupNonUniformSMax:
+      if (opcode == SpvOpGroupNonUniformSMax)
+      { int unused = 0; }
    case SpvOpGroupNonUniformUMax:
+      if (opcode == SpvOpGroupNonUniformUMax)
+      { int unused = 0; }
    case SpvOpGroupNonUniformFMax:
+      if (opcode == SpvOpGroupNonUniformFMax)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBitwiseAnd:
+      if (opcode == SpvOpGroupNonUniformBitwiseAnd)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBitwiseOr:
+      if (opcode == SpvOpGroupNonUniformBitwiseOr)
+      { int unused = 0; }
    case SpvOpGroupNonUniformBitwiseXor:
+      if (opcode == SpvOpGroupNonUniformBitwiseXor)
+      { int unused = 0; }
    case SpvOpGroupNonUniformLogicalAnd:
+      if (opcode == SpvOpGroupNonUniformLogicalAnd)
+      { int unused = 0; }
    case SpvOpGroupNonUniformLogicalOr:
+      if (opcode == SpvOpGroupNonUniformLogicalOr)
+      { int unused = 0; }
    case SpvOpGroupNonUniformLogicalXor:
+      if (opcode == SpvOpGroupNonUniformLogicalXor)
+      { int unused = 0; }
    case SpvOpGroupNonUniformQuadBroadcast:
+      if (opcode == SpvOpGroupNonUniformQuadBroadcast)
+      { int unused = 0; }
    case SpvOpGroupNonUniformQuadSwap:
+      if (opcode == SpvOpGroupNonUniformQuadSwap)
+      { int unused = 0; }
    case SpvOpGroupAll:
+      if (opcode == SpvOpGroupAll)
+      { int unused = 0; }
    case SpvOpGroupAny:
+      if (opcode == SpvOpGroupAny)
+      { int unused = 0; }
    case SpvOpGroupBroadcast:
+      if (opcode == SpvOpGroupBroadcast)
+      { int unused = 0; }
    case SpvOpGroupIAdd:
+      if (opcode == SpvOpGroupIAdd)
+      { int unused = 0; }
    case SpvOpGroupFAdd:
+      if (opcode == SpvOpGroupFAdd)
+      { int unused = 0; }
    case SpvOpGroupFMin:
+      if (opcode == SpvOpGroupFMin)
+      { int unused = 0; }
    case SpvOpGroupUMin:
+      if (opcode == SpvOpGroupUMin)
+      { int unused = 0; }
    case SpvOpGroupSMin:
+      if (opcode == SpvOpGroupSMin)
+      { int unused = 0; }
    case SpvOpGroupFMax:
+      if (opcode == SpvOpGroupFMax)
+      { int unused = 0; }
    case SpvOpGroupUMax:
+      if (opcode == SpvOpGroupUMax)
+      { int unused = 0; }
    case SpvOpGroupSMax:
+      if (opcode == SpvOpGroupSMax)
+      { int unused = 0; }
    case SpvOpSubgroupBallotKHR:
+      if (opcode == SpvOpSubgroupBallotKHR)
+      { int unused = 0; }
    case SpvOpSubgroupFirstInvocationKHR:
+      if (opcode == SpvOpSubgroupFirstInvocationKHR)
+      { int unused = 0; }
    case SpvOpSubgroupReadInvocationKHR:
+      if (opcode == SpvOpSubgroupReadInvocationKHR)
+      { int unused = 0; }
    case SpvOpSubgroupAllKHR:
+      if (opcode == SpvOpSubgroupAllKHR)
+      { int unused = 0; }
    case SpvOpSubgroupAnyKHR:
+      if (opcode == SpvOpSubgroupAnyKHR)
+      { int unused = 0; }
    case SpvOpSubgroupAllEqualKHR:
+      if (opcode == SpvOpSubgroupAllEqualKHR)
+      { int unused = 0; }
    case SpvOpGroupIAddNonUniformAMD:
+      if (opcode == SpvOpGroupIAddNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupFAddNonUniformAMD:
+      if (opcode == SpvOpGroupFAddNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupFMinNonUniformAMD:
+      if (opcode == SpvOpGroupFMinNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupUMinNonUniformAMD:
+      if (opcode == SpvOpGroupUMinNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupSMinNonUniformAMD:
+      if (opcode == SpvOpGroupSMinNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupFMaxNonUniformAMD:
+      if (opcode == SpvOpGroupFMaxNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupUMaxNonUniformAMD:
+      if (opcode == SpvOpGroupUMaxNonUniformAMD)
+      { int unused = 0; }
    case SpvOpGroupSMaxNonUniformAMD:
+      if (opcode == SpvOpGroupSMaxNonUniformAMD)
+      { int unused = 0; }
    case SpvOpSubgroupShuffleINTEL:
+      if (opcode == SpvOpSubgroupShuffleINTEL)
+      { int unused = 0; }
    case SpvOpSubgroupShuffleDownINTEL:
+      if (opcode == SpvOpSubgroupShuffleDownINTEL)
+      { int unused = 0; }
    case SpvOpSubgroupShuffleUpINTEL:
+      if (opcode == SpvOpSubgroupShuffleUpINTEL)
+      { int unused = 0; }
    case SpvOpSubgroupShuffleXorINTEL:
+      if (opcode == SpvOpSubgroupShuffleXorINTEL)
+      { int unused = 0; }
       vtn_handle_subgroup(b, opcode, w, count);
       break;
 
    case SpvOpPtrDiff:
+      if (opcode == SpvOpPtrDiff)
+      { int unused = 0; }
    case SpvOpPtrEqual:
+      if (opcode == SpvOpPtrEqual)
+      { int unused = 0; }
    case SpvOpPtrNotEqual:
+      if (opcode == SpvOpPtrNotEqual)
+      { int unused = 0; }
       vtn_handle_ptr(b, opcode, w, count);
       break;
 

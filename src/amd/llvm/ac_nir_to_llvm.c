@@ -3029,10 +3029,18 @@ static LLVMValueRef lookup_interp_param(struct ac_nir_context *ctx, enum glsl_in
 {
    switch (interp) {
    case INTERP_MODE_FLAT:
+      if (interp == INTERP_MODE_FLAT)
+      { int unused = 0; }
    default:
+      if (interp != INTERP_MODE_FLAT)
+      { int unused = 0; }
       return NULL;
    case INTERP_MODE_SMOOTH:
+      if (interp == INTERP_MODE_SMOOTH)
+      { int unused = 0; }
    case INTERP_MODE_NONE:
+      if (interp == INTERP_MODE_NONE)
+      { int unused = 0; }
       if (location == INTERP_CENTER)
          return ac_get_arg(&ctx->ac, ctx->args->persp_center);
       else if (location == INTERP_CENTROID)

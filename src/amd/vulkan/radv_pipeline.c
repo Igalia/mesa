@@ -442,9 +442,17 @@ static bool is_dual_src(VkBlendFactor factor)
 {
 	switch (factor) {
 	case VK_BLEND_FACTOR_SRC1_COLOR:
+		if (factor == VK_BLEND_FACTOR_SRC1_COLOR)
+		{ int unused = 0; }
 	case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:
+		if (factor == VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR)
+		{ int unused = 0; }
 	case VK_BLEND_FACTOR_SRC1_ALPHA:
+		if (factor == VK_BLEND_FACTOR_SRC1_ALPHA)
+		{ int unused = 0; }
 	case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
+		if (factor == VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA)
+		{ int unused = 0; }
 		return true;
 	default:
 		return false;
@@ -1217,17 +1225,39 @@ radv_prim_can_use_guardband(enum VkPrimitiveTopology topology)
 {
 	switch (topology) {
 	case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY)
+		{ int unused = 0; }
 		return false;
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
+		{ int unused = 0; }
 		return true;
 	default:
 		unreachable("unhandled primitive type");
@@ -1241,15 +1271,31 @@ si_conv_gl_prim_to_gs_out(unsigned gl_prim)
 	case 0: /* GL_POINTS */
 		return V_028A6C_POINTLIST;
 	case 1: /* GL_LINES */
+		if (gl_prim == 1)
+		{ int unused = 0; }
 	case 3: /* GL_LINE_STRIP */
+		if (gl_prim == 3)
+		{ int unused = 0; }
 	case 0xA: /* GL_LINE_STRIP_ADJACENCY_ARB */
+		if (gl_prim == 0xA)
+		{ int unused = 0; }
 	case 0x8E7A: /* GL_ISOLINES */
+		if (gl_prim == 0x8E7A)
+		{ int unused = 0; }
 		return V_028A6C_LINESTRIP;
 
 	case 4: /* GL_TRIANGLES */
+		if (gl_prim == 4)
+		{ int unused = 0; }
 	case 0xc: /* GL_TRIANGLES_ADJACENCY_ARB */
+		if (gl_prim == 0xc)
+		{ int unused = 0; }
 	case 5: /* GL_TRIANGLE_STRIP */
+		if (gl_prim == 5)
+		{ int unused = 0; }
 	case 7: /* GL_QUADS */
+		if (gl_prim == 7)
+		{ int unused = 0; }
 		return V_028A6C_TRISTRIP;
 	default:
 		assert(0);
@@ -1262,18 +1308,40 @@ si_conv_prim_to_gs_out(enum VkPrimitiveTopology topology)
 {
 	switch (topology) {
 	case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
+		{ int unused = 0; }
 		return V_028A6C_POINTLIST;
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY)
+		{ int unused = 0; }
 		return V_028A6C_LINESTRIP;
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+		if (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY)
+		{ int unused = 0; }
 		return V_028A6C_TRISTRIP;
 	default:
 		assert(0);
@@ -1794,9 +1862,17 @@ gfx9_get_gs_info(const struct radv_pipeline_key *key,
 	bool uses_adjacency;
 	switch(key->topology) {
 	case VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY:
+		if (key->topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY:
+		if (key->topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
+		if (key->topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY)
+		{ int unused = 0; }
 	case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+		if (key->topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY)
+		{ int unused = 0; }
 		uses_adjacency = true;
 		break;
 	default:
@@ -2530,15 +2606,27 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
 			VkFormat format = input_state->pVertexAttributeDescriptions[i].format;
 			switch(format) {
 			case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+				if (format == VK_FORMAT_A2R10G10B10_SNORM_PACK32)
+				{ int unused = 0; }
 			case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+				if (format == VK_FORMAT_A2B10G10R10_SNORM_PACK32)
+				{ int unused = 0; }
 				adjust = AC_FETCH_FORMAT_SNORM;
 				break;
 			case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
+				if (format == VK_FORMAT_A2R10G10B10_SSCALED_PACK32)
+				{ int unused = 0; }
 			case VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
+				if (format == VK_FORMAT_A2B10G10R10_SSCALED_PACK32)
+				{ int unused = 0; }
 				adjust = AC_FETCH_FORMAT_SSCALED;
 				break;
 			case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+				if (format == VK_FORMAT_A2R10G10B10_SINT_PACK32)
+				{ int unused = 0; }
 			case VK_FORMAT_A2B10G10R10_SINT_PACK32:
+				if (format == VK_FORMAT_A2B10G10R10_SINT_PACK32)
+				{ int unused = 0; }
 				adjust = AC_FETCH_FORMAT_SINT;
 				break;
 			default:
@@ -2549,18 +2637,44 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
 
 		switch (desc->format) {
 		case VK_FORMAT_B8G8R8A8_UNORM:
+			if (desc->format == VK_FORMAT_B8G8R8A8_UNORM)
+			{ int unused = 0; }
 		case VK_FORMAT_B8G8R8A8_SNORM:
+			if (desc->format == VK_FORMAT_B8G8R8A8_SNORM)
+			{ int unused = 0; }
 		case VK_FORMAT_B8G8R8A8_USCALED:
+			if (desc->format == VK_FORMAT_B8G8R8A8_USCALED)
+			{ int unused = 0; }
 		case VK_FORMAT_B8G8R8A8_SSCALED:
+			if (desc->format == VK_FORMAT_B8G8R8A8_SSCALED)
+			{ int unused = 0; }
 		case VK_FORMAT_B8G8R8A8_UINT:
+			if (desc->format == VK_FORMAT_B8G8R8A8_UINT)
+			{ int unused = 0; }
 		case VK_FORMAT_B8G8R8A8_SINT:
+			if (desc->format == VK_FORMAT_B8G8R8A8_SINT)
+			{ int unused = 0; }
 		case VK_FORMAT_B8G8R8A8_SRGB:
+			if (desc->format == VK_FORMAT_B8G8R8A8_SRGB)
+			{ int unused = 0; }
 		case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+			if (desc->format == VK_FORMAT_A2R10G10B10_UNORM_PACK32)
+			{ int unused = 0; }
 		case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+			if (desc->format == VK_FORMAT_A2R10G10B10_SNORM_PACK32)
+			{ int unused = 0; }
 		case VK_FORMAT_A2R10G10B10_USCALED_PACK32:
+			if (desc->format == VK_FORMAT_A2R10G10B10_USCALED_PACK32)
+			{ int unused = 0; }
 		case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
+			if (desc->format == VK_FORMAT_A2R10G10B10_SSCALED_PACK32)
+			{ int unused = 0; }
 		case VK_FORMAT_A2R10G10B10_UINT_PACK32:
+			if (desc->format == VK_FORMAT_A2R10G10B10_UINT_PACK32)
+			{ int unused = 0; }
 		case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+			if (desc->format == VK_FORMAT_A2R10G10B10_SINT_PACK32)
+			{ int unused = 0; }
 			key.vertex_post_shuffle |= 1 << location;
 			break;
 		default:

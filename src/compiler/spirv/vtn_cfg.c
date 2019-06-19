@@ -246,19 +246,39 @@ vtn_cfg_handle_prepass_instruction(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpSelectionMerge:
+      if (opcode == SpvOpSelectionMerge)
+      { int unused = 0; }
    case SpvOpLoopMerge:
+      if (opcode == SpvOpLoopMerge)
+      { int unused = 0; }
       vtn_assert(b->block && b->block->merge == NULL);
       b->block->merge = w;
       break;
 
    case SpvOpBranch:
+      if (opcode == SpvOpBranch)
+      { int unused = 0; }
    case SpvOpBranchConditional:
+      if (opcode == SpvOpBranchConditional)
+      { int unused = 0; }
    case SpvOpSwitch:
+      if (opcode == SpvOpSwitch)
+      { int unused = 0; }
    case SpvOpKill:
+      if (opcode == SpvOpKill)
+      { int unused = 0; }
    case SpvOpTerminateInvocation:
+      if (opcode == SpvOpTerminateInvocation)
+      { int unused = 0; }
    case SpvOpReturn:
+      if (opcode == SpvOpReturn)
+      { int unused = 0; }
    case SpvOpReturnValue:
+      if (opcode == SpvOpReturnValue)
+      { int unused = 0; }
    case SpvOpUnreachable:
+      if (opcode == SpvOpUnreachable)
+      { int unused = 0; }
       vtn_assert(b->block && b->block->branch == NULL);
       b->block->branch = w;
       b->block = NULL;

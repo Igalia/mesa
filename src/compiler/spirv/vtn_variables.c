@@ -796,7 +796,11 @@ vtn_get_builtin_location(struct vtn_builder *b,
       *location = VARYING_SLOT_CULL_DIST0;
       break;
    case SpvBuiltInVertexId:
+      if (builtin == SpvBuiltInVertexId)
+      { int unused = 0; }
    case SpvBuiltInVertexIndex:
+      if (builtin == SpvBuiltInVertexIndex)
+      { int unused = 0; }
       /* The Vulkan spec defines VertexIndex to be non-zero-based and doesn't
        * allow VertexId.  The ARB_gl_spirv spec defines VertexId to be the
        * same as gl_VertexID, which is non-zero-based, and removes
@@ -1176,9 +1180,17 @@ apply_var_decoration(struct vtn_builder *b,
 
       switch (builtin) {
       case SpvBuiltInTessLevelOuter:
+         if (builtin == SpvBuiltInTessLevelOuter)
+         { int unused = 0; }
       case SpvBuiltInTessLevelInner:
+         if (builtin == SpvBuiltInTessLevelInner)
+         { int unused = 0; }
       case SpvBuiltInClipDistance:
+         if (builtin == SpvBuiltInClipDistance)
+         { int unused = 0; }
       case SpvBuiltInCullDistance:
+         if (builtin == SpvBuiltInCullDistance)
+         { int unused = 0; }
          var_data->compact = true;
          break;
       default:
@@ -1187,12 +1199,26 @@ apply_var_decoration(struct vtn_builder *b,
    }
 
    case SpvDecorationSpecId:
+                              if (dec->decoration == SpvDecorationSpecId)
+                              { int unused = 0; }
    case SpvDecorationRowMajor:
+                              if (dec->decoration == SpvDecorationRowMajor)
+                              { int unused = 0; }
    case SpvDecorationColMajor:
+                              if (dec->decoration == SpvDecorationColMajor)
+                              { int unused = 0; }
    case SpvDecorationMatrixStride:
+                              if (dec->decoration == SpvDecorationMatrixStride)
+                              { int unused = 0; }
    case SpvDecorationUniform:
+                              if (dec->decoration == SpvDecorationUniform)
+                              { int unused = 0; }
    case SpvDecorationUniformId:
+                              if (dec->decoration == SpvDecorationUniformId)
+                              { int unused = 0; }
    case SpvDecorationLinkageAttributes:
+                              if (dec->decoration == SpvDecorationLinkageAttributes)
+                              { int unused = 0; }
       break; /* Do nothing with these here */
 
    case SpvDecorationPatch:
@@ -1203,16 +1229,34 @@ apply_var_decoration(struct vtn_builder *b,
       vtn_fail("Handled above");
 
    case SpvDecorationBlock:
+      if (dec->decoration == SpvDecorationBlock)
+      { int unused = 0; }
    case SpvDecorationBufferBlock:
+      if (dec->decoration == SpvDecorationBufferBlock)
+      { int unused = 0; }
    case SpvDecorationArrayStride:
+      if (dec->decoration == SpvDecorationArrayStride)
+      { int unused = 0; }
    case SpvDecorationGLSLShared:
+      if (dec->decoration == SpvDecorationGLSLShared)
+      { int unused = 0; }
    case SpvDecorationGLSLPacked:
+      if (dec->decoration == SpvDecorationGLSLPacked)
+      { int unused = 0; }
       break; /* These can apply to a type but we don't care about them */
 
    case SpvDecorationBinding:
+      if (dec->decoration == SpvDecorationBinding)
+      { int unused = 0; }
    case SpvDecorationDescriptorSet:
+      if (dec->decoration == SpvDecorationDescriptorSet)
+      { int unused = 0; }
    case SpvDecorationNoContraction:
+      if (dec->decoration == SpvDecorationNoContraction)
+      { int unused = 0; }
    case SpvDecorationInputAttachmentIndex:
+      if (dec->decoration == SpvDecorationInputAttachmentIndex)
+      { int unused = 0; }
       vtn_warn("Decoration not allowed for variable or structure member: %s",
                spirv_decoration_to_string(dec->decoration));
       break;
@@ -1236,11 +1280,23 @@ apply_var_decoration(struct vtn_builder *b,
       break;
 
    case SpvDecorationCPacked:
+      if (dec->decoration == SpvDecorationCPacked)
+      { int unused = 0; }
    case SpvDecorationSaturatedConversion:
+      if (dec->decoration == SpvDecorationSaturatedConversion)
+      { int unused = 0; }
    case SpvDecorationFuncParamAttr:
+      if (dec->decoration == SpvDecorationFuncParamAttr)
+      { int unused = 0; }
    case SpvDecorationFPRoundingMode:
+      if (dec->decoration == SpvDecorationFPRoundingMode)
+      { int unused = 0; }
    case SpvDecorationFPFastMathMode:
+      if (dec->decoration == SpvDecorationFPFastMathMode)
+      { int unused = 0; }
    case SpvDecorationAlignment:
+      if (dec->decoration == SpvDecorationAlignment)
+      { int unused = 0; }
       if (b->shader->info.stage != MESA_SHADER_KERNEL) {
          vtn_warn("Decoration only allowed for CL-style kernels: %s",
                   spirv_decoration_to_string(dec->decoration));
@@ -1253,7 +1309,11 @@ apply_var_decoration(struct vtn_builder *b,
       break;
 
    case SpvDecorationRestrictPointerEXT:
+      if (dec->decoration == SpvDecorationRestrictPointerEXT)
+      { int unused = 0; }
    case SpvDecorationAliasedPointerEXT:
+      if (dec->decoration == SpvDecorationAliasedPointerEXT)
+      { int unused = 0; }
       /* TODO: We should actually plumb alias information through NIR. */
       break;
 
@@ -2258,9 +2318,17 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
    }
 
    case SpvOpAccessChain:
+      if (opcode == SpvOpAccessChain)
+      { int unused = 0; }
    case SpvOpPtrAccessChain:
+      if (opcode == SpvOpPtrAccessChain)
+      { int unused = 0; }
    case SpvOpInBoundsAccessChain:
+      if (opcode == SpvOpInBoundsAccessChain)
+      { int unused = 0; }
    case SpvOpInBoundsPtrAccessChain: {
+      if (opcode == SpvOpInBoundsPtrAccessChain)
+      { int unused = 0; }
       struct vtn_access_chain *chain = vtn_access_chain_create(b, count - 4);
       enum gl_access_qualifier access = 0;
       chain->ptr_as_array = (opcode == SpvOpPtrAccessChain || opcode == SpvOpInBoundsPtrAccessChain);
@@ -2617,6 +2685,8 @@ vtn_handle_variables(struct vtn_builder *b, SpvOp opcode,
    }
 
    default:
+      if (opcode != SpvOpCopyMemorySized)
+      { int unused = 0; }
       vtn_fail_with_opcode("Unhandled opcode", opcode);
    }
 }

@@ -57,7 +57,11 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       break;
 
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      if (type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+      { int unused = 0; }
    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      if (type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+      { int unused = 0; }
       data = ANV_DESCRIPTOR_SURFACE_STATE;
       if (device->has_bindless_images)
          data |= ANV_DESCRIPTOR_SAMPLED_IMAGE;
@@ -68,7 +72,11 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       break;
 
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      if (type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+      { int unused = 0; }
    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+      if (type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+      { int unused = 0; }
       data = ANV_DESCRIPTOR_SURFACE_STATE;
       if (device->info.gen < 9)
          data |= ANV_DESCRIPTOR_IMAGE_PARAM;
@@ -77,13 +85,21 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       break;
 
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+      { int unused = 0; }
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      if (type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+      { int unused = 0; }
       data = ANV_DESCRIPTOR_SURFACE_STATE |
              ANV_DESCRIPTOR_BUFFER_VIEW;
       break;
 
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+      if (type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+      { int unused = 0; }
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+      if (type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+      { int unused = 0; }
       data = ANV_DESCRIPTOR_SURFACE_STATE;
       break;
 
@@ -483,7 +499,11 @@ VkResult anv_CreateDescriptorSetLayout(
 
       switch (binding->descriptorType) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
+         if (binding->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         if (binding->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+         { int unused = 0; }
          set_layout->binding[b].max_plane_count = 1;
          if (binding->pImmutableSamplers) {
             set_layout->binding[b].immutable_samplers = samplers;
@@ -510,7 +530,11 @@ VkResult anv_CreateDescriptorSetLayout(
 
       switch (binding->descriptorType) {
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         if (binding->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         if (binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+         { int unused = 0; }
          set_layout->binding[b].dynamic_offset_index = dynamic_offset_count;
          set_layout->dynamic_offset_stages[dynamic_offset_count] = binding->stageFlags;
          dynamic_offset_count += binding->descriptorCount;
@@ -1303,8 +1327,14 @@ anv_descriptor_set_write_image_view(struct anv_device *device,
       break;
 
    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      if (type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+      { int unused = 0; }
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      if (type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+      { int unused = 0; }
    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+      if (type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+      { int unused = 0; }
       image_view = anv_image_view_from_handle(info->imageView);
       break;
 
@@ -1567,10 +1597,20 @@ void anv_UpdateDescriptorSets(
 
       switch (write->descriptorType) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+         { int unused = 0; }
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
             anv_descriptor_set_write_image_view(device, set,
                                                 write->pImageInfo + j,
@@ -1581,7 +1621,11 @@ void anv_UpdateDescriptorSets(
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+         { int unused = 0; }
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
             ANV_FROM_HANDLE(anv_buffer_view, bview,
                             write->pTexelBufferView[j]);
@@ -1595,9 +1639,17 @@ void anv_UpdateDescriptorSets(
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         if (write->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+         { int unused = 0; }
          for (uint32_t j = 0; j < write->descriptorCount; j++) {
             ANV_FROM_HANDLE(anv_buffer, buffer, write->pBufferInfo[j].buffer);
 
@@ -1688,10 +1740,20 @@ anv_descriptor_set_write_template(struct anv_device *device,
 
       switch (entry->type) {
       case VK_DESCRIPTOR_TYPE_SAMPLER:
+         if (entry->type == VK_DESCRIPTOR_TYPE_SAMPLER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+         if (entry->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+         if (entry->type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+         if (entry->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+         if (entry->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+         { int unused = 0; }
          for (uint32_t j = 0; j < entry->array_count; j++) {
             const VkDescriptorImageInfo *info =
                data + entry->offset + j * entry->stride;
@@ -1703,7 +1765,11 @@ anv_descriptor_set_write_template(struct anv_device *device,
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+         if (entry->type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+         if (entry->type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+         { int unused = 0; }
          for (uint32_t j = 0; j < entry->array_count; j++) {
             const VkBufferView *_bview =
                data + entry->offset + j * entry->stride;
@@ -1718,9 +1784,17 @@ anv_descriptor_set_write_template(struct anv_device *device,
          break;
 
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+         if (entry->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+         if (entry->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+         if (entry->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+         { int unused = 0; }
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+         if (entry->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+         { int unused = 0; }
          for (uint32_t j = 0; j < entry->array_count; j++) {
             const VkDescriptorBufferInfo *info =
                data + entry->offset + j * entry->stride;

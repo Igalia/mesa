@@ -145,7 +145,11 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 		info->cs.uses_grid_size = true;
 		break;
 	case nir_intrinsic_load_local_invocation_id:
+		if (instr->intrinsic == nir_intrinsic_load_local_invocation_id)
+		{ int unused = 0; }
 	case nir_intrinsic_load_work_group_id: {
+		if (instr->intrinsic == nir_intrinsic_load_work_group_id)
+		{ int unused = 0; }
 		unsigned mask = nir_ssa_def_components_read(&instr->dest.ssa);
 		while (mask) {
 			unsigned i = u_bit_scan(&mask);
@@ -158,8 +162,14 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 		break;
 	}
 	case nir_intrinsic_load_local_invocation_index:
+		if (instr->intrinsic == nir_intrinsic_load_local_invocation_index)
+		{ int unused = 0; }
 	case nir_intrinsic_load_subgroup_id:
+		if (instr->intrinsic == nir_intrinsic_load_subgroup_id)
+		{ int unused = 0; }
 	case nir_intrinsic_load_num_subgroups:
+		if (instr->intrinsic == nir_intrinsic_load_num_subgroups)
+		{ int unused = 0; }
 		info->cs.uses_local_invocation_idx = true;
 		break;
 	case nir_intrinsic_load_sample_id:
@@ -190,18 +200,44 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 		info->desc_set_used_mask |= (1u << nir_intrinsic_desc_set(instr));
 		break;
 	case nir_intrinsic_image_deref_load:
+		if (instr->intrinsic == nir_intrinsic_image_deref_load)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_store:
+		if (instr->intrinsic == nir_intrinsic_image_deref_store)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_atomic_add:
+		if (instr->intrinsic == nir_intrinsic_image_deref_atomic_add)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_atomic_imin:
+		if (instr->intrinsic == nir_intrinsic_image_deref_atomic_imin)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_atomic_umin:
+		if (instr->intrinsic == nir_intrinsic_image_deref_atomic_umin)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_atomic_imax:
+		if (instr->intrinsic == nir_intrinsic_image_deref_atomic_imax)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_atomic_umax:
+		if (instr->intrinsic == nir_intrinsic_image_deref_atomic_umax)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_atomic_and:
+		if (instr->intrinsic == nir_intrinsic_image_deref_atomic_and)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_atomic_or:
+		if (instr->intrinsic == nir_intrinsic_image_deref_atomic_or)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_atomic_xor:
+		if (instr->intrinsic == nir_intrinsic_image_deref_atomic_xor)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_atomic_exchange:
+		if (instr->intrinsic == nir_intrinsic_image_deref_atomic_exchange)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_atomic_comp_swap:
+		if (instr->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap)
+		{ int unused = 0; }
 	case nir_intrinsic_image_deref_size: {
+		if (instr->intrinsic == nir_intrinsic_image_deref_size)
+		{ int unused = 0; }
 		nir_variable *var = nir_deref_instr_get_variable(nir_instr_as_deref(instr->src[0].ssa->parent_instr));
 		mark_sampler_desc(var, info);
 
@@ -221,27 +257,71 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 		break;
 	}
 	case nir_intrinsic_store_ssbo:
+		if (instr->intrinsic == nir_intrinsic_store_ssbo)
+		{ int unused = 0; }
 	case nir_intrinsic_ssbo_atomic_add:
+		if (instr->intrinsic == nir_intrinsic_ssbo_atomic_add)
+		{ int unused = 0; }
 	case nir_intrinsic_ssbo_atomic_imin:
+		if (instr->intrinsic == nir_intrinsic_ssbo_atomic_imin)
+		{ int unused = 0; }
 	case nir_intrinsic_ssbo_atomic_umin:
+		if (instr->intrinsic == nir_intrinsic_ssbo_atomic_umin)
+		{ int unused = 0; }
 	case nir_intrinsic_ssbo_atomic_imax:
+		if (instr->intrinsic == nir_intrinsic_ssbo_atomic_imax)
+		{ int unused = 0; }
 	case nir_intrinsic_ssbo_atomic_umax:
+		if (instr->intrinsic == nir_intrinsic_ssbo_atomic_umax)
+		{ int unused = 0; }
 	case nir_intrinsic_ssbo_atomic_and:
+		if (instr->intrinsic == nir_intrinsic_ssbo_atomic_and)
+		{ int unused = 0; }
 	case nir_intrinsic_ssbo_atomic_or:
+		if (instr->intrinsic == nir_intrinsic_ssbo_atomic_or)
+		{ int unused = 0; }
 	case nir_intrinsic_ssbo_atomic_xor:
+		if (instr->intrinsic == nir_intrinsic_ssbo_atomic_xor)
+		{ int unused = 0; }
 	case nir_intrinsic_ssbo_atomic_exchange:
+		if (instr->intrinsic == nir_intrinsic_ssbo_atomic_exchange)
+		{ int unused = 0; }
 	case nir_intrinsic_ssbo_atomic_comp_swap:
+		if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap)
+		{ int unused = 0; }
 	case nir_intrinsic_store_global:
+		if (instr->intrinsic == nir_intrinsic_store_global)
+		{ int unused = 0; }
 	case nir_intrinsic_global_atomic_add:
+		if (instr->intrinsic == nir_intrinsic_global_atomic_add)
+		{ int unused = 0; }
 	case nir_intrinsic_global_atomic_imin:
+		if (instr->intrinsic == nir_intrinsic_global_atomic_imin)
+		{ int unused = 0; }
 	case nir_intrinsic_global_atomic_umin:
+		if (instr->intrinsic == nir_intrinsic_global_atomic_umin)
+		{ int unused = 0; }
 	case nir_intrinsic_global_atomic_imax:
+		if (instr->intrinsic == nir_intrinsic_global_atomic_imax)
+		{ int unused = 0; }
 	case nir_intrinsic_global_atomic_umax:
+		if (instr->intrinsic == nir_intrinsic_global_atomic_umax)
+		{ int unused = 0; }
 	case nir_intrinsic_global_atomic_and:
+		if (instr->intrinsic == nir_intrinsic_global_atomic_and)
+		{ int unused = 0; }
 	case nir_intrinsic_global_atomic_or:
+		if (instr->intrinsic == nir_intrinsic_global_atomic_or)
+		{ int unused = 0; }
 	case nir_intrinsic_global_atomic_xor:
+		if (instr->intrinsic == nir_intrinsic_global_atomic_xor)
+		{ int unused = 0; }
 	case nir_intrinsic_global_atomic_exchange:
+		if (instr->intrinsic == nir_intrinsic_global_atomic_exchange)
+		{ int unused = 0; }
 	case nir_intrinsic_global_atomic_comp_swap:
+		if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap)
+		{ int unused = 0; }
 		set_writes_memory(nir, info);
 		break;
 	case nir_intrinsic_load_input:
@@ -351,7 +431,11 @@ gather_info_input_decl_ps(const nir_shader *nir, const nir_variable *var,
 		info->ps.layer_input = true;
 		break;
 	case VARYING_SLOT_CLIP_DIST0:
+		if (idx == VARYING_SLOT_CLIP_DIST0)
+		{ int unused = 0; }
 	case VARYING_SLOT_CLIP_DIST1:
+		if (idx == VARYING_SLOT_CLIP_DIST1)
+		{ int unused = 0; }
 		info->ps.num_input_clips_culls += attrib_count;
 		break;
 	case VARYING_SLOT_VIEWPORT:

@@ -142,7 +142,11 @@ uint32_t radv_translate_buffer_numformat(const struct vk_format_description *des
 			return V_008F0C_BUF_NUM_FORMAT_USCALED;
 		break;
 	case VK_FORMAT_TYPE_FLOAT:
+		if (desc->channel[first_non_void].type == VK_FORMAT_TYPE_FLOAT)
+		{ int unused = 0; }
 	default:
+		if (desc->channel[first_non_void].type != VK_FORMAT_TYPE_FLOAT)
+		{ int unused = 0; }
 		return V_008F0C_BUF_NUM_FORMAT_FLOAT;
 	}
 }
@@ -166,7 +170,11 @@ uint32_t radv_translate_tex_dataformat(VkFormat format,
 		case VK_FORMAT_D16_UNORM:
 			return V_008F14_IMG_DATA_FORMAT_16;
 		case VK_FORMAT_D24_UNORM_S8_UINT:
+			if (format == VK_FORMAT_D24_UNORM_S8_UINT)
+			{ int unused = 0; }
 		case VK_FORMAT_X8_D24_UNORM_PACK32:
+			if (format == VK_FORMAT_X8_D24_UNORM_PACK32)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_8_24;
 		case VK_FORMAT_S8_UINT:
 			return V_008F14_IMG_DATA_FORMAT_8;
@@ -205,10 +213,18 @@ uint32_t radv_translate_tex_dataformat(VkFormat format,
 	if (desc->layout == VK_FORMAT_LAYOUT_RGTC) {
 		switch(format) {
 		case VK_FORMAT_BC4_UNORM_BLOCK:
+			if (format == VK_FORMAT_BC4_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_BC4_SNORM_BLOCK:
+			if (format == VK_FORMAT_BC4_SNORM_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_BC4;
 		case VK_FORMAT_BC5_UNORM_BLOCK:
+			if (format == VK_FORMAT_BC5_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_BC5_SNORM_BLOCK:
+			if (format == VK_FORMAT_BC5_SNORM_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_BC5;
 		default:
 			break;
@@ -218,15 +234,31 @@ uint32_t radv_translate_tex_dataformat(VkFormat format,
 	if (desc->layout == VK_FORMAT_LAYOUT_S3TC) {
 		switch(format) {
 		case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
+			if (format == VK_FORMAT_BC1_RGB_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
+			if (format == VK_FORMAT_BC1_RGB_SRGB_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+			if (format == VK_FORMAT_BC1_RGBA_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
+			if (format == VK_FORMAT_BC1_RGBA_SRGB_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_BC1;
 		case VK_FORMAT_BC2_UNORM_BLOCK:
+			if (format == VK_FORMAT_BC2_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_BC2_SRGB_BLOCK:
+			if (format == VK_FORMAT_BC2_SRGB_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_BC2;
 		case VK_FORMAT_BC3_UNORM_BLOCK:
+			if (format == VK_FORMAT_BC3_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_BC3_SRGB_BLOCK:
+			if (format == VK_FORMAT_BC3_SRGB_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_BC3;
 		default:
 			break;
@@ -236,10 +268,18 @@ uint32_t radv_translate_tex_dataformat(VkFormat format,
 	if (desc->layout == VK_FORMAT_LAYOUT_BPTC) {
 		switch(format) {
 		case VK_FORMAT_BC6H_UFLOAT_BLOCK:
+			if (format == VK_FORMAT_BC6H_UFLOAT_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_BC6H_SFLOAT_BLOCK:
+			if (format == VK_FORMAT_BC6H_SFLOAT_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_BC6;
 		case VK_FORMAT_BC7_UNORM_BLOCK:
+			if (format == VK_FORMAT_BC7_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_BC7_SRGB_BLOCK:
+			if (format == VK_FORMAT_BC7_SRGB_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_BC7;
 		default:
 			break;
@@ -249,19 +289,39 @@ uint32_t radv_translate_tex_dataformat(VkFormat format,
 	if (desc->layout == VK_FORMAT_LAYOUT_ETC) {
 		switch (format) {
 		case VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
+			if (format == VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
+			if (format == VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_ETC2_RGB;
 		case VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:
+			if (format == VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
+			if (format == VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_ETC2_RGBA1;
 		case VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
+			if (format == VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+			if (format == VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_ETC2_RGBA;
 		case VK_FORMAT_EAC_R11_UNORM_BLOCK:
+			if (format == VK_FORMAT_EAC_R11_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_EAC_R11_SNORM_BLOCK:
+			if (format == VK_FORMAT_EAC_R11_SNORM_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_ETC2_R;
 		case VK_FORMAT_EAC_R11G11_UNORM_BLOCK:
+			if (format == VK_FORMAT_EAC_R11G11_UNORM_BLOCK)
+			{ int unused = 0; }
 		case VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
+			if (format == VK_FORMAT_EAC_R11G11_SNORM_BLOCK)
+			{ int unused = 0; }
 			return V_008F14_IMG_DATA_FORMAT_ETC2_RG;
 		default:
 			break;
@@ -396,19 +456,45 @@ uint32_t radv_translate_tex_numformat(VkFormat format,
 			if (vk_format_is_compressed(format)) {
 				switch (format) {
 				case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
+					if (format == VK_FORMAT_BC1_RGB_SRGB_BLOCK)
+					{ int unused = 0; }
 				case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
+					if (format == VK_FORMAT_BC1_RGBA_SRGB_BLOCK)
+					{ int unused = 0; }
 				case VK_FORMAT_BC2_SRGB_BLOCK:
+					if (format == VK_FORMAT_BC2_SRGB_BLOCK)
+					{ int unused = 0; }
 				case VK_FORMAT_BC3_SRGB_BLOCK:
+					if (format == VK_FORMAT_BC3_SRGB_BLOCK)
+					{ int unused = 0; }
 				case VK_FORMAT_BC7_SRGB_BLOCK:
+					if (format == VK_FORMAT_BC7_SRGB_BLOCK)
+					{ int unused = 0; }
 				case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
+					if (format == VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK)
+					{ int unused = 0; }
 				case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
+					if (format == VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK)
+					{ int unused = 0; }
 				case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+					if (format == VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK)
+					{ int unused = 0; }
 					return V_008F14_IMG_NUM_FORMAT_SRGB;
 				case VK_FORMAT_BC4_SNORM_BLOCK:
+					if (format == VK_FORMAT_BC4_SNORM_BLOCK)
+					{ int unused = 0; }
 				case VK_FORMAT_BC5_SNORM_BLOCK:
+					if (format == VK_FORMAT_BC5_SNORM_BLOCK)
+					{ int unused = 0; }
 			        case VK_FORMAT_BC6H_SFLOAT_BLOCK:
+					if (format == VK_FORMAT_BC6H_SFLOAT_BLOCK)
+					{ int unused = 0; }
 				case VK_FORMAT_EAC_R11_SNORM_BLOCK:
+					if (format == VK_FORMAT_EAC_R11_SNORM_BLOCK)
+					{ int unused = 0; }
 				case VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
+					if (format == VK_FORMAT_EAC_R11G11_SNORM_BLOCK)
+					{ int unused = 0; }
 					return V_008F14_IMG_NUM_FORMAT_SNORM;
 				default:
 					return V_008F14_IMG_NUM_FORMAT_UNORM;
@@ -523,10 +609,20 @@ static bool radv_is_storage_image_format_supported(struct radv_physical_device *
 	/* Extracted from the GCN3 ISA document. */
 	switch(num_format) {
 	case V_008F14_IMG_NUM_FORMAT_UNORM:
+		if (num_format == V_008F14_IMG_NUM_FORMAT_UNORM)
+		{ int unused = 0; }
 	case V_008F14_IMG_NUM_FORMAT_SNORM:
+		if (num_format == V_008F14_IMG_NUM_FORMAT_SNORM)
+		{ int unused = 0; }
 	case V_008F14_IMG_NUM_FORMAT_UINT:
+		if (num_format == V_008F14_IMG_NUM_FORMAT_UINT)
+		{ int unused = 0; }
 	case V_008F14_IMG_NUM_FORMAT_SINT:
+		if (num_format == V_008F14_IMG_NUM_FORMAT_SINT)
+		{ int unused = 0; }
 	case V_008F14_IMG_NUM_FORMAT_FLOAT:
+		if (num_format == V_008F14_IMG_NUM_FORMAT_FLOAT)
+		{ int unused = 0; }
 		break;
 	default:
 		return false;
@@ -534,22 +630,56 @@ static bool radv_is_storage_image_format_supported(struct radv_physical_device *
 
 	switch(data_format) {
 	case V_008F14_IMG_DATA_FORMAT_8:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_8)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_16:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_16)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_8_8:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_8_8)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_32:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_32)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_16_16:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_16_16)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_10_11_11:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_10_11_11)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_11_11_10:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_11_11_10)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_10_10_10_2:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_10_10_10_2)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_2_10_10_10:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_2_10_10_10)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_8_8_8_8:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_8_8_8_8)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_32_32:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_32_32)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_16_16_16_16:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_16_16_16_16)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_32_32_32_32:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_32_32_32_32)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_5_6_5:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_5_6_5)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_1_5_5_5:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_1_5_5_5)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_5_5_5_1:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_5_5_5_1)
+		{ int unused = 0; }
 	case V_008F14_IMG_DATA_FORMAT_4_4_4_4:
+		if (data_format == V_008F14_IMG_DATA_FORMAT_4_4_4_4)
+		{ int unused = 0; }
 		/* TODO: FMASK formats. */
 		return true;
 	default:
@@ -617,17 +747,41 @@ static bool radv_is_filter_minmax_format_supported(VkFormat format)
 	/* TODO: enable more formats. */
 	switch (format) {
 	case VK_FORMAT_R8_UNORM:
+		if (format == VK_FORMAT_R8_UNORM)
+		{ int unused = 0; }
 	case VK_FORMAT_R8_SNORM:
+		if (format == VK_FORMAT_R8_SNORM)
+		{ int unused = 0; }
 	case VK_FORMAT_R16_UNORM:
+		if (format == VK_FORMAT_R16_UNORM)
+		{ int unused = 0; }
 	case VK_FORMAT_R16_SNORM:
+		if (format == VK_FORMAT_R16_SNORM)
+		{ int unused = 0; }
 	case VK_FORMAT_R16_SFLOAT:
+		if (format == VK_FORMAT_R16_SFLOAT)
+		{ int unused = 0; }
 	case VK_FORMAT_R32_SFLOAT:
+		if (format == VK_FORMAT_R32_SFLOAT)
+		{ int unused = 0; }
 	case VK_FORMAT_D16_UNORM:
+		if (format == VK_FORMAT_D16_UNORM)
+		{ int unused = 0; }
 	case VK_FORMAT_X8_D24_UNORM_PACK32:
+		if (format == VK_FORMAT_X8_D24_UNORM_PACK32)
+		{ int unused = 0; }
 	case VK_FORMAT_D32_SFLOAT:
+		if (format == VK_FORMAT_D32_SFLOAT)
+		{ int unused = 0; }
 	case VK_FORMAT_D16_UNORM_S8_UINT:
+		if (format == VK_FORMAT_D16_UNORM_S8_UINT)
+		{ int unused = 0; }
 	case VK_FORMAT_D24_UNORM_S8_UINT:
+		if (format == VK_FORMAT_D24_UNORM_S8_UINT)
+		{ int unused = 0; }
 	case VK_FORMAT_D32_SFLOAT_S8_UINT:
+		if (format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+		{ int unused = 0; }
 		return true;
 	default:
 		return false;
@@ -779,11 +933,23 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
 
 	switch(format) {
 	case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+		if (format == VK_FORMAT_A2R10G10B10_SNORM_PACK32)
+		{ int unused = 0; }
 	case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+		if (format == VK_FORMAT_A2B10G10R10_SNORM_PACK32)
+		{ int unused = 0; }
 	case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
+		if (format == VK_FORMAT_A2R10G10B10_SSCALED_PACK32)
+		{ int unused = 0; }
 	case VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
+		if (format == VK_FORMAT_A2B10G10R10_SSCALED_PACK32)
+		{ int unused = 0; }
 	case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+		if (format == VK_FORMAT_A2R10G10B10_SINT_PACK32)
+		{ int unused = 0; }
 	case VK_FORMAT_A2B10G10R10_SINT_PACK32:
+		if (format == VK_FORMAT_A2B10G10R10_SINT_PACK32)
+		{ int unused = 0; }
 		if (physical_device->rad_info.chip_class <= GFX8 &&
 		    physical_device->rad_info.family != CHIP_STONEY) {
 			buffer &= ~(VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT |
@@ -897,18 +1063,38 @@ uint32_t radv_colorformat_endian_swap(uint32_t colorformat)
 
 			/* 16-bit buffers. */
 		case V_028C70_COLOR_5_6_5:
+			if (colorformat == V_028C70_COLOR_5_6_5)
+			{ int unused = 0; }
 		case V_028C70_COLOR_1_5_5_5:
+			if (colorformat == V_028C70_COLOR_1_5_5_5)
+			{ int unused = 0; }
 		case V_028C70_COLOR_4_4_4_4:
+			if (colorformat == V_028C70_COLOR_4_4_4_4)
+			{ int unused = 0; }
 		case V_028C70_COLOR_16:
+			if (colorformat == V_028C70_COLOR_16)
+			{ int unused = 0; }
 		case V_028C70_COLOR_8_8:
+			if (colorformat == V_028C70_COLOR_8_8)
+			{ int unused = 0; }
 			return V_028C70_ENDIAN_8IN16;
 
 			/* 32-bit buffers. */
 		case V_028C70_COLOR_8_8_8_8:
+			if (colorformat == V_028C70_COLOR_8_8_8_8)
+			{ int unused = 0; }
 		case V_028C70_COLOR_2_10_10_10:
+			if (colorformat == V_028C70_COLOR_2_10_10_10)
+			{ int unused = 0; }
 		case V_028C70_COLOR_8_24:
+			if (colorformat == V_028C70_COLOR_8_24)
+			{ int unused = 0; }
 		case V_028C70_COLOR_24_8:
+			if (colorformat == V_028C70_COLOR_24_8)
+			{ int unused = 0; }
 		case V_028C70_COLOR_16_16:
+			if (colorformat == V_028C70_COLOR_16_16)
+			{ int unused = 0; }
 			return V_028C70_ENDIAN_8IN32;
 
 			/* 64-bit buffers. */
@@ -933,10 +1119,18 @@ uint32_t radv_translate_dbformat(VkFormat format)
 {
 	switch (format) {
 	case VK_FORMAT_D16_UNORM:
+		if (format == VK_FORMAT_D16_UNORM)
+		{ int unused = 0; }
 	case VK_FORMAT_D16_UNORM_S8_UINT:
+		if (format == VK_FORMAT_D16_UNORM_S8_UINT)
+		{ int unused = 0; }
 		return V_028040_Z_16;
 	case VK_FORMAT_D32_SFLOAT:
+		if (format == VK_FORMAT_D32_SFLOAT)
+		{ int unused = 0; }
 	case VK_FORMAT_D32_SFLOAT_S8_UINT:
+		if (format == VK_FORMAT_D32_SFLOAT_S8_UINT)
+		{ int unused = 0; }
 		return V_028040_Z_32_FLOAT;
 	default:
 		return V_028040_Z_INVALID;
@@ -1352,7 +1546,11 @@ get_external_image_format_properties(struct radv_physical_device *physical_devic
 
 	switch (handleType) {
 	case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+		if (handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT)
+		{ int unused = 0; }
 	case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+		if (handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT)
+		{ int unused = 0; }
 		switch (pImageFormatInfo->type) {
 		case VK_IMAGE_TYPE_2D:
 			flags = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT|VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
@@ -1549,7 +1747,11 @@ void radv_GetPhysicalDeviceExternalBufferProperties(
 	VkExternalMemoryHandleTypeFlags compat_flags = 0;
 	switch(pExternalBufferInfo->handleType) {
 	case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
+		if (pExternalBufferInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT)
+		{ int unused = 0; }
 	case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
+		if (pExternalBufferInfo->handleType == VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT)
+		{ int unused = 0; }
 		flags = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
 		        VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
 		compat_flags = export_flags = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |

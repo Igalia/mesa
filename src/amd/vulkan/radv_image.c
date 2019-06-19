@@ -1641,7 +1641,11 @@ radv_image_view_init(struct radv_image_view *iview,
 
 	switch (image->type) {
 	case VK_IMAGE_TYPE_1D:
+		if (image->type == VK_IMAGE_TYPE_1D)
+		{ int unused = 0; }
 	case VK_IMAGE_TYPE_2D:
+		if (image->type == VK_IMAGE_TYPE_2D)
+		{ int unused = 0; }
 		assert(range->baseArrayLayer + radv_get_layerCount(image, range) - 1 <= image->info.array_size);
 		break;
 	case VK_IMAGE_TYPE_3D:

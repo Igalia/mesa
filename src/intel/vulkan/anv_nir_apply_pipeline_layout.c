@@ -112,22 +112,56 @@ get_used_bindings_block(nir_block *block,
             break;
 
          case nir_intrinsic_image_deref_load:
+            if (instr->type == nir_intrinsic_image_deref_load)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_store:
+            if (instr->type == nir_intrinsic_image_deref_store)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_add:
+            if (instr->type == nir_intrinsic_image_deref_atomic_add)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_imin:
+            if (instr->type == nir_intrinsic_image_deref_atomic_imin)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_umin:
+            if (instr->type == nir_intrinsic_image_deref_atomic_umin)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_imax:
+            if (instr->type == nir_intrinsic_image_deref_atomic_imax)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_umax:
+            if (instr->type == nir_intrinsic_image_deref_atomic_umax)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_and:
+            if (instr->type == nir_intrinsic_image_deref_atomic_and)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_or:
+            if (instr->type == nir_intrinsic_image_deref_atomic_or)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_xor:
+            if (instr->type == nir_intrinsic_image_deref_atomic_xor)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_exchange:
+            if (instr->type == nir_intrinsic_image_deref_atomic_exchange)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_comp_swap:
+            if (instr->type == nir_intrinsic_image_deref_atomic_comp_swap)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_size:
+            if (instr->type == nir_intrinsic_image_deref_size)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_samples:
+            if (instr->type == nir_intrinsic_image_deref_samples)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_load_param_intel:
+            if (instr->type == nir_intrinsic_image_deref_load_param_intel)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_load_raw_intel:
+            if (instr->type == nir_intrinsic_image_deref_load_raw_intel)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_store_raw_intel:
+            if (instr->type == nir_intrinsic_image_deref_store_raw_intel)
+            { int unused = 0; }
             add_deref_src_binding(state, intrin->src[0]);
             break;
 
@@ -300,22 +334,52 @@ lower_direct_buffer_access(nir_function_impl *impl,
          nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
          switch (intrin->intrinsic) {
          case nir_intrinsic_load_deref:
+            if (intrin->intrinsic == nir_intrinsic_load_deref)
+            { int unused = 0; }
          case nir_intrinsic_store_deref:
+            if (intrin->intrinsic == nir_intrinsic_store_deref)
+            { int unused = 0; }
             try_lower_direct_buffer_intrinsic(intrin, false, state);
             break;
          case nir_intrinsic_deref_atomic_add:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_add)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_imin:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_imin)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_umin:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_umin)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_imax:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_imax)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_umax:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_umax)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_and:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_and)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_or:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_or)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_xor:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_xor)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_exchange:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_exchange)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_comp_swap:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_comp_swap)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_fmin:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_fmin)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_fmax:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_fmax)
+            { int unused = 0; }
          case nir_intrinsic_deref_atomic_fcomp_swap:
+            if (intrin->intrinsic == nir_intrinsic_deref_atomic_fcomp_swap)
+            { int unused = 0; }
             try_lower_direct_buffer_intrinsic(intrin, true, state);
             break;
 
@@ -1099,22 +1163,56 @@ apply_pipeline_layout_block(nir_block *block,
             lower_get_ssbo_size(intrin, state);
             break;
          case nir_intrinsic_image_deref_load:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_load)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_store:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_store)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_add:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_atomic_add)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_imin:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_atomic_imin)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_umin:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_atomic_umin)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_imax:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_atomic_imax)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_umax:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_atomic_umax)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_and:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_atomic_and)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_or:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_atomic_or)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_xor:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_atomic_xor)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_exchange:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_atomic_exchange)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_atomic_comp_swap:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_atomic_comp_swap)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_size:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_size)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_samples:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_samples)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_load_param_intel:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_load_param_intel)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_load_raw_intel:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_load_raw_intel)
+            { int unused = 0; }
          case nir_intrinsic_image_deref_store_raw_intel:
+            if (intrin->intrinsic == nir_intrinsic_image_deref_store_raw_intel)
+            { int unused = 0; }
             lower_image_intrinsic(intrin, state);
             break;
          case nir_intrinsic_load_constant:

@@ -183,7 +183,11 @@ VkResult radv_CreateDescriptorSetLayout(
 
 		switch (binding->descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+			{ int unused = 0; }
 			assert(!(pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
 			set_layout->binding[b].dynamic_offset_count = 1;
 			set_layout->dynamic_shader_stages |= binding->stageFlags;
@@ -192,16 +196,30 @@ VkResult radv_CreateDescriptorSetLayout(
 			alignment = 1;
 			break;
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+			{ int unused = 0; }
 			set_layout->binding[b].size = 16;
 			binding_buffer_count = 1;
 			alignment = 16;
 			break;
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+			{ int unused = 0; }
 			/* main descriptor + fmask descriptor */
 			set_layout->binding[b].size = 64;
 			binding_buffer_count = 1;
@@ -337,18 +355,36 @@ void radv_GetDescriptorSetLayoutSupport(VkDevice device,
 		uint32_t descriptor_count = binding->descriptorCount;
 		switch (binding->descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+			{ int unused = 0; }
 			break;
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+			{ int unused = 0; }
 			descriptor_size = 16;
 			descriptor_alignment = 16;
 			break;
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			if (binding->descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+			{ int unused = 0; }
 			descriptor_size = 64;
 			descriptor_alignment = 32;
 			break;
@@ -690,20 +726,40 @@ VkResult radv_CreateDescriptorPool(
 
 		switch(pCreateInfo->pPoolSizes[i].type) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+			{ int unused = 0; }
 			range_count += pCreateInfo->pPoolSizes[i].descriptorCount;
 			break;
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
+			if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_SAMPLER)
+			{ int unused = 0; }
 			/* 32 as we may need to align for images */
 			bo_size += 32 * pCreateInfo->pPoolSizes[i].descriptorCount;
 			break;
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			if (pCreateInfo->pPoolSizes[i].type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+			{ int unused = 0; }
 			bo_size += 64 * pCreateInfo->pPoolSizes[i].descriptorCount;
 			break;
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
@@ -1083,7 +1139,11 @@ void radv_update_descriptor_sets(
 		for (j = 0; j < writeset->descriptorCount; ++j) {
 			switch(writeset->descriptorType) {
 			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+				if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+				if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+				{ int unused = 0; }
 				unsigned idx = writeset->dstArrayElement + j;
 				idx += binding_layout->dynamic_offset_offset;
 				assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
@@ -1092,18 +1152,32 @@ void radv_update_descriptor_sets(
 				break;
 			}
 			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+				if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+				{ int unused = 0; }
 				write_buffer_descriptor(device, cmd_buffer, ptr, buffer_list,
 							writeset->pBufferInfo + j);
 				break;
 			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+				if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+				if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+				{ int unused = 0; }
 				write_texel_buffer_descriptor(device, cmd_buffer, ptr, buffer_list,
 							      writeset->pTexelBufferView[j]);
 				break;
 			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+				if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+				if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+				if (writeset->descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+				{ int unused = 0; }
 				write_image_descriptor(device, cmd_buffer, 64, ptr, buffer_list,
 						       writeset->descriptorType,
 						       writeset->pImageInfo + j);
@@ -1177,7 +1251,11 @@ void radv_update_descriptor_sets(
 		for (j = 0; j < copyset->descriptorCount; ++j) {
 			switch (src_binding_layout->type) {
 			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+				if (src_binding_layout->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+				if (src_binding_layout->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+				{ int unused = 0; }
 				unsigned src_idx = copyset->srcArrayElement + j;
 				unsigned dst_idx = copyset->dstArrayElement + j;
 				struct radv_descriptor_range *src_range, *dst_range;
@@ -1263,7 +1341,11 @@ VkResult radv_CreateDescriptorUpdateTemplate(VkDevice _device,
 		   is dynamic, and an offset into mapped_ptr otherwise */
 		switch (entry->descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			if (entry->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			if (entry->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+			{ int unused = 0; }
 			assert(pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET);
 			dst_offset = binding_layout->dynamic_offset_offset + entry->dstArrayElement;
 			dst_stride = 0; /* Not used */
@@ -1271,7 +1353,11 @@ VkResult radv_CreateDescriptorUpdateTemplate(VkDevice _device,
 		default:
 			switch (entry->descriptorType) {
 			case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+				if (entry->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_SAMPLER:
+				if (entry->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
+				{ int unused = 0; }
 				/* Immutable samplers are copied into push descriptors when they are pushed */
 				if (pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR &&
 				    binding_layout->immutable_samplers_offset && !binding_layout->immutable_samplers_equal) {
@@ -1346,7 +1432,11 @@ void radv_update_descriptor_set_with_template(struct radv_device *device,
 		for (j = 0; j < templ->entry[i].descriptor_count; ++j) {
 			switch (templ->entry[i].descriptor_type) {
 			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+				if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+				if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+				{ int unused = 0; }
 				const unsigned idx = templ->entry[i].dst_offset + j;
 				assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
 				write_dynamic_buffer_descriptor(device, set->dynamic_descriptors + idx,
@@ -1354,18 +1444,32 @@ void radv_update_descriptor_set_with_template(struct radv_device *device,
 				break;
 			}
 			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+				if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+				{ int unused = 0; }
 				write_buffer_descriptor(device, cmd_buffer, pDst, buffer_list,
 				                        (struct VkDescriptorBufferInfo *) pSrc);
 				break;
 			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+				if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+				if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+				{ int unused = 0; }
 				write_texel_buffer_descriptor(device, cmd_buffer, pDst, buffer_list,
 						              *(VkBufferView *) pSrc);
 				break;
 			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+				if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+				if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+				{ int unused = 0; }
 			case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+				if (templ->entry[i].descriptor_type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+				{ int unused = 0; }
 				write_image_descriptor(device, cmd_buffer, 64, pDst, buffer_list,
 						       templ->entry[i].descriptor_type,
 					               (struct VkDescriptorImageInfo *) pSrc);

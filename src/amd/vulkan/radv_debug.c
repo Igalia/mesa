@@ -204,14 +204,28 @@ radv_dump_descriptor_set(struct radv_device *device,
 
 		switch (layout->binding[i].type) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			if (layout->binding[i].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			if (layout->binding[i].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			if (layout->binding[i].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			if (layout->binding[i].type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)
+			{ int unused = 0; }
 			radv_dump_buffer_descriptor(chip_class, desc, f);
 			break;
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			if (layout->binding[i].type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			if (layout->binding[i].type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			if (layout->binding[i].type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT)
+			{ int unused = 0; }
 			radv_dump_image_descriptor(chip_class, desc, f);
 			break;
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
@@ -221,7 +235,11 @@ radv_dump_descriptor_set(struct radv_device *device,
 			radv_dump_sampler_descriptor(chip_class, desc, f);
 			break;
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			if (layout->binding[i].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+			{ int unused = 0; }
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			if (layout->binding[i].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+			{ int unused = 0; }
 			/* todo */
 			break;
 		default:
