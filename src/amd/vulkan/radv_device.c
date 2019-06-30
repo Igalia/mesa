@@ -47,7 +47,6 @@
 #include "util/build_id.h"
 #include "util/debug.h"
 #include "util/mesa-sha1.h"
-#include "compiler/glsl_types.h"
 #include "util/xmlpool.h"
 
 static int
@@ -611,7 +610,6 @@ VkResult radv_CreateInstance(
 	}
 
 	_mesa_locale_init();
-	glsl_type_singleton_init_or_ref();
 
 	VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
@@ -638,7 +636,6 @@ void radv_DestroyInstance(
 
 	VG(VALGRIND_DESTROY_MEMPOOL(instance));
 
-	glsl_type_singleton_decref();
 	_mesa_locale_fini();
 
 	driDestroyOptionCache(&instance->dri_options);
