@@ -482,7 +482,7 @@ glsl_type_singleton_init_or_ref()
    mtx_unlock(&glsl_type::hash_mutex);
 }
 
-void
+bool
 glsl_type_singleton_decref()
 {
    mtx_lock(&glsl_type::hash_mutex);
@@ -492,7 +492,7 @@ glsl_type_singleton_decref()
    /* Do not release glsl_types if they are still used. */
    if (--glsl_type_users) {
       mtx_unlock(&glsl_type::hash_mutex);
-      return;
+      return false;
    }
 
    if (glsl_type::explicit_matrix_types != NULL) {
@@ -527,6 +527,7 @@ glsl_type_singleton_decref()
    }
 
    mtx_unlock(&glsl_type::hash_mutex);
+   return true;
 }
 
 

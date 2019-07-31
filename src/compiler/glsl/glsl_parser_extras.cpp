@@ -2331,6 +2331,7 @@ void
 _mesa_init_shader_compiler_types(void)
 {
    glsl_type_singleton_init_or_ref();
+   _mesa_glsl_initialize_builtin_functions();
 }
 
 /**
@@ -2339,7 +2340,8 @@ _mesa_init_shader_compiler_types(void)
 void
 _mesa_destroy_shader_compiler_types(void)
 {
-   glsl_type_singleton_decref();
+   if (glsl_type_singleton_decref())
+      _mesa_glsl_release_builtin_functions();
 }
 
 /**

@@ -49,7 +49,7 @@ struct glsl_symbol_table;
 extern void
 glsl_type_singleton_init_or_ref();
 
-extern void
+extern bool
 glsl_type_singleton_decref();
 
 extern void
@@ -1066,7 +1066,7 @@ private:
     */
    /*@{*/
    friend void glsl_type_singleton_init_or_ref(void);
-   friend void glsl_type_singleton_decref(void);
+   friend bool glsl_type_singleton_decref(void);
    friend void _mesa_glsl_initialize_types(struct _mesa_glsl_parse_state *);
    /*@}*/
 };
