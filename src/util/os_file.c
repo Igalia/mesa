@@ -97,7 +97,6 @@ os_read_file(const char *filename)
    char *newbuf = realloc(buf, len);
    if (!newbuf) {
       free(buf);
-      close(fd);
       errno = -ENOMEM;
       return NULL;
    }
