@@ -64,84 +64,84 @@ public:
    /*! \brief                 Returns an iterator to the begin of the span
    *   \return                data
    */
-   iterator begin() noexcept {
+   constexpr iterator begin() noexcept {
       return data;
    }
 
    /*! \brief                 Returns a const_iterator to the begin of the span
    *   \return                data
    */
-   const_iterator begin() const noexcept {
+   constexpr const_iterator begin() const noexcept {
       return data;
    }
 
    /*! \brief                 Returns an iterator to the end of the span
    *   \return                data + length
    */
-   iterator end() noexcept {
+   constexpr iterator end() noexcept {
       return std::next(data, length);
    }
 
    /*! \brief                 Returns a const_iterator to the end of the span
    *   \return                data + length
    */
-   const_iterator end() const noexcept {
+   constexpr const_iterator end() const noexcept {
       return std::next(data, length);
    }
 
    /*! \brief                 Returns a const_iterator to the begin of the span
    *   \return                data
    */
-   const_iterator cbegin() const noexcept {
+   constexpr const_iterator cbegin() const noexcept {
       return data;
    }
 
    /*! \brief                 Returns a const_iterator to the end of the span
    *   \return                data + length
    */
-   const_iterator cend() const noexcept {
+   constexpr const_iterator cend() const noexcept {
       return std::next(data, length);
    }
 
    /*! \brief                 Returns a reverse_iterator to the end of the span
    *   \return                reverse_iterator(end())
    */
-   reverse_iterator rbegin() noexcept {
+   constexpr reverse_iterator rbegin() noexcept {
       return reverse_iterator(end());
    }
 
    /*! \brief                 Returns a const_reverse_iterator to the end of the span
    *   \return                reverse_iterator(end())
    */
-   const_reverse_iterator rbegin() const noexcept {
+   constexpr const_reverse_iterator rbegin() const noexcept {
       return const_reverse_iterator(end());
    }
 
    /*! \brief                 Returns a reverse_iterator to the begin of the span
    *   \return                reverse_iterator(begin())
    */
-   reverse_iterator rend() noexcept {
+   constexpr reverse_iterator rend() noexcept {
       return reverse_iterator(begin());
    }
 
    /*! \brief                 Returns a const_reverse_iterator to the begin of the span
    *   \return                reverse_iterator(begin())
    */
-   const_reverse_iterator rend() const noexcept {
+   constexpr const_reverse_iterator rend() const noexcept {
       return const_reverse_iterator(begin());
    }
 
    /*! \brief                 Returns a const_reverse_iterator to the end of the span
    *   \return                rbegin()
    */
-   const_reverse_iterator crbegin() const noexcept {
+   constexpr const_reverse_iterator crbegin() const noexcept {
       return const_reverse_iterator(cend());
    }
 
    /*! \brief                 Returns a const_reverse_iterator to the begin of the span
    *   \return                rend()
    */
-   const_reverse_iterator crend() const noexcept {
+   constexpr const_reverse_iterator crend() const noexcept {
       return const_reverse_iterator(cbegin());
    }
 
@@ -149,7 +149,7 @@ public:
    *   \param[in] index       Index of the element we want to access
    *   \return                *(std::next(data, index))
    */
-   reference operator[](const size_type index) noexcept {
+   constexpr reference operator[](const size_type index) noexcept {
       assert(length > index);
       return *(std::next(data, index));
    }
@@ -158,7 +158,7 @@ public:
    *   \param[in] index       Index of the element we want to access
    *   \return                *(std::next(data, index))
    */
-   const_reference operator[](const size_type index) const noexcept {
+   constexpr const_reference operator[](const size_type index) const noexcept {
       assert(length > index);
       return *(std::next(data, index));
    }
@@ -166,7 +166,7 @@ public:
    /*! \brief                 Returns a reference to the last element of the span
    *   \return                *(std::next(data, length - 1))
    */
-   reference back() noexcept {
+   constexpr reference back() noexcept {
       assert(length > 0);
       return *(std::next(data, length - 1));
    }
@@ -174,7 +174,7 @@ public:
    /*! \brief                 Returns a const_reference to the last element of the span
    *   \return                *(std::next(data, length - 1))
    */
-   const_reference back() const noexcept {
+   constexpr const_reference back() const noexcept {
       assert(length > 0);
       return *(std::next(data, length - 1));
    }
@@ -182,7 +182,7 @@ public:
    /*! \brief                 Returns a reference to the first element of the span
    *   \return                *begin()
    */
-   reference front() noexcept {
+   constexpr reference front() noexcept {
       assert(length > 0);
       return *begin();
    }
@@ -190,7 +190,7 @@ public:
    /*! \brief                 Returns a const_reference to the first element of the span
    *   \return                *cbegin()
    */
-   const_reference front() const noexcept {
+   constexpr const_reference front() const noexcept {
       assert(length > 0);
       return *cbegin();
    }
@@ -211,14 +211,14 @@ public:
 
    /*! \brief                 Decreases the size of the span by 1
    */
-   void pop_back() noexcept {
+   constexpr void pop_back() noexcept {
       assert(length > 0);
       --length;
    }
 
    /*! \brief                 Clears the span
    */
-   void clear() noexcept {
+   constexpr void clear() noexcept {
       data = nullptr;
       length = 0;
    }
