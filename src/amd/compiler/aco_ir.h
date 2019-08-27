@@ -213,7 +213,7 @@ private:
 struct PhysReg {
    PhysReg() = default;
    explicit constexpr PhysReg(unsigned r) : reg(r) {}
-   operator unsigned() const { return reg; }
+   constexpr operator unsigned() const { return reg; }
 
    uint16_t reg;
 };
@@ -319,38 +319,38 @@ public:
       setFixed(reg);
    }
 
-   bool isTemp() const noexcept
+   constexpr bool isTemp() const noexcept
    {
       return isTemp_;
    }
 
-   void setTemp(Temp t) {
+   constexpr void setTemp(Temp t) noexcept {
       assert(!isConstant_);
       isTemp_ = true;
       data_.temp = t;
    }
 
-   Temp getTemp() const noexcept
+   constexpr Temp getTemp() const noexcept
    {
       return data_.temp;
    }
 
-   uint32_t tempId() const noexcept
+   constexpr uint32_t tempId() const noexcept
    {
       return data_.temp.id();
    }
 
-   bool hasRegClass() const noexcept
+   constexpr bool hasRegClass() const noexcept
    {
       return isTemp() || isUndefined();
    }
 
-   RegClass regClass() const noexcept
+   constexpr RegClass regClass() const noexcept
    {
       return data_.temp.regClass();
    }
 
-   unsigned size() const noexcept
+   constexpr unsigned size() const noexcept
    {
       if (isConstant())
          return is64BitConst_ ? 2 : 1;
@@ -358,60 +358,60 @@ public:
          return data_.temp.size();
    }
 
-   bool isFixed() const noexcept
+   constexpr bool isFixed() const noexcept
    {
       return isFixed_;
    }
 
-   PhysReg physReg() const noexcept
+   constexpr PhysReg physReg() const noexcept
    {
       return reg_;
    }
 
-   void setFixed(PhysReg reg) noexcept
+   constexpr void setFixed(PhysReg reg) noexcept
    {
-      isFixed_ = reg != (unsigned)-1;
+      isFixed_ = reg != unsigned(-1);
       reg_ = reg;
    }
 
-   bool isConstant() const noexcept
+   constexpr bool isConstant() const noexcept
    {
       return isConstant_;
    }
 
-   bool isLiteral() const noexcept
+   constexpr bool isLiteral() const noexcept
    {
       return isConstant() && reg_ == 255;
    }
 
-   bool isUndefined() const noexcept
+   constexpr bool isUndefined() const noexcept
    {
       return isUndef_;
    }
 
-   uint32_t constantValue() const noexcept
+   constexpr uint32_t constantValue() const noexcept
    {
       return data_.i;
    }
 
-   bool constantEquals(uint32_t cmp) const noexcept
+   constexpr bool constantEquals(uint32_t cmp) const noexcept
    {
       return isConstant() && constantValue() == cmp;
    }
 
-   void setKill(bool flag) noexcept
+   constexpr void setKill(bool flag) noexcept
    {
       isKill_ = flag;
       if (!flag)
          setFirstKill(false);
    }
 
-   bool isKill() const noexcept
+   constexpr bool isKill() const noexcept
    {
       return isKill_ || isFirstKill();
    }
 
-   void setFirstKill(bool flag) noexcept
+   constexpr void setFirstKill(bool flag) noexcept
    {
       isFirstKill_ = flag;
       if (flag)
@@ -420,7 +420,7 @@ public:
 
    /* When there are multiple operands killing the same temporary,
     * isFirstKill() is only returns true for the first one. */
-   bool isFirstKill() const noexcept
+   constexpr bool isFirstKill() const noexcept
    {
       return isFirstKill_;
    }
