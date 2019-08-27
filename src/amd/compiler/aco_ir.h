@@ -924,47 +924,47 @@ enum block_kind {
 
 struct RegisterDemand {
    constexpr RegisterDemand() = default;
-   constexpr RegisterDemand(const int16_t v, const int16_t s)
+   constexpr RegisterDemand(const int16_t v, const int16_t s) noexcept
       : vgpr{v}, sgpr{s} {}
    int16_t vgpr = 0;
    int16_t sgpr = 0;
 
-   constexpr friend bool operator==(const RegisterDemand a, const RegisterDemand b) {
+   constexpr friend bool operator==(const RegisterDemand a, const RegisterDemand b) noexcept {
       return a.vgpr == b.vgpr && a.sgpr == b.sgpr;
    }
 
-   constexpr bool exceeds(const RegisterDemand other) const {
+   constexpr bool exceeds(const RegisterDemand other) const noexcept {
       return vgpr > other.vgpr || sgpr > other.sgpr;
    }
 
-   RegisterDemand operator+(const Temp t) const {
+   constexpr RegisterDemand operator+(const Temp t) const noexcept {
       if (t.type() == RegType::sgpr)
          return RegisterDemand( vgpr, sgpr + t.size() );
       else
          return RegisterDemand( vgpr + t.size(), sgpr );
    }
 
-   RegisterDemand operator+(const RegisterDemand other) const {
+   constexpr RegisterDemand operator+(const RegisterDemand other) const noexcept {
       return RegisterDemand(vgpr + other.vgpr, sgpr + other.sgpr);
    }
 
-   RegisterDemand operator-(const RegisterDemand other) const {
+   constexpr RegisterDemand operator-(const RegisterDemand other) const noexcept {
       return RegisterDemand(vgpr - other.vgpr, sgpr - other.sgpr);
    }
 
-   RegisterDemand& operator+=(const RegisterDemand other) {
+   constexpr RegisterDemand& operator+=(const RegisterDemand other) noexcept {
       vgpr += other.vgpr;
       sgpr += other.sgpr;
       return *this;
    }
 
-   RegisterDemand& operator-=(const RegisterDemand other) {
+   constexpr RegisterDemand& operator-=(const RegisterDemand other) noexcept {
       vgpr -= other.vgpr;
       sgpr -= other.sgpr;
       return *this;
    }
 
-   RegisterDemand& operator+=(const Temp t) {
+   constexpr RegisterDemand& operator+=(const Temp t) noexcept {
       if (t.type() == RegType::sgpr)
          sgpr += t.size();
       else
@@ -972,7 +972,7 @@ struct RegisterDemand {
       return *this;
    }
 
-   RegisterDemand& operator-=(const Temp t) {
+   constexpr RegisterDemand& operator-=(const Temp t) noexcept {
       if (t.type() == RegType::sgpr)
          sgpr -= t.size();
       else
@@ -980,7 +980,7 @@ struct RegisterDemand {
       return *this;
    }
 
-   void update(const RegisterDemand other) {
+   constexpr void update(const RegisterDemand other) noexcept {
       vgpr = std::max(vgpr, other.vgpr);
       sgpr = std::max(sgpr, other.sgpr);
    }
