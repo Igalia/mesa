@@ -561,7 +561,7 @@ struct Instruction {
    aco::span<Operand> operands;
    aco::span<Definition> definitions;
 
-   bool isVALU()
+   constexpr bool isVALU() const noexcept
    {
       return ((uint16_t) format & (uint16_t) Format::VOP1) == (uint16_t) Format::VOP1
           || ((uint16_t) format & (uint16_t) Format::VOP2) == (uint16_t) Format::VOP2
@@ -570,7 +570,8 @@ struct Instruction {
           || ((uint16_t) format & (uint16_t) Format::VOP3B) == (uint16_t) Format::VOP3B
           || ((uint16_t) format & (uint16_t) Format::VOP3P) == (uint16_t) Format::VOP3P;
    }
-   bool isSALU()
+
+   constexpr bool isSALU() const noexcept
    {
       return format == Format::SOP1 ||
              format == Format::SOP2 ||
@@ -578,28 +579,32 @@ struct Instruction {
              format == Format::SOPK ||
              format == Format::SOPP;
    }
-   bool isVMEM()
+
+   constexpr bool isVMEM() const noexcept
    {
       return format == Format::MTBUF ||
              format == Format::MUBUF ||
              format == Format::MIMG;
    }
-   bool isDPP()
+
+   constexpr bool isDPP() const noexcept
    {
       return (uint16_t) format & (uint16_t) Format::DPP;
    }
-   bool isVOP3()
+
+   constexpr bool isVOP3() const noexcept
    {
       return ((uint16_t) format & (uint16_t) Format::VOP3A) ||
              ((uint16_t) format & (uint16_t) Format::VOP3B) ||
              format == Format::VOP3P;
    }
-   bool isSDWA()
+
+   constexpr bool isSDWA() const noexcept
    {
       return (uint16_t) format & (uint16_t) Format::SDWA;
    }
 
-   bool isFlatOrGlobal()
+   constexpr bool isFlatOrGlobal() const noexcept
    {
       return format == Format::FLAT || format == Format::GLOBAL;
    }
