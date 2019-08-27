@@ -472,68 +472,68 @@ public:
       setFixed(reg);
    }
 
-   bool isTemp() const noexcept
+   constexpr bool isTemp() const noexcept
    {
       return tempId() > 0;
    }
 
-   Temp getTemp() const noexcept
+   constexpr Temp getTemp() const noexcept
    {
       return temp;
    }
 
-   uint32_t tempId() const noexcept
+   constexpr uint32_t tempId() const noexcept
    {
       return temp.id();
    }
 
-   void setTemp(Temp t) {
+   constexpr void setTemp(Temp t) noexcept {
       temp = t;
    }
 
-   RegClass regClass() const noexcept
+   constexpr RegClass regClass() const noexcept
    {
       return temp.regClass();
    }
 
-   unsigned size() const noexcept
+   constexpr unsigned size() const noexcept
    {
       return temp.size();
    }
 
-   bool isFixed() const noexcept
+   constexpr bool isFixed() const noexcept
    {
       return isFixed_;
    }
 
-   PhysReg physReg() const noexcept
+   constexpr PhysReg physReg() const noexcept
    {
       return reg_;
    }
 
-   void setFixed(PhysReg reg) noexcept
+   constexpr void setFixed(PhysReg reg) noexcept
    {
       isFixed_ = 1;
       reg_ = reg;
    }
 
-   void setHint(PhysReg reg) noexcept
+   constexpr void setHint(PhysReg reg) noexcept
    {
       hasHint_ = 1;
       reg_ = reg;
    }
 
-   bool hasHint() const noexcept
+   constexpr bool hasHint() const noexcept
    {
       return hasHint_;
    }
 
-   void setKill(bool flag) noexcept
+   constexpr void setKill(bool flag) noexcept
    {
       isKill_ = flag;
    }
 
-   bool isKill() const noexcept
+   constexpr bool isKill() const noexcept
    {
       return isKill_;
    }
