@@ -110,7 +110,7 @@ enum barrier_interaction {
    barrier_count = 4,
 };
 
-static inline Format asVOP3(Format format) {
+constexpr Format asVOP3(Format format) {
    return (Format) ((uint32_t) Format::VOP3 | (uint32_t) format);
 };
 
@@ -868,7 +868,7 @@ T* create_instruction(aco_opcode opcode, Format format, uint32_t num_operands, u
    return inst;
 }
 
-static inline bool is_phi(Instruction* instr)
+constexpr bool is_phi(Instruction* instr)
 {
    return instr->opcode == aco_opcode::p_phi || instr->opcode == aco_opcode::p_linear_phi;
 }
@@ -878,7 +878,7 @@ static inline bool is_phi(aco_ptr<Instruction>& instr)
    return is_phi(instr.get());
 }
 
-static inline barrier_interaction get_barrier_interaction(Instruction* instr)
+constexpr barrier_interaction get_barrier_interaction(Instruction* instr)
 {
    switch (instr->format) {
    case Format::SMEM:
