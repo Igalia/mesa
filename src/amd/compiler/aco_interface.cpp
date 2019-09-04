@@ -126,7 +126,7 @@ void aco_compile_shader(unsigned shader_count,
 
    bool get_disasm = options->dump_shader;
 #ifndef NDEBUG
-   get_disasm = options->record_llvm_ir;
+   get_disasm |= options->record_llvm_ir;
 #endif
 
    size_t size = 0;
