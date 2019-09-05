@@ -70,6 +70,7 @@ void print_asm(Program *program, std::vector<uint32_t>& binary,
          out << " " << std::setfill('0') << std::setw(8) << std::hex << binary[pos];
       out << std::endl;
    }
+   out << std::setfill(' ') << std::setw(0) << std::dec;
    assert(next_block == program->blocks.size());
 
    LLVMDisasmDispose(disasm);
