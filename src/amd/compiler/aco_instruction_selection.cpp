@@ -2990,6 +2990,147 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
    bld.sop1(aco_opcode::s_mov_b32, Definition(dst), index);
 }
 
+void load_buffer(isel_context *ctx, unsigned num_components, Temp dst, Temp rsrc, Temp offset, bool glc=false)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   unsigned num_bytes = dst.size() * 4;
+
+   aco_opcode op;
+   if (dst.type() == RegType::vgpr || (glc && ctx->options->chip_class < GFX8)) {
+      if (ctx->options->chip_class < GFX8)
+         offset = as_vgpr(ctx, offset);
+
+      Operand vaddr = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
+      Operand soffset = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
+      unsigned const_offset = 0;
+
+      Temp lower = Temp();
+      if (num_bytes > 16) {
+         assert(num_components == 3 || num_components == 4);
+         op = aco_opcode::buffer_load_dwordx4;
+         lower = bld.tmp(v4);
+         aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
+         mubuf->definitions[0] = Definition(lower);
+         mubuf->operands[0] = vaddr;
+         mubuf->operands[1] = Operand(rsrc);
+         mubuf->operands[2] = soffset;
+         mubuf->offen = (offset.type() == RegType::vgpr);
+         mubuf->glc = glc;
+         mubuf->barrier = barrier_buffer;
+         bld.insert(std::move(mubuf));
+         emit_split_vector(ctx, lower, 2);
+         num_bytes -= 16;
+         const_offset = 16;
+      }
+
+      switch (num_bytes) {
+         case 4:
+            op = aco_opcode::buffer_load_dword;
+            break;
+         case 8:
+            op = aco_opcode::buffer_load_dwordx2;
+            break;
+         case 12:
+            op = aco_opcode::buffer_load_dwordx3;
+            break;
+         case 16:
+            op = aco_opcode::buffer_load_dwordx4;
+            break;
+         default:
+            unreachable("Load SSBO not implemented for this size.");
+      }
+      aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
+      mubuf->operands[0] = vaddr;
+      mubuf->operands[1] = Operand(rsrc);
+      mubuf->operands[2] = soffset;
+      mubuf->offen = (offset.type() == RegType::vgpr);
+      mubuf->glc = glc;
+      mubuf->barrier = barrier_buffer;
+      mubuf->offset = const_offset;
+      aco_ptr<Instruction> instr = std::move(mubuf);
+
+      if (dst.size() > 4) {
+         assert(lower != Temp());
+         Temp upper = bld.tmp(RegType::vgpr, dst.size() - lower.size());
+         instr->definitions[0] = Definition(upper);
+         bld.insert(std::move(instr));
+         if (dst.size() == 8)
+            emit_split_vector(ctx, upper, 2);
+         instr.reset(create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, dst.size() / 2, 1));
+         instr->operands[0] = Operand(emit_extract_vector(ctx, lower, 0, v2));
+         instr->operands[1] = Operand(emit_extract_vector(ctx, lower, 1, v2));
+         instr->operands[2] = Operand(emit_extract_vector(ctx, upper, 0, v2));
+         if (dst.size() == 8)
+            instr->operands[3] = Operand(emit_extract_vector(ctx, upper, 1, v2));
+      }
+
+      if (dst.type() == RegType::sgpr) {
+         Temp vec = bld.tmp(RegType::vgpr, dst.size());
+         instr->definitions[0] = Definition(vec);
+         bld.insert(std::move(instr));
+         bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), vec);
+      } else {
+         instr->definitions[0] = Definition(dst);
+         bld.insert(std::move(instr));
+      }
+   } else {
+      switch (num_bytes) {
+         case 4:
+            op = aco_opcode::s_buffer_load_dword;
+            break;
+         case 8:
+            op = aco_opcode::s_buffer_load_dwordx2;
+            break;
+         case 12:
+         case 16:
+            op = aco_opcode::s_buffer_load_dwordx4;
+            break;
+         case 24:
+         case 32:
+            op = aco_opcode::s_buffer_load_dwordx8;
+            break;
+         default:
+            unreachable("Load SSBO not implemented for this size.");
+      }
+      aco_ptr<SMEM_instruction> load{create_instruction<SMEM_instruction>(op, Format::SMEM, 2, 1)};
+      load->operands[0] = Operand(rsrc);
+      load->operands[1] = Operand(bld.as_uniform(offset));
+      assert(load->operands[1].getTemp().type() == RegType::sgpr);
+      load->definitions[0] = Definition(dst);
+      load->glc = glc;
+      load->barrier = barrier_buffer;
+      assert(ctx->options->chip_class >= GFX8 || !glc);
+
+      /* trim vector */
+      if (dst.size() == 3) {
+         Temp vec = bld.tmp(s4);
+         load->definitions[0] = Definition(vec);
+         bld.insert(std::move(load));
+         emit_split_vector(ctx, vec, 4);
+
+         bld.pseudo(aco_opcode::p_create_vector, Definition(dst),
+                    emit_extract_vector(ctx, vec, 0, s1),
+                    emit_extract_vector(ctx, vec, 1, s1),
+                    emit_extract_vector(ctx, vec, 2, s1));
+      } else if (dst.size() == 6) {
+         Temp vec = bld.tmp(s8);
+         load->definitions[0] = Definition(vec);
+         bld.insert(std::move(load));
+         emit_split_vector(ctx, vec, 4);
+
+         bld.pseudo(aco_opcode::p_create_vector, Definition(dst),
+                    emit_extract_vector(ctx, vec, 0, s2),
+                    emit_extract_vector(ctx, vec, 1, s2),
+                    emit_extract_vector(ctx, vec, 2, s2));
+      } else {
+         bld.insert(std::move(load));
+      }
+
+   }
+   emit_split_vector(ctx, dst, num_components);
+}
+
 void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
@@ -3020,125 +3161,7 @@ void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
       rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
    }
 
-   if (dst.type() == RegType::sgpr) {
-      aco_opcode op;
-      switch(dst.size()) {
-      case 1:
-         op = aco_opcode::s_buffer_load_dword;
-         break;
-      case 2:
-         op = aco_opcode::s_buffer_load_dwordx2;
-         break;
-      case 3:
-      case 4:
-         op = aco_opcode::s_buffer_load_dwordx4;
-         break;
-      case 6:
-      case 8:
-         op = aco_opcode::s_buffer_load_dwordx8;
-         break;
-      case 12:
-      case 16:
-         op = aco_opcode::s_buffer_load_dwordx16;
-         break;
-      default:
-         unreachable("Forbidden regclass in load_ubo instruction.");
-      }
-      aco_ptr<SMEM_instruction> load{create_instruction<SMEM_instruction>(op, Format::SMEM, 2, 1)};
-      load->operands[0] = Operand(rsrc);
-
-      load->operands[1] = Operand(get_ssa_temp(ctx, instr->src[1].ssa));
-      load->definitions[0] = Definition(dst);
-      load->can_reorder = true;
-
-      /* trim vector */
-      if (dst.size() == 3 || dst.size() == 6) {
-         Temp vec = dst.size() == 3 ? bld.tmp(s4) : bld.tmp(s8);
-         load->definitions[0] = Definition(vec);
-         ctx->block->instructions.emplace_back(std::move(load));
-         emit_split_vector(ctx, vec, 4);
-         RegClass rc = dst.size() == 3 ? s1 : s2;
-         bld.pseudo(aco_opcode::p_create_vector, Definition(dst),
-                    emit_extract_vector(ctx, vec, 0, rc),
-                    emit_extract_vector(ctx, vec, 1, rc),
-                    emit_extract_vector(ctx, vec, 2, rc));
-      } else {
-         ctx->block->instructions.emplace_back(std::move(load));
-      }
-
-   } else { /* vgpr dst */
-      unsigned size = dst.size();
-      unsigned offset = 0;
-      aco_ptr<MUBUF_instruction> mubuf;
-      Temp lower = Temp();
-      if (size > 4) {
-         /* for 64bit vec3/vec4 load 4 dwords and then the remaining */
-         mubuf.reset(create_instruction<MUBUF_instruction>(aco_opcode::buffer_load_dwordx4, Format::MUBUF, 3, 1));
-         mubuf->operands[0] = Operand(get_ssa_temp(ctx, instr->src[1].ssa));
-         mubuf->operands[1] = Operand(rsrc);
-         mubuf->operands[2] = Operand(0u);
-         lower = bld.tmp(v4);;
-         mubuf->definitions[0] = Definition(lower);
-         mubuf->offen = true;
-         mubuf->can_reorder = true;
-         ctx->block->instructions.emplace_back(std::move(mubuf));
-         offset = 16;
-         size -= 4;
-         emit_split_vector(ctx, lower, 2);
-      }
-
-      aco_opcode op;
-      switch(size) {
-      case 1:
-         op = aco_opcode::buffer_load_dword;
-         break;
-      case 2:
-         op = aco_opcode::buffer_load_dwordx2;
-         break;
-      case 3:
-         op = aco_opcode::buffer_load_dwordx3;
-         break;
-      case 4:
-         op = aco_opcode::buffer_load_dwordx4;
-         break;
-      default:
-         unreachable("Unimplemented regclass in load_ubo instruction.");
-      }
-
-
-      mubuf.reset(create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1));
-      mubuf->operands[0] = Operand(get_ssa_temp(ctx, instr->src[1].ssa));
-      mubuf->operands[1] = Operand(rsrc);
-      mubuf->operands[2] = Operand(offset);
-      mubuf->offen = true;
-      mubuf->can_reorder = true;
-
-      if (dst.size() == size) {
-         mubuf->definitions[0] = Definition(dst);
-         ctx->block->instructions.emplace_back(std::move(mubuf));
-      } else {
-         Temp upper = bld.tmp(RegClass(RegType::vgpr, size));
-         mubuf->definitions[0] = Definition(upper);
-         ctx->block->instructions.emplace_back(std::move(mubuf));
-         if (dst.size() == 6) {
-            assert(upper.size() == 2);
-            bld.pseudo(aco_opcode::p_create_vector, Definition(dst),
-                       emit_extract_vector(ctx, lower, 0, v2),
-                       emit_extract_vector(ctx, lower, 1, v2),
-                       upper);
-         } else {
-            assert(dst.size() == 8);
-            emit_split_vector(ctx, upper, 2);
-            bld.pseudo(aco_opcode::p_create_vector, Definition(dst),
-                       emit_extract_vector(ctx, lower, 0, v2),
-                       emit_extract_vector(ctx, lower, 1, v2),
-                       emit_extract_vector(ctx, upper, 0, v2),
-                       emit_extract_vector(ctx, upper, 1, v2));
-         }
-      }
-   }
-
-   emit_split_vector(ctx, dst, instr->dest.ssa.num_components);
+   load_buffer(ctx, instr->num_components, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa));
 }
 
 void visit_load_push_constant(isel_context *ctx, nir_intrinsic_instr *instr)
@@ -4020,150 +4043,13 @@ void visit_load_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
    unsigned num_components = instr->num_components;
-   unsigned num_bytes = num_components * instr->dest.ssa.bit_size / 8;
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
    rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
 
    bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT);
-   aco_opcode op;
-   if (dst.type() == RegType::vgpr || (glc && ctx->options->chip_class < GFX8)) {
-      Temp offset;
-      if (ctx->options->chip_class < GFX8)
-         offset = as_vgpr(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
-      else
-         offset = get_ssa_temp(ctx, instr->src[1].ssa);
-
-      Operand vaddr = offset.type() == RegType::vgpr ? Operand(offset) : Operand(v1);
-      Operand soffset = offset.type() == RegType::sgpr ? Operand(offset) : Operand((uint32_t) 0);
-      unsigned const_offset = 0;
-
-      Temp lower = Temp();
-      if (num_bytes > 16) {
-         assert(instr->dest.ssa.bit_size == 64);
-         assert(num_components == 3 || num_components == 4);
-         op = aco_opcode::buffer_load_dwordx4;
-         lower = bld.tmp(v4);
-         aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
-         mubuf->definitions[0] = Definition(lower);
-         mubuf->operands[0] = vaddr;
-         mubuf->operands[1] = Operand(rsrc);
-         mubuf->operands[2] = soffset;
-         mubuf->offen = (offset.type() == RegType::vgpr);
-         mubuf->glc = glc;
-         mubuf->barrier = barrier_buffer;
-         ctx->block->instructions.emplace_back(std::move(mubuf));
-         emit_split_vector(ctx, lower, 2);
-         num_bytes -= 16;
-         const_offset = 16;
-      }
-
-      switch (num_bytes) {
-         case 4:
-            op = aco_opcode::buffer_load_dword;
-            break;
-         case 8:
-            op = aco_opcode::buffer_load_dwordx2;
-            break;
-         case 12:
-            op = aco_opcode::buffer_load_dwordx3;
-            break;
-         case 16:
-            op = aco_opcode::buffer_load_dwordx4;
-            break;
-         default:
-            unreachable("Load SSBO not implemented for this size.");
-      }
-      aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(op, Format::MUBUF, 3, 1)};
-      mubuf->operands[0] = vaddr;
-      mubuf->operands[1] = Operand(rsrc);
-      mubuf->operands[2] = soffset;
-      mubuf->offen = (offset.type() == RegType::vgpr);
-      mubuf->glc = glc;
-      mubuf->barrier = barrier_buffer;
-      mubuf->offset = const_offset;
-      aco_ptr<Instruction> instr = std::move(mubuf);
-
-      if (dst.size() > 4) {
-         assert(lower != Temp());
-         Temp upper = bld.tmp(RegType::vgpr, dst.size() - lower.size());
-         instr->definitions[0] = Definition(upper);
-         ctx->block->instructions.emplace_back(std::move(instr));
-         if (dst.size() == 8)
-            emit_split_vector(ctx, upper, 2);
-         instr.reset(create_instruction<Pseudo_instruction>(aco_opcode::p_create_vector, Format::PSEUDO, dst.size() / 2, 1));
-         instr->operands[0] = Operand(emit_extract_vector(ctx, lower, 0, v2));
-         instr->operands[1] = Operand(emit_extract_vector(ctx, lower, 1, v2));
-         instr->operands[2] = Operand(emit_extract_vector(ctx, upper, 0, v2));
-         if (dst.size() == 8)
-            instr->operands[3] = Operand(emit_extract_vector(ctx, upper, 1, v2));
-      }
-
-      if (dst.type() == RegType::sgpr) {
-         Temp vec = bld.tmp(RegType::vgpr, dst.size());
-         instr->definitions[0] = Definition(vec);
-         ctx->block->instructions.emplace_back(std::move(instr));
-         bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), vec);
-      } else {
-         instr->definitions[0] = Definition(dst);
-         ctx->block->instructions.emplace_back(std::move(instr));
-      }
-   } else {
-      switch (num_bytes) {
-         case 4:
-            op = aco_opcode::s_buffer_load_dword;
-            break;
-         case 8:
-            op = aco_opcode::s_buffer_load_dwordx2;
-            break;
-         case 12:
-         case 16:
-            op = aco_opcode::s_buffer_load_dwordx4;
-            break;
-         case 24:
-         case 32:
-            op = aco_opcode::s_buffer_load_dwordx8;
-            break;
-         default:
-            unreachable("Load SSBO not implemented for this size.");
-      }
-      aco_ptr<SMEM_instruction> load{create_instruction<SMEM_instruction>(op, Format::SMEM, 2, 1)};
-      load->operands[0] = Operand(rsrc);
-      load->operands[1] = Operand(get_ssa_temp(ctx, instr->src[1].ssa));
-      assert(load->operands[1].getTemp().type() == RegType::sgpr);
-      load->definitions[0] = Definition(dst);
-      load->glc = glc;
-      load->barrier = barrier_buffer;
-      assert(ctx->options->chip_class >= GFX8 || !glc);
-
-      /* trim vector */
-      if (dst.size() == 3) {
-         Temp vec = bld.tmp(s4);
-         load->definitions[0] = Definition(vec);
-         ctx->block->instructions.emplace_back(std::move(load));
-         emit_split_vector(ctx, vec, 4);
-
-         bld.pseudo(aco_opcode::p_create_vector, Definition(dst),
-                    emit_extract_vector(ctx, vec, 0, s1),
-                    emit_extract_vector(ctx, vec, 1, s1),
-                    emit_extract_vector(ctx, vec, 2, s1));
-      } else if (dst.size() == 6) {
-         Temp vec = bld.tmp(s8);
-         load->definitions[0] = Definition(vec);
-         ctx->block->instructions.emplace_back(std::move(load));
-         emit_split_vector(ctx, vec, 4);
-
-         bld.pseudo(aco_opcode::p_create_vector, Definition(dst),
-                    emit_extract_vector(ctx, vec, 0, s2),
-                    emit_extract_vector(ctx, vec, 1, s2),
-                    emit_extract_vector(ctx, vec, 2, s2));
-      } else {
-         ctx->block->instructions.emplace_back(std::move(load));
-      }
-
-   }
-   emit_split_vector(ctx, dst, num_components);
+   load_buffer(ctx, num_components, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa), glc);
 }
 
 void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
