@@ -2271,12 +2271,12 @@ void select_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       bool has_literal = false;
       for (unsigned i = 0; i < instr->operands.size(); i++)
       {
-         if (!instr->operands[i].isTemp())
-            continue;
          if (instr->operands[i].isLiteral()) {
             has_literal = true;
             break;
          }
+         if (!instr->operands[i].isTemp())
+            continue;
          if (ctx.info[instr->operands[i].tempId()].is_literal() &&
              ctx.uses[instr->operands[i].tempId()] < literal_uses) {
             literal_uses = ctx.uses[instr->operands[i].tempId()];
