@@ -449,6 +449,8 @@ bool can_accept_constant(aco_ptr<Instruction>& instr, unsigned operand)
    case aco_opcode::s_addk_i32:
    case aco_opcode::s_mulk_i32:
    case aco_opcode::p_wqm:
+   case aco_opcode::p_extract_vector:
+   case aco_opcode::p_split_vector:
       return operand != 0;
    default:
       if ((instr->format == Format::MUBUF ||
