@@ -63,6 +63,7 @@ void print_asm(Program *program, std::vector<uint32_t>& binary,
          assert(l % 4 == 0);
          new_pos = pos + l / 4;
       }
+      out << std::right;
 
       out << " ;";
       for (; pos < new_pos; pos++)
