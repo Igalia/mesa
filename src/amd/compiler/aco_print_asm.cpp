@@ -8,7 +8,8 @@
 
 namespace aco {
 
-void print_asm(Program *program, std::vector<uint32_t>& binary, enum radeon_family family, std::ostream& out)
+void print_asm(Program *program, std::vector<uint32_t>& binary,
+               unsigned exec_size, enum radeon_family family, std::ostream& out)
 {
    std::vector<bool> referenced_blocks(program->blocks.size());
    referenced_blocks[0] = true;
@@ -37,7 +38,7 @@ void print_asm(Program *program, std::vector<uint32_t>& binary, enum radeon_fami
    size_t pos = 0;
    bool invalid = false;
    unsigned next_block = 0;
-   while (pos < binary.size()) {
+   while (pos < exec_size) {
       while (next_block < program->blocks.size() && pos == program->blocks[next_block].offset) {
          if (referenced_blocks[next_block])
             out << "BB" << std::dec << next_block << ":" << std::endl;
@@ -45,7 +46,7 @@ void print_asm(Program *program, std::vector<uint32_t>& binary, enum radeon_fami
       }
 
       size_t l = LLVMDisasmInstruction(disasm, (uint8_t *) &binary[pos],
-                                       (binary.size() - pos) * sizeof(uint32_t), pos * 4,
+                                       (exec_size - pos) * sizeof(uint32_t), pos * 4,
                                        outline, sizeof(outline));
 
       size_t new_pos;
@@ -71,6 +72,23 @@ void print_asm(Program *program, std::vector<uint32_t>& binary, enum radeon_fami
    assert(next_block == program->blocks.size());
 
    LLVMDisasmDispose(disasm);
+
+   if (program->constant_data.size()) {
+      out << std::endl << "/* constant data */" << std::endl;
+      for (unsigned i = 0; i < program->constant_data.size(); i += 32) {
+         out << '[' << std::setw(6) << std::setfill('0') << std::dec << i << ']';
+         unsigned line_size = std::min<size_t>(program->constant_data.size() - i, 32);
+         for (unsigned j = 0; j < line_size; j += 4) {
+            unsigned size = std::min<size_t>(program->constant_data.size() - (i + j), 4);
+            uint32_t v = 0;
+            memcpy(&v, &program->constant_data[i + j], size);
+            out << " " << std::setw(8) << std::setfill('0') << std::hex << v;
+         }
+         out << std::endl;
+      }
+   }
+
+   out << std::setfill(' ') << std::setw(0) << std::dec;
 
    if (invalid) {
       /* Invalid instructions usually lead to GPU hangs, which can make

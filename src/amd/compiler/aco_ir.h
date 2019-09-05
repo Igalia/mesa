@@ -1048,6 +1048,8 @@ public:
    bool needs_wqm = false; /* there exists a p_wqm instruction */
    bool wb_smem_l1_on_end = false;
 
+   std::vector<uint8_t> constant_data;
+
    uint32_t allocateId()
    {
       assert(allocationID <= 16777215);
@@ -1111,8 +1113,9 @@ void schedule_program(Program* program, live& live_vars);
 void spill(Program* program, live& live_vars, const struct radv_nir_compiler_options *options);
 void insert_wait_states(Program* program);
 void insert_NOPs(Program* program);
-std::vector<uint32_t> emit_program(Program* program);
-void print_asm(Program *program, std::vector<uint32_t>& binary, enum radeon_family family, std::ostream& out);
+unsigned emit_program(Program* program, std::vector<uint32_t>& code);
+void print_asm(Program *program, std::vector<uint32_t>& binary, unsigned exec_size,
+               enum radeon_family family, std::ostream& out);
 void validate(Program* program, FILE *output);
 bool validate_ra(Program* program, const struct radv_nir_compiler_options *options, FILE *output);
 

@@ -93,7 +93,8 @@ void aco_compile_shader(unsigned shader_count,
    //aco_print_program(program.get(), stderr);
 
    /* Assembly */
-   std::vector<uint32_t> code = aco::emit_program(program.get());
+   std::vector<uint32_t> code;
+   unsigned exec_size = aco::emit_program(program.get(), code);
 
    bool get_disasm = options->dump_shader;
 #ifndef NDEBUG
@@ -105,7 +106,7 @@ void aco_compile_shader(unsigned shader_count,
    std::string disasm;
    if (get_disasm) {
       std::ostringstream stream;
-      aco::print_asm(program.get(), code, options->family, stream);
+      aco::print_asm(program.get(), code, exec_size / 4u, options->family, stream);
       stream << '\0';
       disasm = stream.str();
       size += disasm.size();
@@ -120,6 +121,7 @@ void aco_compile_shader(unsigned shader_count,
    legacy_binary->base.total_size = size;
 
    memcpy(legacy_binary->data, code.data(), code.size() * sizeof(uint32_t));
+   legacy_binary->exec_size = exec_size;
    legacy_binary->code_size = code.size() * sizeof(uint32_t);
 
    legacy_binary->config = config;

@@ -389,6 +389,8 @@ SOP1 = {
    (  -1,   -1,   -1,   -1, 0x46, "s_andn1_wrexec_b32"),
    (  -1,   -1,   -1,   -1, 0x47, "s_andn2_wrexec_b32"),
    (  -1,   -1,   -1,   -1, 0x49, "s_movrelsd_2_b32"),
+   # actually a pseudo-instruction. it's lowered to SALU during assembly though, so it's useful to identify it as a SOP1.
+   (  -1,   -1,   -1,   -1,   -1, "p_constaddr"),
 }
 for (gfx6, gfx7, gfx8, gfx9, gfx10, name) in SOP1:
    opcode(name, gfx9, Format.SOP1)

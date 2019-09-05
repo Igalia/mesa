@@ -3235,6 +3235,42 @@ void visit_load_push_constant(isel_context *ctx, nir_intrinsic_instr *instr)
    emit_split_vector(ctx, dst, instr->dest.ssa.num_components);
 }
 
+void visit_load_constant(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+
+   Builder bld(ctx->program, ctx->block);
+
+   uint32_t desc_type = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
+                        S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
+                        S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
+                        S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
+   if (ctx->options->chip_class >= GFX10) {
+      desc_type |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+                   S_008F0C_OOB_SELECT(3) |
+                   S_008F0C_RESOURCE_LEVEL(1);
+   } else {
+      desc_type |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
+                   S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
+   }
+
+   unsigned base = nir_intrinsic_base(instr) + ctx->constant_data_offset;
+   unsigned range = nir_intrinsic_range(instr);
+
+   Temp offset = get_ssa_temp(ctx, instr->src[0].ssa);
+   if (base && offset.type() == RegType::sgpr)
+      offset = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), offset, Operand(base));
+   else if (base && offset.type() == RegType::vgpr)
+      offset = bld.vadd32(bld.def(v1), Operand(base), offset);
+
+   Temp rsrc = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4),
+                          bld.sop1(aco_opcode::p_constaddr, bld.def(s2), bld.def(s1, scc), Operand(0u)),
+                          Operand(MIN2(range, ctx->shader->constant_data_size - nir_intrinsic_base(instr))),
+                          Operand(desc_type));
+
+   load_buffer(ctx, instr->num_components, dst, rsrc, offset);
+}
+
 void visit_discard_if(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    if (ctx->cf_info.loop_nest_depth || ctx->cf_info.parent_if.is_divergent)
@@ -5237,6 +5273,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
       break;
    case nir_intrinsic_load_push_constant:
       visit_load_push_constant(ctx, instr);
+      break;
+   case nir_intrinsic_load_constant:
+      visit_load_constant(ctx, instr);
       break;
    case nir_intrinsic_vulkan_resource_index:
       visit_load_resource(ctx, instr);

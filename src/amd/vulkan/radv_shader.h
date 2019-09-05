@@ -331,6 +331,7 @@ struct radv_shader_binary_legacy {
 	struct radv_shader_binary base;
 	struct ac_shader_config config;
 	unsigned code_size;
+	unsigned exec_size;
 	unsigned llvm_ir_size;
 	unsigned disasm_size;
 	

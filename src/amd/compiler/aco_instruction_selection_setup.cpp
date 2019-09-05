@@ -71,6 +71,7 @@ struct isel_context {
    struct radv_nir_compiler_options *options;
    Program *program;
    nir_shader *shader;
+   uint32_t constant_data_offset;
    Block *block;
    bool *divergent_vals;
    std::unique_ptr<Temp[]> allocated;
@@ -1304,6 +1305,14 @@ setup_isel_context(Program* program,
 
    for (unsigned i = 0; i < shader_count; i++) {
       nir_shader *nir = shaders[i];
+
+      /* align and copy constant data */
+      while (program->constant_data.size() % 4u)
+         program->constant_data.push_back(0);
+      ctx.constant_data_offset = program->constant_data.size();
+      program->constant_data.insert(program->constant_data.end(),
+                                    (uint8_t*)nir->constant_data,
+                                    (uint8_t*)nir->constant_data + nir->constant_data_size);
 
       /* the variable setup has to be done before lower_io / CSE */
       if (nir->info.stage == MESA_SHADER_COMPUTE)

@@ -554,6 +554,21 @@ void aco_print_program(Program *program, FILE *output)
    for (Block const& block : program->blocks)
       aco_print_block(&block, output);
 
+   if (program->constant_data.size()) {
+      fprintf(output, "\n/* constant data */\n");
+      for (unsigned i = 0; i < program->constant_data.size(); i += 32) {
+         fprintf(output, "[%06d] ", i);
+         unsigned line_size = std::min<size_t>(program->constant_data.size() - i, 32);
+         for (unsigned j = 0; j < line_size; j += 4) {
+            unsigned size = std::min<size_t>(program->constant_data.size() - (i + j), 4);
+            uint32_t v = 0;
+            memcpy(&v, &program->constant_data[i + j], size);
+            fprintf(output, " %08x", v);
+         }
+         fprintf(output, "\n");
+      }
+   }
+
    fprintf(output, "\n");
 }
 

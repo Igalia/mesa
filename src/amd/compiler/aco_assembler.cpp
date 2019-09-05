@@ -9,6 +9,7 @@ struct asm_context {
    Program *program;
    enum chip_class chip_class;
    std::map<int, SOPP_instruction*> branches;
+   std::vector<unsigned> constaddrs;
    const int16_t* opcode;
    // TODO: keep track of branch instructions referring blocks
    // and, when emitting the block, correct the offset in instr
@@ -20,6 +21,44 @@ struct asm_context {
 
 void emit_instruction(asm_context& ctx, std::vector<uint32_t>& out, Instruction* instr)
 {
+   uint32_t instr_offset = out.size() * 4u;
+
+   /* lower remaining pseudo-instructions */
+   if (instr->opcode == aco_opcode::p_constaddr) {
+      unsigned dest = instr->definitions[0].physReg();
+      unsigned offset = instr->operands[0].constantValue();
+
+      /* s_getpc_b64 dest[0:1] */
+      uint32_t encoding = (0b101111101 << 23);
+      uint32_t opcode = ctx.opcode[(int)aco_opcode::s_getpc_b64];
+      if (opcode >= 55 && ctx.chip_class <= GFX9) {
+         assert(ctx.chip_class == GFX9 && opcode < 60);
+         opcode = opcode - 4;
+      }
+      encoding |= dest << 16;
+      encoding |= opcode << 8;
+      out.push_back(encoding);
+
+      /* s_add_u32 dest[0], dest[0], ... */
+      encoding = (0b10 << 30);
+      encoding |= ctx.opcode[(int)aco_opcode::s_add_u32] << 23;
+      encoding |= dest << 16;
+      encoding |= dest;
+      encoding |= 255 << 8;
+      out.push_back(encoding);
+      ctx.constaddrs.push_back(out.size());
+      out.push_back(-(instr_offset + 4) + offset);
+
+      /* s_addc_u32 dest[1], dest[1], 0 */
+      encoding = (0b10 << 30);
+      encoding |= ctx.opcode[(int)aco_opcode::s_addc_u32] << 23;
+      encoding |= (dest + 1) << 16;
+      encoding |= dest + 1;
+      encoding |= 128 << 8;
+      out.push_back(encoding);
+      return;
+   }
+
    uint32_t opcode = ctx.opcode[(int)instr->opcode];
    assert(opcode != (uint32_t)-1);
 
@@ -419,22 +458,36 @@ void fix_branches(asm_context& ctx, std::vector<uint32_t>& out)
    }
 }
 
-std::vector<uint32_t> emit_program(Program* program)
+void fix_constaddrs(asm_context& ctx, std::vector<uint32_t>& out)
+{
+   for (unsigned addr : ctx.constaddrs)
+      out[addr] += out.size() * 4u;
+}
+
+unsigned emit_program(Program* program,
+                      std::vector<uint32_t>& code)
 {
    asm_context ctx(program);
-   std::vector<uint32_t> out;
 
    if (program->stage & (hw_vs | hw_fs))
-      fix_exports(ctx, out, program);
+      fix_exports(ctx, code, program);
 
    for (Block& block : program->blocks) {
-      block.offset = out.size();
-      emit_block(ctx, out, block);
+      block.offset = code.size();
+      emit_block(ctx, code, block);
    }
 
-   fix_branches(ctx, out);
+   fix_branches(ctx, code);
+   fix_constaddrs(ctx, code);
 
-   return out;
+   unsigned constant_data_offset = code.size() * sizeof(uint32_t);
+   while (program->constant_data.size() % 4u)
+      program->constant_data.push_back(0);
+   /* Copy constant data */
+   code.insert(code.end(), (uint32_t*)program->constant_data.data(),
+               (uint32_t*)(program->constant_data.data() + program->constant_data.size()));
+
+   return constant_data_offset;
 }
 
 }
