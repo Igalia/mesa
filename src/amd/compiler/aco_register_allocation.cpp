@@ -1877,6 +1877,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
          if (register_file[i])
             sgpr_live_out[block.index].set(i);
       }
+      sgpr_live_out[block.index][127] = register_file[scc.reg];
    } /* end for BB */
 
    /* find scc spill registers which may be needed for parallelcopies created by phis */
@@ -1891,7 +1892,7 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
       assert(pred_index < succ.linear_preds.size());
 
       std::bitset<128> regs = sgpr_live_out[block.index];
-      if (!regs[scc.reg]) {
+      if (!regs[127]) {
          /* early exit */
          block.scc_live_out = false;
          continue;
