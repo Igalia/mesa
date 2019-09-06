@@ -1880,6 +1880,15 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
       sgpr_live_out[block.index][127] = register_file[scc.reg];
    } /* end for BB */
 
+   /* remove trivial phis */
+   for (Block& block : program->blocks) {
+      auto end = std::find_if(block.instructions.begin(), block.instructions.end(),
+                              [](aco_ptr<Instruction>& instr) { return !is_phi(instr);});
+      auto middle = std::remove_if(block.instructions.begin(), end,
+                                   [](const aco_ptr<Instruction>& instr) { return instr->definitions.empty();});
+      block.instructions.erase(middle, end);
+   }
+
    /* find scc spill registers which may be needed for parallelcopies created by phis */
    for (Block& block : program->blocks) {
       if (block.linear_succs.size() != 1)
@@ -1933,15 +1942,6 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
       assert(reg < ctx.program->max_reg_demand.sgpr);
       adjust_max_used_regs(ctx, s1, reg);
       block.scratch_sgpr = PhysReg{(uint16_t)reg};
-   }
-
-   /* remove trivial phis */
-   for (Block& block : program->blocks) {
-      auto end = std::find_if(block.instructions.begin(), block.instructions.end(),
-                              [](aco_ptr<Instruction>& instr) { return !is_phi(instr);});
-      auto middle = std::remove_if(block.instructions.begin(), end,
-                                   [](const aco_ptr<Instruction>& instr) { return instr->definitions.empty();});
-      block.instructions.erase(middle, end);
    }
 
    /* num_gpr = rnd_up(max_used_gpr + 1) */
