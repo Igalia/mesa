@@ -1139,7 +1139,8 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
             affinities[vec[i].id()] = vec[0].id();
    }
 
-   std::vector<std::bitset<128>> sgpr_live_out(program->blocks.size());
+   /* state of register file after phis */
+   std::vector<std::bitset<128>> sgpr_live_in(program->blocks.size());
 
    for (Block& block : program->blocks) {
       std::set<Temp>& live = live_out_per_block[block.index];
@@ -1317,6 +1318,11 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
 
          instructions.emplace_back(std::move(*it));
       }
+
+      /* fill in sgpr_live_in */
+      for (unsigned i = 0; i < ctx.max_used_sgpr; i++)
+         sgpr_live_in[block.index][i] = register_file[i];
+      sgpr_live_in[block.index][127] = register_file[scc.reg];
 
       /* Handle all other instructions of the block */
       for (; it != block.instructions.end(); ++it) {
@@ -1871,13 +1877,6 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
             sealed[succ_idx] = true;
          }
       }
-
-      /* fill in sgpr_live_out */
-      for (unsigned i = 0; i < ctx.max_used_sgpr; i++) {
-         if (register_file[i])
-            sgpr_live_out[block.index].set(i);
-      }
-      sgpr_live_out[block.index][127] = register_file[scc.reg];
    } /* end for BB */
 
    /* remove trivial phis */
@@ -1891,49 +1890,12 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
 
    /* find scc spill registers which may be needed for parallelcopies created by phis */
    for (Block& block : program->blocks) {
-      if (block.linear_succs.size() != 1)
+      if (block.linear_preds.size() <= 1)
          continue;
-      Block& succ = program->blocks[block.linear_succs[0]];
-      unsigned pred_index = 0;
-      for (; pred_index < succ.linear_preds.size() &&
-             succ.linear_preds[pred_index] != block.index; pred_index++)
-         ;
-      assert(pred_index < succ.linear_preds.size());
 
-      std::bitset<128> regs = sgpr_live_out[block.index];
-      if (!regs[127]) {
-         /* early exit */
-         block.scc_live_out = false;
+      std::bitset<128> regs = sgpr_live_in[block.index];
+      if (!regs[127])
          continue;
-      }
-
-      bool has_phi = false;
-
-      /* remove phi operands and add phi definitions */
-      for (aco_ptr<Instruction>& instr : succ.instructions) {
-         if (!is_phi(instr))
-            break;
-         if (instr->opcode == aco_opcode::p_linear_phi) {
-            has_phi = true;
-
-            Definition& def = instr->definitions[0];
-            assert(def.getTemp().type() == RegType::sgpr);
-            for (unsigned i = 0; i < def.size(); i++)
-               regs[def.physReg() + i] = 1;
-            if (instr->operands[pred_index].isTemp()) {
-               Operand& op = instr->operands[pred_index];
-               assert(op.isFixed());
-               for (unsigned i = 0; i < op.size(); i++)
-                  regs[op.physReg() + i] = 0;
-            }
-         }
-      }
-
-      if (!has_phi || !regs[scc.reg]) {
-         block.scc_live_out = false;
-         continue;
-      }
-      block.scc_live_out = true;
 
       /* choose a register */
       int16_t reg = 0;
@@ -1941,7 +1903,13 @@ void register_allocation(Program *program, std::vector<std::set<Temp>> live_out_
          ;
       assert(reg < ctx.program->max_reg_demand.sgpr);
       adjust_max_used_regs(ctx, s1, reg);
-      block.scratch_sgpr = PhysReg{(uint16_t)reg};
+
+      /* update predecessors */
+      for (unsigned& pred_index : block.linear_preds) {
+         Block& pred = program->blocks[pred_index];
+         pred.scc_live_out = true;
+         pred.scratch_sgpr = PhysReg{(uint16_t)reg};
+      }
    }
 
    /* num_gpr = rnd_up(max_used_gpr + 1) */
