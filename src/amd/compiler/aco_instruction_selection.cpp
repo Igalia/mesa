@@ -2451,7 +2451,7 @@ void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
 
    if (index == FRAG_RESULT_SAMPLE_MASK) {
 
-      if (ctx->program->info->info.ps.writes_z) {
+      if (ctx->program->info->ps.writes_z) {
          target = V_008DFC_SQ_EXP_MRTZ;
          enabled_channels = 0x4;
          col_format = (unsigned) -1;
@@ -2480,7 +2480,7 @@ void visit_store_fs_output(isel_context *ctx, nir_intrinsic_instr *instr)
 
    } else if (index == FRAG_RESULT_STENCIL) {
 
-      if (ctx->program->info->info.ps.writes_z) {
+      if (ctx->program->info->ps.writes_z) {
          target = V_008DFC_SQ_EXP_MRTZ;
          enabled_channels = 0x2;
          col_format = (unsigned) -1;
@@ -5028,7 +5028,7 @@ void visit_store_scratch(isel_context *ctx, nir_intrinsic_instr *instr) {
 
 void visit_load_sample_mask_in(isel_context *ctx, nir_intrinsic_instr *instr) {
    uint8_t log2_ps_iter_samples;
-   if (ctx->program->info->info.ps.force_persample) {
+   if (ctx->program->info->ps.force_persample) {
       log2_ps_iter_samples =
          util_logbase2(ctx->options->key.fs.num_samples);
    } else {
@@ -7535,7 +7535,7 @@ static void emit_streamout(isel_context *ctx, unsigned stream)
    Temp so_buffers[4];
    Temp buf_ptr = convert_pointer_to_64_bit(ctx, ctx->streamout_buffers);
    for (unsigned i = 0; i < 4; i++) {
-      unsigned stride = ctx->program->info->info.so.strides[i];
+      unsigned stride = ctx->program->info->so.strides[i];
       if (!stride)
          continue;
 
@@ -7560,7 +7560,7 @@ static void emit_streamout(isel_context *ctx, unsigned stream)
    Temp so_write_offset[4];
 
    for (unsigned i = 0; i < 4; i++) {
-      unsigned stride = ctx->program->info->info.so.strides[i];
+      unsigned stride = ctx->program->info->so.strides[i];
       if (!stride)
          continue;
 
@@ -7577,9 +7577,9 @@ static void emit_streamout(isel_context *ctx, unsigned stream)
       }
    }
 
-   for (unsigned i = 0; i < ctx->program->info->info.so.num_outputs; i++) {
+   for (unsigned i = 0; i < ctx->program->info->so.num_outputs; i++) {
       struct radv_stream_output *output =
-         &ctx->program->info->info.so.outputs[i];
+         &ctx->program->info->so.outputs[i];
       if (stream != output->stream)
          continue;
 
@@ -7627,7 +7627,7 @@ void handle_bc_optimize(isel_context *ctx)
 std::unique_ptr<Program> select_program(unsigned shader_count,
                                         struct nir_shader *const *shaders,
                                         ac_shader_config* config,
-                                        struct radv_shader_variant_info *info,
+                                        struct radv_shader_info *info,
                                         struct radv_nir_compiler_options *options)
 {
    std::unique_ptr<Program> program{new Program};
@@ -7665,7 +7665,7 @@ std::unique_ptr<Program> select_program(unsigned shader_count,
       nir_function_impl *func = nir_shader_get_entrypoint(nir);
       visit_cf_list(&ctx, &func->body);
 
-      if (ctx.program->info->info.so.num_outputs/*&& !ctx->is_gs_copy_shader */)
+      if (ctx.program->info->so.num_outputs/*&& !ctx->is_gs_copy_shader */)
          emit_streamout(&ctx, 0);
 
       if (ctx.stage == vertex_vs)

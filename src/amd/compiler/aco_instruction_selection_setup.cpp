@@ -609,48 +609,48 @@ static void allocate_inline_push_consts(isel_context *ctx,
    uint8_t remaining_sgprs = user_sgpr_info.remaining_sgprs;
 
    /* Only supported if shaders use push constants. */
-   if (ctx->program->info->info.min_push_constant_used == UINT8_MAX)
+   if (ctx->program->info->min_push_constant_used == UINT8_MAX)
       return;
 
    /* Only supported if shaders don't have indirect push constants. */
-   if (ctx->program->info->info.has_indirect_push_constants)
+   if (ctx->program->info->has_indirect_push_constants)
       return;
 
    /* Only supported for 32-bit push constants. */
    //TODO: it's possible that some day, the load/store vectorization could make this inaccurate
-   if (!ctx->program->info->info.has_only_32bit_push_constants)
+   if (!ctx->program->info->has_only_32bit_push_constants)
       return;
 
    uint8_t num_push_consts =
-      (ctx->program->info->info.max_push_constant_used -
-       ctx->program->info->info.min_push_constant_used) / 4;
+      (ctx->program->info->max_push_constant_used -
+       ctx->program->info->min_push_constant_used) / 4;
 
    /* Check if the number of user SGPRs is large enough. */
    if (num_push_consts < remaining_sgprs) {
-      ctx->program->info->info.num_inline_push_consts = num_push_consts;
+      ctx->program->info->num_inline_push_consts = num_push_consts;
    } else {
-      ctx->program->info->info.num_inline_push_consts = remaining_sgprs;
+      ctx->program->info->num_inline_push_consts = remaining_sgprs;
    }
 
    /* Clamp to the maximum number of allowed inlined push constants. */
-   if (ctx->program->info->info.num_inline_push_consts > MAX_INLINE_PUSH_CONSTS)
-      ctx->program->info->info.num_inline_push_consts = MAX_INLINE_PUSH_CONSTS;
+   if (ctx->program->info->num_inline_push_consts > MAX_INLINE_PUSH_CONSTS)
+      ctx->program->info->num_inline_push_consts = MAX_INLINE_PUSH_CONSTS;
 
-   if (ctx->program->info->info.num_inline_push_consts == num_push_consts &&
-       !ctx->program->info->info.loads_dynamic_offsets) {
+   if (ctx->program->info->num_inline_push_consts == num_push_consts &&
+       !ctx->program->info->loads_dynamic_offsets) {
       /* Disable the default push constants path if all constants are
        * inlined and if shaders don't use dynamic descriptors.
        */
-      ctx->program->info->info.loads_push_constants = false;
+      ctx->program->info->loads_push_constants = false;
       user_sgpr_info.num_sgpr--;
       user_sgpr_info.remaining_sgprs++;
    }
 
-   ctx->program->info->info.base_inline_push_consts =
-      ctx->program->info->info.min_push_constant_used / 4;
+   ctx->program->info->base_inline_push_consts =
+      ctx->program->info->min_push_constant_used / 4;
 
-   user_sgpr_info.num_sgpr += ctx->program->info->info.num_inline_push_consts;
-   user_sgpr_info.remaining_sgprs -= ctx->program->info->info.num_inline_push_consts;
+   user_sgpr_info.num_sgpr += ctx->program->info->num_inline_push_consts;
+   user_sgpr_info.remaining_sgprs -= ctx->program->info->num_inline_push_consts;
 }
 
 static void allocate_user_sgprs(isel_context *ctx,
@@ -666,7 +666,7 @@ static void allocate_user_sgprs(isel_context *ctx,
       user_sgpr_info.need_ring_offsets = true;
 
    if (ctx->stage == fragment_fs &&
-       ctx->program->info->info.ps.needs_sample_positions)
+       ctx->program->info->ps.needs_sample_positions)
       user_sgpr_info.need_ring_offsets = true;
 
    /* 2 user sgprs will nearly always be allocated for scratch/rings */
@@ -676,16 +676,16 @@ static void allocate_user_sgprs(isel_context *ctx,
    switch (ctx->stage) {
    case vertex_vs:
    /* if (!ctx->is_gs_copy_shader) */ {
-         if (ctx->program->info->info.vs.has_vertex_buffers)
+         if (ctx->program->info->vs.has_vertex_buffers)
             user_sgpr_count++;
-         user_sgpr_count += ctx->program->info->info.vs.needs_draw_id ? 3 : 2;
+         user_sgpr_count += ctx->program->info->vs.needs_draw_id ? 3 : 2;
       }
       break;
    case fragment_fs:
-      //user_sgpr_count += ctx->program->info->info.ps.needs_sample_positions;
+      //user_sgpr_count += ctx->program->info->ps.needs_sample_positions;
       break;
    case compute_cs:
-      if (ctx->program->info->info.cs.uses_grid_size)
+      if (ctx->program->info->cs.uses_grid_size)
          user_sgpr_count += 3;
       break;
    default:
@@ -695,15 +695,15 @@ static void allocate_user_sgprs(isel_context *ctx,
    if (needs_view_index)
       user_sgpr_count++;
 
-   if (ctx->program->info->info.loads_push_constants)
+   if (ctx->program->info->loads_push_constants)
       user_sgpr_count += 1; /* we use 32bit pointers */
 
-   if (ctx->program->info->info.so.num_outputs)
+   if (ctx->program->info->so.num_outputs)
       user_sgpr_count += 1; /* we use 32bit pointers */
 
    uint32_t available_sgprs = ctx->options->chip_class >= GFX9 && !(ctx->stage & hw_cs) ? 32 : 16;
    uint32_t remaining_sgprs = available_sgprs - user_sgpr_count;
-   uint32_t num_desc_set = util_bitcount(ctx->program->info->info.desc_set_used_mask);
+   uint32_t num_desc_set = util_bitcount(ctx->program->info->desc_set_used_mask);
 
    if (available_sgprs < user_sgpr_count + num_desc_set) {
       user_sgpr_info.indirect_all_descriptor_sets = true;
@@ -795,7 +795,7 @@ declare_global_input_sgprs(isel_context *ctx,
 {
    /* 1 for each descriptor set */
    if (!user_sgpr_info->indirect_all_descriptor_sets) {
-      uint32_t mask = ctx->program->info->info.desc_set_used_mask;
+      uint32_t mask = ctx->program->info->desc_set_used_mask;
       while (mask) {
          int i = u_bit_scan(&mask);
          add_arg(args, s1, &desc_sets[i], user_sgpr_info->user_sgpr_idx);
@@ -809,23 +809,23 @@ declare_global_input_sgprs(isel_context *ctx,
       ctx->program->info->need_indirect_descriptor_sets = true;
    }
 
-   if (ctx->program->info->info.loads_push_constants) {
+   if (ctx->program->info->loads_push_constants) {
       /* 1 for push constants and dynamic descriptors */
       add_arg(args, s1, &ctx->push_constants, user_sgpr_info->user_sgpr_idx);
       set_loc_shader_ptr(ctx, AC_UD_PUSH_CONSTANTS, &user_sgpr_info->user_sgpr_idx);
    }
 
-   if (ctx->program->info->info.num_inline_push_consts) {
-      unsigned count = ctx->program->info->info.num_inline_push_consts;
+   if (ctx->program->info->num_inline_push_consts) {
+      unsigned count = ctx->program->info->num_inline_push_consts;
       for (unsigned i = 0; i < count; i++)
          add_arg(args, s1, &ctx->inline_push_consts[i], user_sgpr_info->user_sgpr_idx + i);
       set_loc_shader(ctx, AC_UD_INLINE_PUSH_CONSTANTS, &user_sgpr_info->user_sgpr_idx, count);
 
-      ctx->num_inline_push_consts = ctx->program->info->info.num_inline_push_consts;
-      ctx->base_inline_push_consts = ctx->program->info->info.base_inline_push_consts;
+      ctx->num_inline_push_consts = ctx->program->info->num_inline_push_consts;
+      ctx->base_inline_push_consts = ctx->program->info->base_inline_push_consts;
    }
 
-   if (ctx->program->info->info.so.num_outputs) {
+   if (ctx->program->info->so.num_outputs) {
       add_arg(args, s1, &ctx->streamout_buffers, user_sgpr_info->user_sgpr_idx);
       set_loc_shader_ptr(ctx, AC_UD_STREAMOUT_BUFFERS, &user_sgpr_info->user_sgpr_idx);
    }
@@ -852,7 +852,7 @@ static void
 declare_streamout_sgprs(isel_context *ctx, struct arg_info *args, unsigned *idx)
 {
    /* Streamout SGPRs. */
-   if (ctx->program->info->info.so.num_outputs) {
+   if (ctx->program->info->so.num_outputs) {
       assert(ctx->stage & hw_vs);
 
       if (ctx->stage != tess_eval_vs) {
@@ -867,7 +867,7 @@ declare_streamout_sgprs(isel_context *ctx, struct arg_info *args, unsigned *idx)
 
    /* A streamout buffer offset is loaded if the stride is non-zero. */
    for (unsigned i = 0; i < 4; i++) {
-      if (!ctx->program->info->info.so.strides[i])
+      if (!ctx->program->info->so.strides[i])
          continue;
 
       add_arg(args, s1, &ctx->streamout_offset[i], (*idx)++);
@@ -878,9 +878,9 @@ static bool needs_view_index_sgpr(isel_context *ctx)
 {
    switch (ctx->stage) {
    case vertex_vs:
-      return ctx->program->info->info.needs_multiview_view_index || ctx->options->key.has_multiview_view_index;
+      return ctx->program->info->needs_multiview_view_index || ctx->options->key.has_multiview_view_index;
    case tess_eval_vs:
-      return ctx->program->info->info.needs_multiview_view_index && ctx->options->key.has_multiview_view_index;
+      return ctx->program->info->needs_multiview_view_index && ctx->options->key.has_multiview_view_index;
    case vertex_ls:
    case vertex_tess_control_ls:
    case vertex_geometry_es:
@@ -888,7 +888,7 @@ static bool needs_view_index_sgpr(isel_context *ctx)
    case tess_eval_es:
 	case tess_eval_geometry_es:
    case geometry_gs:
-      return ctx->program->info->info.needs_multiview_view_index;
+      return ctx->program->info->needs_multiview_view_index;
    default:
       return false;
    }
@@ -911,13 +911,13 @@ void add_startpgm(struct isel_context *ctx)
    switch (ctx->stage) {
    case vertex_vs: {
       declare_global_input_sgprs(ctx, &user_sgpr_info, &args, ctx->descriptor_sets);
-      if (ctx->program->info->info.vs.has_vertex_buffers) {
+      if (ctx->program->info->vs.has_vertex_buffers) {
          add_arg(&args, s1, &ctx->vertex_buffers, user_sgpr_info.user_sgpr_idx);
          set_loc_shader_ptr(ctx, AC_UD_VS_VERTEX_BUFFERS, &user_sgpr_info.user_sgpr_idx);
       }
       add_arg(&args, s1, &ctx->base_vertex, user_sgpr_info.user_sgpr_idx);
       add_arg(&args, s1, &ctx->start_instance, user_sgpr_info.user_sgpr_idx + 1);
-      if (ctx->program->info->info.vs.needs_draw_id) {
+      if (ctx->program->info->vs.needs_draw_id) {
          add_arg(&args, s1, &ctx->draw_id, user_sgpr_info.user_sgpr_idx + 2);
          set_loc_shader(ctx, AC_UD_VS_BASE_VERTEX_START_INSTANCE, &user_sgpr_info.user_sgpr_idx, 3);
       } else
@@ -1052,7 +1052,7 @@ void add_startpgm(struct isel_context *ctx)
    case compute_cs: {
       declare_global_input_sgprs(ctx, &user_sgpr_info, &args, ctx->descriptor_sets);
 
-      if (ctx->program->info->info.cs.uses_grid_size) {
+      if (ctx->program->info->cs.uses_grid_size) {
          add_arg(&args, s1, &ctx->num_workgroups[0], user_sgpr_info.user_sgpr_idx);
          add_arg(&args, s1, &ctx->num_workgroups[1], user_sgpr_info.user_sgpr_idx + 1);
          add_arg(&args, s1, &ctx->num_workgroups[2], user_sgpr_info.user_sgpr_idx + 2);
@@ -1061,11 +1061,11 @@ void add_startpgm(struct isel_context *ctx)
       assert(user_sgpr_info.user_sgpr_idx == user_sgpr_info.num_sgpr);
       unsigned idx = user_sgpr_info.user_sgpr_idx;
       for (unsigned i = 0; i < 3; i++) {
-         if (ctx->program->info->info.cs.uses_block_id[i])
+         if (ctx->program->info->cs.uses_block_id[i])
             add_arg(&args, s1, &ctx->workgroup_ids[i], idx++);
       }
 
-      if (ctx->program->info->info.cs.uses_local_invocation_idx)
+      if (ctx->program->info->cs.uses_local_invocation_idx)
          add_arg(&args, s1, &ctx->tg_size, idx++);
       if (ctx->scratch_enabled)
          add_arg(&args, s1, &ctx->scratch_offset, idx++);
@@ -1153,7 +1153,7 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
 
    ctx->num_clip_distances = 0;
    ctx->num_cull_distances = 0;
-   ctx->needs_instance_id = ctx->program->info->info.vs.needs_instance_id;
+   ctx->needs_instance_id = ctx->program->info->vs.needs_instance_id;
 
    bool export_clip_dists = ctx->options->key.vs_common_out.export_clip_dists;
 
@@ -1237,8 +1237,8 @@ setup_variables(isel_context *ctx, nir_shader *nir)
          variable->data.driver_location = idx * 4;
       }
 
-      ctx->program->info->fs.can_discard = nir->info.fs.uses_discard;
-      ctx->program->info->fs.early_fragment_test = nir->info.fs.early_fragment_tests;
+      ctx->program->info->ps.can_discard = nir->info.fs.uses_discard;
+      ctx->program->info->ps.early_fragment_test = nir->info.fs.early_fragment_tests;
       break;
    }
    case MESA_SHADER_COMPUTE: {
@@ -1265,7 +1265,7 @@ setup_isel_context(Program* program,
                    unsigned shader_count,
                    struct nir_shader *const *shaders,
                    ac_shader_config* config,
-                   radv_shader_variant_info *info,
+                   radv_shader_info *info,
                    radv_nir_compiler_options *options)
 {
    program->stage = 0;
@@ -1345,7 +1345,7 @@ setup_isel_context(Program* program,
                                        (nir_variable_mode)(nir_var_mem_ssbo | nir_var_mem_ubo |
                                                            nir_var_mem_push_const | nir_var_mem_shared),
                                        get_align)) {
-         nir_lower_alu_to_scalar(nir, NULL);
+         nir_lower_alu_to_scalar(nir, NULL, NULL);
          nir_lower_pack(nir);
       }
       if (nir->info.stage == MESA_SHADER_COMPUTE)
@@ -1402,7 +1402,7 @@ setup_isel_context(Program* program,
    ctx.scratch_enabled = scratch_size > 0;
    ctx.program->config->scratch_bytes_per_wave = align(scratch_size * ctx.options->wave_size, 1024);
    ctx.program->config->float_mode = V_00B028_FP_64_DENORMS;
-   ctx.program->info->info.wave_size = ctx.options->wave_size;
+   ctx.program->info->wave_size = ctx.options->wave_size;
 
    ctx.block = ctx.program->create_and_insert_block();
    ctx.block->loop_nest_depth = 0;

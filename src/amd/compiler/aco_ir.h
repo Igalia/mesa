@@ -36,9 +36,8 @@
 #include "aco_opcodes.h"
 #include "aco_util.h"
 
-
-struct radv_shader_variant_info;
 struct radv_nir_compiler_options;
+struct radv_shader_info;
 
 namespace aco {
 
@@ -1041,7 +1040,7 @@ public:
    uint16_t sgpr_limit = 0;
    uint16_t num_waves = 0;
    ac_shader_config* config;
-   struct radv_shader_variant_info *info;
+   struct radv_shader_info *info;
    enum chip_class chip_class;
    enum radeon_family family;
    uint16_t stage; /* Stage */
@@ -1090,7 +1089,7 @@ struct live {
 std::unique_ptr<Program> select_program(unsigned shader_count,
                                         struct nir_shader *const *shaders,
                                         ac_shader_config* config,
-                                        struct radv_shader_variant_info *info,
+                                        struct radv_shader_info *info,
                                         struct radv_nir_compiler_options *options);
 
 void lower_wqm(Program* program, live& live_vars,
