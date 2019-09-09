@@ -5847,7 +5847,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_load_base_instance: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.copy(Definition(dst), ctx->base_vertex);
+      bld.copy(Definition(dst), ctx->start_instance);
       break;
    }
    case nir_intrinsic_load_instance_id: {
@@ -5857,7 +5857,7 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
    case nir_intrinsic_load_draw_id: {
       Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-      bld.copy(Definition(dst), ctx->base_vertex);
+      bld.copy(Definition(dst), ctx->draw_id);
       break;
    }
    default:
