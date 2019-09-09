@@ -1151,17 +1151,14 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
    memset(outinfo->vs_output_param_offset, AC_EXP_PARAM_UNDEFINED,
           sizeof(outinfo->vs_output_param_offset));
 
-   ctx->num_clip_distances = 0;
-   ctx->num_cull_distances = 0;
    ctx->needs_instance_id = ctx->program->info->vs.needs_instance_id;
 
    bool export_clip_dists = ctx->options->key.vs_common_out.export_clip_dists;
 
    outinfo->param_exports = 0;
-   outinfo->writes_pointsize = false;
-   outinfo->writes_layer = false;
-   outinfo->writes_viewport_index = false;
    int pos_written = 0x1;
+   if (outinfo->writes_pointsize || outinfo->writes_viewport_index || outinfo->writes_layer)
+      pos_written |= 1 << 1;
 
    nir_foreach_variable(variable, &nir->outputs)
    {
@@ -1179,34 +1176,21 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
                outinfo->vs_output_param_offset[idx + i] = outinfo->param_exports++;
          }
       }
-
-      if (idx == VARYING_SLOT_PSIZ) {
-         outinfo->writes_pointsize = true;
-         pos_written |= 1 << 1;
-      } else if (idx == VARYING_SLOT_LAYER) {
-         outinfo->writes_layer = true;
-         pos_written |= 1 << 1;
-      } else if (idx == VARYING_SLOT_VIEWPORT) {
-         outinfo->writes_viewport_index = true;
-         pos_written |= 1 << 1;
-      } else if (idx == VARYING_SLOT_CLIP_DIST0) {
-         ctx->num_clip_distances = nir->info.clip_distance_array_size;
-         ctx->num_cull_distances = nir->info.cull_distance_array_size;
-      }
    }
-   if (ctx->options->key.has_multiview_view_index) {
-      assert(!outinfo->writes_layer);
-      outinfo->writes_layer = true;
+   if (outinfo->writes_layer &&
+       outinfo->vs_output_param_offset[VARYING_SLOT_LAYER] == AC_EXP_PARAM_UNDEFINED) {
+      /* when ctx->options->key.has_multiview_view_index = true, the layer
+       * variable isn't declared in NIR and it's isel's job to get the layer */
       outinfo->vs_output_param_offset[VARYING_SLOT_LAYER] = outinfo->param_exports++;
-      pos_written |= 1 << 1;
    }
 
-   assert(outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] == AC_EXP_PARAM_UNDEFINED);
-   outinfo->export_prim_id = false;
-   if (ctx->options->key.vs.out.export_prim_id) {
-      outinfo->export_prim_id = true;
+   if (outinfo->export_prim_id) {
+      assert(outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] == AC_EXP_PARAM_UNDEFINED);
       outinfo->vs_output_param_offset[VARYING_SLOT_PRIMITIVE_ID] = outinfo->param_exports++;
    }
+
+   ctx->num_clip_distances = util_bitcount(outinfo->clip_dist_mask);
+   ctx->num_cull_distances = util_bitcount(outinfo->cull_dist_mask);
 
    assert(ctx->num_clip_distances + ctx->num_cull_distances <= 8);
 
@@ -1216,14 +1200,6 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
       pos_written |= 1 << 3;
 
    outinfo->pos_exports = util_bitcount(pos_written);
-
-   outinfo->clip_dist_mask = (1 << ctx->num_clip_distances) - 1;
-   outinfo->cull_dist_mask = (1 << ctx->num_cull_distances) - 1;
-   outinfo->cull_dist_mask <<= ctx->num_clip_distances;
-
-   ctx->program->info->vs.export_prim_id = ctx->options->key.vs.out.export_prim_id;
-   ctx->program->info->vs.as_ls = ctx->stage & hw_ls;
-   ctx->program->info->vs.as_es = ctx->stage & hw_es;
 }
 
 void
@@ -1236,9 +1212,6 @@ setup_variables(isel_context *ctx, nir_shader *nir)
          int idx = variable->data.location + variable->data.index;
          variable->data.driver_location = idx * 4;
       }
-
-      ctx->program->info->ps.can_discard = nir->info.fs.uses_discard;
-      ctx->program->info->ps.early_fragment_test = nir->info.fs.early_fragment_tests;
       break;
    }
    case MESA_SHADER_COMPUTE: {
@@ -1246,9 +1219,6 @@ setup_variables(isel_context *ctx, nir_shader *nir)
       if (ctx->program->chip_class >= GFX7)
          lds_allocation_size_unit = 4 * 128;
       ctx->program->config->lds_size = (nir->info.cs.shared_size + lds_allocation_size_unit - 1) / lds_allocation_size_unit;
-      ctx->program->info->cs.block_size[0] = nir->info.cs.local_size[0];
-      ctx->program->info->cs.block_size[1] = nir->info.cs.local_size[1];
-      ctx->program->info->cs.block_size[2] = nir->info.cs.local_size[2];
       break;
    }
    case MESA_SHADER_VERTEX: {

@@ -7422,18 +7422,17 @@ static void create_vs_exports(isel_context *ctx)
 {
    radv_vs_output_info *outinfo = &ctx->program->info->vs.outinfo;
 
-   if (ctx->options->key.vs.out.export_prim_id) {
+   if (outinfo->export_prim_id) {
       ctx->vs_output.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
       ctx->vs_output.outputs[VARYING_SLOT_PRIMITIVE_ID][0] = ctx->vs_prim_id;
    }
 
    if (ctx->options->key.has_multiview_view_index) {
-      outinfo->writes_layer = true;
       ctx->vs_output.mask[VARYING_SLOT_LAYER] |= 0x1;
       ctx->vs_output.outputs[VARYING_SLOT_LAYER][0] = as_vgpr(ctx, ctx->view_index);
    }
 
-   // the order these position exports are created is important
+   /* the order these position exports are created is important */
    int next_pos = 0;
    export_vs_varying(ctx, VARYING_SLOT_POS, true, &next_pos);
    if (outinfo->writes_pointsize || outinfo->writes_layer || outinfo->writes_viewport_index) {
