@@ -13,3 +13,5 @@ a6ad9e8ccf970a0da68508eb2ce26b316045b9f0 radv: force enable VK_AMD_shader_ballot
 0813c27d8d4a7e9372a8a86d970b598fc4e3bfd1 radv/gfx10: don't initialize VGT_INSTANCE_STEP_RATE_0
 a4e6e59db82e61b47ef905f28dde80ae36a67d35 radv/gfx10: do not use NGG with NAVI14
 fe0ec41c4d36fd5a82e7579d89e34cce7423c4e5 radv: Change memory type order for GPUs without dedicated VRAM
+28adf0d00c6b5506ed2206b950336bdc568d2247 radeonsi/gfx10: don't call gfx10_destroy_query with compute-only contexts
+d95afd8b9e7f9b3880813203292257bf0ed7babf radeonsi/gfx10: fix wave occupancy computations
