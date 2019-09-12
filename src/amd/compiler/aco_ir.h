@@ -1012,46 +1012,46 @@ struct Block {
    Block() : index(0) {}
 };
 
-typedef uint16_t Stage;
+using Stage = uint16_t;
 
 /* software stages */
-static const Stage sw_vs = 1 << 0;
-static const Stage sw_gs = 1 << 1;
-static const Stage sw_tcs = 1 << 2;
-static const Stage sw_tes = 1 << 3;
-static const Stage sw_fs = 1 << 4;
-static const Stage sw_cs = 1 << 5;
-static const Stage sw_mask = 0x3f;
+static constexpr Stage sw_vs = 1 << 0;
+static constexpr Stage sw_gs = 1 << 1;
+static constexpr Stage sw_tcs = 1 << 2;
+static constexpr Stage sw_tes = 1 << 3;
+static constexpr Stage sw_fs = 1 << 4;
+static constexpr Stage sw_cs = 1 << 5;
+static constexpr Stage sw_mask = 0x3f;
 
 /* hardware stages (can't be OR'd, just a mask for convenience when testing multiple) */
-static const Stage hw_vs = 1 << 6;
-static const Stage hw_es = 1 << 7;
-static const Stage hw_gs = 1 << 8; /* not on GFX9. combined into ES on GFX9 (and GFX10/legacy). */
-static const Stage hw_ls = 1 << 9;
-static const Stage hw_hs = 1 << 10; /* not on GFX9. combined into LS on GFX9 (and GFX10/legacy). */
-static const Stage hw_fs = 1 << 11;
-static const Stage hw_cs = 1 << 12;
-static const Stage hw_mask = 0x7f << 6;
+static constexpr Stage hw_vs = 1 << 6;
+static constexpr Stage hw_es = 1 << 7;
+static constexpr Stage hw_gs = 1 << 8; /* not on GFX9. combined into ES on GFX9 (and GFX10/legacy). */
+static constexpr Stage hw_ls = 1 << 9;
+static constexpr Stage hw_hs = 1 << 10; /* not on GFX9. combined into LS on GFX9 (and GFX10/legacy). */
+static constexpr Stage hw_fs = 1 << 11;
+static constexpr Stage hw_cs = 1 << 12;
+static constexpr Stage hw_mask = 0x7f << 6;
 
 /* possible settings of Program::stage */
-static const Stage vertex_vs = sw_vs | hw_vs;
-static const Stage fragment_fs = sw_fs | hw_fs;
-static const Stage compute_cs = sw_cs | hw_cs;
-static const Stage tess_eval_vs = sw_tes | hw_vs;
+static constexpr Stage vertex_vs = sw_vs | hw_vs;
+static constexpr Stage fragment_fs = sw_fs | hw_fs;
+static constexpr Stage compute_cs = sw_cs | hw_cs;
+static constexpr Stage tess_eval_vs = sw_tes | hw_vs;
 /* GFX10/NGG */
-static const Stage ngg_vertex_gs = sw_vs | hw_gs;
-static const Stage ngg_vertex_geometry_gs = sw_vs | sw_gs | hw_gs;
-static const Stage ngg_tess_eval_geometry_gs = sw_tes | sw_gs | hw_gs;
-static const Stage ngg_vertex_tess_control_hs = sw_vs | sw_tcs | hw_hs;
+static constexpr Stage ngg_vertex_gs = sw_vs | hw_gs;
+static constexpr Stage ngg_vertex_geometry_gs = sw_vs | sw_gs | hw_gs;
+static constexpr Stage ngg_tess_eval_geometry_gs = sw_tes | sw_gs | hw_gs;
+static constexpr Stage ngg_vertex_tess_control_hs = sw_vs | sw_tcs | hw_hs;
 /* GFX9 (and GFX10 if NGG isn't used) */
-static const Stage vertex_geometry_es = sw_vs | sw_gs | hw_es;
-static const Stage vertex_tess_control_ls = sw_vs | sw_tcs | hw_ls;
-static const Stage tess_eval_geometry_es = sw_tes | sw_gs | hw_es;
+static constexpr Stage vertex_geometry_es = sw_vs | sw_gs | hw_es;
+static constexpr Stage vertex_tess_control_ls = sw_vs | sw_tcs | hw_ls;
+static constexpr Stage tess_eval_geometry_es = sw_tes | sw_gs | hw_es;
 /* pre-GFX9 */
-static const Stage vertex_ls = sw_vs | hw_ls; /* vertex before tesselation control */
-static const Stage tess_control_hs = sw_tcs | hw_hs;
-static const Stage tess_eval_es = sw_tes | hw_gs; /* tesselation evaluation before GS */
-static const Stage geometry_gs = sw_gs | hw_gs;
+static constexpr Stage vertex_ls = sw_vs | hw_ls; /* vertex before tesselation control */
+static constexpr Stage tess_control_hs = sw_tcs | hw_hs;
+static constexpr Stage tess_eval_es = sw_tes | hw_gs; /* tesselation evaluation before GS */
+static constexpr Stage geometry_gs = sw_gs | hw_gs;
 
 class Program final {
 public:
@@ -1063,7 +1063,7 @@ public:
    struct radv_shader_info *info;
    enum chip_class chip_class;
    enum radeon_family family;
-   uint16_t stage; /* Stage */
+   Stage stage; /* Stage */
    bool needs_exact = false; /* there exists an instruction with disable_wqm = true */
    bool needs_wqm = false; /* there exists a p_wqm instruction */
    bool wb_smem_l1_on_end = false;

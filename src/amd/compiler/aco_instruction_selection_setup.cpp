@@ -76,7 +76,7 @@ struct isel_context {
    bool *divergent_vals;
    std::unique_ptr<Temp[]> allocated;
    std::unordered_map<unsigned, std::array<Temp,4>> allocated_vec;
-   uint16_t stage; /* Stage */
+   Stage stage; /* Stage */
    struct {
       bool has_branch;
       uint16_t loop_nest_depth = 0;
