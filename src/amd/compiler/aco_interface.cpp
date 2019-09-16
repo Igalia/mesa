@@ -35,6 +35,7 @@ uint64_t debug_flags = 0;
 static const struct debug_control aco_debug_options[] = {
    {"validateir", DEBUG_VALIDATE},
    {"validatera", DEBUG_VALIDATE_RA},
+   {"perfwarn", DEBUG_PERFWARN},
    {NULL, 0}
 };
 

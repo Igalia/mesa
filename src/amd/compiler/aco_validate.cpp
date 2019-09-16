@@ -28,6 +28,23 @@
 
 namespace aco {
 
+#ifndef NDEBUG
+void perfwarn(bool cond, const char *msg, Instruction *instr)
+{
+   if (cond) {
+      fprintf(stderr, "ACO performance warning: %s\n", msg);
+      if (instr) {
+         fprintf(stderr, "instruction: ");
+         aco_print_instr(instr, stderr);
+         fprintf(stderr, "\n");
+      }
+
+      if (debug_flags & DEBUG_PERFWARN)
+         exit(1);
+   }
+}
+#endif
+
 void validate(Program* program, FILE * output)
 {
    if (!(debug_flags & DEBUG_VALIDATE))

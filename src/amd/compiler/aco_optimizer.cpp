@@ -445,6 +445,7 @@ bool can_accept_constant(aco_ptr<Instruction>& instr, unsigned operand)
    case aco_opcode::v_interp_p2_f32:
    case aco_opcode::v_mac_f32:
    case aco_opcode::v_writelane_b32:
+   case aco_opcode::v_cndmask_b32:
       return operand != 2;
    case aco_opcode::s_addk_i32:
    case aco_opcode::s_mulk_i32:
@@ -511,6 +512,12 @@ bool parse_base_offset(opt_ctx &ctx, Instruction* instr, unsigned op_index, Temp
 
 void label_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
 {
+   if (instr->isSALU() || instr->isVALU() || instr->format == Format::PSEUDO) {
+      ASSERTED bool all_const = false;
+      for (Operand& op : instr->operands)
+         all_const = all_const && (!op.isTemp() || ctx.info[op.tempId()].is_constant_or_literal());
+      perfwarn(all_const, "All instruction operands are constant", instr.get());
+   }
 
    for (unsigned i = 0; i < instr->operands.size(); i++)
    {
@@ -587,7 +594,7 @@ void label_instruction(opt_ctx &ctx, aco_ptr<Instruction>& instr)
             continue;
          }
          if (info.is_constant() && can_accept_constant(instr, i)) {
-            assert(i != 2 || instr->opcode != aco_opcode::v_cndmask_b32);
+            perfwarn(instr->opcode == aco_opcode::v_cndmask_b32 && i == 2, "v_cndmask_b32 with a constant selector", instr.get());
             if (i == 0) {
                instr->operands[i] = Operand(info.val);
                continue;

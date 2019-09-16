@@ -46,6 +46,7 @@ extern uint64_t debug_flags;
 enum {
    DEBUG_VALIDATE = 0x1,
    DEBUG_VALIDATE_RA = 0x2,
+   DEBUG_PERFWARN = 0x4,
 };
 
 /**
@@ -1126,6 +1127,11 @@ void print_asm(Program *program, std::vector<uint32_t>& binary, unsigned exec_si
                enum radeon_family family, std::ostream& out);
 void validate(Program* program, FILE *output);
 bool validate_ra(Program* program, const struct radv_nir_compiler_options *options, FILE *output);
+#ifndef NDEBUG
+void perfwarn(bool cond, const char *msg, Instruction *instr=NULL);
+#else
+#define perfwarn(program, cond, msg, ...)
+#endif
 
 void aco_print_instr(Instruction *instr, FILE *output);
 void aco_print_program(Program *program, FILE *output);
