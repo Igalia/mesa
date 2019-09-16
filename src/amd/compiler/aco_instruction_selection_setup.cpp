@@ -1320,18 +1320,25 @@ setup_isel_context(Program* program,
       setup_variables(&ctx, nir);
 
       /* optimize and lower memory operations */
+      bool lower_to_scalar = false;
+      bool lower_pack = false;
       if (nir_opt_load_store_vectorize(nir,
                                        (nir_variable_mode)(nir_var_mem_ssbo | nir_var_mem_ubo |
                                                            nir_var_mem_push_const | nir_var_mem_shared),
                                        get_align)) {
-         nir_lower_alu_to_scalar(nir, NULL, NULL);
-         nir_lower_pack(nir);
+         lower_to_scalar = true;
+         lower_pack = true;
       }
       if (nir->info.stage == MESA_SHADER_COMPUTE)
-         nir_lower_explicit_io(nir, nir_var_mem_shared, nir_address_format_32bit_offset);
+         lower_to_scalar |= nir_lower_explicit_io(nir, nir_var_mem_shared, nir_address_format_32bit_offset);
       else
          nir_lower_io(nir, (nir_variable_mode)(nir_var_shader_in | nir_var_shader_out), type_size, (nir_lower_io_options)0);
       nir_lower_explicit_io(nir, nir_var_mem_global, nir_address_format_64bit_global);
+
+      if (lower_to_scalar)
+         nir_lower_alu_to_scalar(nir, NULL, NULL);
+      if (lower_pack)
+         nir_lower_pack(nir);
 
       /* lower ALU operations */
       nir_opt_idiv_const(nir, 32);
