@@ -2381,11 +2381,11 @@ void visit_load_const(isel_context *ctx, nir_load_const_instr *instr)
 
 uint32_t widen_mask(uint32_t mask, unsigned multiplier)
 {
-	uint32_t new_mask = 0;
-	for(unsigned i = 0; i < 32 && (1u << i) <= mask; ++i)
-		if (mask & (1u << i))
-			new_mask |= ((1u << multiplier) - 1u) << (i * multiplier);
-	return new_mask;
+   uint32_t new_mask = 0;
+   for(unsigned i = 0; i < 32 && (1u << i) <= mask; ++i)
+      if (mask & (1u << i))
+         new_mask |= ((1u << multiplier) - 1u) << (i * multiplier);
+   return new_mask;
 }
 
 void visit_store_vs_output(isel_context *ctx, nir_intrinsic_instr *instr)
@@ -2695,30 +2695,30 @@ void visit_load_interpolated_input(isel_context *ctx, nir_intrinsic_instr *instr
 
 unsigned get_num_channels_from_data_format(unsigned data_format)
 {
-	switch (data_format) {
-	case V_008F0C_BUF_DATA_FORMAT_8:
-	case V_008F0C_BUF_DATA_FORMAT_16:
-	case V_008F0C_BUF_DATA_FORMAT_32:
-		return 1;
-	case V_008F0C_BUF_DATA_FORMAT_8_8:
-	case V_008F0C_BUF_DATA_FORMAT_16_16:
-	case V_008F0C_BUF_DATA_FORMAT_32_32:
-		return 2;
-	case V_008F0C_BUF_DATA_FORMAT_10_11_11:
-	case V_008F0C_BUF_DATA_FORMAT_11_11_10:
-	case V_008F0C_BUF_DATA_FORMAT_32_32_32:
-		return 3;
-	case V_008F0C_BUF_DATA_FORMAT_8_8_8_8:
-	case V_008F0C_BUF_DATA_FORMAT_10_10_10_2:
-	case V_008F0C_BUF_DATA_FORMAT_2_10_10_10:
-	case V_008F0C_BUF_DATA_FORMAT_16_16_16_16:
-	case V_008F0C_BUF_DATA_FORMAT_32_32_32_32:
-		return 4;
-	default:
-		break;
-	}
+   switch (data_format) {
+   case V_008F0C_BUF_DATA_FORMAT_8:
+   case V_008F0C_BUF_DATA_FORMAT_16:
+   case V_008F0C_BUF_DATA_FORMAT_32:
+      return 1;
+   case V_008F0C_BUF_DATA_FORMAT_8_8:
+   case V_008F0C_BUF_DATA_FORMAT_16_16:
+   case V_008F0C_BUF_DATA_FORMAT_32_32:
+      return 2;
+   case V_008F0C_BUF_DATA_FORMAT_10_11_11:
+   case V_008F0C_BUF_DATA_FORMAT_11_11_10:
+   case V_008F0C_BUF_DATA_FORMAT_32_32_32:
+      return 3;
+   case V_008F0C_BUF_DATA_FORMAT_8_8_8_8:
+   case V_008F0C_BUF_DATA_FORMAT_10_10_10_2:
+   case V_008F0C_BUF_DATA_FORMAT_2_10_10_10:
+   case V_008F0C_BUF_DATA_FORMAT_16_16_16_16:
+   case V_008F0C_BUF_DATA_FORMAT_32_32_32_32:
+      return 4;
+   default:
+      break;
+   }
 
-	return 4;
+   return 4;
 }
 
 /* For 2_10_10_10 formats the alpha is handled as unsigned by pre-vega HW.
@@ -2730,16 +2730,16 @@ Temp adjust_vertex_fetch_alpha(isel_context *ctx, unsigned adjustment, Temp alph
    if (adjustment == RADV_ALPHA_ADJUST_SSCALED)
       alpha = bld.vop1(aco_opcode::v_cvt_u32_f32, bld.def(v1), alpha);
 
-	/* For the integer-like cases, do a natural sign extension.
-	 *
-	 * For the SNORM case, the values are 0.0, 0.333, 0.666, 1.0
-	 * and happen to contain 0, 1, 2, 3 as the two LSBs of the
-	 * exponent.
-	 */
+   /* For the integer-like cases, do a natural sign extension.
+    *
+    * For the SNORM case, the values are 0.0, 0.333, 0.666, 1.0
+    * and happen to contain 0, 1, 2, 3 as the two LSBs of the
+    * exponent.
+    */
    alpha = bld.vop2(aco_opcode::v_lshlrev_b32, bld.def(v1), Operand(adjustment == RADV_ALPHA_ADJUST_SNORM ? 7u : 30u), alpha);
    alpha = bld.vop2(aco_opcode::v_ashrrev_i32, bld.def(v1), Operand(30u), alpha);
 
-	/* Convert back to the right type. */
+   /* Convert back to the right type. */
    if (adjustment == RADV_ALPHA_ADJUST_SNORM) {
       alpha = bld.vop1(aco_opcode::v_cvt_f32_i32, bld.def(v1), alpha);
       Temp clamp = bld.vopc(aco_opcode::v_cmp_le_f32, bld.hint_vcc(bld.def(s2)), Operand(0xbf800000u), alpha);
@@ -2807,10 +2807,10 @@ void visit_load_input(isel_context *ctx, nir_intrinsic_instr *instr)
          index = bld.vadd32(bld.def(v1), ctx->base_vertex, ctx->vertex_id);
       }
 
-		if (attrib_stride != 0 && attrib_offset > attrib_stride) {
+      if (attrib_stride != 0 && attrib_offset > attrib_stride) {
          index = bld.vadd32(bld.def(v1), Operand(attrib_offset / attrib_stride), index);
-			attrib_offset = attrib_offset % attrib_stride;
-		}
+         attrib_offset = attrib_offset % attrib_stride;
+      }
 
       Operand soffset(0u);
       if (attrib_offset >= 4096) {
@@ -7570,7 +7570,7 @@ void select_program(Program *program,
       if (shader_count >= 2) {
          Builder bld(ctx.program, ctx.block);
          Temp count = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), ctx.merged_wave_info, Operand((8u << 16) | (i * 8u)));
-		   Temp thread_id = bld.vop3(aco_opcode::v_mbcnt_hi_u32_b32, bld.def(v1), Operand((uint32_t) -1),
+         Temp thread_id = bld.vop3(aco_opcode::v_mbcnt_hi_u32_b32, bld.def(v1), Operand((uint32_t) -1),
                                    bld.vop3(aco_opcode::v_mbcnt_lo_u32_b32, bld.def(v1), Operand((uint32_t) -1), Operand(0u)));
          Temp cond = bld.vopc(aco_opcode::v_cmp_gt_u32, bld.hint_vcc(bld.def(s2)), count, thread_id);
 

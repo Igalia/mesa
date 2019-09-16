@@ -887,7 +887,7 @@ static bool needs_view_index_sgpr(isel_context *ctx)
    case vertex_geometry_es:
    case tess_control_hs:
    case tess_eval_es:
-	case tess_eval_geometry_es:
+   case tess_eval_geometry_es:
    case geometry_gs:
       return ctx->program->info->needs_multiview_view_index;
    default:
@@ -1166,8 +1166,8 @@ setup_vs_variables(isel_context *ctx, nir_shader *nir)
       int idx = variable->data.location;
       unsigned slots = variable->type->count_attribute_slots(false);
       if (variable->data.compact) {
-	      unsigned component_count = variable->data.location_frac + variable->type->length;
-	      slots = (component_count + 3) / 4;
+         unsigned component_count = variable->data.location_frac + variable->type->length;
+         slots = (component_count + 3) / 4;
       }
 
       if (idx >= VARYING_SLOT_VAR0 || idx == VARYING_SLOT_LAYER || idx == VARYING_SLOT_PRIMITIVE_ID ||
