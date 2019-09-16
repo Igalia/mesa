@@ -24,19 +24,46 @@
 #include "aco_interface.h"
 #include "aco_ir.h"
 #include "vulkan/radv_shader.h"
+#include "c11/threads.h"
 
 #include <iostream>
 #include <sstream>
+
+namespace aco {
+uint64_t debug_flags = 0;
+
+static const struct debug_control aco_debug_options[] = {
+   {"validateir", DEBUG_VALIDATE},
+   {"validatera", DEBUG_VALIDATE_RA},
+   {NULL, 0}
+};
+
+static once_flag init_once_flag = ONCE_FLAG_INIT;
+
+static void init()
+{
+   debug_flags = parse_debug_string(getenv("ACO_DEBUG"), aco_debug_options);
+
+   #ifndef NDEBUG
+   /* enable some flags by default on debug builds */
+   debug_flags |= aco::DEBUG_VALIDATE;
+   #endif
+}
+}
+
 void aco_compile_shader(unsigned shader_count,
                         struct nir_shader *const *shaders,
                         struct radv_shader_binary **binary,
                         struct radv_shader_info *info,
                         struct radv_nir_compiler_options *options)
 {
+   call_once(&aco::init_once_flag, aco::init);
+
    ac_shader_config config = {0};
+   std::unique_ptr<aco::Program> program{new aco::Program};
 
    /* Instruction Selection */
-   auto program = aco::select_program(shader_count, shaders, &config, info, options);
+   aco::select_program(program.get(), shader_count, shaders, &config, info, options);
    if (options->dump_preoptir) {
       std::cerr << "After Instruction Selection:\n";
       aco_print_program(program.get(), stderr);

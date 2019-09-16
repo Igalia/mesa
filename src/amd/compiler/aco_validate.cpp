@@ -30,15 +30,8 @@ namespace aco {
 
 void validate(Program* program, FILE * output)
 {
-   #ifdef NDEBUG
-   return;
-   #else
-   static int should_validate = -1;
-   if (should_validate < 0)
-      should_validate = env_var_as_boolean("ACO_VALIDATE", true);
-   if (!should_validate)
+   if (!(debug_flags & DEBUG_VALIDATE))
       return;
-   #endif
 
    bool is_valid = true;
    auto check = [&output, &is_valid](bool check, const char * msg, aco::Instruction * instr) -> void {
@@ -278,15 +271,8 @@ bool ra_fail(FILE *output, Location loc, Location loc2, const char *fmt, ...) {
 } /* end namespace */
 
 bool validate_ra(Program *program, const struct radv_nir_compiler_options *options, FILE *output) {
-   #ifdef NDEBUG
-   return false;
-   #else
-   static int should_validate_ra = -1;
-   if (should_validate_ra < 0)
-      should_validate_ra = env_var_as_boolean("ACO_VALIDATE_RA", false);
-   if (!should_validate_ra)
+   if (!(debug_flags & DEBUG_VALIDATE_RA))
       return false;
-   #endif
 
    bool err = false;
    aco::live live_vars = aco::live_var_analysis(program, options);

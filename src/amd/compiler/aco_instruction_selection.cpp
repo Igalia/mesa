@@ -7548,14 +7548,14 @@ void handle_bc_optimize(isel_context *ctx)
    }
 }
 
-std::unique_ptr<Program> select_program(unsigned shader_count,
-                                        struct nir_shader *const *shaders,
-                                        ac_shader_config* config,
-                                        struct radv_shader_info *info,
-                                        struct radv_nir_compiler_options *options)
+void select_program(Program *program,
+                    unsigned shader_count,
+                    struct nir_shader *const *shaders,
+                    ac_shader_config* config,
+                    struct radv_shader_info *info,
+                    struct radv_nir_compiler_options *options)
 {
-   std::unique_ptr<Program> program{new Program};
-   isel_context ctx = setup_isel_context(program.get(), shader_count, shaders, config, info, options);
+   isel_context ctx = setup_isel_context(program, shader_count, shaders, config, info, options);
 
    for (unsigned i = 0; i < shader_count; i++) {
       nir_shader *nir = shaders[i];
@@ -7617,7 +7617,5 @@ std::unique_ptr<Program> select_program(unsigned shader_count,
       for (unsigned idx : BB.logical_preds)
          program->blocks[idx].logical_succs.emplace_back(BB.index);
    }
-
-   return program;
 }
 }

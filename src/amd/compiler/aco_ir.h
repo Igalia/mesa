@@ -41,6 +41,13 @@ struct radv_shader_info;
 
 namespace aco {
 
+extern uint64_t debug_flags;
+
+enum {
+   DEBUG_VALIDATE = 0x1,
+   DEBUG_VALIDATE_RA = 0x2,
+};
+
 /**
  * Representation of the instruction's microcode encoding format
  * Note: Some Vector ALU Formats can be combined, such that:
@@ -1088,11 +1095,12 @@ struct live {
    std::vector<std::vector<RegisterDemand>> register_demand;
 };
 
-std::unique_ptr<Program> select_program(unsigned shader_count,
-                                        struct nir_shader *const *shaders,
-                                        ac_shader_config* config,
-                                        struct radv_shader_info *info,
-                                        struct radv_nir_compiler_options *options);
+void select_program(Program *program,
+                    unsigned shader_count,
+                    struct nir_shader *const *shaders,
+                    ac_shader_config* config,
+                    struct radv_shader_info *info,
+                    struct radv_nir_compiler_options *options);
 
 void lower_wqm(Program* program, live& live_vars,
                const struct radv_nir_compiler_options *options);
