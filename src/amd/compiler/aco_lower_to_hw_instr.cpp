@@ -672,13 +672,31 @@ void lower_to_hw_instr(Program* program)
             }
             case aco_opcode::p_as_uniform:
             {
-               assert(instr->operands[0].regClass().type() == RegType::vgpr);
-               assert(instr->definitions[0].regClass().type() == RegType::sgpr);
-               assert(instr->operands[0].size() == instr->definitions[0].size());
-               for (unsigned i = 0; i < instr->definitions[0].size(); i++) {
-                  bld.vop1(aco_opcode::v_readfirstlane_b32,
-                           bld.def(s1, PhysReg{instr->definitions[0].physReg() + i}),
-                           Operand(PhysReg{instr->operands[0].physReg() + i}, v1));
+               if (instr->operands[0].isConstant() || instr->operands[0].regClass().type() == RegType::sgpr) {
+                  std::map<PhysReg, copy_operation> copy_operations;
+                  Operand operand = instr->operands[0];
+                  if (operand.isConstant() || operand.size() == 1) {
+                     assert(instr->definitions[0].size() == 1);
+                     copy_operations[instr->definitions[0].physReg()] = {operand, instr->definitions[0], 0, 1};
+                  } else {
+                     for (unsigned i = 0; i < operand.size(); i++)
+                     {
+                        Operand op = Operand(PhysReg{operand.physReg() + i}, s1);
+                        Definition def = Definition(PhysReg{instr->definitions[0].physReg() + i}, s1);
+                        copy_operations[def.physReg()] = {op, def, 0, 1};
+                     }
+                  }
+
+                  handle_operands(copy_operations, &ctx, program->chip_class, pi);
+               } else {
+                  assert(instr->operands[0].regClass().type() == RegType::vgpr);
+                  assert(instr->definitions[0].regClass().type() == RegType::sgpr);
+                  assert(instr->operands[0].size() == instr->definitions[0].size());
+                  for (unsigned i = 0; i < instr->definitions[0].size(); i++) {
+                     bld.vop1(aco_opcode::v_readfirstlane_b32,
+                              bld.def(s1, PhysReg{instr->definitions[0].physReg() + i}),
+                              Operand(PhysReg{instr->operands[0].physReg() + i}, v1));
+                  }
                }
                break;
             }
