@@ -211,11 +211,11 @@ private:
  * Operand and Definition.
  */
 struct PhysReg {
-   PhysReg() = default;
+   constexpr PhysReg() = default;
    explicit constexpr PhysReg(unsigned r) : reg(r) {}
    constexpr operator unsigned() const { return reg; }
 
-   uint16_t reg;
+   uint16_t reg = 0;
 };
 
 /* helper expressions for special registers */
@@ -237,6 +237,10 @@ static constexpr PhysReg scc{253};
 class Operand final
 {
 public:
+   constexpr Operand()
+      : reg_(PhysReg{128}), isTemp_(false), isFixed_(true), isConstant_(false),
+        isKill_(false), isUndef_(true), isFirstKill_(false), is64BitConst_(false) {}
+
    explicit Operand(Temp r) noexcept
    {
       data_.temp = r;
@@ -307,7 +311,7 @@ public:
          assert(false && "attempt to create a 64-bit literal constant");
       }
    };
-   explicit Operand(RegClass type=s1) noexcept
+   explicit Operand(RegClass type) noexcept
    {
       isUndef_ = true;
       data_.temp = Temp(0, type);
@@ -429,7 +433,7 @@ private:
    union {
       uint32_t i;
       float f;
-      Temp temp;
+      Temp temp = Temp(0, s1);
    } data_;
    PhysReg reg_;
    union {
@@ -456,7 +460,7 @@ private:
 class Definition final
 {
 public:
-   Definition() = default;
+   constexpr Definition() : temp(Temp(0, s1)), reg_(0), isFixed_(0), hasHint_(0), isKill_(0) {}
    Definition(uint32_t index, RegClass type) noexcept
       : temp(index, type) {}
    explicit Definition(Temp tmp) noexcept
@@ -539,7 +543,7 @@ public:
    }
 
 private:
-   Temp temp;
+   Temp temp = Temp(0, s1);
    PhysReg reg_;
    union {
       struct {
