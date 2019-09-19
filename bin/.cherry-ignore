@@ -29,3 +29,5 @@ f833b4cada07b746a10ffa4d93fcd821920c3cb1 docs: Update to OpenGL 4.6 in the relea
 8cbe83445b2ec78fab1f303918c79268713500b5 ac: add radeon_info::tcc_harvested
 235ebe91633e7f47518118983e0e6f5c632b25a4 radeonsi/gfx10: fix corruption for chips with harvested TCCs
 b7c2f7c5a6b21bccb7847ab03b7fba5c770e131c ac: fix num_good_cu_per_sh for harvested chips
+# stable: Explicit 19.3 only nominations.
+66f2aa6ccd0b226eebe2c1a46281160b0a54d522 docs: Add the maximum implemented Vulkan API version in 19.3 rel notes
