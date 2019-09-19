@@ -175,8 +175,7 @@ libegl = shared_library(
 # If using glvnd the pkg-config header should not point to EGL_mesa, it should
 # point to EGL. glvnd is only available on unix like platforms so adding -l
 # should be safe here
-# TODO: in the glvnd case glvnd itself should really be providing this.
-if with_glvnd
+if with_glvnd and glvnd_missing_pc_files
   _egl = '-L${libdir} -lEGL'
 else
   _egl = libegl
