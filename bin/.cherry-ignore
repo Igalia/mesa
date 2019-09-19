@@ -15,3 +15,17 @@ a4e6e59db82e61b47ef905f28dde80ae36a67d35 radv/gfx10: do not use NGG with NAVI14
 fe0ec41c4d36fd5a82e7579d89e34cce7423c4e5 radv: Change memory type order for GPUs without dedicated VRAM
 28adf0d00c6b5506ed2206b950336bdc568d2247 radeonsi/gfx10: don't call gfx10_destroy_query with compute-only contexts
 d95afd8b9e7f9b3880813203292257bf0ed7babf radeonsi/gfx10: fix wave occupancy computations
+6d5f11ab345b05759c22acbcd2f79928311689e3 radv: store engine name
+04dc6074cf7f651b720868e0ba24362b585d1b31 driconfig: add a new engine name/version parameter
+0616b7ac90cf4f86bb409d34101e3a3cceac8cbe vulkan: add vk_x11_strict_image_count option
+83f195414a2e89bd9f549dacc04365f67e5bd110 radeonsi: add Navi12 PCI ID
+f833b4cada07b746a10ffa4d93fcd821920c3cb1 docs: Update to OpenGL 4.6 in the release notes
+68820007fddbb5b79f1b2b08e66ef14092053a95 radv: fix loading 64-bit GS inputs
+41b0e0d7e0f2353d337e68e8e439b5dfead880c4 docs: Add the maximum implemented Vulkan API version in 19.2 rel notes
+65b698136c5ef0ef1a15cb6fbff13cbc4ceb3881 amd: add more PCI IDs for Navi14
+48742de601a8afea1e5f99637f5823a97ca21915 ac/addrlib: fix chip identification for Vega10, Arcturus, Raven2, Renoir
+3c0938bece83cd37365c30c35d2d54927f3fe0cd radeonsi/gfx10: fix L2 cache rinse programming
+7d97013294816db46abb7d1e7c6871fe73dfac93 ac: fix incorrect vram_size reported by the kernel
+8cbe83445b2ec78fab1f303918c79268713500b5 ac: add radeon_info::tcc_harvested
+235ebe91633e7f47518118983e0e6f5c632b25a4 radeonsi/gfx10: fix corruption for chips with harvested TCCs
+b7c2f7c5a6b21bccb7847ab03b7fba5c770e131c ac: fix num_good_cu_per_sh for harvested chips
