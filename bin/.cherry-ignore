@@ -31,3 +31,5 @@ f833b4cada07b746a10ffa4d93fcd821920c3cb1 docs: Update to OpenGL 4.6 in the relea
 b7c2f7c5a6b21bccb7847ab03b7fba5c770e131c ac: fix num_good_cu_per_sh for harvested chips
 # stable: Explicit 19.3 only nominations.
 66f2aa6ccd0b226eebe2c1a46281160b0a54d522 docs: Add the maximum implemented Vulkan API version in 19.3 rel notes
+# revert: The following commit was requested to be removed from stable branch by original author.
+dcc0e23438f3e5929c2ef74d57e8207be25ecb41 Revert "gallium: remove PIPE_CAP_TEXTURE_SHADOW_MAP"
