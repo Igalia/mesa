@@ -1802,7 +1802,13 @@ DECL_SPECIAL(LOOP)
 
 DECL_SPECIAL(RET)
 {
-    ureg_RET(tx->ureg);
+    /* RET as a last instruction could be safely ignored.
+     * Remove it to prevent crashes/warnings in case underlying
+     * driver doesn't implement arbitrary returns.
+     */
+    if (*(tx->parse_next) != NINED3DSP_END) {
+        ureg_RET(tx->ureg);
+    }
     return D3D_OK;
 }
 
