@@ -36,3 +36,6 @@ b7c2f7c5a6b21bccb7847ab03b7fba5c770e131c ac: fix num_good_cu_per_sh for harveste
 dcc0e23438f3e5929c2ef74d57e8207be25ecb41 Revert "gallium: remove PIPE_CAP_TEXTURE_SHADOW_MAP"
 # fixes: The following commit was reverted later
 c73988300f943e185a50aaba015f2f114ffcb262 util: added missing headers in anon-file
+# fixes: The following commit depends on commit e1dc3ab75348 in order to
+#        compile, which did not land in the branch.
+8ad3d8b178c0d8939db62ac2be9fdc98d127742d radv: Fix condition for skipping the continue CS.
