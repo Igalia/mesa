@@ -25,6 +25,7 @@
 #define GEN_GEM_H
 
 #include <stdint.h>
+#include <unistd.h>
 
 static inline uint64_t
 gen_canonical_address(uint64_t v)
