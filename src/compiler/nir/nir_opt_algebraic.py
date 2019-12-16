@@ -1315,11 +1315,14 @@ def ldexp(f, exp, bits):
    # value (including denorms if the hardware supports it) and to adjust the
    # exponent of any normal value to anything you want.
    if bits == 16:
-      exp = ('imin', ('imax', exp, -28), 30)
+      exp = ('imin', exp, 30)
+      minexp = -28
    elif bits == 32:
-      exp = ('imin', ('imax', exp, -252), 254)
+      exp = ('imin', exp, 254)
+      minexp = -252
    elif bits == 64:
-      exp = ('imin', ('imax', exp, -2044), 2046)
+      exp = ('imin', exp, 2046)
+      minexp = -2044
    else:
       assert False
 
@@ -1333,7 +1336,7 @@ def ldexp(f, exp, bits):
    # of our exponent is doubled.
    pow2_1 = fexp2i(('ishr', exp, 1), bits)
    pow2_2 = fexp2i(('isub', exp, ('ishr', exp, 1)), bits)
-   return ('fmul', ('fmul', f, pow2_1), pow2_2)
+   return ('bcsel', ('ilt', exp, minexp), 0, ('fmul', ('fmul', f, pow2_1), pow2_2))
 
 optimizations += [
    (('ldexp@16', 'x', 'exp'), ldexp('x', 'exp', 16), 'options->lower_ldexp'),
