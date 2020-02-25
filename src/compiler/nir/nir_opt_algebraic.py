@@ -1442,11 +1442,11 @@ def ldexp(f, exp, bits):
    # value (including denorms if the hardware supports it) and to adjust the
    # exponent of any normal value to anything you want.
    if bits == 16:
-      exp = ('imin', ('imax', exp, -28), 30)
+      exp = ('imin', ('imax', exp, -30), 30)
    elif bits == 32:
-      exp = ('imin', ('imax', exp, -252), 254)
+      exp = ('imin', ('imax', exp, -254), 254)
    elif bits == 64:
-      exp = ('imin', ('imax', exp, -2044), 2046)
+      exp = ('imin', ('imax', exp, -2046), 2046)
    else:
       assert False
 
